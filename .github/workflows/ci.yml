@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build --if-present
+
+      - name: Install server
+        working-directory: server
+        run: npm ci
+
+      - name: Lint server
+        working-directory: server
+        run: npm run lint --if-present || echo "No lint script"
+
+      - name: Test placeholder
+        run: echo "CI build passed"

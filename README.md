@@ -1,67 +1,60 @@
-# 🥋 Plataforma de Análise Tática de Jiu-Jitsu
+# JiuMetrics – Jiu-Jitsu Tactical Analysis
 
-Uma aplicação web responsiva para análise de atletas e adversários de Jiu-Jitsu, com dashboards interativos e geração de estratégias com IA.
+A modern, responsive web app for Jiu-Jitsu athlete and opponent management, AI-powered fight strategy, and rich visual dashboards.
 
-## 🎯 Funcionalidades
+## Features
 
-✅ **Cadastro de Atletas** - CRUD completo de atletas da academia
-✅ **Cadastro de Adversários** - Gerencie seus oponentes
-✅ **Dashboard Interativo** - Visualize estatísticas com gráficos em tempo real
-✅ **Comparador de Estratégias** - Analise diferenças entre competidores
-✅ **Módulo de IA** - Gere planos de luta personalizados
-✅ **Gráficos Avançados** - Radar, barras e linhas com Recharts
-✅ **Interface Responsiva** - Funciona em desktop, tablet e mobile
+- Athlete and Opponent management
+- Interactive Dashboard with charts
+- Strategy generator with AI (Gemini)
+- Comparison view (Radar, Bars, Lines with Recharts)
+- Modern responsive UI (cards, gradients)
 
-## 📋 Requisitos
+## Requirements
 
-- Node.js 18.0+
-- npm 9.0+
-- Navegador moderno (Chrome, Firefox, Safari, Edge)
+- Node.js 18+
+- npm 9+
+- Modern browser
+- FFmpeg (for frame extraction)
 
-## 🚀 Instalação e Setup
+## Setup
 
-### 1. Clonar/Acessar o Projeto
-
-```bash
-cd /Users/lucasmenezes/Downloads/js-curso-2-aula1/projeto\ analise\ atletas
+### Environment
+Create `server/.env` with:
+```
+PORT=5000
+GEMINI_API_KEY=YOUR_GEMINI_KEY
 ```
 
-### 2. Instalar Dependências
-
-#### Frontend
-```bash
+### Install
+Frontend
+```
 cd frontend
 npm install
 ```
-
-#### Backend
-```bash
-cd ../server
+Backend
+```
+cd server
 npm install
 ```
 
-## ▶️ Executar a Aplicação
-
-### Terminal 1 - Backend
-```bash
+## Run
+Backend
+```
 cd server
 npm run dev
 ```
-
-O servidor estará em: `http://localhost:5000`
-
-### Terminal 2 - Frontend
-```bash
+Frontend
+```
 cd frontend
 npm run dev
 ```
+Visit `http://localhost:5173`
 
-A aplicação estará em: `http://localhost:5173`
-
-## 📁 Estrutura do Projeto
+## Project Structure
 
 ```
-projeto analise atletas/
+project/
 ├── frontend/                    # Aplicação React Vite
 │   ├── src/
 │   │   ├── components/
@@ -95,23 +88,23 @@ projeto analise atletas/
 
 ```
 
-## 🔌 API Endpoints
+## API Endpoints
 
-### Atletas
+### Athletes
 - `GET /api/athletes` - Listar todos
 - `GET /api/athletes/:id` - Detalhes de um atleta
 - `POST /api/athletes` - Criar novo
 - `PUT /api/athletes/:id` - Atualizar
 - `DELETE /api/athletes/:id` - Deletar
 
-### Adversários
+### Opponents
 - `GET /api/opponents` - Listar todos
 - `GET /api/opponents/:id` - Detalhes
 - `POST /api/opponents` - Criar novo
 - `PUT /api/opponents/:id` - Atualizar
 - `DELETE /api/opponents/:id` - Deletar
 
-### IA/Estratégia
+### AI/Strategy
 - `POST /api/ai/strategy` - Gerar estratégia
   ```json
   {
@@ -120,7 +113,7 @@ projeto analise atletas/
   }
   ```
 
-## 🎨 Páginas da Aplicação
+## App Pages
 
 1. **Dashboard** (`/`) - Visão geral com estatísticas e gráficos
 2. **Atletas** (`/athletes`) - Gerenciar atletas
@@ -129,7 +122,7 @@ projeto analise atletas/
 5. **Comparador** (`/compare`) - Análise lado a lado
 6. **Estratégia** (`/strategy`) - Gerador de planos com IA
 
-## 🛠️ Stack Tecnológico
+## Tech Stack
 
 ### Frontend
 - **React 19** - UI library
@@ -146,7 +139,7 @@ projeto analise atletas/
 - **UUID** - Geração de IDs
 - **Nodemon** - Dev reload
 
-## 📝 Dados de Exemplo
+## Sample Data
 
 A aplicação vem com dados mock pré-carregados para testes:
 
@@ -159,7 +152,7 @@ A aplicação vem com dados mock pré-carregados para testes:
 - Pedro Ramos - Marrom, Pressão, 90kg
 - Ana Costa - Roxa, Explosão, 65kg
 
-## 🔄 Próximas Implementações
+## Roadmap
 
 - [ ] Integração com Supabase/Firebase
 - [ ] Upload de vídeos
@@ -170,7 +163,7 @@ A aplicação vem com dados mock pré-carregados para testes:
 - [ ] Sistema de notificações
 - [ ] Export de relatórios (PDF)
 
-## 📖 Documentação de Componentes
+## Components
 
 ### AthleteCard
 Exibe informações resumidas de um atleta com progresso visual.
@@ -190,7 +183,7 @@ Visualização lado a lado com gráfico duplo e análise de diferenças.
 ### AiStrategyBox
 Exibe estratégia gerada com seções expansíveis.
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Porta 5000 já em uso
 ```bash
@@ -207,24 +200,24 @@ Certifique-se de que:
 2. Não há erros de sintaxe nos componentes
 3. O servidor está rodando na porta correta
 
-## 💡 Dicas de Desenvolvimento
+## Dev Tips
 
 1. **Adicionar novo atleta**: Vá para `/athletes` e clique em "Novo Atleta"
 2. **Testar IA**: Selecione um atleta e adversário em `/strategy`
 3. **Ver comparação**: Use `/compare` para análise visual
 4. **Verificar dados**: Abra o DevTools (F12) para ver requisições
 
-## 📞 Suporte
+## Support
 
 Para dúvidas ou problemas:
 1. Verifique se o servidor está rodando (`npm run dev`)
 2. Limpe o cache do navegador (Ctrl+Shift+Delete)
 3. Reinicie ambos os servidores
 
-## 📄 Licença
+## License
 
 Este projeto é desenvolvido como propósito educacional.
 
 ---
 
-**🥋 Desenvolvido para Análise Tática de Jiu-Jitsu | v1.0**
+**JiuMetrics | v1.0**
