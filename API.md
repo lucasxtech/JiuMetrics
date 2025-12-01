@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-http://localhost:5000/api
+http://localhost:5050/api
 ```
 
 ## Health Check
@@ -307,12 +307,12 @@ Gera uma estratégia de luta personalizada.
 
 ### Listar atletas
 ```bash
-curl http://localhost:5000/api/athletes
+curl http://localhost:5050/api/athletes
 ```
 
 ### Criar atleta
 ```bash
-curl -X POST http://localhost:5000/api/athletes \
+curl -X POST http://localhost:5050/api/athletes \
   -H "Content-Type: application/json" \
   -d '{
     "name": "João Silva",
@@ -326,7 +326,7 @@ curl -X POST http://localhost:5000/api/athletes \
 
 ### Gerar estratégia
 ```bash
-curl -X POST http://localhost:5000/api/ai/strategy \
+curl -X POST http://localhost:5050/api/ai/strategy \
   -H "Content-Type: application/json" \
   -d '{
     "athleteId": "1",

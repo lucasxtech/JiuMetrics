@@ -7,9 +7,10 @@ const aiRoutes = require('./src/routes/ai');
 const videoRoutes = require('./src/routes/video');
 const fightAnalysisRoutes = require('./src/routes/fightAnalysis');
 const strategyRoutes = require('./src/routes/strategy');
+const config = require('./config');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = config.PORT;
 
 // Middleware
 app.use(cors());

@@ -52,7 +52,7 @@
 
 4. **Environment Variables**
    ```
-   PORT=5000
+   PORT=5050
    NODE_ENV=production
    CORS_ORIGIN=https://seu-frontend.vercel.app
    ```
@@ -74,7 +74,7 @@
 3. **Configurar envs**
    ```bash
    heroku config:set NODE_ENV=production
-   heroku config:set PORT=5000
+   heroku config:set PORT=5050
    ```
 
 4. **Deploy**

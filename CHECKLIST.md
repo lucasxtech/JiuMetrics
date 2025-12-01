@@ -167,7 +167,7 @@
 
 ### Manual
 - [x] Frontend abre em localhost:5173
-- [x] Backend abre em localhost:5000
+- [x] Backend abre em localhost:5050
 - [x] Navegação funciona
 - [x] Componentes renderizam
 - [x] Dados mock aparecem

@@ -36,7 +36,7 @@ cd server
 npm run dev
 
 # Você verá:
-# 🥋 Servidor de Análise Tática rodando em http://localhost:5000
+# 🥋 Servidor de Análise Tática rodando em http://localhost:5050
 ```
 
 ### Passo 3: Iniciar Frontend
@@ -117,10 +117,10 @@ Todos esses arquivos estão na pasta raiz:
 
 ```bash
 # Listar atletas
-curl http://localhost:5000/api/athletes
+curl http://localhost:5050/api/athletes
 
 # Criar atleta
-curl -X POST http://localhost:5000/api/athletes \
+curl -X POST http://localhost:5050/api/athletes \
   -H "Content-Type: application/json" \
   -d '{
     "name": "João Silva",
@@ -213,7 +213,7 @@ const styles = ['Guarda', 'Passagem', 'Queda', 'Pressão', 'Explosão'];
 
 ### Frontend (.env)
 ```
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5050/api
 ```
 
 Para produção:
@@ -223,14 +223,14 @@ VITE_API_URL=https://seu-backend.com/api
 
 ### Backend (.env)
 ```
-PORT=5000
+PORT=5050
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:5173
 ```
 
 Para produção:
 ```
-PORT=5000
+PORT=5050
 NODE_ENV=production
 CORS_ORIGIN=https://seu-frontend.vercel.app
 ```
@@ -239,10 +239,10 @@ CORS_ORIGIN=https://seu-frontend.vercel.app
 
 ## 🚨 TROUBLESHOOTING
 
-### ❌ "Port 5000 already in use"
+### ❌ "Port 5050 already in use"
 ```bash
 # Mude em server/.env
-PORT=5001
+PORT=5051
 ```
 
 ### ❌ "Cannot find module"

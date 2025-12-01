@@ -22,7 +22,7 @@ Aplicação web moderna e responsiva para gestão de atletas e adversários de J
 ### Ambiente
 Crie `server/.env` com:
 ```
-PORT=5000
+PORT=5050
 GEMINI_API_KEY=SUA_CHAVE_GEMINI
 ```
 
@@ -185,10 +185,10 @@ Exibe estratégia gerada com seções expansíveis.
 
 ## Troubleshooting
 
-### Porta 5000 já em uso
+### Porta 5050 já em uso
 ```bash
 # Mudar porta no arquivo server/.env
-PORT=5001
+PORT=5051
 ```
 
 ### Erro de CORS

@@ -206,12 +206,12 @@ Análise lado a lado
 
 ### Frontend (.env)
 ```
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5050/api
 ```
 
 ### Backend (.env)
 ```
-PORT=5000
+PORT=5050
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:5173
 ```
