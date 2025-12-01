@@ -1,4 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
+
+:root {
+  --page-bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-muted: #f1f4f9;
+  --border: #e4e7ec;
+  --text-strong: #0f172a;
+  --text-muted: #475467;
+  --radius-lg: 20px;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+}
 
 * {
   margin: 0;
@@ -7,12 +23,11 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f8fafc;
+  background: var(--page-bg);
   min-height: 100vh;
 }
 
@@ -136,8 +151,8 @@ button {
 }
 
 button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px -5px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  box-shadow: none;
 }
 
 button:active:not(:disabled) {
@@ -146,17 +161,15 @@ button:active:not(:disabled) {
 
 /* Cards com elevação moderna */
 .card-modern {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border);
 }
 
 .card-modern:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  transform: translateY(-4px);
-  border-color: rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.08);
 }
 
 /* Badges modernos */
@@ -221,10 +234,10 @@ button:active:not(:disabled) {
 
 /* Stats cards - Estilo da referência */
 .stat-card {
-  background: white;
+  background: var(--surface);
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(226, 232, 240, 0.8);
   transition: all 0.2s;
 }
@@ -266,4 +279,211 @@ button:active:not(:disabled) {
 .upload-zone.dragging {
   border-color: #6366f1;
   background: rgba(99, 102, 241, 0.05);
+}
+
+/* Dashboard layout helpers */
+.dashboard-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: clamp(1.25rem, 2vw, 2rem);
+}
+
+.panel--hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .panel--hero {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+.hero-title {
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: var(--space-xs);
+}
+
+.hero-description {
+  color: var(--text-muted);
+  max-width: 38ch;
+}
+
+.hero-meta {
+  max-width: 24rem;
+  color: var(--text-muted);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: var(--space-sm);
+}
+
+.tag-list span {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--surface-muted);
+  color: var(--text-strong);
+}
+
+.eyebrow,
+.section-header__eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+}
+
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: var(--space-sm);
+}
+
+.section-header__title,
+.panel__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+}
+
+.metric-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: var(--surface);
+}
+
+.metric-card__label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.metric-card__value {
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.metric-card__link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4f46e5;
+  text-decoration: none;
+}
+
+.metric-card__link:hover {
+  text-decoration: underline;
+}
+
+.chart-grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.chart-card--wide {
+  grid-column: span 1;
+}
+
+@media (min-width: 1024px) {
+  .chart-card--wide {
+    grid-column: span 2;
+  }
+}
+
+.panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+@media (min-width: 640px) {
+  .panel__head {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+}
+
+.panel__meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.chart-area {
+  height: clamp(240px, 35vw, 320px);
+}
+
+.chart-area--large {
+  height: clamp(260px, 38vw, 360px);
+}
+
+.cta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-sm);
+}
+
+.cta-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text-strong);
+  text-decoration: none;
+  background: var(--surface);
+}
+
+.cta-card__icon {
+  font-size: 1.8rem;
+}
+
+.cta-card__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.cta-card__description {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.cta-card__link {
+  margin-top: auto;
+  font-size: 0.9rem;
+  color: #4f46e5;
 }

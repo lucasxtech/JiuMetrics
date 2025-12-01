@@ -52,113 +52,121 @@ export default function Strategy() {
     }
   };
 
+  const selectionButtonBase =
+    'w-full rounded-xl border px-4 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300';
+
   return (
-    <div className="space-y-8 animate-fadeIn max-w-6xl mx-auto px-4">
-      {/* Hero Header */}
-      <div className="text-center">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 flex items-center justify-center gap-3">
-          <span className="text-3xl md:text-4xl">🎯</span>
-          Estratégia de Luta com IA
-        </h1>
-        <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">Analise dados e receba recomendações personalizadas baseadas em inteligência artificial</p>
-      </div>
-
-      {/* Seleção */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Atleta */}
-        <div className="card-modern p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">Seu Atleta</h2>
-          </div>
-          <div className="space-y-3">
-            {athletes.map((athlete) => (
-              <button
-                key={athlete.id}
-                onClick={() => setSelectedAthlete(athlete)}
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                  selectedAthlete?.id === athlete.id
-                    ? 'bg-blue-50 border-blue-500 shadow-md'
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow'
-                }`}
-              >
-                <p className="font-bold text-gray-900 mb-1">{athlete.name}</p>
-                <p className="text-sm text-gray-600">{athlete.belt} • {athlete.style} • Cond: {athlete.cardio}%</p>
-              </button>
-            ))}
-          </div>
+    <div className="dashboard-wrapper animate-fadeIn">
+      <section className="panel panel--hero">
+        <div>
+          <p className="eyebrow">Estratégia</p>
+          <h1 className="hero-title">Estratégia de luta com IA</h1>
+          <p className="hero-description">Selecione um atleta e um adversário para gerar recomendações táticas antes do próximo confronto.</p>
         </div>
-
-        {/* Adversário */}
-        <div className="card-modern p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v2h8v-2zM2 8a2 2 0 11-4 0 2 2 0 014 0zM8 15a4 4 0 00-8 0v2h8v-2z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">Adversário</h2>
-          </div>
-          <div className="space-y-3">
-            {opponents.map((opponent) => (
-              <button
-                key={opponent.id}
-                onClick={() => setSelectedOpponent(opponent)}
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                  selectedOpponent?.id === opponent.id
-                    ? 'bg-orange-50 border-orange-500 shadow-md'
-                    : 'bg-white border-gray-200 hover:border-orange-300 hover:shadow'
-                }`}
-              >
-                <p className="font-bold text-gray-900 mb-1">{opponent.name}</p>
-                <p className="text-sm text-gray-600">{opponent.belt} • {opponent.style} • Cond: {opponent.cardio}%</p>
-              </button>
-            ))}
-          </div>
+        <div className="hero-meta">
+          <p>O motor de IA usa dados históricos e atributos para montar pontos de exploração e cuidados.</p>
         </div>
-      </div>
+      </section>
 
-      {/* Botão de Gerar Estratégia */}
-      <div className="text-center">
-        <button
-          onClick={handleGenerateStrategy}
-          disabled={isLoading || !selectedAthlete || !selectedOpponent}
-          className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-base md:text-lg shadow-xl transition-all ${
-            isLoading || !selectedAthlete || !selectedOpponent
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-2xl hover:scale-105'
-          }`}
-        >
-          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          {isLoading ? 'Gerando Estratégia...' : 'Gerar Estratégia de Luta'}
-        </button>
-      </div>
+      <section>
+        <div className="section-header">
+          <p className="section-header__eyebrow">Seleção</p>
+          <h2 className="section-header__title">Defina quem será analisado</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <article className="panel">
+            <div className="panel__head">
+              <div>
+                <p className="eyebrow">Atleta</p>
+                <h3 className="panel__title">Seu atleta</h3>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {athletes.map((athlete) => {
+                const isSelected = selectedAthlete?.id === athlete.id;
+                return (
+                  <button
+                    key={athlete.id}
+                    type="button"
+                    onClick={() => setSelectedAthlete(athlete)}
+                    className={`${selectionButtonBase} ${
+                      isSelected
+                        ? 'border-slate-900 bg-slate-900/5 text-slate-900'
+                        : 'border-transparent bg-slate-50 hover:border-slate-200'
+                    }`}
+                  >
+                    <p className="font-semibold text-slate-900">{athlete.name}</p>
+                    <p className="text-sm text-slate-500">{athlete.belt} • {athlete.style} • Cond: {athlete.cardio}%</p>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
 
-      {/* Resultado */}
-      {(strategy || isLoading) && (
-        <AiStrategyBox strategy={strategy} isLoading={isLoading} />
-      )}
+          <article className="panel">
+            <div className="panel__head">
+              <div>
+                <p className="eyebrow">Adversário</p>
+                <h3 className="panel__title">Alvo da estratégia</h3>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {opponents.map((opponent) => {
+                const isSelected = selectedOpponent?.id === opponent.id;
+                return (
+                  <button
+                    key={opponent.id}
+                    type="button"
+                    onClick={() => setSelectedOpponent(opponent)}
+                    className={`${selectionButtonBase} ${
+                      isSelected
+                        ? 'border-slate-900 bg-slate-900/5 text-slate-900'
+                        : 'border-transparent bg-slate-50 hover:border-slate-200'
+                    }`}
+                  >
+                    <p className="font-semibold text-slate-900">{opponent.name}</p>
+                    <p className="text-sm text-slate-500">{opponent.belt} • {opponent.style} • Cond: {opponent.cardio}%</p>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+        </div>
+      </section>
 
-      {/* Placeholder quando não há seleção */}
+      <section className="panel">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <h2 className="panel__title">Gerar estratégia</h2>
+          <p className="text-slate-600">Combine os perfis selecionados e deixe a IA sugerir pontos de atenção.</p>
+          <button
+            type="button"
+            onClick={handleGenerateStrategy}
+            disabled={isLoading || !selectedAthlete || !selectedOpponent}
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white transition disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            {isLoading ? 'Gerando estratégia...' : 'Gerar estratégia de luta'}
+          </button>
+        </div>
+      </section>
+
+      {(strategy || isLoading) && <AiStrategyBox strategy={strategy} isLoading={isLoading} />}
+
       {!strategy && !isLoading && !selectedAthlete && (
-        <div className="card-modern p-12 text-center bg-gradient-to-br from-blue-50 to-indigo-50">
-          <div className="max-w-md mx-auto">
-            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
-              <svg className="w-10 h-10 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <section className="panel text-center">
+          <div className="mx-auto max-w-md space-y-4">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100">
+              <svg className="h-10 w-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Pronto para uma Estratégia?</h3>
-            <p className="text-gray-600 mb-6">Selecione seu atleta e um adversário acima para gerar uma estratégia personalizada com análise de IA.</p>
-            <p className="text-sm text-gray-500">A estratégia considerará os atributos, estilos de luta e histórico dos competidores.</p>
+            <h3 className="panel__title">Pronto para gerar uma estratégia?</h3>
+            <p className="text-slate-600">Selecione um atleta e um adversário acima para liberar as recomendações inteligentes.</p>
+            <p className="text-sm text-slate-500">A saída considera atributos, estilos e histórico recente.</p>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

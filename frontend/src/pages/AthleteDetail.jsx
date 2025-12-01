@@ -96,14 +96,24 @@ export default function AthleteDetail() {
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <StatsRadarChart
-          data={athleteRadarData}
-          title="Perfil de Atributos"
-        />
-        <StatsBarChart
-          data={attacksData}
-          title="Golpes Mais Utilizados"
-        />
+        <div className="panel">
+          <div className="section-header mb-4">
+            <p className="section-header__eyebrow">Perfil</p>
+            <h3 className="section-header__title text-xl">Perfil de Atributos</h3>
+          </div>
+          <div className="chart-area">
+            <StatsRadarChart data={athleteRadarData} />
+          </div>
+        </div>
+        <div className="panel">
+          <div className="section-header mb-4">
+            <p className="section-header__eyebrow">Análise ofensiva</p>
+            <h3 className="section-header__title text-xl">Golpes Mais Utilizados</h3>
+          </div>
+          <div className="chart-area">
+            <StatsBarChart data={attacksData} />
+          </div>
+        </div>
       </div>
 
       {/* Informações Detalhadas */}

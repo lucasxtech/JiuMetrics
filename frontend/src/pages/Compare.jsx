@@ -16,81 +16,95 @@ export default function Compare() {
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [selectedOpponent, setSelectedOpponent] = useState(null);
 
+  const selectionButtonBase =
+    'w-full rounded-xl border px-4 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300';
+
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-3 flex items-center justify-center gap-4">
-          <span className="text-4xl">📊</span>
-          Comparador de Estratégias
-        </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">Analise a diferença entre você e seu adversário</p>
-      </div>
-
-      {/* Seleção de Atleta e Adversário */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Seleção de Atleta */}
-        <div className="card-modern p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">Selecione o Atleta</h2>
-          </div>
-          <div className="space-y-3">
-            {athletes.map((athlete) => (
-              <button
-                key={athlete.id}
-                onClick={() => setSelectedAthlete(athlete)}
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                  selectedAthlete?.id === athlete.id
-                    ? 'bg-blue-50 border-blue-500 shadow-md'
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow'
-                }`}
-              >
-                <p className="font-bold text-gray-900 mb-1">{athlete.name}</p>
-                <p className="text-sm text-gray-600">{athlete.belt} • {athlete.style}</p>
-              </button>
-            ))}
-          </div>
+    <div className="dashboard-wrapper animate-fadeIn">
+      <section className="panel panel--hero">
+        <div>
+          <p className="eyebrow">Comparação</p>
+          <h1 className="hero-title">Comparador de estratégias</h1>
+          <p className="hero-description">Selecione um atleta e um adversário para comparar atributos e identificar oportunidades táticas.</p>
         </div>
-
-        {/* Seleção de Adversário */}
-        <div className="card-modern p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v2h8v-2zM2 8a2 2 0 11-4 0 2 2 0 014 0zM8 15a4 4 0 00-8 0v2h8v-2z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">Selecione o Adversário</h2>
-          </div>
-          <div className="space-y-3">
-            {opponents.map((opponent) => (
-              <button
-                key={opponent.id}
-                onClick={() => setSelectedOpponent(opponent)}
-                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                  selectedOpponent?.id === opponent.id
-                    ? 'bg-orange-50 border-orange-500 shadow-md'
-                    : 'bg-white border-gray-200 hover:border-orange-300 hover:shadow'
-                }`}
-              >
-                <p className="font-bold text-gray-900 mb-1">{opponent.name}</p>
-                <p className="text-sm text-gray-600">{opponent.belt} • {opponent.style}</p>
-              </button>
-            ))}
-          </div>
+        <div className="hero-meta">
+          <p>Use esta tela antes de gerar estratégias ou análises de vídeo para validar diferencias marcantes.</p>
         </div>
-      </div>
+      </section>
 
-      {/* Comparação */}
-      <CompareView
-        athlete={selectedAthlete}
-        opponent={selectedOpponent}
-      />
+      <section>
+        <div className="section-header">
+          <p className="section-header__eyebrow">Seleção</p>
+          <h2 className="section-header__title">Escolha os perfis para comparar</h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <article className="panel">
+            <div className="panel__head">
+              <div>
+                <p className="eyebrow">Atleta</p>
+                <h3 className="panel__title">Selecione o atleta</h3>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {athletes.map((athlete) => {
+                const isSelected = selectedAthlete?.id === athlete.id;
+                return (
+                  <button
+                    key={athlete.id}
+                    type="button"
+                    onClick={() => setSelectedAthlete(athlete)}
+                    className={`${selectionButtonBase} ${
+                      isSelected
+                        ? 'border-slate-900 bg-slate-900/5 text-slate-900'
+                        : 'border-transparent bg-slate-50 hover:border-slate-200'
+                    }`}
+                  >
+                    <p className="font-semibold text-slate-900">{athlete.name}</p>
+                    <p className="text-sm text-slate-500">{athlete.belt} • {athlete.style}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+
+          <article className="panel">
+            <div className="panel__head">
+              <div>
+                <p className="eyebrow">Adversário</p>
+                <h3 className="panel__title">Selecione o adversário</h3>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {opponents.map((opponent) => {
+                const isSelected = selectedOpponent?.id === opponent.id;
+                return (
+                  <button
+                    key={opponent.id}
+                    type="button"
+                    onClick={() => setSelectedOpponent(opponent)}
+                    className={`${selectionButtonBase} ${
+                      isSelected
+                        ? 'border-slate-900 bg-slate-900/5 text-slate-900'
+                        : 'border-transparent bg-slate-50 hover:border-slate-200'
+                    }`}
+                  >
+                    <p className="font-semibold text-slate-900">{opponent.name}</p>
+                    <p className="text-sm text-slate-500">{opponent.belt} • {opponent.style}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <div className="section-header">
+          <p className="section-header__eyebrow">Resultado</p>
+          <h2 className="section-header__title">Visualize insights da comparação</h2>
+        </div>
+        <CompareView athlete={selectedAthlete} opponent={selectedOpponent} />
+      </section>
     </div>
   );
 }

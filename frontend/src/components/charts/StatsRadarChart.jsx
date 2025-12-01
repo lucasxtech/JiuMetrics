@@ -1,32 +1,37 @@
 // Gráfico Radar para atributos de atleta
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
-export default function StatsRadarChart({ data, title }) {
+export default function StatsRadarChart({ data, color = '#4f46e5' }) {
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '24px' }}>
-      <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937', marginBottom: '16px' }}>{title}</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <RadarChart data={data}>
-          <PolarGrid stroke="#e5e7eb" />
-          <PolarAngleAxis dataKey="name" tick={{ fontSize: 12 }} />
-          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 12 }} />
-          <Radar
-            name="Atributos"
-            dataKey="value"
-            stroke="#4f46e5"
-            fill="#4f46e5"
-            fillOpacity={0.6}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: '#fff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '4px',
-            }}
-          />
-          <Legend />
-        </RadarChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height="100%">
+      <RadarChart data={data} outerRadius="75%">
+        <PolarGrid stroke="#e5e7eb" />
+        <PolarAngleAxis dataKey="name" tick={{ fontSize: 12, fill: '#475467' }} tickLine={false} />
+        <PolarRadiusAxis
+          angle={90}
+          domain={[0, 100]}
+          tick={{ fontSize: 11, fill: '#98a2b3' }}
+          tickLine={false}
+          stroke="#e5e7eb"
+        />
+        <Radar
+          name="Atributos"
+          dataKey="value"
+          stroke={color}
+          strokeWidth={2}
+          fill={color}
+          fillOpacity={0.25}
+        />
+        <Tooltip
+          cursor={{ stroke: '#c7d7fe' }}
+          contentStyle={{
+            backgroundColor: '#fff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
+            padding: '8px 12px',
+          }}
+        />
+      </RadarChart>
+    </ResponsiveContainer>
   );
 }

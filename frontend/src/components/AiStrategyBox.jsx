@@ -6,140 +6,140 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
 
   if (!strategy && !isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center border-l-4 border-secondary">
-        <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <section className="panel text-center">
+        <svg className="mx-auto mb-4 h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
-        <p className="text-gray-500">Selecione um atleta e um adversário para gerar estratégia</p>
-      </div>
+        <p className="text-slate-600">Selecione um atleta e um adversário para gerar estratégia.</p>
+      </section>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-        <p className="text-gray-500">Gerando estratégia de luta...</p>
-      </div>
+      <section className="panel text-center">
+        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-b-slate-900"></div>
+        <p className="text-slate-600">Gerando estratégia de luta...</p>
+      </section>
     );
   }
 
   return (
     <div className="space-y-4">
       {/* Análise Geral */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <section className="panel overflow-hidden">
         <button
           onClick={() => setExpandedSection(expandedSection === 'overview' ? null : 'overview')}
-          className="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 transition-colors border-l-4 border-secondary"
+          className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-slate-50"
         >
-          <h4 className="text-lg font-bold text-primary">Análise Geral de Estilos</h4>
+          <h4 className="text-lg font-semibold text-slate-900">Análise geral de estilos</h4>
           <svg className={`w-5 h-5 transition-transform ${expandedSection === 'overview' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
         {expandedSection === 'overview' && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <p className="text-gray-700">{strategy?.styleAnalysis || 'Análise de estilos de luta entre os competidores'}</p>
+          <div className="border-t border-slate-100 px-6 py-4">
+            <p className="text-slate-700">{strategy?.styleAnalysis || 'Análise de estilos de luta entre os competidores'}</p>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Pontos de Exploração */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <section className="panel overflow-hidden">
         <button
           onClick={() => setExpandedSection(expandedSection === 'strengths' ? null : 'strengths')}
-          className="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 transition-colors border-l-4 border-accent"
+          className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-slate-50"
         >
-          <h4 className="text-lg font-bold text-primary">Pontos Onde Você Pode Explorar</h4>
+          <h4 className="text-lg font-semibold text-slate-900">Pontos para explorar</h4>
           <svg className={`w-5 h-5 transition-transform ${expandedSection === 'strengths' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
         {expandedSection === 'strengths' && (
-          <div className="px-6 py-4 border-t border-gray-200">
+          <div className="border-t border-slate-100 px-6 py-4">
             <ul className="space-y-2">
               {strategy?.strengths?.map((strength, idx) => (
                 <li key={idx} className="flex items-start">
-                  <span className="text-accent mr-2">✓</span>
-                  <span className="text-gray-700">{strength}</span>
+                  <span className="mr-2 text-slate-900">✓</span>
+                  <span className="text-slate-700">{strength}</span>
                 </li>
-              )) || <li className="text-gray-500">Nenhum ponto de exploração identificado</li>}
+              )) || <li className="text-slate-500">Nenhum ponto de exploração identificado</li>}
             </ul>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Áreas para Evitar */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <section className="panel overflow-hidden">
         <button
           onClick={() => setExpandedSection(expandedSection === 'weaknesses' ? null : 'weaknesses')}
-          className="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 transition-colors border-l-4 border-red-500"
+          className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-slate-50"
         >
-          <h4 className="text-lg font-bold text-primary">Onde Você Deve Evitar</h4>
+          <h4 className="text-lg font-semibold text-slate-900">Onde deve evitar</h4>
           <svg className={`w-5 h-5 transition-transform ${expandedSection === 'weaknesses' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
         {expandedSection === 'weaknesses' && (
-          <div className="px-6 py-4 border-t border-gray-200">
+          <div className="border-t border-slate-100 px-6 py-4">
             <ul className="space-y-2">
               {strategy?.weaknesses?.map((weakness, idx) => (
                 <li key={idx} className="flex items-start">
-                  <span className="text-red-500 mr-2">✕</span>
-                  <span className="text-gray-700">{weakness}</span>
+                  <span className="mr-2 text-red-500">✕</span>
+                  <span className="text-slate-700">{weakness}</span>
                 </li>
-              )) || <li className="text-gray-500">Nenhuma área crítica identificada</li>}
+              )) || <li className="text-slate-500">Nenhuma área crítica identificada</li>}
             </ul>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Padrão do Adversário */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <section className="panel overflow-hidden">
         <button
           onClick={() => setExpandedSection(expandedSection === 'patterns' ? null : 'patterns')}
-          className="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 transition-colors border-l-4 border-blue-500"
+          className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-slate-50"
         >
-          <h4 className="text-lg font-bold text-primary">Padrões do Adversário</h4>
+          <h4 className="text-lg font-semibold text-slate-900">Padrões do adversário</h4>
           <svg className={`w-5 h-5 transition-transform ${expandedSection === 'patterns' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
         {expandedSection === 'patterns' && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <p className="text-gray-700">{strategy?.opponentPatterns || 'Análise de padrões e comportamentos típicos do adversário'}</p>
+          <div className="border-t border-slate-100 px-6 py-4">
+            <p className="text-slate-700">{strategy?.opponentPatterns || 'Análise de padrões e comportamentos típicos do adversário'}</p>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Plano de Luta Sugerido */}
-      <div className="bg-gradient-to-r from-secondary to-blue-600 rounded-lg shadow-md overflow-hidden">
+      <section className="panel overflow-hidden">
         <button
           onClick={() => setExpandedSection(expandedSection === 'plan' ? null : 'plan')}
-          className="w-full px-6 py-4 flex justify-between items-center hover:opacity-90 transition-opacity text-white"
+          className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-slate-50"
         >
-          <h4 className="text-lg font-bold">Plano de Luta Sugerido</h4>
+          <h4 className="text-lg font-semibold text-slate-900">Plano de luta sugerido</h4>
           <svg className={`w-5 h-5 transition-transform ${expandedSection === 'plan' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
         {expandedSection === 'plan' && (
-          <div className="px-6 py-4 border-t border-blue-500 bg-blue-50">
+          <div className="border-t border-slate-100 px-6 py-4">
             <ol className="space-y-3">
               {strategy?.fightPlan?.map((step, idx) => (
-                <li key={idx} className="flex items-start text-gray-800">
-                  <span className="font-bold text-secondary mr-3 bg-white px-2 py-1 rounded">
+                <li key={idx} className="flex items-start text-slate-800">
+                  <span className="mr-3 rounded bg-slate-100 px-2 py-1 font-semibold text-slate-900">
                     {idx + 1}
                   </span>
                   <span>{step}</span>
                 </li>
               )) || (
-                <li className="text-gray-500">Nenhum plano detalhado disponível</li>
+                <li className="text-slate-500">Nenhum plano detalhado disponível</li>
               )}
             </ol>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

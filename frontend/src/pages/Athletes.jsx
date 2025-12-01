@@ -5,7 +5,7 @@ import AthleteCard from '../components/common/AthleteCard';
 import AthleteForm from '../components/forms/AthleteForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
-import { getAllAthletes, deleteAthlete } from '../services/athleteService';
+import { getAllAthletes } from '../services/athleteService';
 
 export default function Athletes() {
   const navigate = useNavigate();
@@ -48,26 +48,27 @@ export default function Athletes() {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn max-w-6xl mx-auto px-4">
-      {/* Cabeçalho Moderno */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+    <div className="dashboard-wrapper animate-fadeIn">
+      <section className="panel panel--hero">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 flex items-center gap-3 mb-2">
-            <span className="text-4xl md:text-5xl">🥋</span>
-            Atletas
-          </h1>
-          <p className="text-slate-600 text-base md:text-lg">Gerencie e acompanhe o desempenho dos seus atletas</p>
+          <p className="eyebrow">Gestão</p>
+          <h1 className="hero-title">Central de atletas</h1>
+          <p className="hero-description">Gerencie perfis, acompanhe métricas e mantenha os cadastros sincronizados antes das análises.</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3 text-base md:text-lg"
-        >
-          <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span>Novo Atleta</span>
-        </button>
-      </div>
+        <div className="hero-meta space-y-4">
+          <p>Crie novos perfis e mantenha as informações prontas para as comparações e estratégias.</p>
+          <button
+            type="button"
+            onClick={() => setShowForm(!showForm)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-700"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+            </svg>
+            {showForm ? 'Fechar formulário' : 'Novo atleta'}
+          </button>
+        </div>
+      </section>
 
       {/* Erro */}
       {error && (
@@ -79,32 +80,38 @@ export default function Athletes() {
 
       {/* Formulário (colapsável) */}
       {showForm && (
-        <div className="card-modern p-6 md:p-8 animate-scaleIn">
-          <div className="flex justify-between items-center mb-6">
+        <section className="panel animate-scaleIn">
+          <div className="panel__head">
             <div>
-              <h3 className="text-2xl font-bold text-slate-900">Cadastrar Novo Atleta</h3>
-              <p className="text-sm text-slate-600 mt-1">Preencha os dados básicos. O perfil técnico será gerado pela IA.</p>
+              <p className="eyebrow">Cadastro</p>
+              <h3 className="panel__title">Cadastrar novo atleta</h3>
             </div>
             <button
+              type="button"
               onClick={() => setShowForm(false)}
-              className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-lg"
+              className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
               </svg>
+              Fechar
             </button>
           </div>
+          <p className="panel__meta mb-6">Preencha os dados básicos; o perfil avançado pode ser gerado posteriormente com IA.</p>
           <AthleteForm onSuccess={handleAthleteCreated} />
-        </div>
+        </section>
       )}
 
-      {/* Grid de Atletas */}
       {athletes.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Todos os Atletas ({athletes.length})</h2>
+        <section className="panel">
+          <div className="panel__head">
+            <div>
+              <p className="eyebrow">Lista</p>
+              <h2 className="panel__title">Todos os atletas ({athletes.length})</h2>
+            </div>
+            <span className="panel__meta">Selecione um atleta para abrir a visão detalhada.</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {athletes.map((athlete) => (
               <AthleteCard
                 key={athlete.id}
@@ -114,29 +121,30 @@ export default function Athletes() {
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Empty State */}
       {athletes.length === 0 && !error && (
-        <div className="card-modern p-12 md:p-16 text-center">
-          <div className="max-w-md mx-auto">
-            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
-              <span className="text-5xl">🥋</span>
+        <section className="panel text-center">
+          <div className="mx-auto max-w-md space-y-6">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-4xl">🥋</div>
+            <div>
+              <h3 className="panel__title mb-2">Nenhum atleta cadastrado</h3>
+              <p className="text-slate-600">Cadastre o primeiro atleta para liberar análises detalhadas e comparações.</p>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-3">Nenhum atleta cadastrado</h3>
-            <p className="text-slate-600 text-lg mb-8">Comece adicionando seu primeiro atleta e faça a análise técnica com IA</p>
             <button
+              type="button"
               onClick={() => setShowForm(true)}
-              className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 inline-flex items-center gap-3"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-700"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
               </svg>
-              Adicionar Primeiro Atleta
+              Adicionar primeiro atleta
             </button>
           </div>
-        </div>
+        </section>
       )}
     </div>
   );
