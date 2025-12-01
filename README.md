@@ -1,32 +1,32 @@
-# JiuMetrics – Jiu-Jitsu Tactical Analysis
+# JiuMetrics – Análise Tática de Jiu-Jitsu
 
-A modern, responsive web app for Jiu-Jitsu athlete and opponent management, AI-powered fight strategy, and rich visual dashboards.
+Aplicação web moderna e responsiva para gestão de atletas e adversários de Jiu-Jitsu, geração de estratégia com IA e dashboards visuais ricos.
 
-## Features
+## Funcionalidades
 
-- Athlete and Opponent management
-- Interactive Dashboard with charts
-- Strategy generator with AI (Gemini)
-- Comparison view (Radar, Bars, Lines with Recharts)
-- Modern responsive UI (cards, gradients)
+- Gestão de Atletas e Adversários
+- Dashboard interativo com gráficos
+- Gerador de Estratégia com IA (Gemini)
+- Comparação visual (Radar, Barras, Linhas com Recharts)
+- UI moderna e responsiva (cards, gradientes)
 
-## Requirements
+## Requisitos
 
 - Node.js 18+
 - npm 9+
-- Modern browser
-- FFmpeg (for frame extraction)
+- Navegador moderno
+- FFmpeg (para extração de frames)
 
 ## Setup
 
-### Environment
-Create `server/.env` with:
+### Ambiente
+Crie `server/.env` com:
 ```
 PORT=5000
-GEMINI_API_KEY=YOUR_GEMINI_KEY
+GEMINI_API_KEY=SUA_CHAVE_GEMINI
 ```
 
-### Install
+### Instalação
 Frontend
 ```
 cd frontend
@@ -38,7 +38,7 @@ cd server
 npm install
 ```
 
-## Run
+## Execução
 Backend
 ```
 cd server
@@ -49,12 +49,12 @@ Frontend
 cd frontend
 npm run dev
 ```
-Visit `http://localhost:5173`
+Acesse `http://localhost:5173`
 
-## Project Structure
+## Estrutura do Projeto
 
 ```
-project/
+projeto/
 ├── frontend/                    # Aplicação React Vite
 │   ├── src/
 │   │   ├── components/
@@ -88,23 +88,23 @@ project/
 
 ```
 
-## API Endpoints
+## Endpoints da API
 
-### Athletes
+### Atletas
 - `GET /api/athletes` - Listar todos
 - `GET /api/athletes/:id` - Detalhes de um atleta
 - `POST /api/athletes` - Criar novo
 - `PUT /api/athletes/:id` - Atualizar
 - `DELETE /api/athletes/:id` - Deletar
 
-### Opponents
+### Adversários
 - `GET /api/opponents` - Listar todos
 - `GET /api/opponents/:id` - Detalhes
 - `POST /api/opponents` - Criar novo
 - `PUT /api/opponents/:id` - Atualizar
 - `DELETE /api/opponents/:id` - Deletar
 
-### AI/Strategy
+### IA/Estratégia
 - `POST /api/ai/strategy` - Gerar estratégia
   ```json
   {
@@ -113,7 +113,7 @@ project/
   }
   ```
 
-## App Pages
+## Páginas da Aplicação
 
 1. **Dashboard** (`/`) - Visão geral com estatísticas e gráficos
 2. **Atletas** (`/athletes`) - Gerenciar atletas
@@ -122,7 +122,7 @@ project/
 5. **Comparador** (`/compare`) - Análise lado a lado
 6. **Estratégia** (`/strategy`) - Gerador de planos com IA
 
-## Tech Stack
+## Stack Tecnológico
 
 ### Frontend
 - **React 19** - UI library
@@ -139,7 +139,7 @@ project/
 - **UUID** - Geração de IDs
 - **Nodemon** - Dev reload
 
-## Sample Data
+## Dados de Exemplo
 
 A aplicação vem com dados mock pré-carregados para testes:
 
@@ -163,7 +163,7 @@ A aplicação vem com dados mock pré-carregados para testes:
 - [ ] Sistema de notificações
 - [ ] Export de relatórios (PDF)
 
-## Components
+## Componentes
 
 ### AthleteCard
 Exibe informações resumidas de um atleta com progresso visual.
@@ -200,21 +200,21 @@ Certifique-se de que:
 2. Não há erros de sintaxe nos componentes
 3. O servidor está rodando na porta correta
 
-## Dev Tips
+## Dicas de Desenvolvimento
 
 1. **Adicionar novo atleta**: Vá para `/athletes` e clique em "Novo Atleta"
 2. **Testar IA**: Selecione um atleta e adversário em `/strategy`
 3. **Ver comparação**: Use `/compare` para análise visual
 4. **Verificar dados**: Abra o DevTools (F12) para ver requisições
 
-## Support
+## Suporte
 
 Para dúvidas ou problemas:
 1. Verifique se o servidor está rodando (`npm run dev`)
 2. Limpe o cache do navegador (Ctrl+Shift+Delete)
 3. Reinicie ambos os servidores
 
-## License
+## Licença
 
 Este projeto é desenvolvido como propósito educacional.
 
