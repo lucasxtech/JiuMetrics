@@ -1,0 +1,118 @@
+// Testes da API - use com Postman, cURL ou insomnia
+
+// ============================================
+// ATLETAS
+// ============================================
+
+// 1. GET - Listar todos atletas
+GET http://localhost:5000/api/athletes
+
+// 2. GET - Obter atleta por ID
+GET http://localhost:5000/api/athletes/1
+
+// 3. POST - Criar novo atleta
+POST http://localhost:5000/api/athletes
+Content-Type: application/json
+
+{
+  "name": "Lucas Mendes",
+  "age": 26,
+  "weight": 77,
+  "belt": "Azul",
+  "style": "Explosão",
+  "strongAttacks": "Tapioca, Queda rápida, Raspagem aérea",
+  "weaknesses": "Defesa de pressão constante",
+  "cardio": 88,
+  "videoUrl": "https://youtube.com/watch?v=lucas"
+}
+
+// 4. PUT - Atualizar atleta
+PUT http://localhost:5000/api/athletes/1
+Content-Type: application/json
+
+{
+  "cardio": 90,
+  "strongAttacks": "Raspagem aperfeiçoada, Armlock de omoplata"
+}
+
+// 5. DELETE - Deletar atleta
+DELETE http://localhost:5000/api/athletes/1
+
+// ============================================
+// ADVERSÁRIOS
+// ============================================
+
+// 1. GET - Listar todos adversários
+GET http://localhost:5000/api/opponents
+
+// 2. GET - Obter adversário por ID
+GET http://localhost:5000/api/opponents/1
+
+// 3. POST - Criar novo adversário
+POST http://localhost:5000/api/opponents
+Content-Type: application/json
+
+{
+  "name": "Rafael Costa",
+  "age": 32,
+  "weight": 95,
+  "belt": "Preta",
+  "style": "Pressão",
+  "strongAttacks": "Smash pass, Estrangulação lateral",
+  "weaknesses": "Movimento rápido em situações abertas",
+  "cardio": 78,
+  "videoUrl": "https://youtube.com/watch?v=rafael"
+}
+
+// 4. PUT - Atualizar adversário
+PUT http://localhost:5000/api/opponents/1
+Content-Type: application/json
+
+{
+  "cardio": 82
+}
+
+// 5. DELETE - Deletar adversário
+DELETE http://localhost:5000/api/opponents/1
+
+// ============================================
+// ESTRATÉGIA (IA)
+// ============================================
+
+// 1. Gerar estratégia com IDs
+POST http://localhost:5000/api/ai/strategy
+Content-Type: application/json
+
+{
+  "athleteId": "1",
+  "opponentId": "1"
+}
+
+// 2. Gerar estratégia com dados brutos
+POST http://localhost:5000/api/ai/strategy
+Content-Type: application/json
+
+{
+  "athlete": {
+    "name": "João Silva",
+    "age": 28,
+    "weight": 85,
+    "belt": "Roxa",
+    "style": "Guarda",
+    "cardio": 85
+  },
+  "opponent": {
+    "name": "Pedro Ramos",
+    "age": 30,
+    "weight": 90,
+    "belt": "Marrom",
+    "style": "Pressão",
+    "cardio": 80
+  }
+}
+
+// ============================================
+// HEALTH CHECK
+// ============================================
+
+GET http://localhost:5000/api/health
