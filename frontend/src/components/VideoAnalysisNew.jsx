@@ -10,6 +10,15 @@ export default function VideoAnalysisComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('url');
+  const [athleteName, setAthleteName] = useState('');
+  const [giColor, setGiColor] = useState('preto');
+
+  const giColorOptions = [
+    { value: 'branco', label: 'Branco' },
+    { value: 'azul', label: 'Azul' },
+    { value: 'preto', label: 'Preto' },
+    { value: 'colorido', label: 'Outro / Colorido' },
+  ];
 
   const handleAnalyzeUrl = async (e) => {
     e.preventDefault();
@@ -21,11 +30,19 @@ export default function VideoAnalysisComponent() {
       setError('URL inválida. Use YouTube, Vimeo ou um link direto válido');
       return;
     }
+    if (!athleteName.trim() || !giColor) {
+      setError('Informe o nome do atleta e a cor do kimono');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
     try {
-      const result = await analyzeVideoLink(videoUrl);
+      const result = await analyzeVideoLink({
+        url: videoUrl,
+        athleteName: athleteName.trim(),
+        giColor,
+      });
       if (result.data) {
         setAnalysis(result);
       } else {
@@ -50,11 +67,19 @@ export default function VideoAnalysisComponent() {
       setError('Arquivo inválido. Use MP4, AVI, MOV ou outros formatos de vídeo');
       return;
     }
+    if (!athleteName.trim() || !giColor) {
+      setError('Informe o nome do atleta e a cor do kimono');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
     try {
-      const result = await uploadVideo(videoFile);
+      const result = await uploadVideo({
+        file: videoFile,
+        athleteName: athleteName.trim(),
+        giColor,
+      });
       if (result.data) {
         setAnalysis(result);
       } else {
@@ -158,6 +183,57 @@ export default function VideoAnalysisComponent() {
               ✓ Suporta: YouTube, Vimeo, Google Drive, links diretos
             </p>
           </div>
+          <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                Nome do atleta que será analisado
+              </label>
+              <input
+                type="text"
+                value={athleteName}
+                onChange={(e) => {
+                  setAthleteName(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Ex.: João Silva"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                Cor do kimono no vídeo
+              </label>
+              <select
+                value={giColor}
+                onChange={(e) => {
+                  setGiColor(e.target.value);
+                  setError(null);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'white',
+                }}
+              >
+                {giColorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           {error && (
             <div style={{ backgroundColor: '#fee2e2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px 16px', color: '#991b1b' }}>
               <p style={{ fontSize: '14px', fontWeight: '500' }}>⚠️ {error}</p>
@@ -234,6 +310,57 @@ export default function VideoAnalysisComponent() {
               <br />
               ⚠️ Análise pode levar de 2-5 minutos dependendo do tamanho do vídeo
             </p>
+          </div>
+          <div style={{ display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                Nome do atleta que será analisado
+              </label>
+              <input
+                type="text"
+                value={athleteName}
+                onChange={(e) => {
+                  setAthleteName(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Ex.: Maria Santos"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                Cor do kimono no vídeo
+              </label>
+              <select
+                value={giColor}
+                onChange={(e) => {
+                  setGiColor(e.target.value);
+                  setError(null);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #d1d5db',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'white',
+                }}
+              >
+                {giColorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           {error && (
             <div style={{ backgroundColor: '#fee2e2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px 16px', color: '#991b1b' }}>

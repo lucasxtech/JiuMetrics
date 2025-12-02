@@ -10,6 +10,8 @@ export default function VideoAnalysisComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('url');
+  const [athleteName, setAthleteName] = useState('');
+  const [giColor, setGiColor] = useState('preto');
 
   const tabButtonClass = (tab) =>
     `inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
@@ -21,6 +23,13 @@ export default function VideoAnalysisComponent() {
       disabled ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
     }`;
 
+  const giColorOptions = [
+    { value: 'branco', label: 'Branco' },
+    { value: 'azul', label: 'Azul' },
+    { value: 'preto', label: 'Preto' },
+    { value: 'colorido', label: 'Outro / Colorido' },
+  ];
+
   const handleAnalyzeUrl = async (e) => {
     e.preventDefault();
     if (!videoUrl.trim()) {
@@ -31,13 +40,21 @@ export default function VideoAnalysisComponent() {
       setError('URL inválida. Use YouTube, Vimeo ou um link direto válido');
       return;
     }
+    if (!athleteName.trim() || !giColor) {
+      setError('Informe o nome do atleta e a cor do kimono para orientar a IA');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
 
     try {
-      const result = await analyzeVideoLink(videoUrl);
+      const result = await analyzeVideoLink({
+        url: videoUrl,
+        athleteName: athleteName.trim(),
+        giColor,
+      });
       if (result.data) {
         setAnalysis(result);
       } else {
@@ -62,13 +79,21 @@ export default function VideoAnalysisComponent() {
       setError('Arquivo inválido. Use MP4, AVI, MOV ou formatos suportados');
       return;
     }
+    if (!athleteName.trim() || !giColor) {
+      setError('Informe o nome do atleta e a cor do kimono para orientar a IA');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
 
     try {
-      const result = await uploadVideo(videoFile);
+      const result = await uploadVideo({
+        file: videoFile,
+        athleteName: athleteName.trim(),
+        giColor,
+      });
       if (result.data) {
         setAnalysis(result);
       } else {
@@ -141,6 +166,38 @@ export default function VideoAnalysisComponent() {
               />
               <p className="mt-2 text-sm text-slate-500">✓ Suporta YouTube, Vimeo, Google Drive e links diretos.</p>
             </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-900">Nome do atleta no vídeo</label>
+                <input
+                  type="text"
+                  className="w-full"
+                  value={athleteName}
+                  onChange={(e) => {
+                    setAthleteName(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Ex.: João Silva"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-900">Cor do kimono</label>
+                <select
+                  className="w-full"
+                  value={giColor}
+                  onChange={(e) => {
+                    setGiColor(e.target.value);
+                    setError(null);
+                  }}
+                >
+                  {giColorOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">⚠️ {error}</div>
             )}
@@ -177,6 +234,38 @@ export default function VideoAnalysisComponent() {
               />
               {videoFile && <p className="text-sm font-medium text-emerald-600">✓ Arquivo selecionado: {videoFile.name}</p>}
               <p className="text-sm text-slate-500">⚠️ A análise pode levar alguns minutos dependendo do tamanho do vídeo.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-900">Nome do atleta no vídeo</label>
+                <input
+                  type="text"
+                  className="w-full"
+                  value={athleteName}
+                  onChange={(e) => {
+                    setAthleteName(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="Ex.: Maria Santos"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-900">Cor do kimono</label>
+                <select
+                  className="w-full"
+                  value={giColor}
+                  onChange={(e) => {
+                    setGiColor(e.target.value);
+                    setError(null);
+                  }}
+                >
+                  {giColorOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             {error && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">⚠️ {error}</div>

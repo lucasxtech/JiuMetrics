@@ -2,13 +2,18 @@ import api from './api';
 
 /**
  * Envia um link de vídeo para análise pela IA
- * @param {string} videoUrl - URL do vídeo da luta
+ * @param {Object} payload
+ * @param {string} payload.url - URL do vídeo
+ * @param {string} payload.athleteName - Nome do atleta alvo
+ * @param {string} payload.giColor - Cor do kimono do atleta alvo
  * @returns {Promise} Resposta da IA com análise
  */
-export async function analyzeVideoLink(videoUrl) {
+export async function analyzeVideoLink({ url, athleteName, giColor }) {
   try {
     const response = await api.post('/ai/analyze-link', {
-      url: videoUrl,
+      url,
+      athleteName,
+      giColor,
     });
     return response.data;
   } catch (error) {

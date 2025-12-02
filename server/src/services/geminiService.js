@@ -10,15 +10,7 @@ if (!apiKey) {
 const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 const model = ai ? ai.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
 
-/**
- * Analisa um frame usando Gemini Vision
- */
-async function analyzeFrame(base64Data, mimeType = 'image/png') {
-  if (!model) {
-    throw new Error('GEMINI_API_KEY não configurada no servidor');
-  }
-
-  const prompt = `Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
+const BASE_PROMPT = `Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
 
 Analise este frame de uma luta de Jiu-Jitsu e inferir características do lutador:
 - Personalidade geral (agressivo, calmo, explosivo, etc)
@@ -69,6 +61,31 @@ Retorne APENAS JSON válido, sem markdown, sem nenhuma explicação:
   ],
   "summary": "Resumo técnico breve do lutador baseado no frame"
 }`;
+
+function buildPrompt(context = {}) {
+  const { athleteName, giColor } = context;
+  if (!athleteName && !giColor) {
+    return BASE_PROMPT;
+  }
+
+  const nameText = athleteName ? ` chamado ${athleteName}` : '';
+  const colorText = giColor ? ` que está usando um kimono ${giColor}` : '';
+  const focusText = `Foque APENAS neste atleta${nameText}${colorText} e ignore o oponente.`;
+
+  return `${BASE_PROMPT}
+
+Contexto adicional: ${focusText}`;
+}
+
+/**
+ * Analisa um frame usando Gemini Vision
+ */
+async function analyzeFrame(base64Data, mimeType = 'image/png', context = {}) {
+  if (!model) {
+    throw new Error('GEMINI_API_KEY não configurada no servidor');
+  }
+
+  const prompt = buildPrompt(context);
 
   try {
     const result = await model.generateContent([

@@ -30,10 +30,15 @@ async function fetchImageAsBase64(url) {
 
 exports.analyzeLink = async (req, res) => {
   try {
-    const { url } = req.body || {};
+    const { url, athleteName, giColor } = req.body || {};
     if (!url) {
       return res.status(400).json({ success: false, error: 'URL é obrigatória' });
     }
+
+    const frameContext = {
+      athleteName: athleteName?.trim(),
+      giColor: giColor?.trim(),
+    };
 
     const videoId = extractYouTubeId(url);
     if (!videoId) {
@@ -71,7 +76,7 @@ exports.analyzeLink = async (req, res) => {
     // Analisa cada frame com Gemini
     const analyses = [];
     for (const { base64, mimeType } of framesBase64) {
-      const result = await analyzeFrame(base64, mimeType);
+      const result = await analyzeFrame(base64, mimeType, frameContext);
       analyses.push(result);
     }
 
