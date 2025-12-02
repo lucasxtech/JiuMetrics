@@ -10,57 +10,51 @@ if (!apiKey) {
 const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 const model = ai ? ai.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
 
-const BASE_PROMPT = `Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
+const BASE_PROMPT = ` Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
+  Sua tarefa é assistir aos vídeos abaixo, identificar padrões técnicos e gerar um perfil estatístico do atleta.
 
-Analise este frame de uma luta de Jiu-Jitsu e inferir características do lutador:
-- Personalidade geral (agressivo, calmo, explosivo, etc)
-- Comportamento inicial (puxar guarda, takedown, trocar queda)
-- Jogo de guarda (que tipo de guarda, raspagem, ataques)
-- Jogo de passagem (pressão, toreada, técnicas de passagem)
+  TAREFA:
+  Analise o comportamento do lutador citado. Ignore o oponente, foque no alvo.
+  Baseado no que viu (e inferindo o estilo geral dele), gere 4 conjuntos de dados estatísticos (que somem 100% cada).
+  Quero que você tenha critérios muito críticos em relação à personalidade do lutador (ele é explosivo, muito cardio, se perde no final da luta, agressivo, etc), em relação ao jogo inicial dele (nos primeiros 20 segundos ele tentou trocar queda ou puxou para guarda e foi para o chão?), em relação à guarda dele (quando ele está por baixo ele faz uma guarda laço, ele dá muito bote, bota na fechada, etc) e em relação ao jogo de passagem dele (ele faz toreada, ele amarra o jogo, faz emborcada, etc).
 
-NÃO descreva o frame detalhadamente.
-INTERPRETE o frame para inferir características técnicas do lutador.
+  OS 4 CONJUNTOS DE DADOS NECESSÁRIOS:
+  O primeiro gráfico me mostrará a personalidade geral do lutador em toda a luta. Quero que este gráfico seja um gráfico de pizza, com as porcentagens de como ele se comportou (se ele é agressivo, explosivo, calmo, pode enfraquecer no final da luta, etc). Quais estilos de luta ele tem.
+  O segundo gráfico me mostrará a possibilidade desse lutador logo no início de luta querer tentar trocar queda, querer passar guarda ou puxar para guarda. Quero que este gráfico seja um gráfico de pizza.
+  O terceiro gráfico me mostrará a personalidade do lutador ao fazer guarda. Quero que este gráfico seja um gráfico de pizza, com probabilidades de posições que ele pode fazer se estiver em uma situação de guarda (é mais provável subir na perna, gosta de dar triângulo, bota na fechada, amarra o jogo, etc).
+  O quarto gráfico me mostrará a personalidade do lutador ao passar a guarda. Quero que este gráfico seja um gráfico de pizza, com probabilidades de técnicas de passagem de guarda que ele pode fazer (passagem por fora, toreada, emborcada, under over, etc).
 
-Retorne APENAS JSON válido, sem markdown, sem nenhuma explicação:
+  RESUMO:
+  Depois de todos esses vídeos e análises, dentro de um campo JSON, nos forneça um resumo do jogo da pessoa, se a melhor estratégia para vencê-la é ser agressivo, se é melhor cansá-la, se é melhor ir para o chão, se é melhor tentar trocar queda, etc. e como o estilo dela impacta na luta.
 
-{
-  "charts": [
-    {
-      "title": "Personalidade Geral",
-      "data": [
-        { "label": "Agressivo/Ofensivo", "value": 45 },
-        { "label": "Explosivo", "value": 25 },
-        { "label": "Calmo/Controlador", "value": 20 },
-        { "label": "Tático", "value": 10 }
-      ]
-    },
-    {
-      "title": "Comportamento Inicial",
-      "data": [
-        { "label": "Puxar para Guarda", "value": 55 },
-        { "label": "Takedown/Queda", "value": 30 },
-        { "label": "Trocação", "value": 15 }
-      ]
-    },
-    {
-      "title": "Jogo de Guarda",
-      "data": [
-        { "label": "Guarda Fechada", "value": 50 },
-        { "label": "Raspagem", "value": 30 },
-        { "label": "Leglocks", "value": 20 }
-      ]
-    },
-    {
-      "title": "Jogo de Passagem",
-      "data": [
-        { "label": "Pressão Constante", "value": 50 },
-        { "label": "Passagem Lateral", "value": 30 },
-        { "label": "Toreada", "value": 20 }
-      ]
-    }
-  ],
-  "summary": "Resumo técnico breve do lutador baseado no frame"
-}`;
+  FORMATO DE SAÍDA:
+  Retorne APENAS um JSON puro. Não inclua formatação visual (cores, tamanho). Apenas os dados.
+  
+  Estrutura Obrigatória do JSON:
+  {
+    "charts": [
+      {
+        "title": "Personalidade Geral",
+        "data": [
+          { "label": "Nome da Característica", "value": 40 },
+          { "label": "Outra Característica", "value": 60 }
+        ]
+      },
+      {
+        "title": "Comportamento Inicial",
+        "data": [ ... ]
+      },
+      {
+        "title": "Jogo de Guarda",
+        "data": [ ... ]
+      },
+      {
+        "title": "Jogo de Passagem",
+        "data": [ ... ]
+      },
+    ],
+    "summary": "Aqui vai o resumo detalhado do estilo de luta do atleta e estratégias recomendadas."
+  }`;
 
 function buildPrompt(context = {}) {
   const { athleteName, giColor } = context;
@@ -77,10 +71,12 @@ function buildPrompt(context = {}) {
 Contexto adicional: ${focusText}`;
 }
 
+console.log(buildPrompt({athleteName: "Exemplo", giColor: "azul"}));
+
 /**
  * Analisa um frame usando Gemini Vision
  */
-async function analyzeFrame(base64Data, mimeType = 'image/png', context = {}) {
+async function analyzeFrame(context = {}) {
   if (!model) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
   }
@@ -88,20 +84,10 @@ async function analyzeFrame(base64Data, mimeType = 'image/png', context = {}) {
   const prompt = buildPrompt(context);
 
   try {
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType,
-          data: base64Data,
-        },
-      },
-      {
-        text: prompt,
-      },
-    ]);
+const result = await model.generateContent(prompt);
 
-    const responseText = result.response.text();
-    console.log("📸 Frame analisado pelo Gemini Vision");
+const responseText = result.response.text();
+console.log("📸 Frame analisado pelo Gemini Vision", "/n", responseText);
     
     const analysis = extractJson(responseText);
     return analysis;
@@ -137,26 +123,6 @@ function consolidateAnalyses(frameAnalyses) {
 
   // Coletar todos os dados de cada categoria
   const allLabels = {};
-  
-  frameAnalyses.forEach((analysis) => {
-    if (analysis.summary) {
-      consolidated.summaries.push(analysis.summary);
-    }
-
-    if (analysis.charts && Array.isArray(analysis.charts)) {
-      analysis.charts.forEach((chart, idx) => {
-        if (chart.data) {
-          chart.data.forEach((item) => {
-            const key = item.label;
-            if (!allLabels[key]) {
-              allLabels[key] = [];
-            }
-            allLabels[key].push(item.value);
-          });
-        }
-      });
-    }
-  });
 
   // Calcular médias para cada label
   const averagedData = {};
