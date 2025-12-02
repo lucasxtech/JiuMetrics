@@ -70,8 +70,8 @@ export default function Strategy() {
 
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow">Seleção</p>
-          <h2 className="section-header__title">Defina quem será analisado</h2>
+          <p className="section-header__eyebrow" style={{ marginLeft: "1vw" }}>Seleção</p>
+          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>Defina quem será analisado</h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           <article className="panel">
