@@ -2,13 +2,22 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { extractJson } = require("../utils/chartUtils");
 
 const apiKey = process.env.GEMINI_API_KEY;
-const ai = new GoogleGenerativeAI(apiKey);
-const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+if (!apiKey) {
+  console.warn('⚠️ GEMINI_API_KEY não configurada. As análises de vídeo retornarão erro até que a variável esteja definida.');
+}
+
+const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+const model = ai ? ai.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
 
 /**
  * Analisa um frame usando Gemini Vision
  */
-async function analyzeFrame(base64Data) {
+async function analyzeFrame(base64Data, mimeType = 'image/png') {
+  if (!model) {
+    throw new Error('GEMINI_API_KEY não configurada no servidor');
+  }
+
   const prompt = `Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
 
 Analise este frame de uma luta de Jiu-Jitsu e inferir características do lutador:
@@ -65,7 +74,7 @@ Retorne APENAS JSON válido, sem markdown, sem nenhuma explicação:
     const result = await model.generateContent([
       {
         inlineData: {
-          mimeType: "image/png",
+          mimeType,
           data: base64Data,
         },
       },
