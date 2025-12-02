@@ -44,8 +44,8 @@ const upload = multer({
 });
 
 /**
- * POST /api/video/upload - Upload e análise de vídeo
+ * POST /api/video/upload - Upload e análise de múltiplos vídeos
  */
-router.post('/upload', upload.single('video'), videoController.uploadAndAnalyzeVideo);
+router.post('/upload', upload.array('videos', 10), videoController.uploadAndAnalyzeVideo);
 
 module.exports = router;

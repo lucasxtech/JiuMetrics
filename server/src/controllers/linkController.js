@@ -22,31 +22,76 @@ function extractYouTubeId(url) {
 
 exports.analyzeLink = async (req, res) => {
   try {
-    const { url, athleteName, giColor } = req.body || {};
-    if (!url) {
-      return res.status(400).json({ success: false, error: 'URL é obrigatória' });
+    const { videos, athleteName } = req.body || {};
+    
+    if (!videos || !Array.isArray(videos) || videos.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Array de vídeos é obrigatório (mínimo 1 vídeo)' 
+      });
     }
 
+    console.log(`🎬 Iniciando análise de ${videos.length} vídeo(s)...`);
+
+    // Validar URLs e extrair IDs
+    const videoData = [];
+    for (let i = 0; i < videos.length; i++) {
+      const { url, giColor } = videos[i];
+      
+      if (!url) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `URL do vídeo ${i + 1} está vazia` 
+        });
+      }
+
+      const videoId = extractYouTubeId(url);
+      if (!videoId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `Vídeo ${i + 1}: Apenas links do YouTube são suportados nesta versão` 
+        });
+      }
+
+      videoData.push({
+        url,
+        giColor: giColor?.trim() || 'preto',
+        videoId,
+      });
+    }
+
+    // Criar contexto com informações do atleta e vídeos
     const frameContext = {
       athleteName: athleteName?.trim(),
-      giColor: giColor?.trim(),
+      videos: videoData,
     };
 
-    const videoId = extractYouTubeId(url);
-    if (!videoId) {
-      return res.status(400).json({ success: false, error: 'Apenas links do YouTube são suportados nesta versão' });
-    }
+    console.log('📊 Contexto da análise:', frameContext);
 
-    // Analisa cada frame com Gemini
-    const analyses = [];
-    const result = await analyzeFrame(url, frameContext);
-    analyses.push(result);
-
-    const consolidated = consolidateAnalyses(analyses);
-    return res.json({ success: true, data: consolidated,});
+    // Enviar todas as URLs para análise em uma única chamada
+    const videoUrls = videoData.map(v => v.url).join(' ');
+    console.log('🔗 Analisando URLs:', videoUrls);
+    
+    const result = await analyzeFrame(videoUrls, frameContext);
+    
+    const consolidated = consolidateAnalyses([result]);
+    
+    console.log('✅ Análise concluída com sucesso!\n');
+    
+    return res.json({ 
+      success: true, 
+      data: {
+        ...consolidated,
+        videosAnalyzed: videos.length,
+      }
+    });
   } catch (err) {
-    console.error('analyzeLink error:', err);
-    return res.status(500).json({ success: false, error: 'Erro interno ao analisar link' });
+    console.error('❌ analyzeLink error:', err);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Erro interno ao analisar vídeos',
+      details: err.message,
+    });
   }
 };
 

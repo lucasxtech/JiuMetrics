@@ -1,25 +1,23 @@
 import api from './api';
 
 /**
- * Envia um link de vídeo para análise pela IA
+ * Envia links de vídeos para análise pela IA
  * @param {Object} payload
- * @param {string} payload.url - URL do vídeo
+ * @param {Array} payload.videos - Array de objetos {url, giColor}
  * @param {string} payload.athleteName - Nome do atleta alvo
- * @param {string} payload.giColor - Cor do kimono do atleta alvo
  * @returns {Promise} Resposta da IA com análise
  */
-export async function analyzeVideoLink({ url, athleteName, giColor }) {
-  console.log('Analisando vídeo:', url, athleteName, giColor);
+export async function analyzeVideoLink({ videos, athleteName }) {
+  console.log('Analisando vídeos:', videos, athleteName);
 
   try {
     const response = await api.post('/ai/analyze-link', {
-      url,
+      videos,
       athleteName,
-      giColor,
     });
     return response.data;
   } catch (error) {
-    console.error('Erro ao analisar vídeo:', error);
+    console.error('Erro ao analisar vídeos:', error);
     throw error;
   }
 }

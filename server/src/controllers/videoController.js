@@ -6,72 +6,110 @@ const { analyzeFrame, consolidateAnalyses } = require('../services/geminiService
 const { generateQuickChartUrl } = require('../utils/chartUtils');
 
 /**
- * POST /api/video/upload - Processa vídeo enviado
+ * POST /api/video/upload - Processa múltiplos vídeos enviados
  * Query params opcionais: personId, personType (para salvar análise automaticamente)
  */
 exports.uploadAndAnalyzeVideo = async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'Nenhum arquivo enviado',
       });
     }
 
-    const videoPath = req.file.path;
-    const videoName = req.file.filename;
+    const videos = req.files;
+    const { personId, personType, athleteName } = req.body;
     
-    // Parâmetros opcionais para salvar análise
-    const { personId, personType, athleteName, giColor } = req.body;
-    const frameContext = {
-      athleteName: athleteName?.trim(),
-      giColor: giColor?.trim(),
-    };
+    // Obter cores de kimono do body (formato: giColors[0], giColors[1], etc)
+    const giColors = [];
+    for (let i = 0; i < videos.length; i++) {
+      giColors.push(req.body[`giColors[${i}]`] || 'preto');
+    }
 
-    console.log(`\n🎬 Iniciando processamento do vídeo: ${videoName}`);
-    console.log('1️⃣ Extraindo frames...');
+    console.log(`\n🎬 Iniciando processamento de ${videos.length} vídeo(s)`);
+    console.log(`👤 Atleta: ${athleteName}`);
+    console.log(`🥋 Cores de kimono:`, giColors);
 
-    // Extrair frames
-    const frames = await extractFrames(videoPath, 8);
+    const allFrameAnalyses = [];
+    const videoNames = [];
 
-    if (frames.length === 0) {
+    // Processar cada vídeo
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      const giColor = giColors[i];
+      const videoPath = video.path;
+      const videoName = video.filename;
+      
+      videoNames.push(videoName);
+
+      console.log(`\n📹 Vídeo ${i + 1}/${videos.length}: ${videoName}`);
+      console.log(`   🥋 Cor do kimono: ${giColor}`);
+      console.log(`   1️⃣ Extraindo frames...`);
+
+      // Extrair frames
+      const frames = await extractFrames(videoPath, 8);
+
+      if (frames.length === 0) {
+        console.warn(`   ⚠️ Nenhum frame extraído do vídeo ${i + 1}`);
+        continue;
+      }
+
+      console.log(`   2️⃣ Convertendo ${frames.length} frames para base64...`);
+
+      // Converter frames para base64
+      const frameDataArray = [];
+      for (const framePath of frames) {
+        try {
+          const base64Data = frameToBase64(framePath);
+          frameDataArray.push(base64Data);
+        } catch (error) {
+          console.error(`   ❌ Erro ao converter frame ${framePath}:`, error.message);
+        }
+      }
+
+      console.log(`   3️⃣ Enviando frames para análise com Gemini Vision...`);
+
+      // Contexto específico para este vídeo
+      const frameContext = {
+        athleteName: athleteName?.trim(),
+        giColor: giColor,
+        videoNumber: i + 1,
+        totalVideos: videos.length,
+      };
+
+      // Analisar cada frame com Gemini
+      for (let j = 0; j < frameDataArray.length; j++) {
+        try {
+          console.log(`      📸 Analisando frame ${j + 1}/${frameDataArray.length} do vídeo ${i + 1}...`);
+          const analysis = await analyzeFrame(frameDataArray[j], 'image/png', frameContext);
+          allFrameAnalyses.push(analysis);
+        } catch (error) {
+          console.error(`   ❌ Erro ao analisar frame ${j + 1}:`, error.message);
+        }
+      }
+
+      // Limpar frames deste vídeo
+      const frameDir = path.join(path.dirname(videoPath), 'frames');
+      try {
+        fs.rmSync(frameDir, { recursive: true, force: true });
+        console.log(`   ✅ Frames temporários do vídeo ${i + 1} removidos`);
+      } catch (err) {
+        console.warn(`   ⚠️ Aviso ao limpar frames:`, err.message);
+      }
+    }
+
+    if (allFrameAnalyses.length === 0) {
       return res.status(500).json({
         success: false,
-        error: 'Erro ao extrair frames do vídeo',
+        error: 'Não foi possível extrair e analisar frames de nenhum vídeo',
       });
     }
 
-    console.log(`2️⃣ Convertendo ${frames.length} frames para base64...`);
-
-    // Converter frames para base64
-    const frameDataArray = [];
-    for (const framePath of frames) {
-      try {
-        const base64Data = frameToBase64(framePath);
-        frameDataArray.push(base64Data);
-      } catch (error) {
-        console.error(`Erro ao converter frame ${framePath}:`, error.message);
-      }
-    }
-
-    console.log(`3️⃣ Enviando frames para análise com Gemini Vision...`);
-
-    // Analisar cada frame com Gemini
-    const frameAnalyses = [];
-    for (let i = 0; i < frameDataArray.length; i++) {
-      try {
-        console.log(`   📸 Analisando frame ${i + 1}/${frameDataArray.length}...`);
-        const analysis = await analyzeFrame(frameDataArray[i], 'image/png', frameContext);
-        frameAnalyses.push(analysis);
-      } catch (error) {
-        console.error(`Erro ao analisar frame ${i + 1}:`, error.message);
-      }
-    }
-
-    console.log(`4️⃣ Consolidando análises...`);
+    console.log(`\n4️⃣ Consolidando ${allFrameAnalyses.length} análises de ${videos.length} vídeo(s)...`);
 
     // Consolidar todas as análises
-    const consolidatedAnalysis = consolidateAnalyses(frameAnalyses);
+    const consolidatedAnalysis = consolidateAnalyses(allFrameAnalyses);
 
     console.log(`5️⃣ Gerando URLs dos gráficos...`);
 
@@ -85,15 +123,6 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
           url: url,
         });
       });
-    }
-
-    // Limpar frames após análise
-    const frameDir = path.join(path.dirname(videoPath), 'frames');
-    try {
-      fs.rmSync(frameDir, { recursive: true, force: true });
-      console.log('✅ Frames temporários removidos');
-    } catch (err) {
-      console.warn('Aviso ao limpar frames:', err.message);
     }
 
     console.log('✅ Análise completa!\n');
@@ -113,12 +142,12 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
         savedAnalysis = FightAnalysis.create({
           personId,
           personType,
-          videoName,
+          videoName: videoNames.join(', '),
           videoUrl: '', // Upload local
           charts: consolidatedAnalysis.charts,
           summary: consolidatedAnalysis.summary,
           technicalProfile,
-          framesAnalyzed: frameAnalyses.length,
+          framesAnalyzed: allFrameAnalyses.length,
         });
         
         // Atualizar perfil técnico
@@ -137,22 +166,23 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     // Retornar resultado
     res.json({
       success: true,
-      message: 'Vídeo analisado com sucesso',
+      message: `${videos.length} vídeo(s) analisado(s) com sucesso`,
       data: {
-        videoName,
+        videoNames: videoNames,
+        videosCount: videos.length,
         charts: consolidatedAnalysis.charts,
         summary: consolidatedAnalysis.summary,
         chartUrls: chartUrls,
-        framesAnalyzed: frameAnalyses.length,
+        framesAnalyzed: allFrameAnalyses.length,
         generatedAt: consolidatedAnalysis.generatedAt,
         savedAnalysis: savedAnalysis ? { id: savedAnalysis.id } : null,
       },
     });
   } catch (error) {
-    console.error('❌ Erro ao processar vídeo:', error);
+    console.error('❌ Erro ao processar vídeos:', error);
     res.status(500).json({
       success: false,
-      error: 'Erro ao processar vídeo',
+      error: 'Erro ao processar vídeos',
       details: error.message,
     });
   }

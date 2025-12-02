@@ -59,21 +59,28 @@ const BASE_PROMPT = (url) =>  {
   }`)};
 
 function buildPrompt(url, context = {}) {
-  const { athleteName, giColor } = context;
-  if (!athleteName && !giColor) {
-    return BASE_PROMPT("", "");
+  const { athleteName, giColor, videos } = context;
+  
+  let contextText = '';
+  
+  if (athleteName) {
+    contextText += `\nATLETA ALVO: ${athleteName}`;
+  }
+  
+  if (videos && Array.isArray(videos) && videos.length > 0) {
+    contextText += `\n\nVÍDEOS PARA ANÁLISE (${videos.length} vídeo(s)):`;
+    videos.forEach((video, index) => {
+      contextText += `\nVídeo ${index + 1}: ${video.url} - Kimono ${video.giColor}`;
+    });
+    contextText += `\n\nFOCO: Analise APENAS o atleta ${athleteName} em TODOS os vídeos. Em cada vídeo, ele está usando kimono ${videos.map((v, i) => `${v.giColor} (vídeo ${i + 1})`).join(', ')}.`;
+    contextText += `\nIgnore completamente os oponentes. Consolide o comportamento do atleta através de todos os vídeos fornecidos.`;
+  } else if (giColor) {
+    contextText += `\nKIMONO: ${giColor}`;
+    contextText += `\n\nFOCO: Analise APENAS o atleta que está usando kimono ${giColor}. Ignore o oponente.`;
   }
 
-  const nameText = athleteName ? ` chamado ${athleteName}` : '';
-  const colorText = giColor ? ` que está usando um kimono ${giColor}` : '';
-  const focusText = `Foque APENAS neste atleta${nameText}${colorText} e ignore o oponente.`;
-
-  return `${BASE_PROMPT(url)}
-
-Contexto adicional: ${focusText}`;
+  return `${BASE_PROMPT(url)}${contextText}`;
 }
-
-console.log(buildPrompt({athleteName: "Exemplo", giColor: "azul"}));
 
 /**
  * Analisa um frame usando Gemini Vision
@@ -86,13 +93,8 @@ async function analyzeFrame(url, context = {}) {
   const prompt = buildPrompt(url, context);
 
   try {
-
-    console.log("PROMPT: /n", prompt);
-const result = await model.generateContent(prompt);
-
-const responseText = result.response.text();
-console.log("📸 Frame analisado pelo Gemini Vision", "/n", responseText);
-    
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
     const analysis = extractJson(responseText);
     return analysis;
   } catch (error) {

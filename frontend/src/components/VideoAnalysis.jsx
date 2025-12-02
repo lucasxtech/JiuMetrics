@@ -4,44 +4,59 @@ import { uploadVideo, isValidVideoFile } from '../services/videoUploadService';
 import PieChartSection from './PieChartSection';
 
 export default function VideoAnalysisComponent() {
-  const [videoUrl, setVideoUrl] = useState('');
-  const [videoFile, setVideoFile] = useState(null);
+  const [videos, setVideos] = useState([
+    { id: 1, url: '', file: null, giColor: 'preto' }
+  ]);
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('url');
   const [athleteName, setAthleteName] = useState('');
-  const [giColor, setGiColor] = useState('preto');
+
+  const giColorOptions = [
+    { value: 'preto', label: 'Preto' },
+    { value: 'branco', label: 'Branco' },
+    { value: 'azul', label: 'Azul' },
+    { value: 'colorido', label: 'Outro' },
+  ];
 
   const tabButtonClass = (tab) =>
     `inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
       activeTab === tab ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
     }`;
 
-  const primaryButtonClass = (disabled) =>
-    `inline-flex items-center gap-2 rounded-xl px-5 py-3 text-white transition ${
-      disabled ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
-    }`;
+  const addVideo = () => {
+    setVideos([...videos, { id: Date.now(), url: '', file: null, giColor: 'preto' }]);
+  };
 
-  const giColorOptions = [
-    { value: 'branco', label: 'Branco' },
-    { value: 'azul', label: 'Azul' },
-    { value: 'preto', label: 'Preto' },
-    { value: 'colorido', label: 'Outro / Colorido' },
-  ];
+  const removeVideo = (id) => {
+    if (videos.length > 1) {
+      setVideos(videos.filter(v => v.id !== id));
+    }
+  };
+
+  const updateVideo = (id, field, value) => {
+    setVideos(videos.map(v => v.id === id ? { ...v, [field]: value } : v));
+  };
 
   const handleAnalyzeUrl = async (e) => {
     e.preventDefault();
-    if (!videoUrl.trim()) {
-      setError('Por favor, insira uma URL de vídeo');
+    
+    const validVideos = videos.filter(v => v.url.trim());
+    if (validVideos.length === 0) {
+      setError('Por favor, insira ao menos uma URL de vídeo');
       return;
     }
-    if (!isValidVideoUrl(videoUrl)) {
-      setError('URL inválida. Use YouTube, Vimeo ou um link direto válido');
-      return;
+    
+    for (const video of validVideos) {
+      if (!isValidVideoUrl(video.url)) {
+        setError('Uma ou mais URLs são inválidas. Use YouTube, Vimeo ou links diretos válidos');
+        return;
+      }
     }
-    if (!athleteName.trim() || !giColor) {
-      setError('Informe o nome do atleta e a cor do kimono para orientar a IA');
+    
+    if (!athleteName.trim()) {
+      setError('Informe o nome do atleta para orientar a IA');
       return;
     }
 
@@ -51,9 +66,8 @@ export default function VideoAnalysisComponent() {
 
     try {
       const result = await analyzeVideoLink({
-        url: videoUrl,
+        videos: validVideos.map(v => ({ url: v.url, giColor: v.giColor })),
         athleteName: athleteName.trim(),
-        giColor,
       });
       if (result.data) {
         setAnalysis(result);
@@ -62,7 +76,7 @@ export default function VideoAnalysisComponent() {
       }
     } catch (err) {
       const errorMsg =
-        err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao analisar o vídeo. Tente novamente.';
+        err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao analisar os vídeos. Tente novamente.';
       setError(errorMsg);
     } finally {
       setIsLoading(false);
@@ -71,16 +85,22 @@ export default function VideoAnalysisComponent() {
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
-    if (!videoFile) {
-      setError('Por favor, selecione um arquivo de vídeo');
+    
+    const validVideos = videos.filter(v => v.file);
+    if (validVideos.length === 0) {
+      setError('Por favor, selecione ao menos um arquivo de vídeo');
       return;
     }
-    if (!isValidVideoFile(videoFile)) {
-      setError('Arquivo inválido. Use MP4, AVI, MOV ou formatos suportados');
-      return;
+    
+    for (const video of validVideos) {
+      if (!isValidVideoFile(video.file)) {
+        setError('Um ou mais arquivos são inválidos. Use MP4, AVI, MOV ou formatos suportados');
+        return;
+      }
     }
-    if (!athleteName.trim() || !giColor) {
-      setError('Informe o nome do atleta e a cor do kimono para orientar a IA');
+    
+    if (!athleteName.trim()) {
+      setError('Informe o nome do atleta para orientar a IA');
       return;
     }
 
@@ -90,9 +110,8 @@ export default function VideoAnalysisComponent() {
 
     try {
       const result = await uploadVideo({
-        file: videoFile,
+        videos: validVideos.map(v => ({ file: v.file, giColor: v.giColor })),
         athleteName: athleteName.trim(),
-        giColor,
       });
       if (result.data) {
         setAnalysis(result);
@@ -101,11 +120,11 @@ export default function VideoAnalysisComponent() {
       }
     } catch (err) {
       const errorMsg =
-        err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao processar o vídeo. Tente novamente.';
+        err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao processar os vídeos. Tente novamente.';
       setError(errorMsg);
     } finally {
       setIsLoading(false);
-      setVideoFile(null);
+      setVideos([{ id: 1, url: '', file: null, giColor: 'preto' }]);
     }
   };
 
@@ -151,129 +170,260 @@ export default function VideoAnalysisComponent() {
 
       {activeTab === 'url' && (
         <section className="panel">
-          <form onSubmit={handleAnalyzeUrl} className="space-y-4">
+          <form onSubmit={handleAnalyzeUrl} className="space-y-6">
+            {/* Nome do atleta */}
             <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-900">URL do vídeo da luta</label>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Nome do atleta</label>
               <input
                 type="text"
-                className="w-full font-mono"
-                value={videoUrl}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
+                value={athleteName}
                 onChange={(e) => {
-                  setVideoUrl(e.target.value);
+                  setAthleteName(e.target.value);
                   setError(null);
                 }}
-                placeholder="Cole aqui o link do YouTube, Vimeo ou outro..."
+                placeholder="Ex.: João Silva"
               />
-              <p className="mt-2 text-sm text-slate-500">✓ Suporta YouTube, Vimeo, Google Drive e links diretos.</p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-900">Nome do atleta no vídeo</label>
-                <input
-                  type="text"
-                  className="w-full"
-                  value={athleteName}
-                  onChange={(e) => {
-                    setAthleteName(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Ex.: João Silva"
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-900">Cor do kimono</label>
-                <select
-                  className="w-full"
-                  value={giColor}
-                  onChange={(e) => {
-                    setGiColor(e.target.value);
-                    setError(null);
-                  }}
-                >
-                  {giColorOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
+            {/* Lista de vídeos */}
+            <div className="space-y-3">
+              {videos.map((video, index) => (
+                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm">
+                  {/* Header compacto */}
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-900">Vídeo {index + 1}</span>
+                    {videos.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeVideo(video.id)}
+                        className="text-xs text-slate-500 transition hover:text-red-600 cursor-pointer"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Campos do card */}
+                  <div className="space-y-2">
+                    {/* URL */}
+                    <div>
+                      <input
+                        type="text"
+                        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
+                        value={video.url}
+                        onChange={(e) => {
+                          updateVideo(video.id, 'url', e.target.value);
+                          setError(null);
+                        }}
+                        placeholder="URL do vídeo (YouTube, Vimeo...)"
+                      />
+                    </div>
+
+                    {/* Cor do kimono - chips */}
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Cor do kimono</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {giColorOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              updateVideo(video.id, 'giColor', option.value);
+                              setError(null);
+                            }}
+                            className={`rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                              video.giColor === option.value
+                                ? 'border border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Botão adicionar - pequeno e discreto */}
+              <button
+                type="button"
+                onClick={addVideo}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+              >
+                <span>+</span>
+                Adicionar vídeo
+              </button>
             </div>
+
+            {/* Erro */}
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">⚠️ {error}</div>
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {error}
+              </div>
             )}
-            <button type="submit" disabled={isLoading} className={primaryButtonClass(isLoading)}>
-              <span aria-hidden="true">▶️</span>
-              {isLoading ? 'Analisando...' : 'Analisar vídeo'}
-            </button>
+
+            {/* Botão principal - alinhado à direita em desktop */}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`w-full sm:w-auto rounded-md px-4 py-2 text-sm font-medium transition ${
+                  isLoading
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    : 'bg-slate-900 text-white hover:bg-slate-800 cursor-pointer'
+                }`}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                    Analisando...
+                  </span>
+                ) : (
+                  `Analisar ${videos.length > 1 ? `${videos.length} vídeos` : 'vídeo'}`
+                )}
+              </button>
+            </div>
           </form>
         </section>
       )}
 
       {activeTab === 'upload' && (
         <section className="panel">
-          <form onSubmit={handleFileUpload} className="space-y-4">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-slate-900">Selecione um arquivo de vídeo</p>
-              <label
-                htmlFor="video-upload"
-                className="upload-zone flex cursor-pointer flex-col items-center gap-2 p-6 text-center text-slate-500"
-              >
-                <span className="text-2xl" aria-hidden="true">🎬</span>
-                <span className="font-medium text-slate-700">Arraste ou clique para enviar</span>
-                <span className="text-sm">MP4, AVI, MOV, MKV • até 500MB</span>
-              </label>
+          <form onSubmit={handleFileUpload} className="space-y-6">
+            {/* Nome do atleta */}
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">Nome do atleta</label>
               <input
-                id="video-upload"
-                type="file"
-                accept="video/*"
-                className="sr-only"
+                type="text"
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
+                value={athleteName}
                 onChange={(e) => {
-                  setVideoFile(e.target.files?.[0] || null);
+                  setAthleteName(e.target.value);
                   setError(null);
                 }}
+                placeholder="Ex.: Maria Santos"
               />
-              {videoFile && <p className="text-sm font-medium text-emerald-600">✓ Arquivo selecionado: {videoFile.name}</p>}
-              <p className="text-sm text-slate-500">⚠️ A análise pode levar alguns minutos dependendo do tamanho do vídeo.</p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-900">Nome do atleta no vídeo</label>
-                <input
-                  type="text"
-                  className="w-full"
-                  value={athleteName}
-                  onChange={(e) => {
-                    setAthleteName(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="Ex.: Maria Santos"
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-900">Cor do kimono</label>
-                <select
-                  className="w-full"
-                  value={giColor}
-                  onChange={(e) => {
-                    setGiColor(e.target.value);
-                    setError(null);
-                  }}
-                >
-                  {giColorOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
+            {/* Lista de vídeos */}
+            <div className="space-y-3">
+              {videos.map((video, index) => (
+                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm">
+                  {/* Header compacto */}
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-900">Vídeo {index + 1}</span>
+                    {videos.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeVideo(video.id)}
+                        className="text-xs text-slate-500 transition hover:text-red-600 cursor-pointer"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Campos do card */}
+                  <div className="space-y-2">
+                    {/* Upload */}
+                    <div>
+                      <label
+                        htmlFor={`video-upload-${video.id}`}
+                        className="flex cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-4 text-center transition hover:border-slate-300 hover:bg-slate-50"
+                      >
+                        {video.file ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">✓</span>
+                            <span className="text-xs font-medium text-slate-700 truncate max-w-[200px]">{video.file.name}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">📁</span>
+                            <span className="text-xs font-medium text-slate-600">Selecionar arquivo</span>
+                          </div>
+                        )}
+                      </label>
+                      <input
+                        id={`video-upload-${video.id}`}
+                        type="file"
+                        accept="video/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          updateVideo(video.id, 'file', e.target.files?.[0] || null);
+                          setError(null);
+                        }}
+                      />
+                    </div>
+
+                    {/* Cor do kimono - chips */}
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Cor do kimono</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {giColorOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => {
+                              updateVideo(video.id, 'giColor', option.value);
+                              setError(null);
+                            }}
+                            className={`rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                              video.giColor === option.value
+                                ? 'border border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Botão adicionar - pequeno e discreto */}
+              <button
+                type="button"
+                onClick={addVideo}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+              >
+                <span>+</span>
+                Adicionar vídeo
+              </button>
             </div>
+
+            {/* Erro */}
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">⚠️ {error}</div>
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {error}
+              </div>
             )}
-            <button type="submit" disabled={isLoading || !videoFile} className={primaryButtonClass(isLoading || !videoFile)}>
-              <span aria-hidden="true">📤</span>
-              {isLoading ? 'Processando vídeo...' : 'Enviar e analisar'}
-            </button>
+
+            {/* Botão principal - alinhado à direita em desktop */}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={isLoading || videos.every(v => !v.file)}
+                className={`w-full sm:w-auto rounded-md px-4 py-2 text-sm font-medium transition ${
+                  isLoading || videos.every(v => !v.file)
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    : 'bg-slate-900 text-white hover:bg-slate-800 cursor-pointer'
+                }`}
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                    Processando...
+                  </span>
+                ) : (
+                  `Enviar e analisar ${videos.filter(v => v.file).length > 1 ? `${videos.filter(v => v.file).length} vídeos` : 'vídeo'}`
+                )}
+              </button>
+            </div>
           </form>
         </section>
       )}

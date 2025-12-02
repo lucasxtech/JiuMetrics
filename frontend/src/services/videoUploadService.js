@@ -1,17 +1,21 @@
 import api from './api';
 
 /**
- * Faz upload de vídeo e retorna análise
+ * Faz upload de vídeos e retorna análise
  * @param {Object} payload
- * @param {File} payload.file - Arquivo de vídeo
+ * @param {Array} payload.videos - Array de objetos {file, giColor}
  * @param {string} [payload.personId]
  * @param {string} [payload.personType]
  * @param {string} payload.athleteName - Nome do atleta focal
- * @param {string} payload.giColor - Cor do kimono do atleta focal
  */
-export async function uploadVideo({ file, personId = null, personType = null, athleteName, giColor }) {
+export async function uploadVideo({ videos, personId = null, personType = null, athleteName }) {
   const formData = new FormData();
-  formData.append('video', file);
+  
+  // Adicionar cada vídeo com sua cor de kimono
+  videos.forEach((video, index) => {
+    formData.append('videos', video.file);
+    formData.append(`giColors[${index}]`, video.giColor);
+  });
 
   // Se informações de pessoa forem fornecidas, adicionar ao form
   if (personId) {
@@ -22,9 +26,6 @@ export async function uploadVideo({ file, personId = null, personType = null, at
   }
   if (athleteName) {
     formData.append('athleteName', athleteName);
-  }
-  if (giColor) {
-    formData.append('giColor', giColor);
   }
 
   try {
