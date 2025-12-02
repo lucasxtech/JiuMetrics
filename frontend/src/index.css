@@ -292,7 +292,7 @@ button:active:not(:disabled) {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: clamp(1.25rem, 2vw, 2rem);
+  padding: clamp(1.25rem, 2.2vw, 2.25rem) clamp(1.75rem, 3vw, 4rem);
 }
 
 .panel--hero {
