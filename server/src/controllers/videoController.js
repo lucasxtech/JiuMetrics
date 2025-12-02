@@ -22,7 +22,11 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     const videoName = req.file.filename;
     
     // Parâmetros opcionais para salvar análise
-    const { personId, personType } = req.body;
+    const { personId, personType, athleteName, giColor } = req.body;
+    const frameContext = {
+      athleteName: athleteName?.trim(),
+      giColor: giColor?.trim(),
+    };
 
     console.log(`\n🎬 Iniciando processamento do vídeo: ${videoName}`);
     console.log('1️⃣ Extraindo frames...');
@@ -57,7 +61,7 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     for (let i = 0; i < frameDataArray.length; i++) {
       try {
         console.log(`   📸 Analisando frame ${i + 1}/${frameDataArray.length}...`);
-        const analysis = await analyzeFrame(frameDataArray[i]);
+        const analysis = await analyzeFrame(frameDataArray[i], 'image/png', frameContext);
         frameAnalyses.push(analysis);
       } catch (error) {
         console.error(`Erro ao analisar frame ${i + 1}:`, error.message);

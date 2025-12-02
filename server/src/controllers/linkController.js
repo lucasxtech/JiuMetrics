@@ -23,17 +23,22 @@ function extractYouTubeId(url) {
 
 async function fetchImageAsBase64(url) {
   const res = await axios.get(url, { responseType: 'arraybuffer' });
-  const b64 = Buffer.from(res.data).toString('base64');
-  const mime = res.headers['content-type'] || 'image/jpeg';
-  return `data:${mime};base64,${b64}`;
+  const base64 = Buffer.from(res.data).toString('base64');
+  const mimeType = res.headers['content-type'] || 'image/jpeg';
+  return { base64, mimeType };
 }
 
 exports.analyzeLink = async (req, res) => {
   try {
-    const { url } = req.body || {};
+    const { url, athleteName, giColor } = req.body || {};
     if (!url) {
       return res.status(400).json({ success: false, error: 'URL é obrigatória' });
     }
+
+    const frameContext = {
+      athleteName: athleteName?.trim(),
+      giColor: giColor?.trim(),
+    };
 
     const videoId = extractYouTubeId(url);
     if (!videoId) {
@@ -56,8 +61,8 @@ exports.analyzeLink = async (req, res) => {
     const framesBase64 = [];
     for (const t of thumbUrls) {
       try {
-        const b64 = await fetchImageAsBase64(t);
-        framesBase64.push(b64);
+        const { base64, mimeType } = await fetchImageAsBase64(t);
+        framesBase64.push({ base64, mimeType });
         if (framesBase64.length >= 6) break;
       } catch (_) {
         // ignora thumbs inexistentes
@@ -70,8 +75,8 @@ exports.analyzeLink = async (req, res) => {
 
     // Analisa cada frame com Gemini
     const analyses = [];
-    for (const b64 of framesBase64) {
-      const result = await analyzeFrame(b64);
+    for (const { base64, mimeType } of framesBase64) {
+      const result = await analyzeFrame(base64, mimeType, frameContext);
       analyses.push(result);
     }
 

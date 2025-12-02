@@ -2,20 +2,29 @@ import api from './api';
 
 /**
  * Faz upload de vídeo e retorna análise
- * @param {File} file - Arquivo de vídeo
- * @param {string} personId - ID do atleta ou adversário (opcional)
- * @param {string} personType - 'athlete' ou 'opponent' (opcional)
+ * @param {Object} payload
+ * @param {File} payload.file - Arquivo de vídeo
+ * @param {string} [payload.personId]
+ * @param {string} [payload.personType]
+ * @param {string} payload.athleteName - Nome do atleta focal
+ * @param {string} payload.giColor - Cor do kimono do atleta focal
  */
-export async function uploadVideo(file, personId = null, personType = null) {
+export async function uploadVideo({ file, personId = null, personType = null, athleteName, giColor }) {
   const formData = new FormData();
   formData.append('video', file);
-  
+
   // Se informações de pessoa forem fornecidas, adicionar ao form
   if (personId) {
     formData.append('personId', personId);
   }
   if (personType) {
     formData.append('personType', personType);
+  }
+  if (athleteName) {
+    formData.append('athleteName', athleteName);
+  }
+  if (giColor) {
+    formData.append('giColor', giColor);
   }
 
   try {
