@@ -46,7 +46,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="dashboard-wrapper animate-fadeIn">
+    <div className="dashboard-wrapper animate-fadeIn" style={{ width: '100vw' }}>
       <section className="panel panel--hero">
         <div>
           <p className="eyebrow">Visão geral</p>
@@ -67,8 +67,8 @@ export default function Dashboard() {
 
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow">Resumo</p>
-          <h2 className="section-header__title">Indicadores principais</h2>
+          <p className="section-header__eyebrow" style={{ marginLeft: "1vw"}}>Resumo</p>
+          <h2 className="section-header__title" style={{ marginLeft: "1vw"}}>Indicadores principais</h2>
         </div>
         <div className="metric-grid">
           {metricHighlights.map((card) => (

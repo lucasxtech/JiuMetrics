@@ -21,12 +21,12 @@ export default function Header() {
   }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0c1524]/90 backdrop-blur-xl shadow-lg">
-      <div className="mx-auto w-full max-w-[1320px] px-6 sm:px-10 lg:px-14 xl:px-16 2xl:px-20">
+    <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0c1524]/90 backdrop-blur-xl shadow-lg" style={{ width: '100vw' }}>
+      <div className="mx-auto max-w-[95vw] sm:px-10 lg:px-14 xl:px-16 2xl:px-20">
         <div className="flex justify-between items-center h-[76px]">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform" style={{ marginLeft: '1vw' }}>
               <span className="text-white font-black text-lg">JJ</span>
             </div>
             <span className="hidden md:block text-xl font-bold text-white">Análise Tática</span>

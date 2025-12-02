@@ -14,6 +14,7 @@
   --space-md: 1.5rem;
   --space-lg: 2rem;
   --space-xl: 3rem;
+  width: 100vw;
 }
 
 * {
@@ -286,6 +287,7 @@ button:active:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
+  width: 100vw;
 }
 
 .panel {
@@ -299,6 +301,7 @@ button:active:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  width: 100vw;
 }
 
 @media (min-width: 768px) {
@@ -306,6 +309,7 @@ button:active:not(:disabled) {
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-start;
+    width: 100vw;
   }
 }
 
@@ -367,6 +371,7 @@ button:active:not(:disabled) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-md);
+  width: 100vw;
 }
 
 .metric-card {
