@@ -39,7 +39,7 @@ exports.analyzeLink = async (req, res) => {
 
     // Analisa cada frame com Gemini
     const analyses = [];
-    const result = await analyzeFrame(frameContext);
+    const result = await analyzeFrame(url, frameContext);
     analyses.push(result);
 
     const consolidated = consolidateAnalyses(analyses);

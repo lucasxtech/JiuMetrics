@@ -10,8 +10,10 @@ if (!apiKey) {
 const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 const model = ai ? ai.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
 
-const BASE_PROMPT = ` Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
-  Sua tarefa é assistir aos vídeos abaixo, identificar padrões técnicos e gerar um perfil estatístico do atleta.
+const BASE_PROMPT = (url) =>  {
+  return (` Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
+  Sua tarefa é assistir aos vídeos abaixo, identificar padrões técnicos e gerar um perfil estatístico do atleta:
+  ${url}
 
   TAREFA:
   Analise o comportamento do lutador citado. Ignore o oponente, foque no alvo.
@@ -54,19 +56,19 @@ const BASE_PROMPT = ` Você é um Analista Sênior de Estatísticas de Jiu-Jitsu
       },
     ],
     "summary": "Aqui vai o resumo detalhado do estilo de luta do atleta e estratégias recomendadas."
-  }`;
+  }`)};
 
-function buildPrompt(context = {}) {
+function buildPrompt(url, context = {}) {
   const { athleteName, giColor } = context;
   if (!athleteName && !giColor) {
-    return BASE_PROMPT;
+    return BASE_PROMPT("", "");
   }
 
   const nameText = athleteName ? ` chamado ${athleteName}` : '';
   const colorText = giColor ? ` que está usando um kimono ${giColor}` : '';
   const focusText = `Foque APENAS neste atleta${nameText}${colorText} e ignore o oponente.`;
 
-  return `${BASE_PROMPT}
+  return `${BASE_PROMPT(url)}
 
 Contexto adicional: ${focusText}`;
 }
@@ -76,14 +78,16 @@ console.log(buildPrompt({athleteName: "Exemplo", giColor: "azul"}));
 /**
  * Analisa um frame usando Gemini Vision
  */
-async function analyzeFrame(context = {}) {
+async function analyzeFrame(url, context = {}) {
   if (!model) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
   }
 
-  const prompt = buildPrompt(context);
+  const prompt = buildPrompt(url, context);
 
   try {
+
+    console.log("PROMPT: /n", prompt);
 const result = await model.generateContent(prompt);
 
 const responseText = result.response.text();
