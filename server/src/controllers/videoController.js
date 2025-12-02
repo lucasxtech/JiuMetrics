@@ -192,3 +192,5 @@ function extractTechnicalProfile(charts) {
 
   return profile;
 }
+
+exports.extractTechnicalProfile = extractTechnicalProfile;
