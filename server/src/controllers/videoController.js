@@ -4,6 +4,7 @@ const { extractFrames } = require('../services/ffmpegService');
 const { frameToBase64 } = require('../utils/imageUtils');
 const { analyzeFrame, consolidateAnalyses } = require('../services/geminiService');
 const { generateQuickChartUrl } = require('../utils/chartUtils');
+const FightAnalysis = require('../models/FightAnalysis');
 
 /**
  * POST /api/video/upload - Processa múltiplos vídeos enviados
@@ -130,34 +131,19 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     // Se personId foi fornecido, salvar análise automaticamente
     let savedAnalysis = null;
     if (personId && personType) {
-      const FightAnalysis = require('../models/FightAnalysis');
-      const Athlete = require('../models/Athlete');
-      const Opponent = require('../models/Opponent');
-      
       try {
-        // Extrair perfil técnico dos charts
-        const technicalProfile = extractTechnicalProfile(consolidatedAnalysis.charts);
-        
         // Criar análise
-        savedAnalysis = FightAnalysis.create({
+        savedAnalysis = await FightAnalysis.create({
           personId,
           personType,
-          videoName: videoNames.join(', '),
-          videoUrl: '', // Upload local
-          charts: consolidatedAnalysis.charts,
-          summary: consolidatedAnalysis.summary,
-          technicalProfile,
+          videoUrl: videoNames.join(', '), // Nome dos arquivos
+          charts: consolidatedAnalysis.charts || {},
+          summary: consolidatedAnalysis.summary || '',
+          technicalProfile: consolidatedAnalysis.technicalProfile || '',
           framesAnalyzed: allFrameAnalyses.length,
         });
         
-        // Atualizar perfil técnico
-        if (personType === 'athlete') {
-          Athlete.updateTechnicalProfile(personId, technicalProfile);
-        } else if (personType === 'opponent') {
-          Opponent.updateTechnicalProfile(personId, technicalProfile);
-        }
-        
-        console.log(`💾 Análise salva e perfil técnico atualizado para ${personType} ${personId}`);
+        console.log(`💾 Análise salva para ${personType} ${personId}`);
       } catch (saveError) {
         console.error('⚠️ Erro ao salvar análise:', saveError.message);
       }

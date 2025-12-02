@@ -1,180 +1,115 @@
-// Modelo de dados para Atleta (em produção usar Supabase/Firebase)
-const { v4: uuidv4 } = require('uuid');
-
-// Simulando um banco em memória para desenvolvimento
-let athletes = [
-  {
-    id: '1',
-    name: 'João Silva',
-    age: 28,
-    weight: 85,
-    belt: 'Roxa',
-    style: 'Guarda',
-    strongAttacks: 'Raspagem, Armlock, Estrangulação',
-    weaknesses: 'Defesa de queda, Movimentação rápida',
-    cardio: 85,
-    videoUrl: 'https://youtube.com/watch?v=example',
-    
-    // Perfil técnico consolidado (baseado em análises de lutas)
-    technicalProfile: {
-      // Estilo de jogo predominante
-      gameStyle: 'Guarda', // Guarda, Passagem, Balanced
-      
-      // Posições mais usadas
-      mostUsedPositions: ['Guarda Fechada', 'Spider Guard', 'De La Riva'],
-      
-      // Melhores posições (pontos fortes)
-      strongPositions: ['Guarda Fechada', 'Triângulo', 'Armbar'],
-      
-      // Posições fracas
-      weakPositions: ['Passagem de Guarda', 'Defesa de queda', 'Side Control (por baixo)'],
-      
-      // Preferência: melhor na guarda ou passagem?
-      preference: 'guard', // 'guard', 'passing', 'balanced'
-      
-      // Personalidade (baseado em análises IA)
-      personality: {
-        aggressive: 45,
-        explosive: 25,
-        calm: 20,
-        tactical: 10,
-      },
-      
-      // Comportamento inicial
-      initialBehavior: {
-        pullGuard: 55,
-        takedown: 30,
-        standup: 15,
-      },
-      
-      // Jogo de guarda
-      guardGame: {
-        closedGuard: 50,
-        sweep: 30,
-        leglock: 20,
-      },
-      
-      // Jogo de passagem
-      passingGame: {
-        pressure: 50,
-        sidePass: 30,
-        toreada: 20,
-      },
-    },
-    
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'Maria Santos',
-    age: 26,
-    weight: 62,
-    belt: 'Azul',
-    style: 'Passagem',
-    strongAttacks: 'Passagem de guarda, Knee slice',
-    weaknesses: 'Resistência em rounds longos',
-    cardio: 75,
-    videoUrl: '',
-    
-    // Perfil técnico consolidado
-    technicalProfile: {
-      gameStyle: 'Passagem',
-      mostUsedPositions: ['Top Position', 'Knee Slice', 'Side Control'],
-      strongPositions: ['Passagem de Guarda', 'Knee Slice', 'Mount'],
-      weakPositions: ['Defesa de Raspagem', 'Guarda (por baixo)'],
-      preference: 'passing',
-      personality: {
-        aggressive: 60,
-        explosive: 30,
-        calm: 5,
-        tactical: 5,
-      },
-      initialBehavior: {
-        pullGuard: 10,
-        takedown: 70,
-        standup: 20,
-      },
-      guardGame: {
-        closedGuard: 30,
-        sweep: 40,
-        leglock: 30,
-      },
-      passingGame: {
-        pressure: 60,
-        sidePass: 30,
-        toreada: 10,
-      },
-    },
-    
-    createdAt: new Date(),
-  },
-];
+// Modelo de dados para Atleta com Supabase
+const supabase = require('../config/supabase');
+const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers');
 
 class Athlete {
   /**
    * Busca todos os atletas
    */
-  static getAll() {
-    return athletes;
+  static async getAll() {
+    const { data, error } = await supabase
+      .from('athletes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return parseAthletesFromDB(data);
   }
 
   /**
    * Busca um atleta por ID
    */
-  static getById(id) {
-    return athletes.find((a) => a.id === id);
+  static async getById(id) {
+    const { data, error } = await supabase
+      .from('athletes')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return parseAthleteFromDB(data);
   }
 
   /**
    * Cria um novo atleta
    */
-  static create(data) {
-    const newAthlete = {
-      id: uuidv4(),
-      ...data,
-      createdAt: new Date(),
-    };
-    athletes.push(newAthlete);
-    return newAthlete;
+  static async create(athleteData) {
+    const { data, error } = await supabase
+      .from('athletes')
+      .insert([{
+        name: athleteData.name,
+        belt: athleteData.belt,
+        weight: athleteData.weight,
+        height: athleteData.height,
+        age: athleteData.age,
+        style: athleteData.style,
+        strong_attacks: athleteData.strongAttacks,
+        weaknesses: athleteData.weaknesses,
+        video_url: athleteData.videoUrl,
+        cardio: athleteData.cardio,
+        technical_profile: athleteData.technicalProfile || {},
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   }
 
   /**
    * Atualiza um atleta
    */
-  static update(id, data) {
-    const index = athletes.findIndex((a) => a.id === id);
-    if (index === -1) return null;
+  static async update(id, athleteData) {
+    const updateData = {};
+    
+    if (athleteData.name !== undefined) updateData.name = athleteData.name;
+    if (athleteData.belt !== undefined) updateData.belt = athleteData.belt;
+    if (athleteData.weight !== undefined) updateData.weight = athleteData.weight;
+    if (athleteData.height !== undefined) updateData.height = athleteData.height;
+    if (athleteData.age !== undefined) updateData.age = athleteData.age;
+    if (athleteData.style !== undefined) updateData.style = athleteData.style;
+    if (athleteData.strongAttacks !== undefined) updateData.strong_attacks = athleteData.strongAttacks;
+    if (athleteData.weaknesses !== undefined) updateData.weaknesses = athleteData.weaknesses;
+    if (athleteData.videoUrl !== undefined) updateData.video_url = athleteData.videoUrl;
+    if (athleteData.cardio !== undefined) updateData.cardio = athleteData.cardio;
+    if (athleteData.technicalProfile !== undefined) updateData.technical_profile = athleteData.technicalProfile;
 
-    athletes[index] = {
-      ...athletes[index],
-      ...data,
-      updatedAt: new Date(),
-    };
-    return athletes[index];
+    const { data, error } = await supabase
+      .from('athletes')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return parseAthleteFromDB(data);
   }
 
   /**
    * Deleta um atleta
    */
-  static delete(id) {
-    const index = athletes.findIndex((a) => a.id === id);
-    if (index === -1) return null;
-
-    const deleted = athletes[index];
-    athletes.splice(index, 1);
-    return deleted;
+  static async delete(id) {
+    const { data, error } = await supabase
+      .from('athletes')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return parseAthleteFromDB(data);
   }
 
   /**
    * Atualiza perfil técnico baseado em análises de lutas
    */
-  static updateTechnicalProfile(id, analysisData) {
-    const athlete = this.getById(id);
+  static async updateTechnicalProfile(id, analysisData) {
+    const athlete = await this.getById(id);
     if (!athlete) return null;
 
     // Mesclar dados de análise com perfil existente
     const updatedProfile = {
-      ...athlete.technicalProfile,
+      ...athlete.technical_profile,
       ...analysisData,
     };
 

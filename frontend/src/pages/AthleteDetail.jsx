@@ -7,11 +7,13 @@ import AthleteForm from '../components/forms/AthleteForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { getAthleteById, deleteAthlete } from '../services/athleteService';
+import { getAnalysesByPerson, deleteAnalysis } from '../services/fightAnalysisService';
 
 export default function AthleteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [athlete, setAthlete] = useState(null);
+  const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -25,6 +27,15 @@ export default function AthleteDetail() {
         setError(null);
         const response = await getAthleteById(id);
         setAthlete(response?.data ?? null);
+        
+        // Buscar análises do atleta
+        try {
+          const analysesResponse = await getAnalysesByPerson(id);
+          setAnalyses(analysesResponse?.data ?? []);
+        } catch (analysisErr) {
+          console.error('Erro ao carregar análises:', analysisErr);
+          setAnalyses([]);
+        }
       } catch (err) {
         console.error('Erro ao carregar atleta:', err);
         setError('Não foi possível carregar o atleta.');
@@ -182,6 +193,79 @@ export default function AthleteDetail() {
           ))}
         </div>
       </section>
+
+      {/* Análises de Vídeo com IA */}
+      {analyses.length > 0 && (
+        <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
+          <div className="panel__head mb-4">
+            <div>
+              <p className="eyebrow">Inteligência Artificial</p>
+              <h3 className="panel__title">Análises de vídeo ({analyses.length})</h3>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {analyses.map((analysis) => (
+              <div 
+                key={analysis.id} 
+                className="rounded-lg border border-slate-200 bg-slate-50 p-4 hover:border-blue-200 hover:bg-blue-50/50 transition"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-medium text-slate-600">
+                        {new Date(analysis.createdAt).toLocaleDateString('pt-BR')}
+                      </span>
+                      {analysis.framesAnalyzed && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                          {analysis.framesAnalyzed} frames
+                        </span>
+                      )}
+                    </div>
+                    {analysis.summary && (
+                      <p className="text-sm text-slate-700 line-clamp-2">{analysis.summary}</p>
+                    )}
+                    {analysis.videoUrl && (
+                      <p className="mt-1 text-xs text-slate-500 truncate">{analysis.videoUrl}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Deseja remover esta análise?')) {
+                        try {
+                          await deleteAnalysis(analysis.id);
+                          setAnalyses(analyses.filter(a => a.id !== analysis.id));
+                        } catch (err) {
+                          console.error('Erro ao deletar análise:', err);
+                        }
+                      }
+                    }}
+                    className="text-xs text-slate-400 hover:text-red-600 transition cursor-pointer"
+                  >
+                    Remover
+                  </button>
+                </div>
+                {analysis.charts && analysis.charts.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {analysis.charts.slice(0, 3).map((chart, idx) => (
+                      <span 
+                        key={idx}
+                        className="rounded-md bg-white border border-slate-200 px-2 py-1 text-xs text-slate-600"
+                      >
+                        {chart.title || `Gráfico ${idx + 1}`}
+                      </span>
+                    ))}
+                    {analysis.charts.length > 3 && (
+                      <span className="rounded-md bg-white border border-slate-200 px-2 py-1 text-xs text-slate-500">
+                        +{analysis.charts.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Gráficos */}
       <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
