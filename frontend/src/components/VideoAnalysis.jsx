@@ -266,7 +266,7 @@ export default function VideoAnalysisComponent() {
             {/* Lista de vídeos */}
             <div className="space-y-3">
               {videos.map((video, index) => (
-                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm">
+                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm" style={{ marginBottom: "2vh", marginTop: "2vh", padding: "1.5%" }}>
                   {/* Header compacto */}
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-900">Vídeo {index + 1}</span>
