@@ -26,8 +26,11 @@ class Athlete {
       .eq('id', id)
       .single();
     
-    if (error) throw error;
-    return parseAthleteFromDB(data);
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Not found
+      throw error;
+    }
+    return data ? parseAthleteFromDB(data) : null;
   }
 
   /**
