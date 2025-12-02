@@ -1,4 +1,5 @@
 const { analyzeFrame, consolidateAnalyses } = require('../services/geminiService');
+const FightAnalysis = require('../models/FightAnalysis');
 
 function extractYouTubeId(url) {
   try {
@@ -22,7 +23,7 @@ function extractYouTubeId(url) {
 
 exports.analyzeLink = async (req, res) => {
   try {
-    const { videos, athleteName } = req.body || {};
+    const { videos, athleteName, personId, personType } = req.body || {};
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return res.status(400).json({ 
@@ -75,6 +76,25 @@ exports.analyzeLink = async (req, res) => {
     const result = await analyzeFrame(videoUrls, frameContext);
     
     const consolidated = consolidateAnalyses([result]);
+    
+    // Salvar análise se personId for fornecido
+    if (personId && personType) {
+      try {
+        await FightAnalysis.create({
+          personId,
+          personType,
+          videoUrl: videoData.map(v => v.url).join(', '),
+          charts: consolidated.charts || {},
+          summary: consolidated.summary || '',
+          technicalProfile: consolidated.technicalProfile || '',
+          framesAnalyzed: videos.length,
+        });
+        console.log(`💾 Análise salva para ${personType} ${personId}`);
+      } catch (saveError) {
+        console.error('Erro ao salvar análise:', saveError);
+        // Não retornar erro, apenas logar
+      }
+    }
     
     console.log('✅ Análise concluída com sucesso!\n');
     

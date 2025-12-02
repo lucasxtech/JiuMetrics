@@ -5,15 +5,19 @@ import api from './api';
  * @param {Object} payload
  * @param {Array} payload.videos - Array de objetos {url, giColor}
  * @param {string} payload.athleteName - Nome do atleta alvo
+ * @param {string} payload.personId - ID do atleta/adversário
+ * @param {string} payload.personType - 'athlete' ou 'opponent'
  * @returns {Promise} Resposta da IA com análise
  */
-export async function analyzeVideoLink({ videos, athleteName }) {
-  console.log('Analisando vídeos:', videos, athleteName);
+export async function analyzeVideoLink({ videos, athleteName, personId, personType }) {
+  console.log('Analisando vídeos:', videos, athleteName, personId, personType);
 
   try {
     const response = await api.post('/ai/analyze-link', {
       videos,
       athleteName,
+      personId,
+      personType,
     });
     return response.data;
   } catch (error) {

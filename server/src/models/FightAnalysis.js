@@ -1,96 +1,107 @@
-// Modelo de dados para Análise de Lutas (histórico de vídeos analisados)
-const { v4: uuidv4 } = require('uuid');
-
-// Armazena histórico de análises de lutas
-let fightAnalyses = [];
+// Modelo de dados para Análise de Lutas com Supabase
+const supabase = require('../config/supabase');
+const { parseAnalysisFromDB, parseAnalysesFromDB } = require('../utils/dbParsers');
 
 class FightAnalysis {
   /**
    * Busca todas as análises
    */
-  static getAll() {
-    return fightAnalyses;
+  static async getAll() {
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return parseAnalysesFromDB(data);
   }
 
   /**
    * Busca análises por tipo de pessoa (athlete ou opponent)
    */
-  static getByPersonId(personId) {
-    return fightAnalyses.filter((a) => a.personId === personId);
+  static async getByPersonId(personId) {
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .select('*')
+      .eq('person_id', personId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return parseAnalysesFromDB(data);
   }
 
   /**
    * Busca uma análise por ID
    */
-  static getById(id) {
-    return fightAnalyses.find((a) => a.id === id);
+  static async getById(id) {
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return parseAnalysisFromDB(data);
   }
 
   /**
    * Cria uma nova análise de luta
    */
-  static create(data) {
-    const newAnalysis = {
-      id: uuidv4(),
-      personId: data.personId, // ID do atleta ou adversário
-      personType: data.personType, // 'athlete' ou 'opponent'
-      videoUrl: data.videoUrl, // Link da luta
-      videoName: data.videoName || '',
-      
-      // Dados da análise do Gemini
-      charts: data.charts || [],
-      summary: data.summary || '',
-      
-      // Perfil técnico consolidado
-      technicalProfile: {
-        personality: data.technicalProfile?.personality || {},
-        initialBehavior: data.technicalProfile?.initialBehavior || {},
-        guardGame: data.technicalProfile?.guardGame || {},
-        passingGame: data.technicalProfile?.passingGame || {},
-      },
-      
-      framesAnalyzed: data.framesAnalyzed || 0,
-      createdAt: new Date(),
-    };
+  static async create(analysisData) {
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .insert([{
+        person_id: analysisData.personId,
+        person_type: analysisData.personType,
+        video_url: analysisData.videoUrl || '',
+        charts: analysisData.charts || [],
+        summary: analysisData.summary || '',
+        technical_profile: analysisData.technicalProfile || '',
+        frames_analyzed: analysisData.framesAnalyzed || 0,
+      }])
+      .select()
+      .single();
     
-    fightAnalyses.push(newAnalysis);
-    return newAnalysis;
+    if (error) throw error;
+    return parseAnalysisFromDB(data);
   }
 
   /**
    * Atualiza uma análise
    */
-  static update(id, data) {
-    const index = fightAnalyses.findIndex((a) => a.id === id);
-    if (index === -1) return null;
+  static async update(id, analysisData) {
+    const updateData = {};
+    
+    if (analysisData.videoUrl !== undefined) updateData.video_url = analysisData.videoUrl;
+    if (analysisData.charts !== undefined) updateData.charts = analysisData.charts;
+    if (analysisData.summary !== undefined) updateData.summary = analysisData.summary;
+    if (analysisData.technicalProfile !== undefined) updateData.technical_profile = analysisData.technicalProfile;
+    if (analysisData.framesAnalyzed !== undefined) updateData.frames_analyzed = analysisData.framesAnalyzed;
 
-    fightAnalyses[index] = {
-      ...fightAnalyses[index],
-      ...data,
-      updatedAt: new Date(),
-    };
-    return fightAnalyses[index];
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return parseAnalysisFromDB(data);
   }
 
   /**
    * Deleta uma análise
    */
-  static delete(id) {
-    const index = fightAnalyses.findIndex((a) => a.id === id);
-    if (index === -1) return null;
-
-    const deleted = fightAnalyses[index];
-    fightAnalyses.splice(index, 1);
-    return deleted;
-  }
-
-  /**
-   * Deleta todas as análises de uma pessoa
-   */
-  static deleteByPersonId(personId) {
-    const deleted = fightAnalyses.filter((a) => a.personId === personId);
-    fightAnalyses = fightAnalyses.filter((a) => a.personId !== personId);
-    return deleted;
+  static async delete(id) {
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return parseAnalysisFromDB(data);
   }
 }
 

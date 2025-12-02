@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { analyzeVideoLink, isValidVideoUrl } from '../services/videoAnalysisService';
 import { uploadVideo, isValidVideoFile } from '../services/videoUploadService';
+import { getAllAthletes } from '../services/athleteService';
+import { getAllOpponents } from '../services/opponentService';
 import PieChartSection from './PieChartSection';
 
 export default function VideoAnalysisComponent() {
@@ -12,6 +14,13 @@ export default function VideoAnalysisComponent() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('url');
   const [athleteName, setAthleteName] = useState('');
+  
+  // Novos estados para vincular análise
+  const [personType, setPersonType] = useState('athlete'); // 'athlete' ou 'opponent'
+  const [personId, setPersonId] = useState('');
+  const [athletes, setAthletes] = useState([]);
+  const [opponents, setOpponents] = useState([]);
+  const [loadingPeople, setLoadingPeople] = useState(true);
 
   const giColorOptions = [
     { value: 'preto', label: 'Preto' },
@@ -24,6 +33,41 @@ export default function VideoAnalysisComponent() {
     `inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
       activeTab === tab ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
     }`;
+
+  // Carregar atletas e adversários
+  useEffect(() => {
+    const loadPeople = async () => {
+      try {
+        const [athletesData, opponentsData] = await Promise.all([
+          getAllAthletes(),
+          getAllOpponents()
+        ]);
+        setAthletes(athletesData?.data || []);
+        setOpponents(opponentsData?.data || []);
+      } catch (err) {
+        console.error('Erro ao carregar atletas/adversários:', err);
+        setAthletes([]);
+        setOpponents([]);
+      } finally {
+        setLoadingPeople(false);
+      }
+    };
+    loadPeople();
+  }, []);
+
+  // Atualizar athleteName quando personId mudar
+  useEffect(() => {
+    if (personId) {
+      const person = personType === 'athlete' 
+        ? athletes.find(a => a.id === personId)
+        : opponents.find(o => o.id === personId);
+      if (person) {
+        setAthleteName(person.name);
+      }
+    } else {
+      setAthleteName('');
+    }
+  }, [personId, personType, athletes, opponents]);
 
   const addVideo = () => {
     setVideos([...videos, { id: Date.now(), url: '', file: null, giColor: 'preto' }]);
@@ -55,8 +99,8 @@ export default function VideoAnalysisComponent() {
       }
     }
     
-    if (!athleteName.trim()) {
-      setError('Informe o nome do atleta para orientar a IA');
+    if (!personId) {
+      setError('Selecione um atleta ou adversário para vincular a análise');
       return;
     }
 
@@ -68,6 +112,8 @@ export default function VideoAnalysisComponent() {
       const result = await analyzeVideoLink({
         videos: validVideos.map(v => ({ url: v.url, giColor: v.giColor })),
         athleteName: athleteName.trim(),
+        personId,
+        personType
       });
       if (result.data) {
         setAnalysis(result);
@@ -99,8 +145,8 @@ export default function VideoAnalysisComponent() {
       }
     }
     
-    if (!athleteName.trim()) {
-      setError('Informe o nome do atleta para orientar a IA');
+    if (!personId) {
+      setError('Selecione um atleta ou adversário para vincular a análise');
       return;
     }
 
@@ -112,6 +158,8 @@ export default function VideoAnalysisComponent() {
       const result = await uploadVideo({
         videos: validVideos.map(v => ({ file: v.file, giColor: v.giColor })),
         athleteName: athleteName.trim(),
+        personId,
+        personType
       });
       if (result.data) {
         setAnalysis(result);
@@ -171,19 +219,48 @@ export default function VideoAnalysisComponent() {
       {activeTab === 'url' && (
         <section className="panel">
           <form onSubmit={handleAnalyzeUrl} className="space-y-6">
-            {/* Nome do atleta */}
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-600">Nome do atleta</label>
-              <input
-                type="text"
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
-                value={athleteName}
-                onChange={(e) => {
-                  setAthleteName(e.target.value);
-                  setError(null);
-                }}
-                placeholder="Ex.: João Silva"
-              />
+            {/* Seletor de atleta/adversário */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">Tipo</label>
+                <select
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
+                  value={personType}
+                  onChange={(e) => {
+                    setPersonType(e.target.value);
+                    setPersonId('');
+                    setError(null);
+                  }}
+                  disabled={loadingPeople}
+                >
+                  <option value="athlete">Atleta</option>
+                  <option value="opponent">Adversário</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                  {personType === 'athlete' ? 'Atleta' : 'Adversário'}
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
+                  value={personId}
+                  onChange={(e) => {
+                    setPersonId(e.target.value);
+                    setError(null);
+                  }}
+                  disabled={loadingPeople}
+                >
+                  <option value="">Selecione...</option>
+                  {personType === 'athlete' 
+                    ? athletes.map(a => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))
+                    : opponents.map(o => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))
+                  }
+                </select>
+              </div>
             </div>
 
             {/* Lista de vídeos */}
@@ -293,19 +370,48 @@ export default function VideoAnalysisComponent() {
       {activeTab === 'upload' && (
         <section className="panel">
           <form onSubmit={handleFileUpload} className="space-y-6">
-            {/* Nome do atleta */}
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-600">Nome do atleta</label>
-              <input
-                type="text"
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
-                value={athleteName}
-                onChange={(e) => {
-                  setAthleteName(e.target.value);
-                  setError(null);
-                }}
-                placeholder="Ex.: Maria Santos"
-              />
+            {/* Seletor de atleta/adversário */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">Tipo</label>
+                <select
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
+                  value={personType}
+                  onChange={(e) => {
+                    setPersonType(e.target.value);
+                    setPersonId('');
+                    setError(null);
+                  }}
+                  disabled={loadingPeople}
+                >
+                  <option value="athlete">Atleta</option>
+                  <option value="opponent">Adversário</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                  {personType === 'athlete' ? 'Atleta' : 'Adversário'}
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
+                  value={personId}
+                  onChange={(e) => {
+                    setPersonId(e.target.value);
+                    setError(null);
+                  }}
+                  disabled={loadingPeople}
+                >
+                  <option value="">Selecione...</option>
+                  {personType === 'athlete' 
+                    ? athletes.map(a => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))
+                    : opponents.map(o => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))
+                  }
+                </select>
+              </div>
             </div>
 
             {/* Lista de vídeos */}
