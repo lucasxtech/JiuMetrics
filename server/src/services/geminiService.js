@@ -125,16 +125,36 @@ function consolidateAnalyses(frameAnalyses) {
     generatedAt: new Date().toISOString(),
   };
 
-  // Coletar todos os dados de cada categoria
-  const allLabels = {};
+  // Coletar todos os dados de cada categoria (labels) e sumarizar textos
+  const allLabels = {}; // { label: [values] }
+
+  frameAnalyses.forEach((analysis) => {
+    if (!analysis) return;
+
+    // recolher summaries de cada frame
+    if (analysis.summary && typeof analysis.summary === 'string') {
+      consolidated.summaries.push(analysis.summary.trim());
+    }
+
+    // recolher dados numéricos por label
+    if (Array.isArray(analysis.charts)) {
+      analysis.charts.forEach((chart) => {
+        if (!Array.isArray(chart.data)) return;
+        chart.data.forEach((item) => {
+          const label = item.label || item.name;
+          const value = Number(item.value) || 0;
+          if (!allLabels[label]) allLabels[label] = [];
+          allLabels[label].push(value);
+        });
+      });
+    }
+  });
 
   // Calcular médias para cada label
   const averagedData = {};
   Object.keys(allLabels).forEach((label) => {
     const values = allLabels[label];
-    averagedData[label] = Math.round(
-      values.reduce((a, b) => a + b, 0) / values.length
-    );
+    averagedData[label] = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
   });
 
   // Distribuir dados médios entre os gráficos
@@ -163,10 +183,11 @@ function consolidateAnalyses(frameAnalyses) {
     { label: "Toreada", value: averagedData["Toreada"] || 20 },
   ];
 
-  // Consolidar sumários
-  const uniqueSummaries = [...new Set(consolidated.summaries)];
-  consolidated.summary = uniqueSummaries.join(" ");
+  // Consolidar sumários (concatena, deduplica e fornece fallback)
+  const uniqueSummaries = [...new Set(consolidated.summaries.filter(Boolean))];
+  consolidated.summary = uniqueSummaries.length > 0 ? uniqueSummaries.join(' ') : 'Resumo não disponível';
 
+  // remover campo temporário
   delete consolidated.summaries;
 
   return consolidated;
