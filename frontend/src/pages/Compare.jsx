@@ -34,8 +34,8 @@ export default function Compare() {
 
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow">Seleção</p>
-          <h2 className="section-header__title">Escolha os perfis para comparar</h2>
+          <p className="section-header__eyebrow"style={{ marginLeft: "1vw" }}>Seleção</p>
+          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>Escolha os perfis para comparar</h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           <article className="panel">
