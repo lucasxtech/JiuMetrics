@@ -102,7 +102,7 @@ export default function AthleteDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <button
             onClick={() => navigate('/athletes')}
@@ -113,7 +113,7 @@ export default function AthleteDetail() {
           <h1 className="text-3xl font-bold text-primary">{athlete.name}</h1>
           <p className="text-gray-600 mt-1">{athlete.belt} • {athlete.style}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 sm:gap-4">
           <button
             type="button"
             onClick={() => setIsEditing((prev) => !prev)}
@@ -174,10 +174,10 @@ export default function AthleteDetail() {
           }].map((item) => (
             <div
               key={item.label}
-              className="rounded-3xl bg-white px-5 py-6 text-center shadow-[0_15px_35px_rgba(15,23,42,0.08)]"
+              className="rounded-3xl bg-white px-6 py-8 sm:px-8 sm:py-9 text-center shadow-[0_15px_35px_rgba(15,23,42,0.08)]"
             >
               <p className="text-sm font-medium uppercase tracking-wide text-slate-500">{item.label}</p>
-              <p className={`mt-2 text-2xl font-bold text-slate-900 ${item.accent}`}>{item.value}</p>
+              <p className={`mt-3 text-3xl font-bold text-slate-900 ${item.accent}`}>{item.value}</p>
             </div>
           ))}
         </div>
