@@ -9,6 +9,8 @@ import api from './api';
  * @returns {Promise} Resposta da IA com análise
  */
 export async function analyzeVideoLink({ url, athleteName, giColor }) {
+  console.log('Analisando vídeo:', url, athleteName, giColor);
+
   try {
     const response = await api.post('/ai/analyze-link', {
       url,
