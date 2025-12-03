@@ -1,223 +1,171 @@
-# JiuMetrics – Análise Tática de Jiu-Jitsu
+# 🥋 JiuMetrics - Análise Tática de Jiu-Jitsu
 
-Aplicação web moderna e responsiva para gestão de atletas e adversários de Jiu-Jitsu, geração de estratégia com IA e dashboards visuais ricos.
+Sistema completo de análise de vídeos de Jiu-Jitsu com IA (Google Gemini), gerenciamento de atletas/adversários e geração de estratégias.
 
-## Funcionalidades
+## 🚀 Funcionalidades
 
-- Gestão de Atletas e Adversários
-- Dashboard interativo com gráficos
-- Gerador de Estratégia com IA (Gemini)
-- Comparação visual (Radar, Barras, Linhas com Recharts)
-- UI moderna e responsiva (cards, gradientes)
+- ✅ **Análise de Vídeos com IA**: Upload ou link do YouTube com análise via Google Gemini Vision
+- ✅ **Gerenciamento de Atletas e Adversários**: CRUD completo com perfis técnicos
+- ✅ **Histórico de Análises**: Todas as análises ficam salvas no perfil de cada pessoa
+- ✅ **Gráficos e Dashboards**: Visualização de dados técnicos e estatísticos
+- ✅ **Comparação e Estratégias**: Compare atletas e gere estratégias de luta
+- ✅ **Banco de Dados Supabase**: Persistência de dados em PostgreSQL
 
-## Requisitos
+## 📦 Tecnologias
 
-- Node.js 18+
-- npm 9+
-- Navegador moderno
-- FFmpeg (para extração de frames)
+**Frontend:**
+- React 18 + Vite
+- TailwindCSS
+- Recharts (gráficos)
+- Axios
 
-## Setup
+**Backend:**
+- Node.js + Express
+- Supabase (PostgreSQL)
+- Google Gemini AI
+- FFmpeg (extração de frames)
 
-### Ambiente
-Crie `server/.env` com:
-```
-PORT=5050
-GEMINI_API_KEY=SUA_CHAVE_GEMINI
-```
+## ⚙️ Instalação
 
-### Instalação
-Frontend
-```
-cd frontend
-npm install
-```
-Backend
-```
-cd server
-npm install
-```
-
-## Execução
-Backend
-```
-cd server
-npm run dev
-```
-Frontend
-```
-cd frontend
-npm run dev
-```
-Acesse `http://localhost:5173`
-
-## Estrutura do Projeto
-
-```
-projeto/
-├── frontend/                    # Aplicação React Vite
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── common/         # Componentes reutilizáveis
-│   │   │   ├── forms/          # Formulários
-│   │   │   └── charts/         # Gráficos
-│   │   ├── pages/              # Páginas principais
-│   │   ├── services/           # Chamadas à API
-│   │   ├── hooks/              # Custom hooks (futura expansão)
-│   │   ├── context/            # Context API (futura expansão)
-│   │   ├── utils/              # Utilitários
-│   │   ├── App.jsx             # Router principal
-│   │   ├── index.css           # Estilos globais
-│   │   └── main.jsx            # Entry point
-│   ├── .env                    # Variáveis de ambiente
-│   ├── tailwind.config.js      # Configuração Tailwind
-│   └── package.json
-│
-├── server/                     # Backend Express
-│   ├── src/
-│   │   ├── controllers/        # Lógica de negócio
-│   │   ├── models/             # Modelos de dados
-│   │   ├── routes/             # Rotas da API
-│   │   └── utils/              # Funções auxiliares
-│   ├── index.js                # Servidor principal
-│   ├── config.js               # Configurações
-│   ├── .env                    # Variáveis de ambiente
-│   └── package.json
-│
-└── README.md
-
-```
-
-## Endpoints da API
-
-### Atletas
-- `GET /api/athletes` - Listar todos
-- `GET /api/athletes/:id` - Detalhes de um atleta
-- `POST /api/athletes` - Criar novo
-- `PUT /api/athletes/:id` - Atualizar
-- `DELETE /api/athletes/:id` - Deletar
-
-### Adversários
-- `GET /api/opponents` - Listar todos
-- `GET /api/opponents/:id` - Detalhes
-- `POST /api/opponents` - Criar novo
-- `PUT /api/opponents/:id` - Atualizar
-- `DELETE /api/opponents/:id` - Deletar
-
-### IA/Estratégia
-- `POST /api/ai/strategy` - Gerar estratégia
-  ```json
-  {
-    "athleteId": "1",
-    "opponentId": "2"
-  }
-  ```
-
-## Páginas da Aplicação
-
-1. **Dashboard** (`/`) - Visão geral com estatísticas e gráficos
-2. **Atletas** (`/athletes`) - Gerenciar atletas
-3. **Detalhe Atleta** (`/athletes/:id`) - Perfil completo do atleta
-4. **Adversários** (`/opponents`) - Gerenciar adversários
-5. **Comparador** (`/compare`) - Análise lado a lado
-6. **Estratégia** (`/strategy`) - Gerador de planos com IA
-
-## Stack Tecnológico
-
-### Frontend
-- **React 19** - UI library
-- **Vite** - Build tool
-- **React Router v6** - Roteamento
-- **TailwindCSS** - Estilos
-- **Recharts** - Gráficos
-- **Axios** - HTTP client
-
-### Backend
-- **Node.js** - Runtime
-- **Express** - Framework web
-- **CORS** - Segurança CORS
-- **UUID** - Geração de IDs
-- **Nodemon** - Dev reload
-
-## Dados de Exemplo
-
-A aplicação vem com dados mock pré-carregados para testes:
-
-### Atletas
-- João Silva - Roxa, Guarda, 85kg
-- Maria Santos - Azul, Passagem, 62kg
-- Carlos Oliveira - Marrom, Pressão, 92kg
-
-### Adversários
-- Pedro Ramos - Marrom, Pressão, 90kg
-- Ana Costa - Roxa, Explosão, 65kg
-
-## Roadmap
-
-- [ ] Integração com Supabase/Firebase
-- [ ] Upload de vídeos
-- [ ] Autenticação de usuários
-- [ ] Histórico de lutas
-- [ ] Integração com IA real (OpenAI, Claude)
-- [ ] Estatísticas avançadas
-- [ ] Sistema de notificações
-- [ ] Export de relatórios (PDF)
-
-## Componentes
-
-### AthleteCard
-Exibe informações resumidas de um atleta com progresso visual.
-
-### AthleteForm
-Formulário completo para criar/editar atletas com validação.
-
-### StatsRadarChart
-Gráfico radar para exibir atributos multidimensionais.
-
-### StatsBarChart
-Gráfico de barras para frequência de ataques.
-
-### CompareView
-Visualização lado a lado com gráfico duplo e análise de diferenças.
-
-### AiStrategyBox
-Exibe estratégia gerada com seções expansíveis.
-
-## Troubleshooting
-
-### Porta 5050 já em uso
+### 1. Clone o repositório
 ```bash
-# Mudar porta no arquivo server/.env
-PORT=5051
+git clone https://github.com/lucasxtech/JiuMetrics.git
+cd JiuMetrics
 ```
 
-### Erro de CORS
-Verifique se o `VITE_API_URL` no frontend está apontando para o servidor correto.
+### 2. Configure o Backend
 
-### Componentes não carregam
-Certifique-se de que:
-1. Todas as dependências estão instaladas (`npm install`)
-2. Não há erros de sintaxe nos componentes
-3. O servidor está rodando na porta correta
+```bash
+cd server
+npm install
+```
 
-## Dicas de Desenvolvimento
+Crie o arquivo `.env` com base no `.env.example`:
+```bash
+cp .env.example .env
+```
 
-1. **Adicionar novo atleta**: Vá para `/athletes` e clique em "Novo Atleta"
-2. **Testar IA**: Selecione um atleta e adversário em `/strategy`
-3. **Ver comparação**: Use `/compare` para análise visual
-4. **Verificar dados**: Abra o DevTools (F12) para ver requisições
+Edite `.env` com suas credenciais:
+```env
+GEMINI_API_KEY=sua_chave_gemini
+SUPABASE_URL=sua_url_supabase
+SUPABASE_ANON_KEY=sua_chave_supabase
+```
 
-## Suporte
+### 3. Configure o Frontend
 
-Para dúvidas ou problemas:
-1. Verifique se o servidor está rodando (`npm run dev`)
-2. Limpe o cache do navegador (Ctrl+Shift+Delete)
-3. Reinicie ambos os servidores
+```bash
+cd ../frontend
+npm install
+```
 
-## Licença
+Crie o arquivo `.env` com base no `.env.example`:
+```bash
+cp .env.example .env
+```
 
-Este projeto é desenvolvido como propósito educacional.
+### 4. Configure o Supabase
+
+1. Acesse https://supabase.com e crie um projeto
+2. No **SQL Editor**, execute o script `server/supabase-schema.sql`
+3. Copie as credenciais em **Settings > API** para o `.env`
+
+📖 **Guia detalhado:** [SETUP_SUPABASE.md](./SETUP_SUPABASE.md)
+
+## 🎯 Como Usar
+
+### Iniciar o servidor
+
+```bash
+# Terminal 1 - Backend
+cd server
+npm run dev
+```
+
+### Iniciar o frontend
+
+```bash
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
+```
+
+Acesse: **http://localhost:5173**
+
+## 📚 Documentação
+
+- [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) - Guia completo de setup do Supabase
+- [API.md](./API.md) - Documentação da API REST
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Arquitetura do sistema
+- [DEVELOPMENT.md](./DEVELOPMENT.md) - Guia de desenvolvimento
+
+## 🗂️ Estrutura do Projeto
+
+```
+projeto analise atletas/
+├── frontend/          # React + Vite
+│   ├── src/
+│   │   ├── components/   # Componentes React
+│   │   ├── pages/        # Páginas
+│   │   ├── services/     # Chamadas API
+│   │   └── utils/        # Utilitários
+│   └── .env.example
+├── server/           # Node.js + Express
+│   ├── src/
+│   │   ├── controllers/  # Lógica de negócio
+│   │   ├── models/       # Modelos Supabase
+│   │   ├── routes/       # Rotas da API
+│   │   ├── services/     # Serviços externos (Gemini, FFmpeg)
+│   │   └── utils/        # Utilitários
+│   ├── uploads/          # Vídeos temporários
+│   ├── .env.example
+│   └── supabase-schema.sql
+└── README.md
+```
+
+## 🔑 Variáveis de Ambiente
+
+### Backend (.env)
+```env
+GEMINI_API_KEY=         # Chave da API Google Gemini
+SUPABASE_URL=           # URL do projeto Supabase
+SUPABASE_ANON_KEY=      # Chave anon do Supabase
+```
+
+### Frontend (.env)
+```env
+VITE_API_URL=http://localhost:5050/api
+SUPABASE_URL=           # URL do projeto Supabase (opcional)
+SUPABASE_ANON_KEY=      # Chave anon do Supabase (opcional)
+```
+
+## 🎬 Fluxo de Uso
+
+1. **Cadastre atletas e adversários** na aba "Atletas" ou "Adversários"
+2. **Analise vídeos** na aba "IA":
+   - Faça upload de vídeos ou cole links do YouTube
+   - Selecione o atleta/adversário
+   - Escolha a cor do kimono
+   - Aguarde a análise
+3. **Visualize análises salvas** no perfil de cada atleta/adversário
+4. **Compare e crie estratégias** nas abas "Comparar" e "Estratégia"
+
+## 🤝 Contribuindo
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+MIT
+
+## 👤 Autor
+
+Lucas Menezes - [@lucasxtech](https://github.com/lucasxtech)
 
 ---
 
-**JiuMetrics | v1.0**
+**Desenvolvido com ❤️ para a comunidade de Jiu-Jitsu**
