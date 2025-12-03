@@ -100,8 +100,8 @@ export default function Compare() {
 
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow">Resultado</p>
-          <h2 className="section-header__title">Visualize insights da comparação</h2>
+          <p className="section-header__eyebrow" style={{ marginLeft: "1vw" }}>Resultado</p>
+          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>Visualize insights da comparação</h2>
         </div>
         <CompareView athlete={selectedAthlete} opponent={selectedOpponent} />
       </section>

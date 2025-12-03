@@ -145,10 +145,10 @@ select:focus {
 
 /* Botões com efeito profissional */
 button {
-  padding: 14px 24px !important;
-  border-radius: 14px !important;
-  font-size: 16px !important;
-  font-weight: 600 !important;
+  padding: 14px 24px ;
+  border-radius: 14px ;
+  font-size: 16px ;
+  font-weight: 600 ;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

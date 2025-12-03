@@ -49,14 +49,14 @@ export default function Athletes() {
 
   return (
     <div className="dashboard-wrapper animate-fadeIn">
-      <section className="panel panel--hero">
+      <section className="panel panel--hero" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p className="eyebrow">Gestão</p>
           <h1 className="hero-title">Central de atletas</h1>
           <p className="hero-description">Gerencie perfis, acompanhe métricas e mantenha os cadastros sincronizados antes das análises.</p>
         </div>
         <div className="hero-meta space-y-4">
-          <p>Crie novos perfis e mantenha as informações prontas para as comparações e estratégias.</p>
+          <p style={{ marginBottom: "2vh" }}>Crie novos perfis e mantenha as informações prontas para as comparações e estratégias.</p>
           <button
             type="button"
             onClick={() => setShowForm(!showForm)}

@@ -5,6 +5,7 @@ export default function ErrorMessage({ message, onDismiss }) {
       <div className="flex">
         <div className="flex-shrink-0">
           <svg
+            style={{ margin: "0.5vw" }}
             className="h-5 w-5 text-red-400"
             viewBox="0 0 20 20"
             fill="currentColor"
@@ -17,12 +18,13 @@ export default function ErrorMessage({ message, onDismiss }) {
           </svg>
         </div>
         <div className="ml-3">
-          <p className="text-sm font-medium text-red-800">{message}</p>
+          <p className="text-sm font-medium text-red-800" style={{ margin: "0.5vw" }}>{message}</p>
         </div>
         {onDismiss && (
           <button
             onClick={onDismiss}
             className="ml-auto text-red-400 hover:text-red-600"
+            style={{ padding: "0%" }}
           >
             ×
           </button>
