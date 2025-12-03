@@ -4,6 +4,7 @@ const { extractFrames } = require('../services/ffmpegService');
 const { frameToBase64 } = require('../utils/imageUtils');
 const { analyzeFrame, consolidateAnalyses } = require('../services/geminiService');
 const { generateQuickChartUrl } = require('../utils/chartUtils');
+const { extractTechnicalProfile } = require('../utils/profileUtils');
 const FightAnalysis = require('../models/FightAnalysis');
 
 /**
@@ -174,39 +175,4 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
   }
 };
 
-/**
- * Extrai perfil técnico dos dados de gráficos
- */
-function extractTechnicalProfile(charts) {
-  if (!charts || !Array.isArray(charts)) {
-    return {};
-  }
-
-  const profile = {};
-
-  charts.forEach((chart) => {
-    const title = chart.title;
-    const data = chart.data;
-
-    if (!data || !Array.isArray(data)) return;
-
-    const values = {};
-    data.forEach((item) => {
-      values[item.label] = item.value;
-    });
-
-    if (title.includes('Personalidade')) {
-      profile.personality = values;
-    } else if (title.includes('Comportamento Inicial')) {
-      profile.initialBehavior = values;
-    } else if (title.includes('Jogo de Guarda')) {
-      profile.guardGame = values;
-    } else if (title.includes('Jogo de Passagem')) {
-      profile.passingGame = values;
-    }
-  });
-
-  return profile;
-}
-
-exports.extractTechnicalProfile = extractTechnicalProfile;
+module.exports = exports;

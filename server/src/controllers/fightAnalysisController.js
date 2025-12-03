@@ -2,15 +2,17 @@
 const FightAnalysis = require('../models/FightAnalysis');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
+const { extractTechnicalProfile } = require('../utils/profileUtils');
 
 /**
  * GET /api/fight-analysis - Lista todas as análises
  */
 exports.getAllAnalyses = async (req, res) => {
   try {
-    const analyses = FightAnalysis.getAll();
+    const analyses = await FightAnalysis.getAll();
     res.json({ success: true, data: analyses });
   } catch (error) {
+    console.error('Erro ao buscar análises:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -20,12 +22,13 @@ exports.getAllAnalyses = async (req, res) => {
  */
 exports.getAnalysisById = async (req, res) => {
   try {
-    const analysis = FightAnalysis.getById(req.params.id);
+    const analysis = await FightAnalysis.getById(req.params.id);
     if (!analysis) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }
     res.json({ success: true, data: analysis });
   } catch (error) {
+    console.error('Erro ao buscar análise:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -35,9 +38,10 @@ exports.getAnalysisById = async (req, res) => {
  */
 exports.getAnalysesByPerson = async (req, res) => {
   try {
-    const analyses = FightAnalysis.getByPersonId(req.params.personId);
+    const analyses = await FightAnalysis.getByPersonId(req.params.personId);
     res.json({ success: true, data: analyses });
   } catch (error) {
+    console.error('Erro ao buscar análises da pessoa:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
@@ -58,12 +62,12 @@ exports.createAnalysis = async (req, res) => {
 
     // Validar se pessoa existe
     if (personType === 'athlete') {
-      const athlete = Athlete.getById(personId);
+      const athlete = await Athlete.getById(personId);
       if (!athlete) {
         return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
       }
     } else if (personType === 'opponent') {
-      const opponent = Opponent.getById(personId);
+      const opponent = await Opponent.getById(personId);
       if (!opponent) {
         return res.status(404).json({ success: false, error: 'Adversário não encontrado' });
       }
@@ -73,7 +77,7 @@ exports.createAnalysis = async (req, res) => {
     const technicalProfile = extractTechnicalProfile(charts);
 
     // Criar análise
-    const analysis = FightAnalysis.create({
+    const analysis = await FightAnalysis.create({
       personId,
       personType,
       videoUrl,
@@ -86,9 +90,9 @@ exports.createAnalysis = async (req, res) => {
 
     // Atualizar perfil técnico da pessoa
     if (personType === 'athlete') {
-      Athlete.updateTechnicalProfile(personId, technicalProfile);
+      await Athlete.updateTechnicalProfile(personId, technicalProfile);
     } else if (personType === 'opponent') {
-      Opponent.updateTechnicalProfile(personId, technicalProfile);
+      await Opponent.updateTechnicalProfile(personId, technicalProfile);
     }
 
     res.status(201).json({
@@ -106,51 +110,16 @@ exports.createAnalysis = async (req, res) => {
  */
 exports.deleteAnalysis = async (req, res) => {
   try {
-    const deleted = FightAnalysis.delete(req.params.id);
+    const deleted = await FightAnalysis.delete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }
     res.json({ success: true, message: 'Análise deletada', data: deleted });
   } catch (error) {
+    console.error('Erro ao deletar análise:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-/**
- * Extrai perfil técnico dos dados de gráficos da análise Gemini
- */
-function extractTechnicalProfile(charts) {
-  if (!charts || !Array.isArray(charts)) {
-    return {};
-  }
-
-  const profile = {};
-
-  charts.forEach((chart) => {
-    const title = chart.title;
-    const data = chart.data;
-
-    if (!data || !Array.isArray(data)) return;
-
-    // Criar objeto com valores
-    const values = {};
-    data.forEach((item) => {
-      values[item.label] = item.value;
-    });
-
-    // Mapear para estrutura do perfil técnico
-    if (title.includes('Personalidade')) {
-      profile.personality = values;
-    } else if (title.includes('Comportamento Inicial')) {
-      profile.initialBehavior = values;
-    } else if (title.includes('Jogo de Guarda')) {
-      profile.guardGame = values;
-    } else if (title.includes('Jogo de Passagem')) {
-      profile.passingGame = values;
-    }
-  });
-
-  return profile;
-}
-
 module.exports = exports;
+
