@@ -8,7 +8,7 @@ if (!apiKey) {
 }
 
 const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const model = ai ? ai.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
+const model = ai ? ai.getGenerativeModel({ model: "gemini-3.0-pro" }) : null;
 
 const BASE_PROMPT = (url) =>  {
   return (` Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Scout).
@@ -91,6 +91,7 @@ async function analyzeFrame(url, context = {}) {
   }
 
   const prompt = buildPrompt(url, context);
+  console.log("🤖 Enviando prompt para Gemini:", prompt);
 
   try {
     const result = await model.generateContent(prompt);
