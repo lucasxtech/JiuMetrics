@@ -21,6 +21,10 @@ export default function VideoAnalysisComponent() {
   const [athletes, setAthletes] = useState([]);
   const [opponents, setOpponents] = useState([]);
   const [loadingPeople, setLoadingPeople] = useState(true);
+  
+  // Estados para feedback de progresso detalhado
+  const [processingStage, setProcessingStage] = useState('');
+  const [processingProgress, setProcessingProgress] = useState(0);
 
   const giColorOptions = [
     { value: 'preto', label: 'Preto' },
@@ -107,14 +111,43 @@ export default function VideoAnalysisComponent() {
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
+    setProcessingStage('Iniciando análise...');
+    setProcessingProgress(10);
 
     try {
+      // Simular progresso enquanto aguarda resposta
+      const progressInterval = setInterval(() => {
+        setProcessingProgress(prev => {
+          if (prev >= 90) return 90;
+          return prev + 2;
+        });
+      }, 1000);
+
+      setProcessingStage('📥 Baixando vídeo...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProcessingProgress(20);
+      
+      setProcessingStage('⬆️  Enviando para Gemini...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProcessingProgress(30);
+      
+      setProcessingStage('⏳ Processando vídeo (pode levar 2-5 minutos)...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProcessingProgress(40);
+      
+      setProcessingStage('🤖 Gemini analisando o vídeo completo...');
+      
       const result = await analyzeVideoLink({
         videos: validVideos.map(v => ({ url: v.url, giColor: v.giColor })),
         athleteName: athleteName.trim(),
         personId,
         personType
       });
+      
+      clearInterval(progressInterval);
+      setProcessingProgress(100);
+      setProcessingStage('✅ Análise concluída!');
+      
       if (result.data) {
         setAnalysis(result);
       } else {
@@ -124,8 +157,14 @@ export default function VideoAnalysisComponent() {
       const errorMsg =
         err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao analisar os vídeos. Tente novamente.';
       setError(errorMsg);
+      setProcessingStage('');
+      setProcessingProgress(0);
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        setProcessingStage('');
+        setProcessingProgress(0);
+      }, 2000);
     }
   };
 
@@ -153,14 +192,43 @@ export default function VideoAnalysisComponent() {
     setIsLoading(true);
     setError(null);
     setAnalysis(null);
+    setProcessingStage('Preparando upload...');
+    setProcessingProgress(5);
 
     try {
+      // Simular progresso enquanto aguarda resposta
+      const progressInterval = setInterval(() => {
+        setProcessingProgress(prev => {
+          if (prev >= 90) return 90;
+          return prev + 1.5;
+        });
+      }, 1000);
+
+      setProcessingStage('📤 Fazendo upload do vídeo...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProcessingProgress(15);
+      
+      setProcessingStage('🎬 Extraindo frames...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProcessingProgress(25);
+      
+      setProcessingStage('⏳ Processando com Gemini (2-5 minutos)...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setProcessingProgress(35);
+      
+      setProcessingStage('🤖 Analisando técnicas de Jiu-Jitsu...');
+      
       const result = await uploadVideo({
         videos: validVideos.map(v => ({ file: v.file, giColor: v.giColor })),
         athleteName: athleteName.trim(),
         personId,
         personType
       });
+      
+      clearInterval(progressInterval);
+      setProcessingProgress(100);
+      setProcessingStage('✅ Processamento concluído!');
+      
       if (result.data) {
         setAnalysis(result);
       } else {
@@ -170,9 +238,15 @@ export default function VideoAnalysisComponent() {
       const errorMsg =
         err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao processar os vídeos. Tente novamente.';
       setError(errorMsg);
+      setProcessingStage('');
+      setProcessingProgress(0);
     } finally {
       setIsLoading(false);
       setVideos([{ id: 1, url: '', file: null, giColor: 'preto' }]);
+      setTimeout(() => {
+        setProcessingStage('');
+        setProcessingProgress(0);
+      }, 2000);
     }
   };
 
@@ -548,6 +622,94 @@ export default function VideoAnalysisComponent() {
             </div>
           )}
 
+          {/* Estatísticas Técnicas */}
+          {analysis.data?.technical_stats && (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
+              <p className="mb-4 text-sm font-bold text-blue-900">📊 Estatísticas Técnicas</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Raspagens */}
+                {analysis.data.technical_stats.sweeps?.quantidade > 0 && (
+                  <div className="bg-white rounded-xl p-4 border border-blue-100">
+                    <p className="text-xs font-semibold text-blue-600 mb-2">RASPAGENS</p>
+                    <div className="space-y-1">
+                      <p className="text-sm text-slate-700">
+                        <span className="font-bold text-lg">{analysis.data.technical_stats.sweeps.quantidade}</span>
+                        <span className="text-xs ml-1">tentativas</span>
+                      </p>
+                      <p className="text-sm text-slate-700">
+                        <span className="font-bold text-green-600">{analysis.data.technical_stats.sweeps.efetividade_percentual}%</span>
+                        <span className="text-xs ml-1">efetividade</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Passagens de Guarda */}
+                {analysis.data.technical_stats.guard_passes?.quantidade > 0 && (
+                  <div className="bg-white rounded-xl p-4 border border-blue-100">
+                    <p className="text-xs font-semibold text-blue-600 mb-2">PASSAGENS DE GUARDA</p>
+                    <div className="space-y-1">
+                      <p className="text-sm text-slate-700">
+                        <span className="font-bold text-lg">{analysis.data.technical_stats.guard_passes.quantidade}</span>
+                        <span className="text-xs ml-1">passagens</span>
+                      </p>
+                      <p className="text-sm text-slate-700">
+                        <span className="font-bold text-orange-600">{analysis.data.technical_stats.guard_passes.tempo_medio_segundos}s</span>
+                        <span className="text-xs ml-1">tempo médio</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Finalizações */}
+                {analysis.data.technical_stats.submissions?.tentativas > 0 && (
+                  <div className="bg-white rounded-xl p-4 border border-blue-100">
+                    <p className="text-xs font-semibold text-blue-600 mb-2">FINALIZAÇÕES</p>
+                    <div className="space-y-1">
+                      <p className="text-xs text-slate-600">
+                        Tentativas: <span className="font-bold">{analysis.data.technical_stats.submissions.tentativas}</span>
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        Ajustadas: <span className="font-bold">{analysis.data.technical_stats.submissions.ajustadas}</span>
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        Concluídas: <span className="font-bold text-green-600">{analysis.data.technical_stats.submissions.concluidas}</span>
+                      </p>
+                      {analysis.data.technical_stats.submissions.detalhes?.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-blue-100">
+                          <p className="text-xs font-semibold text-slate-700 mb-1">Detalhes:</p>
+                          {analysis.data.technical_stats.submissions.detalhes.map((detail, idx) => (
+                            <p key={idx} className="text-xs text-slate-600">• {detail}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pegadas de Costas */}
+                {analysis.data.technical_stats.back_takes?.quantidade > 0 && (
+                  <div className="bg-white rounded-xl p-4 border border-blue-100">
+                    <p className="text-xs font-semibold text-blue-600 mb-2">PEGADAS DE COSTAS</p>
+                    <div className="space-y-1">
+                      <p className="text-sm text-slate-700">
+                        <span className="font-bold text-lg">{analysis.data.technical_stats.back_takes.quantidade}</span>
+                        <span className="text-xs ml-1">pegadas</span>
+                      </p>
+                      <p className="text-sm text-slate-700">
+                        <span className="font-bold text-purple-600">{analysis.data.technical_stats.back_takes.tempo_medio_segundos}s</span>
+                        <span className="text-xs ml-1">controle médio</span>
+                      </p>
+                      {analysis.data.technical_stats.back_takes.tentou_finalizar && (
+                        <p className="text-xs text-green-600 font-semibold mt-2">✓ Tentou finalizar</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {analysis.data?.charts?.map((chart, idx) => (
             <PieChartSection key={idx} title={chart.title} data={{ titulo: chart.title, dados: chart.data }} />
           ))}
@@ -578,16 +740,73 @@ export default function VideoAnalysisComponent() {
       )}
 
       {isLoading && (
-        <section className="panel space-y-4 text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-b-slate-900"></div>
-          <p className="font-medium text-slate-700">
-            {activeTab === 'url' ? '🔬 Analisando com IA Gemini...' : '🎬 Processando vídeo...'}
-          </p>
-          <p className="text-sm text-slate-500">
-            {activeTab === 'url'
-              ? 'Gerando dados e gráficos (aprox. 30-60 segundos).'
-              : 'Extraindo frames e analisando com Gemini Vision (2-5 minutos).'}
-          </p>
+        <section className="panel space-y-6">
+          {/* Barra de progresso animada */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-slate-900">{processingStage}</p>
+              <p className="text-sm font-medium text-slate-600">{processingProgress}%</p>
+            </div>
+            
+            {/* Barra de progresso com gradiente */}
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div 
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-500 ease-out"
+                style={{ width: `${processingProgress}%` }}
+              >
+                <div className="h-full w-full animate-pulse bg-white/20"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Indicador visual */}
+          <div className="flex flex-col items-center space-y-4 text-center py-8">
+            <div className="relative">
+              <div className="h-20 w-20 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl">{processingProgress < 40 ? '📥' : processingProgress < 90 ? '🤖' : '✨'}</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-base font-medium text-slate-700">
+                Análise em andamento
+              </p>
+              <p className="max-w-md text-sm text-slate-500">
+                O Gemini está processando o vídeo completo para gerar dados cirúrgicos e insights técnicos. 
+                Este processo pode levar de <strong>2 a 5 minutos</strong> dependendo da duração do vídeo.
+              </p>
+            </div>
+
+            {/* Etapas do processo */}
+            <div className="mt-6 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-4">
+              <div className={`rounded-lg border p-3 transition ${processingProgress >= 20 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+                <p className="text-xs font-semibold text-slate-700">1. Download</p>
+                <p className="text-2xl">{processingProgress >= 20 ? '✓' : '⏳'}</p>
+              </div>
+              <div className={`rounded-lg border p-3 transition ${processingProgress >= 40 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+                <p className="text-xs font-semibold text-slate-700">2. Upload</p>
+                <p className="text-2xl">{processingProgress >= 40 ? '✓' : '⏳'}</p>
+              </div>
+              <div className={`rounded-lg border p-3 transition ${processingProgress >= 70 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+                <p className="text-xs font-semibold text-slate-700">3. Análise IA</p>
+                <p className="text-2xl">{processingProgress >= 70 ? '✓' : '🤖'}</p>
+              </div>
+              <div className={`rounded-lg border p-3 transition ${processingProgress >= 100 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+                <p className="text-xs font-semibold text-slate-700">4. Conclusão</p>
+                <p className="text-2xl">{processingProgress >= 100 ? '✓' : '⏳'}</p>
+              </div>
+            </div>
+
+            {/* Dica */}
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+              <p className="text-xs font-semibold text-amber-800">💡 Dica</p>
+              <p className="mt-1 text-xs text-amber-700">
+                Vídeos mais longos requerem mais tempo de processamento. Você pode continuar trabalhando 
+                em outras abas enquanto aguarda.
+              </p>
+            </div>
+          </div>
         </section>
       )}
 
