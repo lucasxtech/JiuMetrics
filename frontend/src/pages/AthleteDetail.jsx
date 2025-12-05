@@ -121,8 +121,8 @@ export default function AthleteDetail() {
           >
             ← Voltar
           </button>
-          <h1 className="text-3xl font-bold text-primary">{athlete.name}</h1>
-          <p className="text-gray-600 mt-1">{athlete.belt} • {athlete.style}</p>
+          <h1 className="text-3xl font-bold text-primary" style={{ marginLeft: "2vw" }}>{athlete.name}</h1>
+          <p className="text-gray-600 mt-1" style={{ marginLeft: "2vw", marginBottom: "2vh" }}>{athlete.belt} • {athlete.style}</p>
         </div>
         <div className="flex gap-3 sm:gap-4">
           <button
@@ -145,7 +145,7 @@ export default function AthleteDetail() {
       </div>
 
       {isEditing && (
-        <section className="panel">
+        <section className="panel" style={{ width: "100vw" }}>
           <div className="panel__head mb-6">
             <div>
               <p className="eyebrow">Edição</p>
@@ -158,7 +158,7 @@ export default function AthleteDetail() {
       )}
 
       {/* Informações Básicas */}
-      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
+      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`} style={{ width: "100vw" }}>
         <div className="panel__head mb-4">
           <div>
             <p className="eyebrow">Perfil geral</p>
@@ -186,6 +186,7 @@ export default function AthleteDetail() {
             <div
               key={item.label}
               className="rounded-3xl bg-white px-6 py-8 sm:px-8 sm:py-9 text-center shadow-[0_15px_35px_rgba(15,23,42,0.08)]"
+              style={{ padding: "1vw" }}
             >
               <p className="text-sm font-medium uppercase tracking-wide text-slate-500">{item.label}</p>
               <p className={`mt-3 text-3xl font-bold text-slate-900 ${item.accent}`}>{item.value}</p>
@@ -196,18 +197,19 @@ export default function AthleteDetail() {
 
       {/* Análises de Vídeo com IA */}
       {analyses.length > 0 && (
-        <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
+        <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`} style={{ width: "100vw" }}>
           <div className="panel__head mb-4">
-            <div>
+            <div style={{ marginBottom: "2vh" }}>
               <p className="eyebrow">Inteligência Artificial</p>
               <h3 className="panel__title">Análises de vídeo ({analyses.length})</h3>
             </div>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3" style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
             {analyses.map((analysis) => (
               <div 
                 key={analysis.id} 
                 className="rounded-lg border border-slate-200 bg-slate-50 p-4 hover:border-blue-200 hover:bg-blue-50/50 transition"
+                style={{ padding: "1vw" }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -268,8 +270,16 @@ export default function AthleteDetail() {
       )}
 
       {/* Gráficos */}
-      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
-        <section className="panel">
+      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`} style={{ display: "flex", justifyContent: "space-between", flexDirection: "row" }}>
+        <section style={{ 
+          position: "relative",
+          background: "var(--surface)",
+          border: "1px",
+          borderRadius: "var(--radius-lg)",
+          padding: "2vh",
+          width: "60vw",
+          marginBottom: "1vw",
+          marginLeft: "2vw" }}>
           <div className="panel__head mb-4">
             <div>
               <p className="eyebrow">Perfil</p>
@@ -280,7 +290,15 @@ export default function AthleteDetail() {
             <StatsRadarChart data={athleteRadarData} />
           </div>
         </section>
-        <section className="panel">
+        <section style={{ 
+          position: "relative",
+          background: "var(--surface)",
+          border: "1px",
+          borderRadius: "var(--radius-lg)",
+          padding: "2vh",
+          width: "60vw",
+          marginBottom: "1vw",
+          marginLeft: "2vw" }}>
           <div className="panel__head mb-4">
             <div>
               <p className="eyebrow">Análise ofensiva</p>
@@ -294,7 +312,7 @@ export default function AthleteDetail() {
       </div>
 
       {/* Informações Detalhadas */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2" style={{ display: "flex" }}>
         {[{
           title: 'Golpes Fortes',
           description: athlete.strongAttacks
@@ -303,10 +321,15 @@ export default function AthleteDetail() {
           description: athlete.weaknesses,
           accent: 'text-amber-600'
         }].map((block) => (
-          <section
-            key={block.title}
-            className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}
-          >
+          <section style={{ 
+          position: "relative",
+          background: "var(--surface)",
+          border: "1px",
+          borderRadius: "var(--radius-lg)",
+          padding: "2vh",
+          width: "60vw",
+          marginBottom: "1vw",
+          marginLeft: "2vw" }}>
             <div className="panel__head mb-3">
               <p className="panel__title text-xl">{block.title}</p>
             </div>

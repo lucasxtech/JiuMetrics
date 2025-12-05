@@ -342,13 +342,14 @@ export default function VideoAnalysisComponent() {
               {videos.map((video, index) => (
                 <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm" style={{ marginBottom: "2vh", marginTop: "2vh", padding: "1.5%" }}>
                   {/* Header compacto */}
-                  <div className="mb-2 flex items-center justify-between">
+                  <div className="mb-2 flex items-center justify-between" style={{ marginLeft: "0.3vw", marginBottom: "0.7vh" }}>
                     <span className="text-xs font-medium text-slate-900">Vídeo {index + 1}</span>
                     {videos.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeVideo(video.id)}
                         className="text-xs text-slate-500 transition hover:text-red-600 cursor-pointer"
+                        style={{ padding: "0px" }}
                       >
                         Remover
                       </button>
@@ -373,7 +374,7 @@ export default function VideoAnalysisComponent() {
 
                     {/* Cor do kimono - chips */}
                     <div>
-                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Cor do kimono</label>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600" style={{ margin: "1vh" }}>Cor do kimono:</label>
                       <div className="flex flex-wrap gap-1.5">
                         {giColorOptions.map((option) => (
                           <button
@@ -491,15 +492,16 @@ export default function VideoAnalysisComponent() {
             {/* Lista de vídeos */}
             <div className="space-y-3">
               {videos.map((video, index) => (
-                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm">
+                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm" style={{ marginBottom: "2vh", marginTop: "2vh", padding: "1.5%" }}>
                   {/* Header compacto */}
-                  <div className="mb-2 flex items-center justify-between">
+                  <div className="mb-2 flex items-center justify-between" style={{ marginLeft: "0.3vw", marginBottom: "0.6vh" }}>
                     <span className="text-xs font-medium text-slate-900">Vídeo {index + 1}</span>
                     {videos.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeVideo(video.id)}
                         className="text-xs text-slate-500 transition hover:text-red-600 cursor-pointer"
+                        style={{ padding: "0px" }}
                       >
                         Remover
                       </button>
@@ -515,12 +517,12 @@ export default function VideoAnalysisComponent() {
                         className="flex cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-4 text-center transition hover:border-slate-300 hover:bg-slate-50"
                       >
                         {video.file ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2" style={{ padding: "2vh" }}>
                             <span className="text-sm">✓</span>
                             <span className="text-xs font-medium text-slate-700 truncate max-w-[200px]">{video.file.name}</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2" style={{ padding: "2vh" }}>
                             <span className="text-sm">📁</span>
                             <span className="text-xs font-medium text-slate-600">Selecionar arquivo</span>
                           </div>
@@ -540,7 +542,7 @@ export default function VideoAnalysisComponent() {
 
                     {/* Cor do kimono - chips */}
                     <div>
-                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Cor do kimono</label>
+                      <label className="mb-1.5 block text-xs font-medium text-slate-600" style={{ margin: "1vh" }}>Cor do kimono:</label>
                       <div className="flex flex-wrap gap-1.5">
                         {giColorOptions.map((option) => (
                           <button
