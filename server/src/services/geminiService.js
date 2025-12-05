@@ -92,6 +92,8 @@ async function analyzeFrame(url, context = {}) {
 
   const prompt = buildPrompt(url, context);
 
+  console.log("🤖 Enviando prompt para Gemini:", prompt);
+
   try {
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

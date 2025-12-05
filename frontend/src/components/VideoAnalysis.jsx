@@ -542,8 +542,8 @@ export default function VideoAnalysisComponent() {
           </div>
 
           {analysis.data?.summary && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-amber-900">
-              <p className="mb-2 text-xs font-semibold tracking-wide text-amber-700">Resumo técnico</p>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-amber-900" style={{ padding: "2vh", marginBottom: "3vh" }}>
+              <p className="mb-2 text-xs font-semibold tracking-wide text-amber-700" style={{ marginBottom: "1vh", fontSize: "2vh" }}>Resumo técnico</p>
               <p>{analysis.data.summary}</p>
             </div>
           )}
