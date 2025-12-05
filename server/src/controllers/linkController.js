@@ -69,13 +69,37 @@ exports.analyzeLink = async (req, res) => {
 
     console.log('📊 Contexto da análise:', frameContext);
 
-    // Enviar todas as URLs para análise em uma única chamada
-    const videoUrls = videoData.map(v => v.url).join(' ');
-    console.log('🔗 Analisando URLs:', videoUrls);
+    // Analisar cada vídeo separadamente
+    console.log(`🔬 Analisando ${videoData.length} vídeo(s) individualmente...`);
+    const analyses = [];
     
-    const result = await analyzeFrame(videoUrls, frameContext);
+    for (let i = 0; i < videoData.length; i++) {
+      const video = videoData[i];
+      console.log(`\n📹 Vídeo ${i + 1}/${videoData.length}: ${video.url}`);
+      
+      try {
+        const result = await analyzeFrame(video.url, {
+          athleteName: athleteName?.trim(),
+          giColor: video.giColor,
+          videos: [video] // Passa apenas este vídeo para o prompt
+        });
+        analyses.push(result);
+        console.log(`✅ Vídeo ${i + 1} analisado com sucesso`);
+      } catch (error) {
+        console.error(`❌ Erro ao analisar vídeo ${i + 1}:`, error.message);
+        // Continua com os próximos vídeos mesmo se um falhar
+      }
+    }
     
-    const consolidated = consolidateAnalyses([result]);
+    if (analyses.length === 0) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Nenhum vídeo foi analisado com sucesso' 
+      });
+    }
+    
+    console.log(`\n📊 Consolidando ${analyses.length} análise(s)...`);
+    const consolidated = consolidateAnalyses(analyses);
     
     // Salvar análise se personId for fornecido
     if (personId && personType) {
