@@ -15,4 +15,7 @@ router.post('/analyze-video', aiController.analyzeVideo);
 const linkController = require('../controllers/linkController');
 router.post('/analyze-link', linkController.analyzeLink);
 
+// POST /api/ai/athlete-summary - Gerar resumo técnico do atleta
+router.post('/athlete-summary', aiController.generateAthleteSummary);
+
 module.exports = router;
