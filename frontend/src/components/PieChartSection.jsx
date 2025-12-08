@@ -42,10 +42,19 @@ export default function PieChartSection({ title, data }) {
               <Tooltip 
                 formatter={(value) => `${value}%`}
                 contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: 'white',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  padding: '8px 12px',
+                }}
+                labelStyle={{
+                  color: '#1f2937',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                }}
+                itemStyle={{
+                  color: '#1f2937',
                 }}
               />
             </PieChart>

@@ -66,7 +66,7 @@ Gráfico de pizza com porcentagens para as maiores tentativas de finalizações:
   Retornar: Quantidade, Tempo médio de controle nas costas, Se houve tentativa de finalização
 (Use apenas o que realmente aparece nos vídeos.)
 
-🧠 RESUMO FINAL (campo "summary")
+RESUMO FINAL (campo "summary")
 
 Depois de analisar todos os vídeos, gere um texto único e profundo contendo:
 - Qual é o estilo geral dele
