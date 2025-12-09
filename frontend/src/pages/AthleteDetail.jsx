@@ -10,10 +10,11 @@ import VideoAnalysisCard from '../components/VideoAnalysisCard';
 import AnalysisDetailModal from '../components/AnalysisDetailModal';
 import VideoAnalysisEmptyState from '../components/VideoAnalysisEmptyState';
 import { getAthleteById, deleteAthlete } from '../services/athleteService';
+import { getOpponentById, deleteOpponent } from '../services/opponentService';
 import { getAnalysesByPerson, deleteAnalysis } from '../services/fightAnalysisService';
 import { generateAthleteSummary } from '../services/aiService';
 
-export default function AthleteDetail() {
+export default function AthleteDetail({ isOpponent = false }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [athlete, setAthlete] = useState(null);
@@ -33,7 +34,9 @@ export default function AthleteDetail() {
       try {
         setLoading(true);
         setError(null);
-        const response = await getAthleteById(id);
+        const response = isOpponent 
+          ? await getOpponentById(id)
+          : await getAthleteById(id);
         setAthlete(response?.data ?? null);
         
         // Buscar análises do atleta
@@ -147,11 +150,16 @@ export default function AthleteDetail() {
   const confirmDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteAthlete(athlete.id);
-      navigate('/athletes');
+      if (isOpponent) {
+        await deleteOpponent(athlete.id);
+        navigate('/opponents');
+      } else {
+        await deleteAthlete(athlete.id);
+        navigate('/athletes');
+      }
     } catch (err) {
-      console.error('Erro ao deletar atleta:', err);
-      setError('Erro ao deletar atleta. Tente novamente.');
+      console.error(`Erro ao deletar ${isOpponent ? 'adversário' : 'atleta'}:`, err);
+      setError(`Erro ao deletar ${isOpponent ? 'adversário' : 'atleta'}. Tente novamente.`);
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -431,10 +439,10 @@ export default function AthleteDetail() {
         <ErrorMessage message={error || 'Atleta não encontrado.'} />
         <button
           type="button"
-          onClick={() => navigate('/athletes')}
+          onClick={() => navigate(isOpponent ? '/opponents' : '/athletes')}
           className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-6 py-3 text-white shadow-sm hover:bg-slate-700"
         >
-          Voltar para Atletas
+          Voltar para {isOpponent ? 'Adversários' : 'Atletas'}
         </button>
       </div>
     );
@@ -449,7 +457,7 @@ export default function AthleteDetail() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <button
-            onClick={() => navigate('/athletes')}
+            onClick={() => navigate(isOpponent ? '/opponents' : '/athletes')}
             className="text-secondary hover:text-blue-700 mb-2 flex items-center"
           >
             ← Voltar
@@ -547,7 +555,7 @@ export default function AthleteDetail() {
             </div>
             <p className="panel__meta">Os dados atuais permanecem visíveis abaixo para referência.</p>
           </div>
-          <AthleteForm initialData={athlete} onSuccess={handleUpdated} />
+          <AthleteForm initialData={athlete} onSuccess={handleUpdated} isOpponent={isOpponent} />
         </section>
       )}
 

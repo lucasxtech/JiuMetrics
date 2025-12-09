@@ -16,32 +16,41 @@ export default function CompareView({ athlete, opponent }) {
     );
   }
 
-  // Preparar dados para o gráfico radar duplo
+  // Pega dados técnicos do perfil ou usa valores padrão
+  const getProfileValue = (profile, key, defaultValue = 50) => {
+    if (!profile || typeof profile !== 'object') return defaultValue;
+    return profile[key] || defaultValue;
+  };
+
+  const athleteProfile = athlete.technicalProfile || {};
+  const opponentProfile = opponent.technicalProfile || {};
+
+  // Preparar dados para o gráfico radar duplo usando dados reais do technicalProfile
   const comparisonData = [
     {
       name: 'Condicionamento',
-      [athlete.name]: athlete.cardio || 0,
-      [opponent.name]: opponent.cardio || 0,
+      [athlete.name]: athlete.cardio || getProfileValue(athleteProfile, 'cardio', 50),
+      [opponent.name]: opponent.cardio || getProfileValue(opponentProfile, 'cardio', 50),
     },
     {
       name: 'Técnica',
-      [athlete.name]: 75,
-      [opponent.name]: 65,
+      [athlete.name]: getProfileValue(athleteProfile, 'tecnica', 50),
+      [opponent.name]: getProfileValue(opponentProfile, 'tecnica', 50),
     },
     {
       name: 'Agressividade',
-      [athlete.name]: 70,
-      [opponent.name]: 80,
+      [athlete.name]: getProfileValue(athleteProfile, 'agressividade', 50),
+      [opponent.name]: getProfileValue(opponentProfile, 'agressividade', 50),
     },
     {
       name: 'Defesa',
-      [athlete.name]: 80,
-      [opponent.name]: 70,
+      [athlete.name]: getProfileValue(athleteProfile, 'defesa', 50),
+      [opponent.name]: getProfileValue(opponentProfile, 'defesa', 50),
     },
     {
       name: 'Movimentação',
-      [athlete.name]: 75,
-      [opponent.name]: 70,
+      [athlete.name]: getProfileValue(athleteProfile, 'movimentacao', 50),
+      [opponent.name]: getProfileValue(opponentProfile, 'movimentacao', 50),
     },
   ];
 
