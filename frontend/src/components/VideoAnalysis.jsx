@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react';
 import { analyzeVideoLink, isValidVideoUrl } from '../services/videoAnalysisService';
-import { uploadVideo, isValidVideoFile } from '../services/videoUploadService';
 import { getAllAthletes } from '../services/athleteService';
 import { getAllOpponents } from '../services/opponentService';
 import PieChartSection from './PieChartSection';
 
 export default function VideoAnalysisComponent() {
   const [videos, setVideos] = useState([
-    { id: 1, url: '', file: null, giColor: 'preto' }
+    { id: 1, url: '', giColor: 'preto' }
   ]);
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('url');
   const [athleteName, setAthleteName] = useState('');
   
   // Novos estados para vincular análise
@@ -32,11 +30,6 @@ export default function VideoAnalysisComponent() {
     { value: 'azul', label: 'Azul' },
     { value: 'colorido', label: 'Outro' },
   ];
-
-  const tabButtonClass = (tab) =>
-    `inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-      activeTab === tab ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-    }`;
 
   // Carregar atletas e adversários
   useEffect(() => {
@@ -168,130 +161,20 @@ export default function VideoAnalysisComponent() {
     }
   };
 
-  const handleFileUpload = async (e) => {
-    e.preventDefault();
-    
-    const validVideos = videos.filter(v => v.file);
-    if (validVideos.length === 0) {
-      setError('Por favor, selecione ao menos um arquivo de vídeo');
-      return;
-    }
-    
-    for (const video of validVideos) {
-      if (!isValidVideoFile(video.file)) {
-        setError('Um ou mais arquivos são inválidos. Use MP4, AVI, MOV ou formatos suportados');
-        return;
-      }
-    }
-    
-    if (!personId) {
-      setError('Selecione um atleta ou adversário para vincular a análise');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    setAnalysis(null);
-    setProcessingStage('Preparando upload...');
-    setProcessingProgress(5);
-
-    try {
-      // Simular progresso enquanto aguarda resposta
-      const progressInterval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev >= 90) return 90;
-          return prev + 1.5;
-        });
-      }, 1000);
-
-      setProcessingStage('📤 Fazendo upload do vídeo...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProcessingProgress(15);
-      
-      setProcessingStage('🎬 Extraindo frames...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProcessingProgress(25);
-      
-      setProcessingStage('⏳ Processando com Gemini (2-5 minutos)...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProcessingProgress(35);
-      
-      setProcessingStage('🤖 Analisando técnicas de Jiu-Jitsu...');
-      
-      const result = await uploadVideo({
-        videos: validVideos.map(v => ({ file: v.file, giColor: v.giColor })),
-        athleteName: athleteName.trim(),
-        personId,
-        personType
-      });
-      
-      clearInterval(progressInterval);
-      setProcessingProgress(100);
-      setProcessingStage('✅ Processamento concluído!');
-      
-      if (result.data) {
-        setAnalysis(result);
-      } else {
-        setError('Nenhum dado retornado da análise');
-      }
-    } catch (err) {
-      const errorMsg =
-        err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao processar os vídeos. Tente novamente.';
-      setError(errorMsg);
-      setProcessingStage('');
-      setProcessingProgress(0);
-    } finally {
-      setIsLoading(false);
-      setVideos([{ id: 1, url: '', file: null, giColor: 'preto' }]);
-      setTimeout(() => {
-        setProcessingStage('');
-        setProcessingProgress(0);
-      }, 2000);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <section className="panel panel--hero">
         <div>
           <p className="eyebrow">Análise</p>
           <h1 className="hero-title">Análise de vídeo com IA</h1>
-          <p className="hero-description">Cole o link da luta ou envie um arquivo para gerar insights, gráficos e resumos com Gemini Vision.</p>
+          <p className="hero-description">Cole o link da luta para gerar insights, gráficos e resumos com Gemini Vision.</p>
         </div>
         <div className="hero-meta">
-          <p>Suporte para YouTube, Vimeo, Google Drive e uploads locais (MP4, MOV, AVI).</p>
+          <p>Suporte para YouTube, Vimeo e Google Drive.</p>
         </div>
       </section>
 
       <section className="panel">
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={tabButtonClass('url')}
-            onClick={() => {
-              setActiveTab('url');
-              setError(null);
-            }}
-          >
-            <span aria-hidden="true">🔗</span>
-            Analisar por link
-          </button>
-          <button
-            type="button"
-            className={tabButtonClass('upload')}
-            onClick={() => {
-              setActiveTab('upload');
-              setError(null);
-            }}
-          >
-            <span aria-hidden="true">📁</span>
-            Upload de vídeo
-          </button>
-        </div>
-      </section>
-
-      {activeTab === 'url' && (
-        <section className="panel">
           <form onSubmit={handleAnalyzeUrl} className="space-y-6">
             {/* Seletor de atleta/adversário */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -439,174 +322,6 @@ export default function VideoAnalysisComponent() {
             </div>
           </form>
         </section>
-      )}
-
-      {activeTab === 'upload' && (
-        <section className="panel">
-          <form onSubmit={handleFileUpload} className="space-y-6">
-            {/* Seletor de atleta/adversário */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-600">Tipo</label>
-                <select
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
-                  value={personType}
-                  onChange={(e) => {
-                    setPersonType(e.target.value);
-                    setPersonId('');
-                    setError(null);
-                  }}
-                  disabled={loadingPeople}
-                >
-                  <option value="athlete">Atleta</option>
-                  <option value="opponent">Adversário</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                  {personType === 'athlete' ? 'Atleta' : 'Adversário'}
-                </label>
-                <select
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
-                  value={personId}
-                  onChange={(e) => {
-                    setPersonId(e.target.value);
-                    setError(null);
-                  }}
-                  disabled={loadingPeople}
-                >
-                  <option value="">Selecione...</option>
-                  {personType === 'athlete' 
-                    ? athletes.map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))
-                    : opponents.map(o => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))
-                  }
-                </select>
-              </div>
-            </div>
-
-            {/* Lista de vídeos */}
-            <div className="space-y-3">
-              {videos.map((video, index) => (
-                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm">
-                  {/* Header compacto */}
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-900">Vídeo {index + 1}</span>
-                    {videos.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeVideo(video.id)}
-                        className="text-xs text-slate-500 transition hover:text-red-600 cursor-pointer"
-                      >
-                        Remover
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Campos do card */}
-                  <div className="space-y-2">
-                    {/* Upload */}
-                    <div>
-                      <label
-                        htmlFor={`video-upload-${video.id}`}
-                        className="flex cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-4 text-center transition hover:border-slate-300 hover:bg-slate-50"
-                      >
-                        {video.file ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">✓</span>
-                            <span className="text-xs font-medium text-slate-700 truncate max-w-[200px]">{video.file.name}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">📁</span>
-                            <span className="text-xs font-medium text-slate-600">Selecionar arquivo</span>
-                          </div>
-                        )}
-                      </label>
-                      <input
-                        id={`video-upload-${video.id}`}
-                        type="file"
-                        accept="video/*"
-                        className="sr-only"
-                        onChange={(e) => {
-                          updateVideo(video.id, 'file', e.target.files?.[0] || null);
-                          setError(null);
-                        }}
-                      />
-                    </div>
-
-                    {/* Cor do kimono - chips */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium text-slate-600">Cor do kimono</label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {giColorOptions.map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => {
-                              updateVideo(video.id, 'giColor', option.value);
-                              setError(null);
-                            }}
-                            className={`rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
-                              video.giColor === option.value
-                                ? 'border border-blue-500 bg-blue-50 text-blue-700'
-                                : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Botão adicionar - pequeno e discreto */}
-              <button
-                type="button"
-                onClick={addVideo}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
-              >
-                <span>+</span>
-                Adicionar vídeo
-              </button>
-            </div>
-
-            {/* Erro */}
-            {error && (
-              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {error}
-              </div>
-            )}
-
-            {/* Botão principal - alinhado à direita em desktop */}
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={isLoading || videos.every(v => !v.file)}
-                className={`w-full sm:w-auto rounded-md px-4 py-2 text-sm font-medium transition ${
-                  isLoading || videos.every(v => !v.file)
-                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                    : 'bg-slate-900 text-white hover:bg-slate-800 cursor-pointer'
-                }`}
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
-                    Processando...
-                  </span>
-                ) : (
-                  `Enviar e analisar ${videos.filter(v => v.file).length > 1 ? `${videos.filter(v => v.file).length} vídeos` : 'vídeo'}`
-                )}
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
 
       {analysis && (
         <section className="panel space-y-6">
@@ -816,9 +531,7 @@ export default function VideoAnalysisComponent() {
             <p className="text-4xl" aria-hidden="true">🎬</p>
             <h3 className="panel__title">Nenhuma análise realizada</h3>
             <p className="text-slate-600">
-              {activeTab === 'url'
-                ? 'Cole um link acima e clique em “Analisar vídeo” para começar.'
-                : 'Selecione um arquivo e clique em “Enviar e analisar” para começar.'}
+              Cole um link acima e clique em "Analisar vídeo" para começar.
             </p>
           </div>
         </section>

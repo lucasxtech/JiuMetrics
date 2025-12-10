@@ -49,7 +49,11 @@ export default function Header() {
             ))}
             <Link
               to="/analyze-video"
-              className="inline-flex h-12 items-center gap-2 rounded-xl px-6 text-sm font-medium text-white/85 transition-all duration-200 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.35)]"
+              className={`inline-flex h-12 w-auto min-w-[120px] items-center justify-center gap-2 rounded-xl px-6 text-sm font-medium tracking-tight transition-all duration-200 ${
+                isActive('/analyze-video')
+                  ? 'bg-white text-slate-900 shadow-[0_8px_24px_rgba(15,23,42,0.25)] ring-1 ring-white/80'
+                  : 'text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.32)]'
+              }`}
             >
               <span aria-hidden="true">🤖</span>
               IA

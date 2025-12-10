@@ -34,8 +34,8 @@ exports.compareAndStrategy = async (req, res) => {
     }
 
     // Buscar dados
-    const athlete = Athlete.getById(athleteId);
-    const opponent = Opponent.getById(opponentId);
+    const athlete = await Athlete.getById(athleteId);
+    const opponent = await Opponent.getById(opponentId);
 
     if (!athlete) {
       return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
@@ -45,8 +45,8 @@ exports.compareAndStrategy = async (req, res) => {
     }
 
     // Buscar análises e preparar dados
-    const athleteAnalyses = FightAnalysis.getByPersonId(athleteId);
-    const opponentAnalyses = FightAnalysis.getByPersonId(opponentId);
+    const athleteAnalyses = await FightAnalysis.getByPersonId(athleteId);
+    const opponentAnalyses = await FightAnalysis.getByPersonId(opponentId);
     
     const athleteData = preparePersonData(athlete, athleteAnalyses);
     const opponentData = preparePersonData(opponent, opponentAnalyses);
