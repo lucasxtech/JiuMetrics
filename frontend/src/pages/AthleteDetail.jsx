@@ -58,6 +58,7 @@ export default function AthleteDetail({ isOpponent = false }) {
     if (id) {
       fetchAthlete();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Função para gerar resumo com IA (sob demanda)

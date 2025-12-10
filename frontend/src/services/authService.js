@@ -94,7 +94,7 @@ export const getCurrentUser = () => {
   const userStr = localStorage.getItem(USER_KEY);
   try {
     return userStr ? JSON.parse(userStr) : null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };

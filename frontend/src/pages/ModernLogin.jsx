@@ -47,7 +47,7 @@ export default function ModernLogin() {
       } else {
         setError(response.error || 'Email ou senha inválidos');
       }
-    } catch (err) {
+    } catch {
       setError('Houve um problema com o login, verifique suas credenciais.');
     } finally {
       setLoading(false);

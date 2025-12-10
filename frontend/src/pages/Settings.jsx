@@ -18,14 +18,13 @@ export default function Settings() {
     const currentUser = getCurrentUser();
     if (!currentUser) {
       navigate('/login');
-      return;
-    }
-    
-    setUser(currentUser);
-    
-    const savedModel = localStorage.getItem('ai_model');
-    if (savedModel) {
-      setSelectedModel(savedModel);
+    } else {
+      setUser(currentUser);
+      
+      const savedModel = localStorage.getItem('ai_model');
+      if (savedModel) {
+        setSelectedModel(savedModel);
+      }
     }
   }, [navigate]);
 

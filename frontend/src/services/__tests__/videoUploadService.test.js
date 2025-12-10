@@ -15,6 +15,7 @@ class MockFormData {
   }
 }
 
+// eslint-disable-next-line no-undef
 global.FormData = MockFormData;
 
 vi.mock('../api', () => ({

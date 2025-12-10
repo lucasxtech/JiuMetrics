@@ -60,7 +60,7 @@ export default function Register() {
       } else {
         setError(response.error || 'Erro ao criar conta');
       }
-    } catch (err) {
+    } catch {
       setError('Houve um problema ao criar sua conta, tente novamente.');
     } finally {
       setLoading(false);

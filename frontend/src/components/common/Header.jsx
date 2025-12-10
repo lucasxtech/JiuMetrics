@@ -18,6 +18,7 @@ export default function Header() {
 
   useEffect(() => {
     setMobileOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   return (

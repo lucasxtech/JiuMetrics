@@ -28,7 +28,7 @@ export default function Compare() {
       ]);
       setAthletes(athletesResponse?.data || []);
       setOpponents(opponentsResponse?.data || []);
-    } catch (err) {
+    } catch {
       setError('Erro ao carregar atletas e adversários. Tente novamente.');
     } finally {
       setLoading(false);
