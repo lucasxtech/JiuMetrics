@@ -227,9 +227,6 @@ async function analyzeFrame(url, context = {}) {
   }
 
   const prompt = buildPrompt(url, context);
-  console.log("🤖 Enviando prompt para Gemini:", prompt);
-
-  console.log("🤖 Enviando prompt para Gemini:", prompt);
 
   try {
     const result = await model.generateContent(prompt);
@@ -337,49 +334,33 @@ function consolidateAnalyses(frameAnalyses) {
   });
 
   // Consolidar technical_stats com médias
-  if (allTechnicalStats.sweeps.length > 0) {
-    const totalSweeps = allTechnicalStats.sweeps.reduce((sum, s) => sum + (s.quantidade || 0), 0);
-    const avgEffectiveness = allTechnicalStats.sweeps.reduce((sum, s) => sum + (s.efetividade_percentual || 0), 0) / allTechnicalStats.sweeps.length;
-    consolidated.technical_stats.sweeps = {
-      quantidade: Math.round(totalSweeps / allTechnicalStats.sweeps.length),
-      efetividade_percentual: Math.round(avgEffectiveness)
-    };
-  }
+  const consolidateStats = (statsArray, processor) => {
+    if (statsArray.length === 0) return null;
+    return processor(statsArray);
+  };
 
-  if (allTechnicalStats.guard_passes.length > 0) {
-    const totalPasses = allTechnicalStats.guard_passes.reduce((sum, g) => sum + (g.quantidade || 0), 0);
-    const avgTime = allTechnicalStats.guard_passes.reduce((sum, g) => sum + (g.tempo_medio_segundos || 0), 0) / allTechnicalStats.guard_passes.length;
-    consolidated.technical_stats.guard_passes = {
-      quantidade: Math.round(totalPasses / allTechnicalStats.guard_passes.length),
-      tempo_medio_segundos: Math.round(avgTime)
-    };
-  }
+  consolidated.technical_stats.sweeps = consolidateStats(allTechnicalStats.sweeps, (stats) => ({
+    quantidade: Math.round(stats.reduce((sum, s) => sum + (s.quantidade || 0), 0) / stats.length),
+    efetividade_percentual: Math.round(stats.reduce((sum, s) => sum + (s.efetividade_percentual || 0), 0) / stats.length)
+  })) || consolidated.technical_stats.sweeps;
 
-  if (allTechnicalStats.submissions.length > 0) {
-    const totalTentativas = allTechnicalStats.submissions.reduce((sum, s) => sum + (s.tentativas || 0), 0);
-    const totalAjustadas = allTechnicalStats.submissions.reduce((sum, s) => sum + (s.ajustadas || 0), 0);
-    const totalConcluidas = allTechnicalStats.submissions.reduce((sum, s) => sum + (s.concluidas || 0), 0);
-    const allDetails = allTechnicalStats.submissions.flatMap(s => s.detalhes || []);
-    
-    consolidated.technical_stats.submissions = {
-      tentativas: Math.round(totalTentativas / allTechnicalStats.submissions.length),
-      ajustadas: Math.round(totalAjustadas / allTechnicalStats.submissions.length),
-      concluidas: Math.round(totalConcluidas / allTechnicalStats.submissions.length),
-      detalhes: allDetails
-    };
-  }
+  consolidated.technical_stats.guard_passes = consolidateStats(allTechnicalStats.guard_passes, (stats) => ({
+    quantidade: Math.round(stats.reduce((sum, g) => sum + (g.quantidade || 0), 0) / stats.length),
+    tempo_medio_segundos: Math.round(stats.reduce((sum, g) => sum + (g.tempo_medio_segundos || 0), 0) / stats.length)
+  })) || consolidated.technical_stats.guard_passes;
 
-  if (allTechnicalStats.back_takes.length > 0) {
-    const totalBackTakes = allTechnicalStats.back_takes.reduce((sum, b) => sum + (b.quantidade || 0), 0);
-    const avgTimeBack = allTechnicalStats.back_takes.reduce((sum, b) => sum + (b.tempo_medio_segundos || 0), 0) / allTechnicalStats.back_takes.length;
-    const anyFinalization = allTechnicalStats.back_takes.some(b => b.tentou_finalizar);
-    
-    consolidated.technical_stats.back_takes = {
-      quantidade: Math.round(totalBackTakes / allTechnicalStats.back_takes.length),
-      tempo_medio_segundos: Math.round(avgTimeBack),
-      tentou_finalizar: anyFinalization
-    };
-  }
+  consolidated.technical_stats.submissions = consolidateStats(allTechnicalStats.submissions, (stats) => ({
+    tentativas: Math.round(stats.reduce((sum, s) => sum + (s.tentativas || 0), 0) / stats.length),
+    ajustadas: Math.round(stats.reduce((sum, s) => sum + (s.ajustadas || 0), 0) / stats.length),
+    concluidas: Math.round(stats.reduce((sum, s) => sum + (s.concluidas || 0), 0) / stats.length),
+    detalhes: stats.flatMap(s => s.detalhes || [])
+  })) || consolidated.technical_stats.submissions;
+
+  consolidated.technical_stats.back_takes = consolidateStats(allTechnicalStats.back_takes, (stats) => ({
+    quantidade: Math.round(stats.reduce((sum, b) => sum + (b.quantidade || 0), 0) / stats.length),
+    tempo_medio_segundos: Math.round(stats.reduce((sum, b) => sum + (b.tempo_medio_segundos || 0), 0) / stats.length),
+    tentou_finalizar: stats.some(b => b.tentou_finalizar)
+  })) || consolidated.technical_stats.back_takes;
 
   // Consolidar sumários
   const uniqueSummaries = [...new Set(consolidated.summaries.filter(Boolean))];
@@ -390,4 +371,150 @@ function consolidateAnalyses(frameAnalyses) {
   return consolidated;
 }
 
-module.exports = { analyzeFrame, consolidateAnalyses };
+/**
+ * Gera estratégia tática comparando atleta vs adversário
+ */
+async function generateTacticalStrategy(athleteData, opponentData) {
+  if (!model) {
+    throw new Error('GEMINI_API_KEY não configurada no servidor');
+  }
+
+  const prompt = `Você é um Analista Tático de Jiu-Jitsu de nível mundial.
+
+Sua missão é gerar uma estratégia de luta personalizada comparando dois lutadores.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🥋 ATLETA (SEU LUTADOR)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nome: ${athleteData.name}
+
+Resumo Técnico:
+${athleteData.resumo}
+
+Atributos (0-100):
+• Condicionamento: ${athleteData.atributos.condicionamento}/100
+• Técnica: ${athleteData.atributos.tecnica}/100
+• Agressividade: ${athleteData.atributos.agressividade}/100
+• Defesa: ${athleteData.atributos.defesa}/100
+• Movimentação: ${athleteData.atributos.movimentacao}/100
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 ADVERSÁRIO (ALVO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nome: ${opponentData.name}
+
+Resumo Técnico:
+${opponentData.resumo}
+
+Atributos (0-100):
+• Condicionamento: ${opponentData.atributos.condicionamento}/100
+• Técnica: ${opponentData.atributos.tecnica}/100
+• Agressividade: ${opponentData.atributos.agressividade}/100
+• Defesa: ${opponentData.atributos.defesa}/100
+• Movimentação: ${opponentData.atributos.movimentacao}/100
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 INSTRUÇÕES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Gere uma estratégia técnica, objetiva e personalizada.
+
+**PROIBIDO**: Respostas genéricas, frases motivacionais vazias, ou recomendações que servem para qualquer luta.
+
+**OBRIGATÓRIO**: 
+- Análise específica dos dois estilos
+- Explorar pontos fracos reais do adversário
+- Recomendações técnicas precisas
+- Plano cronológico da luta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 FORMATO DE SAÍDA (JSON PURO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "analise": "Análise direta e objetiva. Compare os estilos, identifique vantagens numéricas claras nos atributos, aponte desequilíbrios técnicos. Seja específico sobre o que cada um faz bem e onde o outro falha.",
+  
+  "estrategia_para_vencer": "Como vencer esta luta. Ofensiva: quais técnicas usar e quando. Defensiva: o que anular e como se proteger. Exploração: onde atacar com base nos pontos fracos dele.",
+  
+  "taticas_especificas": "Táticas práticas. No início da luta: fazer X. Para anular o jogo dele: fazer Y. Para explorar fraquezas: fazer Z. Técnicas prioritárias: listar 3-5 movimentos.",
+  
+  "plano_por_fases": {
+    "inicio": "Primeiros 0-60 segundos. O que fazer ao cumprimentar, como começar, qual posição buscar imediatamente.",
+    "meio": "Meio da luta. Como manter controle, onde pressionar, como gerenciar energia, quando acelerar.",
+    "fim": "Final da luta. Se estiver vencendo: como segurar. Se estiver perdendo: como virar."
+  },
+  
+  "checklist": {
+    "fazer": ["Ação concreta 1", "Ação concreta 2", "Ação concreta 3"],
+    "evitar": ["Erro específico 1", "Erro específico 2"],
+    "buscar": ["Posição ideal 1", "Posição ideal 2"],
+    "nunca_permitir": ["Situação de alto risco 1", "Situação de alto risco 2"]
+  }
+}
+
+Retorne APENAS o JSON. Sem texto adicional antes ou depois.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const strategy = extractJson(responseText);
+    return strategy;
+  } catch (error) {
+    console.error('❌ Erro ao gerar estratégia tática:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Gera resumo técnico profissional de um atleta
+ */
+async function generateAthleteSummary(athleteData) {
+  if (!model) {
+    throw new Error('GEMINI_API_KEY não configurada no servidor');
+  }
+
+  const { name, analyses, attributes } = athleteData;
+
+  const prompt = `Você é um Analista Técnico de Jiu-Jitsu profissional.
+
+Gere um resumo técnico detalhado do atleta baseado nos dados fornecidos.
+
+ATLETA: ${name}
+
+ANÁLISES DISPONÍVEIS: ${analyses?.length || 0}
+
+ATRIBUTOS CALCULADOS:
+${attributes ? Object.entries(attributes).map(([key, value]) => `• ${key}: ${value}/100`).join('\n') : 'Nenhum atributo calculado ainda'}
+
+DADOS DAS ANÁLISES:
+${JSON.stringify(analyses || [], null, 2)}
+
+INSTRUÇÕES:
+- Identifique o estilo geral de luta
+- Liste pontos fortes técnicos
+- Liste pontos fracos e áreas de melhoria
+- Indique posições favoritas e evitadas
+- Sugira como adversários deveriam lutar contra ele
+- Seja técnico, objetivo e específico
+
+Retorne APENAS um texto corrido (sem JSON), direto e profissional, como um relatório de scouting.
+Máximo 250 palavras.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const summary = result.response.text();
+    return summary;
+  } catch (error) {
+    console.error('❌ Erro ao gerar resumo do atleta:', error.message);
+    throw error;
+  }
+}
+
+module.exports = { 
+  analyzeFrame, 
+  consolidateAnalyses, 
+  generateTacticalStrategy, 
+  generateAthleteSummary 
+};

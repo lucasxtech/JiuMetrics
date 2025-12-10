@@ -22,17 +22,13 @@ export default function Compare() {
     try {
       setLoading(true);
       setError(null);
-      console.log('Carregando atletas e adversários...');
       const [athletesResponse, opponentsResponse] = await Promise.all([
         getAllAthletes(),
         getAllOpponents()
       ]);
-      console.log('Atletas:', athletesResponse);
-      console.log('Adversários:', opponentsResponse);
       setAthletes(athletesResponse?.data || []);
       setOpponents(opponentsResponse?.data || []);
     } catch (err) {
-      console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar atletas e adversários. Tente novamente.');
     } finally {
       setLoading(false);
@@ -41,8 +37,6 @@ export default function Compare() {
 
   const selectionButtonBase =
     'w-full rounded-xl border px-4 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300';
-
-  console.log('Compare render - Loading:', loading, 'Error:', error, 'Athletes:', athletes.length, 'Opponents:', opponents.length);
 
   if (loading) {
     return (
@@ -92,8 +86,8 @@ export default function Compare() {
 
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow" style={{ marginLeft: "1vw" }}>Seleção</p>
-          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>Escolha os perfis para comparar</h2>
+          <p className="section-header__eyebrow">Seleção</p>
+          <h2 className="section-header__title">Escolha os perfis para comparar</h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           <article className="panel">
@@ -166,8 +160,8 @@ export default function Compare() {
 
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow" style={{ marginLeft: "1vw" }}>Resultado</p>
-          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>Visualize insights da comparação</h2>
+          <p className="section-header__eyebrow">Resultado</p>
+          <h2 className="section-header__title">Visualize insights da comparação</h2>
         </div>
         <CompareView athlete={selectedAthlete} opponent={selectedOpponent} />
       </section>

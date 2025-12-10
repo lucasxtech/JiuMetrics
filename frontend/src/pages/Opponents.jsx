@@ -24,10 +24,8 @@ export default function Opponents() {
       setLoading(true);
       setError(null);
       const response = await getAllOpponents();
-      // A API retorna { success: true, data: [...] }
       setOpponents(response?.data || []);
     } catch (err) {
-      console.error('Erro ao carregar adversários:', err);
       setError('Erro ao carregar adversários. Tente novamente.');
     } finally {
       setLoading(false);

@@ -4,11 +4,24 @@ const Opponent = require('../models/Opponent');
 const FightAnalysis = require('../models/FightAnalysis');
 const { generateTacticalStrategy } = require('../services/geminiService');
 const { processPersonAnalyses } = require('../utils/athleteStatsUtils');
+const StrategyService = require('../services/strategyService');
 
 /**
  * POST /api/strategy/compare - Compara atleta vs adversário e gera estratégia com IA
  * Body: { athleteId, opponentId }
  */
+/**
+ * Prepara dados da pessoa para IA
+ */
+function preparePersonData(person, analyses) {
+  const attributes = processPersonAnalyses(analyses, person);
+  return {
+    name: person.name,
+    resumo: person.aiSummary || 'Sem resumo disponível - sem análises de vídeo ainda.',
+    atributos: attributes
+  };
+}
+
 exports.compareAndStrategy = async (req, res) => {
   try {
     const { athleteId, opponentId } = req.body;
@@ -20,48 +33,23 @@ exports.compareAndStrategy = async (req, res) => {
       });
     }
 
-    console.log(`🎯 Gerando estratégia: Atleta ${athleteId} vs Adversário ${opponentId}`);
-
-    // Buscar dados do atleta
+    // Buscar dados
     const athlete = Athlete.getById(athleteId);
-    if (!athlete) {
-      return res.status(404).json({
-        success: false,
-        error: 'Atleta não encontrado',
-      });
-    }
-
-    // Buscar dados do adversário
     const opponent = Opponent.getById(opponentId);
+
+    if (!athlete) {
+      return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
+    }
     if (!opponent) {
-      return res.status(404).json({
-        success: false,
-        error: 'Adversário não encontrado',
-      });
+      return res.status(404).json({ success: false, error: 'Adversário não encontrado' });
     }
 
-    // Buscar análises
+    // Buscar análises e preparar dados
     const athleteAnalyses = FightAnalysis.getByPersonId(athleteId);
     const opponentAnalyses = FightAnalysis.getByPersonId(opponentId);
-
-    console.log(`📊 Atleta: ${athleteAnalyses.length} análises | Adversário: ${opponentAnalyses.length} análises`);
-
-    // Calcular atributos
-    const athleteAttributes = processPersonAnalyses(athleteAnalyses, athlete);
-    const opponentAttributes = processPersonAnalyses(opponentAnalyses, opponent);
-
-    // Preparar dados para o Gemini
-    const athleteData = {
-      name: athlete.name,
-      resumo: athlete.aiSummary || 'Sem resumo disponível - atleta sem análises de vídeo ainda.',
-      atributos: athleteAttributes
-    };
-
-    const opponentData = {
-      name: opponent.name,
-      resumo: opponent.aiSummary || 'Sem resumo disponível - adversário sem análises de vídeo ainda.',
-      atributos: opponentAttributes
-    };
+    
+    const athleteData = preparePersonData(athlete, athleteAnalyses);
+    const opponentData = preparePersonData(opponent, opponentAnalyses);
 
     // Gerar estratégia com IA
     const strategy = await generateTacticalStrategy(athleteData, opponentData);
@@ -72,13 +60,13 @@ exports.compareAndStrategy = async (req, res) => {
         athlete: {
           id: athlete.id,
           name: athlete.name,
-          attributes: athleteAttributes,
+          attributes: athleteData.atributos,
           totalAnalyses: athleteAnalyses.length
         },
         opponent: {
           id: opponent.id,
           name: opponent.name,
-          attributes: opponentAttributes,
+          attributes: opponentData.atributos,
           totalAnalyses: opponentAnalyses.length
         },
         strategy,

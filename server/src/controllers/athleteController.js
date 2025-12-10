@@ -2,6 +2,17 @@
 const Athlete = require('../models/Athlete');
 
 /**
+ * Resposta padrão de erro
+ */
+const handleError = (res, operation, error) => {
+  res.status(500).json({
+    success: false,
+    error: `Erro ao ${operation}`,
+    details: error.message,
+  });
+};
+
+/**
  * GET /api/athletes - Retorna todos os atletas
  */
 exports.getAll = async (req, res) => {
@@ -13,12 +24,7 @@ exports.getAll = async (req, res) => {
       count: athletes.length,
     });
   } catch (error) {
-    console.error('Erro ao buscar atletas:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao buscar atletas',
-      details: error.message,
-    });
+    handleError(res, 'buscar atletas', error);
   }
 };
 
@@ -42,12 +48,7 @@ exports.getById = async (req, res) => {
       data: athlete,
     });
   } catch (error) {
-    console.error('Erro ao buscar atleta:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao buscar atleta',
-      details: error.message,
-    });
+    handleError(res, 'buscar atleta', error);
   }
 };
 
@@ -58,7 +59,6 @@ exports.create = async (req, res) => {
   try {
     const { name, age, weight, belt, style, strongAttacks, weaknesses, cardio, videoUrl } = req.body;
 
-    // Validação básica
     if (!name || !age || !weight) {
       return res.status(400).json({
         success: false,
@@ -68,28 +68,23 @@ exports.create = async (req, res) => {
 
     const newAthlete = await Athlete.create({
       name,
-    age: Number(age),
-    weight: Number(weight),
-    belt: belt || 'Branca',
-    style: style || 'Guarda',
-    strongAttacks: strongAttacks || '',
-    weaknesses: weaknesses || '',
-    cardio: Number(cardio) || 50,
-    videoUrl: videoUrl || '',
-  });
-
-  res.status(201).json({
-    success: true,
-    message: 'Atleta criado com sucesso',
-    data: newAthlete,
-  });
-  } catch (error) {
-    console.error('Erro ao criar atleta:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao criar atleta',
-      details: error.message,
+      age: Number(age),
+      weight: Number(weight),
+      belt: belt || 'Branca',
+      style: style || 'Guarda',
+      strongAttacks: strongAttacks || '',
+      weaknesses: weaknesses || '',
+      cardio: Number(cardio) || 50,
+      videoUrl: videoUrl || '',
     });
+
+    res.status(201).json({
+      success: true,
+      message: 'Atleta criado com sucesso',
+      data: newAthlete,
+    });
+  } catch (error) {
+    handleError(res, 'criar atleta', error);
   }
 };
 
@@ -116,12 +111,7 @@ exports.update = async (req, res) => {
       data: updatedAthlete,
     });
   } catch (error) {
-    console.error('Erro ao atualizar atleta:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao atualizar atleta',
-      details: error.message,
-    });
+    handleError(res, 'atualizar atleta', error);
   }
 };
 
@@ -136,23 +126,18 @@ exports.delete = async (req, res) => {
     if (!athlete) {
       return res.status(404).json({
         success: false,
-      error: 'Atleta não encontrado',
+        error: 'Atleta não encontrado',
+      });
+    }
+
+    const deletedAthlete = await Athlete.delete(id);
+
+    res.json({
+      success: true,
+      message: 'Atleta deletado com sucesso',
+      data: deletedAthlete,
     });
-  }
-
-  const deletedAthlete = await Athlete.delete(id);
-
-  res.json({
-    success: true,
-    message: 'Atleta deletado com sucesso',
-    data: deletedAthlete,
-  });
   } catch (error) {
-    console.error('Erro ao deletar atleta:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao deletar atleta',
-      details: error.message,
-    });
+    handleError(res, 'deletar atleta', error);
   }
 };

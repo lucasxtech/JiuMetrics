@@ -1,6 +1,21 @@
 // Componente de caixa de estratégia IA - Atualizado para nova estrutura
 import { useState } from 'react';
 
+// Componente de ícone chevron reutilizável
+const ChevronIcon = ({ isExpanded }) => (
+  <svg 
+    className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+    fill="currentColor" 
+    viewBox="0 0 20 20"
+  >
+    <path 
+      fillRule="evenodd" 
+      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" 
+      clipRule="evenodd" 
+    />
+  </svg>
+);
+
 export default function AiStrategyBox({ strategy, isLoading = false }) {
   const [expandedSection, setExpandedSection] = useState('analise');
 
@@ -39,9 +54,7 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
             <p className="eyebrow text-xs">Estilo vs Estilo</p>
             <h4 className="text-lg font-semibold text-slate-900">Análise Direta</h4>
           </div>
-          <svg className={`w-5 h-5 transition-transform ${expandedSection === 'analise' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          <ChevronIcon isExpanded={expandedSection === 'analise'} />
         </button>
         {expandedSection === 'analise' && (
           <div className="border-t border-slate-100 px-6 py-4">
@@ -60,9 +73,7 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
             <p className="eyebrow text-xs">Plano de Vitória</p>
             <h4 className="text-lg font-semibold text-slate-900">Como Vencer</h4>
           </div>
-          <svg className={`w-5 h-5 transition-transform ${expandedSection === 'vencer' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          <ChevronIcon isExpanded={expandedSection === 'vencer'} />
         </button>
         {expandedSection === 'vencer' && (
           <div className="border-t border-slate-100 px-6 py-4">
@@ -81,9 +92,7 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
             <p className="eyebrow text-xs">Técnicas e Movimentos</p>
             <h4 className="text-lg font-semibold text-slate-900">Táticas Específicas</h4>
           </div>
-          <svg className={`w-5 h-5 transition-transform ${expandedSection === 'taticas' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          <ChevronIcon isExpanded={expandedSection === 'taticas'} />
         </button>
         {expandedSection === 'taticas' && (
           <div className="border-t border-slate-100 px-6 py-4">
@@ -102,9 +111,7 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
             <p className="eyebrow text-xs">Cronograma de Luta</p>
             <h4 className="text-lg font-semibold text-slate-900">Plano por Fases</h4>
           </div>
-          <svg className={`w-5 h-5 transition-transform ${expandedSection === 'fases' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          <ChevronIcon isExpanded={expandedSection === 'fases'} />
         </button>
         {expandedSection === 'fases' && strategyData?.plano_por_fases && (
           <div className="border-t border-slate-100 px-6 py-4 space-y-4">
@@ -134,9 +141,7 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
             <p className="eyebrow text-xs">Resumo Executivo</p>
             <h4 className="text-lg font-semibold text-slate-900">Checklist Final</h4>
           </div>
-          <svg className={`w-5 h-5 transition-transform ${expandedSection === 'checklist' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+          <ChevronIcon isExpanded={expandedSection === 'checklist'} />
         </button>
         {expandedSection === 'checklist' && strategyData?.checklist && (
           <div className="border-t border-slate-100 px-6 py-4">

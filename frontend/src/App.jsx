@@ -2,7 +2,7 @@
 import './index.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/common/Header';
-import Overview from './pages/Dashboard';
+import Overview from './pages/Overview';
 import Athletes from './pages/Athletes';
 import AthleteDetail from './pages/AthleteDetail';
 import Opponents from './pages/Opponents';

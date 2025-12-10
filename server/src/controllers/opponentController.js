@@ -2,6 +2,17 @@
 const Opponent = require('../models/Opponent');
 
 /**
+ * Resposta padrão de erro
+ */
+const handleError = (res, operation, error) => {
+  res.status(500).json({
+    success: false,
+    error: `Erro ao ${operation}`,
+    details: error.message,
+  });
+};
+
+/**
  * GET /api/opponents - Retorna todos os adversários
  */
 exports.getAll = async (req, res) => {
@@ -13,12 +24,7 @@ exports.getAll = async (req, res) => {
       count: opponents.length,
     });
   } catch (error) {
-    console.error('Erro ao buscar adversários:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao buscar adversários',
-      details: error.message,
-    });
+    handleError(res, 'buscar adversários', error);
   }
 };
 
@@ -42,12 +48,7 @@ exports.getById = async (req, res) => {
       data: opponent,
     });
   } catch (error) {
-    console.error('Erro ao buscar adversário:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao buscar adversário',
-      details: error.message,
-    });
+    handleError(res, 'buscar adversário', error);
   }
 };
 
@@ -58,7 +59,6 @@ exports.create = async (req, res) => {
   try {
     const { name, age, weight, belt, style, strongAttacks, weaknesses, cardio, videoUrl } = req.body;
 
-    // Validação básica
     if (!name || !age || !weight) {
       return res.status(400).json({
         success: false,
@@ -84,12 +84,7 @@ exports.create = async (req, res) => {
       data: newOpponent,
     });
   } catch (error) {
-    console.error('Erro ao criar adversário:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao criar adversário',
-      details: error.message,
-    });
+    handleError(res, 'criar adversário', error);
   }
 };
 
@@ -116,12 +111,7 @@ exports.update = async (req, res) => {
       data: updatedOpponent,
     });
   } catch (error) {
-    console.error('Erro ao atualizar adversário:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao atualizar adversário',
-      details: error.message,
-    });
+    handleError(res, 'atualizar adversário', error);
   }
 };
 
@@ -148,11 +138,6 @@ exports.delete = async (req, res) => {
       data: deletedOpponent,
     });
   } catch (error) {
-    console.error('Erro ao deletar adversário:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao deletar adversário',
-      details: error.message,
-    });
+    handleError(res, 'deletar adversário', error);
   }
 };

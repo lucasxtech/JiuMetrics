@@ -1,24 +1,47 @@
 // Página de Estratégia - Análise com IA - Design Moderno
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getAllAthletes } from '../services/athleteService';
+import { getAllOpponents } from '../services/opponentService';
+import { compareAndGenerateStrategy } from '../services/strategyService';
 import AiStrategyBox from '../components/AiStrategyBox';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import ErrorMessage from '../components/common/ErrorMessage';
 
 export default function Strategy() {
-  const [athletes] = useState([
-    { id: 1, name: 'João Silva', age: 28, weight: 85, belt: 'Roxa', style: 'Guarda', cardio: 85 },
-  ]);
-
-  const [opponents] = useState([
-    { id: 1, name: 'Pedro Ramos', age: 30, weight: 90, belt: 'Marrom', style: 'Pressão', cardio: 80 },
-  ]);
-
+  const [athletes, setAthletes] = useState([]);
+  const [opponents, setOpponents] = useState([]);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [selectedOpponent, setSelectedOpponent] = useState(null);
   const [strategy, setStrategy] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState(null);
 
-  /**
-   * Gera estratégia chamando a API
-   */
+  // Carregar atletas e adversários ao montar
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoadingData(true);
+        setError(null);
+        
+        const [athletesData, opponentsData] = await Promise.all([
+          getAllAthletes(),
+          getAllOpponents()
+        ]);
+
+        setAthletes(athletesData.data || []);
+        setOpponents(opponentsData.data || []);
+      } catch (err) {
+        console.error('❌ Erro ao carregar dados:', err);
+        setError('Erro ao carregar atletas e adversários');
+      } finally {
+        setIsLoadingData(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
   const handleGenerateStrategy = async () => {
     if (!selectedAthlete || !selectedOpponent) {
       alert('Selecione um atleta e um adversário');
@@ -27,26 +50,18 @@ export default function Strategy() {
 
     setIsLoading(true);
     setStrategy(null);
+    setError(null);
 
     try {
-      const response = await fetch('/api/ai/strategy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          athlete: selectedAthlete,
-          opponent: selectedOpponent,
-        }),
-      });
+      const response = await compareAndGenerateStrategy(
+        selectedAthlete.id,
+        selectedOpponent.id
+      );
 
-      if (!response.ok) {
-        throw new Error('Erro ao gerar estratégia');
-      }
-
-      const data = await response.json();
-      setStrategy(data.data);
-    } catch (error) {
-      console.error('Erro:', error);
-      alert('Erro ao gerar estratégia. Tente novamente.');
+      setStrategy(response.data);
+    } catch (err) {
+      console.error('❌ Erro ao gerar estratégia:', err);
+      setError(err.message || 'Erro ao gerar estratégia. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +69,14 @@ export default function Strategy() {
 
   const selectionButtonBase =
     'w-full rounded-xl border px-4 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300';
+
+  if (isLoadingData) {
+    return (
+      <div className="dashboard-wrapper">
+        <LoadingSpinner message="Carregando atletas e adversários..." />
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-wrapper animate-fadeIn">
@@ -68,10 +91,12 @@ export default function Strategy() {
         </div>
       </section>
 
+      {error && <ErrorMessage message={error} />}
+
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow" style={{ marginLeft: "1vw" }}>Seleção</p>
-          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>Defina quem será analisado</h2>
+          <p className="section-header__eyebrow">Seleção</p>
+          <h2 className="section-header__title">Defina quem será analisado</h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           <article className="panel">
@@ -82,25 +107,33 @@ export default function Strategy() {
               </div>
             </div>
             <div className="space-y-3">
-              {athletes.map((athlete) => {
-                const isSelected = selectedAthlete?.id === athlete.id;
-                return (
-                  <button
-                    key={athlete.id}
-                    type="button"
-                    onClick={() => setSelectedAthlete(athlete)}
-                    className={`${selectionButtonBase} ${
-                      isSelected
-                        ? 'border-slate-900 bg-slate-900/5 text-slate-900'
-                        : 'border-transparent bg-slate-50 hover:border-slate-200'
-                    }`}
-                    style={{ margin: "1vh" }}
-                  >
-                    <p className="font-semibold text-slate-900">{athlete.name}</p>
-                    <p className="text-sm text-slate-500">{athlete.belt} • {athlete.style} • Cond: {athlete.cardio}%</p>
-                  </button>
-                );
-              })}
+              {athletes.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Nenhum atleta cadastrado ainda
+                </p>
+              ) : (
+                athletes.map((athlete) => {
+                  const isSelected = selectedAthlete?.id === athlete.id;
+                  return (
+                    <button
+                      key={athlete.id}
+                      type="button"
+                      onClick={() => setSelectedAthlete(athlete)}
+                      className={`${selectionButtonBase} ${
+                        isSelected
+                          ? 'border-slate-900 bg-slate-900/5 text-slate-900'
+                          : 'border-transparent bg-slate-50 hover:border-slate-200'
+                      }`}
+                    >
+                      <p className="font-semibold text-slate-900">{athlete.name}</p>
+                      <p className="text-sm text-slate-500">
+                        {athlete.belt || 'N/A'} • {athlete.weight || 'N/A'}kg
+                        {athlete.cardio ? ` • Cond: ${athlete.cardio}%` : ''}
+                      </p>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </article>
 
@@ -112,25 +145,32 @@ export default function Strategy() {
               </div>
             </div>
             <div className="space-y-3">
-              {opponents.map((opponent) => {
-                const isSelected = selectedOpponent?.id === opponent.id;
-                return (
-                  <button
-                    key={opponent.id}
-                    type="button"
-                    onClick={() => setSelectedOpponent(opponent)}
-                    className={`${selectionButtonBase} ${
-                      isSelected
-                        ? 'border-slate-900 bg-slate-900/5 text-slate-900'
-                        : 'border-transparent bg-slate-50 hover:border-slate-200'
-                    }`}
-                    style={{ margin: "1vh" }}
-                  >
-                    <p className="font-semibold text-slate-900">{opponent.name}</p>
-                    <p className="text-sm text-slate-500">{opponent.belt} • {opponent.style} • Cond: {opponent.cardio}%</p>
-                  </button>
-                );
-              })}
+              {opponents.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Nenhum adversário cadastrado ainda
+                </p>
+              ) : (
+                opponents.map((opponent) => {
+                  const isSelected = selectedOpponent?.id === opponent.id;
+                  return (
+                    <button
+                      key={opponent.id}
+                      type="button"
+                      onClick={() => setSelectedOpponent(opponent)}
+                      className={`${selectionButtonBase} ${
+                        isSelected
+                          ? 'border-slate-900 bg-slate-900/5 text-slate-900'
+                          : 'border-transparent bg-slate-50 hover:border-slate-200'
+                      }`}
+                    >
+                      <p className="font-semibold text-slate-900">{opponent.name}</p>
+                      <p className="text-sm text-slate-500">
+                        {opponent.belt || 'N/A'} • {opponent.style || 'N/A'} • {opponent.weight ? `${opponent.weight}kg` : 'N/A'}
+                      </p>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </article>
         </div>
@@ -157,9 +197,9 @@ export default function Strategy() {
       {(strategy || isLoading) && <AiStrategyBox strategy={strategy} isLoading={isLoading} />}
 
       {!strategy && !isLoading && !selectedAthlete && (
-        <section className="panel text-center" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <div className="mx-auto max-w-md space-y-4" style={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100" style={{ margin: "1vh" }}>
+        <section className="panel text-center">
+          <div className="mx-auto max-w-md space-y-4 flex flex-col items-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100">
               <svg className="h-10 w-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>

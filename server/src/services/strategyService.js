@@ -52,6 +52,10 @@ class StrategyService {
    * Analisa o confronto entre perfis técnicos
    */
   static analyzeMatchup(athleteProfile, opponentProfile) {
+    const AGGRESSION_THRESHOLD = 20;
+    const PULL_GUARD_HIGH = 50;
+    const PULL_GUARD_LOW = 30;
+
     const analysis = {
       advantages: [],
       disadvantages: [],
@@ -60,23 +64,27 @@ class StrategyService {
     };
 
     // Comparar preferências (guarda vs passagem)
-    if (athleteProfile.preference === 'guard' && opponentProfile.preference === 'passing') {
+    const athletePref = athleteProfile.preference;
+    const opponentPref = opponentProfile.preference;
+
+    if (athletePref === 'guard' && opponentPref === 'passing') {
       analysis.keyPoints.push('Confronto clássico: Guardeiro vs Passador');
       analysis.disadvantages.push('Adversário prefere jogo de passagem (zona de perigo)');
-    } else if (athleteProfile.preference === 'passing' && opponentProfile.preference === 'guard') {
+    } else if (athletePref === 'passing' && opponentPref === 'guard') {
       analysis.keyPoints.push('Confronto favorável: Seu jogo de passagem vs guarda dele');
       analysis.advantages.push('Você joga por cima, adversário joga por baixo');
-    } else if (athleteProfile.preference === opponentProfile.preference) {
+    } else if (athletePref === opponentPref) {
       analysis.neutralZones.push('Ambos preferem o mesmo estilo de jogo');
     }
 
     // Comparar personalidade
     const athleteAggression = athleteProfile.personality?.aggressive || 0;
     const opponentAggression = opponentProfile.personality?.aggressive || 0;
+    const aggressionDiff = athleteAggression - opponentAggression;
 
-    if (athleteAggression > opponentAggression + 20) {
+    if (aggressionDiff > AGGRESSION_THRESHOLD) {
       analysis.advantages.push('Você é mais agressivo que o adversário');
-    } else if (opponentAggression > athleteAggression + 20) {
+    } else if (aggressionDiff < -AGGRESSION_THRESHOLD) {
       analysis.disadvantages.push('Adversário é mais agressivo');
       analysis.keyPoints.push('Prepare-se para pressão constante');
     }
@@ -85,30 +93,28 @@ class StrategyService {
     const athletePullGuard = athleteProfile.initialBehavior?.pullGuard || 0;
     const opponentPullGuard = opponentProfile.initialBehavior?.pullGuard || 0;
 
-    if (athletePullGuard > 50 && opponentPullGuard > 50) {
+    if (athletePullGuard > PULL_GUARD_HIGH && opponentPullGuard > PULL_GUARD_HIGH) {
       analysis.keyPoints.push('Ambos tendem a puxar guarda - trabalhe quedas');
-    } else if (athletePullGuard < 30 && opponentPullGuard < 30) {
+    } else if (athletePullGuard < PULL_GUARD_LOW && opponentPullGuard < PULL_GUARD_LOW) {
       analysis.keyPoints.push('Ambos buscam quedas - prepare jogo em pé');
     }
 
-    // Posições fortes vs fracas
+    // Posições fortes vs fracas - análise cruzada
     const athleteStrong = athleteProfile.strongPositions || [];
     const opponentWeak = opponentProfile.weakPositions || [];
     const athleteWeak = athleteProfile.weakPositions || [];
     const opponentStrong = opponentProfile.strongPositions || [];
 
-    // Encontrar oportunidades (pontos fortes do atleta vs pontos fracos do adversário)
-    athleteStrong.forEach((pos) => {
-      if (opponentWeak.includes(pos)) {
-        analysis.advantages.push(`Seu ponto forte (${pos}) é ponto fraco do adversário`);
-      }
+    // Encontrar interseções (oportunidades e perigos)
+    const opportunities = athleteStrong.filter(pos => opponentWeak.includes(pos));
+    const dangers = athleteWeak.filter(pos => opponentStrong.includes(pos));
+
+    opportunities.forEach(pos => {
+      analysis.advantages.push(`Seu ponto forte (${pos}) é ponto fraco do adversário`);
     });
 
-    // Encontrar perigos (pontos fracos do atleta vs pontos fortes do adversário)
-    athleteWeak.forEach((pos) => {
-      if (opponentStrong.includes(pos)) {
-        analysis.disadvantages.push(`Seu ponto fraco (${pos}) é ponto forte do adversário`);
-      }
+    dangers.forEach(pos => {
+      analysis.disadvantages.push(`Seu ponto fraco (${pos}) é ponto forte do adversário`);
     });
 
     return analysis;
@@ -118,6 +124,10 @@ class StrategyService {
    * Gera recomendações estratégicas
    */
   static generateStrategy(athlete, opponent, matchupAnalysis) {
+    const AGGRESSION_THRESHOLD = 60;
+    const CALM_THRESHOLD = 50;
+    const CARDIO_DIFFERENCE = 10;
+
     const strategy = {
       gameplan: [],
       priorities: [],
@@ -148,13 +158,13 @@ class StrategyService {
     const opponentAggression = opponentProfile.personality?.aggressive || 0;
     const opponentCalm = opponentProfile.personality?.calm || 0;
 
-    if (opponentAggression > 60) {
+    if (opponentAggression > AGGRESSION_THRESHOLD) {
       strategy.mentalPreparation.push('Adversário é agressivo - mantenha a calma');
       strategy.gameplan.push('Use a agressividade dele contra ele (contra-ataques)');
       strategy.techniques.push('Preparar contra-ataques e transições rápidas');
     }
 
-    if (opponentCalm > 50) {
+    if (opponentCalm > CALM_THRESHOLD) {
       strategy.mentalPreparation.push('Adversário é controlador - seja proativo');
       strategy.gameplan.push('Não deixe o adversário ditar o ritmo');
       strategy.priorities.push('Tome iniciativa desde o início');
@@ -164,16 +174,20 @@ class StrategyService {
     const opponentWeak = opponentProfile.weakPositions || [];
     if (opponentWeak.length > 0) {
       strategy.priorities.push(`Explorar pontos fracos: ${opponentWeak.join(', ')}`);
+      
+      const weaknessMap = {
+        guarda: 'Trabalhe passagens de guarda variadas',
+        queda: 'Invista em quedas e takedowns',
+        raspagem: 'Cuidado ao jogar por cima - boa base'
+      };
+
       opponentWeak.forEach((weakness) => {
-        if (weakness.toLowerCase().includes('guarda')) {
-          strategy.techniques.push('Trabalhe passagens de guarda variadas');
-        }
-        if (weakness.toLowerCase().includes('queda')) {
-          strategy.techniques.push('Invista em quedas e takedowns');
-        }
-        if (weakness.toLowerCase().includes('raspagem')) {
-          strategy.techniques.push('Cuidado ao jogar por cima - boa base');
-        }
+        const weakLower = weakness.toLowerCase();
+        Object.entries(weaknessMap).forEach(([key, technique]) => {
+          if (weakLower.includes(key)) {
+            strategy.techniques.push(technique);
+          }
+        });
       });
     }
 
@@ -183,12 +197,14 @@ class StrategyService {
       strategy.avoid.push(`Evitar: ${opponentStrong.join(', ')}`);
     }
 
-    // Cardio comparison
+    // Comparação de condicionamento
     if (athlete.cardio && opponent.cardio) {
-      if (athlete.cardio > opponent.cardio + 10) {
+      const cardioDiff = athlete.cardio - opponent.cardio;
+      
+      if (cardioDiff > CARDIO_DIFFERENCE) {
         strategy.gameplan.push('Você tem melhor condicionamento - aumente o ritmo');
         strategy.mentalPreparation.push('Mantenha pressão constante para cansar adversário');
-      } else if (opponent.cardio > athlete.cardio + 10) {
+      } else if (cardioDiff < -CARDIO_DIFFERENCE) {
         strategy.gameplan.push('Adversário tem melhor cardio - economize energia');
         strategy.mentalPreparation.push('Seja eficiente, não desperdice movimentos');
       }
@@ -212,24 +228,20 @@ class StrategyService {
     allAthletes.forEach((athlete) => {
       try {
         const comparison = this.compareAndGenerateStrategy(athlete.id, opponentId);
+        const { advantages, disadvantages } = comparison.matchupAnalysis;
         
-        // Calcular score de vantagem
-        const advantageScore = comparison.matchupAnalysis.advantages.length;
-        const disadvantageScore = comparison.matchupAnalysis.disadvantages.length;
-        const netScore = advantageScore - disadvantageScore;
-
         matchups.push({
           athlete: {
             id: athlete.id,
             name: athlete.name,
             belt: athlete.belt,
           },
-          score: netScore,
-          advantages: advantageScore,
-          disadvantages: disadvantageScore,
+          score: advantages.length - disadvantages.length,
+          advantages: advantages.length,
+          disadvantages: disadvantages.length,
         });
       } catch (error) {
-        console.error(`Erro ao comparar ${athlete.name}:`, error.message);
+        // Silenciosamente pula atletas com dados incompletos
       }
     });
 

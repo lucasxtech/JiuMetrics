@@ -1,6 +1,13 @@
 // Componente de comparação entre atleta e adversário - Design Moderno
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
+// Thresholds para classificação de diferenças
+const THRESHOLDS = {
+  age: { high: 5, medium: 2 },
+  weight: { high: 10, medium: 5 },
+  cardio: { high: 20, medium: 10 }
+};
+
 export default function CompareView({ athlete, opponent }) {
   if (!athlete || !opponent) {
     return (
@@ -57,6 +64,35 @@ export default function CompareView({ athlete, opponent }) {
   const ageDiff = Math.abs(athlete.age - opponent.age);
   const weightDiff = Math.abs(athlete.weight - opponent.weight);
   const cardioDiff = Math.abs(athlete.cardio - opponent.cardio);
+
+  // Classifica diferença (alta, média, baixa)
+  const classifyDifference = (diff, thresholds) => {
+    if (diff > thresholds.high) return 'high';
+    if (diff > thresholds.medium) return 'medium';
+    return 'low';
+  };
+
+  // Configuração visual por nível de diferença
+  const getDiffConfig = (level) => {
+    const configs = {
+      high: {
+        color: 'bg-red-500',
+        badgeClass: 'bg-red-100 text-red-800',
+        label: '⚠️ Diferença significativa'
+      },
+      medium: {
+        color: 'bg-yellow-500',
+        badgeClass: 'bg-yellow-100 text-yellow-800',
+        label: '📊 Diferença moderada'
+      },
+      low: {
+        color: 'bg-green-500',
+        badgeClass: 'bg-green-100 text-green-800',
+        label: '✓ Diferença pequena'
+      }
+    };
+    return configs[level];
+  };
 
   return (
     <div className="space-y-6">
@@ -271,7 +307,7 @@ export default function CompareView({ athlete, opponent }) {
           <div className="stat-card group hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Diferença de Idade</span>
-              <div className={`w-3 h-3 rounded-full ${ageDiff > 5 ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></div>
+              <div className={`w-3 h-3 rounded-full ${getDiffConfig(classifyDifference(ageDiff, THRESHOLDS.age)).color} animate-pulse`}></div>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-black text-gray-900">{ageDiff}</span>
@@ -279,13 +315,9 @@ export default function CompareView({ athlete, opponent }) {
             </div>
             <div className="mt-3">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                ageDiff > 5 
-                  ? 'bg-red-100 text-red-800' 
-                  : ageDiff > 2
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-green-100 text-green-800'
+                getDiffConfig(classifyDifference(ageDiff, THRESHOLDS.age)).badgeClass
               }`}>
-                {ageDiff > 5 ? '⚠️ Diferença significativa' : ageDiff > 2 ? '📊 Diferença moderada' : '✓ Diferença pequena'}
+                {getDiffConfig(classifyDifference(ageDiff, THRESHOLDS.age)).label}
               </span>
             </div>
           </div>
@@ -294,7 +326,7 @@ export default function CompareView({ athlete, opponent }) {
           <div className="stat-card group hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Diferença de Peso</span>
-              <div className={`w-3 h-3 rounded-full ${weightDiff > 10 ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></div>
+              <div className={`w-3 h-3 rounded-full ${getDiffConfig(classifyDifference(weightDiff, THRESHOLDS.weight)).color} animate-pulse`}></div>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-black text-gray-900">{weightDiff}</span>
@@ -302,13 +334,9 @@ export default function CompareView({ athlete, opponent }) {
             </div>
             <div className="mt-3">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                weightDiff > 10 
-                  ? 'bg-red-100 text-red-800' 
-                  : weightDiff > 5
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-green-100 text-green-800'
+                getDiffConfig(classifyDifference(weightDiff, THRESHOLDS.weight)).badgeClass
               }`}>
-                {weightDiff > 10 ? '⚠️ Diferença significativa' : weightDiff > 5 ? '📊 Diferença moderada' : '✓ Diferença pequena'}
+                {getDiffConfig(classifyDifference(weightDiff, THRESHOLDS.weight)).label}
               </span>
             </div>
           </div>
@@ -317,7 +345,7 @@ export default function CompareView({ athlete, opponent }) {
           <div className="stat-card group hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Diferença de Condicionamento</span>
-              <div className={`w-3 h-3 rounded-full ${cardioDiff > 20 ? 'bg-red-500' : 'bg-green-500'} animate-pulse`}></div>
+              <div className={`w-3 h-3 rounded-full ${getDiffConfig(classifyDifference(cardioDiff, THRESHOLDS.cardio)).color} animate-pulse`}></div>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-black text-gray-900">{cardioDiff}</span>
@@ -325,13 +353,9 @@ export default function CompareView({ athlete, opponent }) {
             </div>
             <div className="mt-3">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                cardioDiff > 20 
-                  ? 'bg-red-100 text-red-800' 
-                  : cardioDiff > 10
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-green-100 text-green-800'
+                getDiffConfig(classifyDifference(cardioDiff, THRESHOLDS.cardio)).badgeClass
               }`}>
-                {cardioDiff > 20 ? '⚠️ Diferença significativa' : cardioDiff > 10 ? '📊 Diferença moderada' : '✓ Diferença pequena'}
+                {getDiffConfig(classifyDifference(cardioDiff, THRESHOLDS.cardio)).label}
               </span>
             </div>
           </div>
