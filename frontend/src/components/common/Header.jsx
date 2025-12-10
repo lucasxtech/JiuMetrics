@@ -9,7 +9,7 @@ export default function Header() {
   const isActive = (path) => location.pathname === path;
 
   const navLinks = [
-    { label: 'Dashboard', to: '/' },
+    { label: 'Overview', to: '/' },
     { label: 'Atletas', to: '/athletes' },
     { label: 'Adversários', to: '/opponents' },
     { label: 'Comparar', to: '/compare' },

@@ -1,145 +1,173 @@
 import { Link } from 'react-router-dom';
-import StatsRadarChart from '../components/charts/StatsRadarChart';
-import StatsBarChart from '../components/charts/StatsBarChart';
-import StatsLineChart from '../components/charts/StatsLineChart';
 
-const metricHighlights = [
-  { label: 'Total de Atletas', value: '12', link: '/athletes', linkLabel: 'Ver todos' },
-  { label: 'Total de Adversários', value: '8', link: '/opponents', linkLabel: 'Ver todos' },
-  { label: 'Lutas analisadas', value: '24', link: '/analyze-video', linkLabel: 'Analisar nova' },
+const features = [
+  {
+    icon: '🥋',
+    title: 'Gerenciamento de Atletas',
+    description: 'Cadastre seus atletas, adicione vídeos de lutas e gere análises técnicas detalhadas com IA.',
+    highlights: ['Perfis completos', 'Análise de vídeo com IA', 'Histórico de evolução'],
+    to: '/athletes',
+    cta: 'Acessar Atletas'
+  },
+  {
+    icon: '🎯',
+    title: 'Análise de Adversários',
+    description: 'Monitore adversários, identifique padrões técnicos e descubra pontos fracos para explorar.',
+    highlights: ['Perfil técnico detalhado', 'Estatísticas de luta', 'Pontos vulneráveis'],
+    to: '/opponents',
+    cta: 'Ver Adversários'
+  },
+  {
+    icon: '📊',
+    title: 'Comparação Tática',
+    description: 'Compare atletas e adversários lado a lado para identificar vantagens e desvantagens técnicas.',
+    highlights: ['Comparação visual', 'Análise de atributos', 'Matchup insights'],
+    to: '/compare',
+    cta: 'Comparar Lutadores'
+  },
+  {
+    icon: '🤖',
+    title: 'Estratégia com IA',
+    description: 'Gere planos de luta personalizados usando inteligência artificial baseada nos perfis técnicos.',
+    highlights: ['Estratégias personalizadas', 'Plano por fases', 'Checklist tático'],
+    to: '/strategy',
+    cta: 'Criar Estratégia'
+  }
 ];
 
-const quickActions = [
-  { icon: '🥋', title: 'Gerenciar Atletas', description: 'Cadastre e acompanhe seus atletas', to: '/athletes' },
-  { icon: '📊', title: 'Comparar Lutadores', description: 'Analise diferenças táticas', to: '/compare' },
-  { icon: '🎯', title: 'Estratégia com IA', description: 'Crie planos de luta inteligentes', to: '/strategy' },
+const capabilities = [
+  {
+    title: 'Inteligência Artificial',
+    description: 'Análise de vídeos e geração de estratégias usando Gemini 2.0 Flash',
+    icon: '🧠'
+  },
+  {
+    title: 'Análise Técnica',
+    description: 'Perfis detalhados com 5 atributos principais e estatísticas de luta',
+    icon: '📈'
+  },
+  {
+    title: 'Visualização de Dados',
+    description: 'Gráficos interativos para análise comparativa e evolução temporal',
+    icon: '📊'
+  }
 ];
 
-const heroTags = ['Atletas', 'Comparação', 'Estratégia IA'];
-
-export default function Dashboard() {
-  const selectedAthlete = { name: 'João Silva', cardio: 85 };
-
-  const athleteRadarData = [
-    { name: 'Condicionamento', value: 85 },
-    { name: 'Técnica', value: 75 },
-    { name: 'Agressividade', value: 70 },
-    { name: 'Defesa', value: 80 },
-    { name: 'Movimentação', value: 75 },
-  ];
-
-  const attacksData = [
-    { name: 'Raspagem', value: 28 },
-    { name: 'Armlock', value: 22 },
-    { name: 'Estrangulação', value: 18 },
-    { name: 'Queda', value: 15 },
-    { name: 'Passagem', value: 12 },
-  ];
-
-  const evolutionData = [
-    { date: 'Jan', value: 45 },
-    { date: 'Fev', value: 52 },
-    { date: 'Mar', value: 48 },
-    { date: 'Abr', value: 65 },
-    { date: 'Mai', value: 72 },
-    { date: 'Jun', value: 78 },
-  ];
-
+export default function Overview() {
   return (
-    <div className="dashboard-wrapper animate-fadeIn" style={{ width: '100vw' }}>
+    <div className="dashboard-wrapper animate-fadeIn">
+      {/* Hero Section */}
       <section className="panel panel--hero">
         <div>
-          <p className="eyebrow">Visão geral</p>
-          <h1 className="hero-title">Análise Tática de Jiu-Jitsu</h1>
+          <p className="eyebrow">Bem-vindo</p>
+          <h1 className="hero-title">JiuMetrics</h1>
           <p className="hero-description">
-            Gerencie atletas, analise adversários e desenvolva estratégias personalizadas com IA.
+            Plataforma completa de análise tática para Jiu-Jitsu. 
+            Gerencie atletas, estude adversários e desenvolva estratégias vencedoras com inteligência artificial.
           </p>
         </div>
         <div className="hero-meta">
-          <p>Resumo rápido com métricas, gráficos e próximos passos principais.</p>
-          <div className="tag-list">
-            {heroTags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
+          <p>Sistema profissional de scouting e preparação técnica para academias e competidores.</p>
         </div>
       </section>
 
+      {/* Capacidades da Plataforma */}
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow" style={{ marginLeft: "1vw"}}>Resumo</p>
-          <h2 className="section-header__title" style={{ marginLeft: "1vw"}}>Indicadores principais</h2>
+          <p className="section-header__eyebrow" style={{ marginLeft: "1vw" }}>Tecnologia</p>
+          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>O que a plataforma oferece</h2>
         </div>
-        <div className="metric-grid">
-          {metricHighlights.map((card) => (
-            <article key={card.label} className="metric-card">
-              <p className="metric-card__label">{card.label}</p>
-              <p className="metric-card__value">{card.value}</p>
-              <Link to={card.link} className="metric-card__link">
-                {card.linkLabel}
+        <div className="grid gap-4 md:grid-cols-3">
+          {capabilities.map((capability) => (
+            <article key={capability.title} className="panel">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-slate-100 text-2xl">
+                  {capability.icon}
+                </div>
+                <div>
+                  <h3 className="mb-2 font-semibold text-slate-900">{capability.title}</h3>
+                  <p className="text-sm text-slate-600">{capability.description}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Módulos Principais */}
+      <section>
+        <div className="section-header">
+          <p className="section-header__eyebrow" style={{ marginLeft: "1vw" }}>Módulos</p>
+          <h2 className="section-header__title" style={{ marginLeft: "1vw" }}>Funcionalidades principais</h2>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {features.map((feature) => (
+            <article key={feature.title} className="panel">
+              <div className="mb-4 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-3xl">
+                    {feature.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900">{feature.title}</h3>
+                  </div>
+                </div>
+              </div>
+              
+              <p className="mb-4 text-slate-600">{feature.description}</p>
+              
+              <ul className="mb-6 space-y-2">
+                {feature.highlights.map((highlight) => (
+                  <li key={highlight} className="flex items-center gap-2 text-sm text-slate-700">
+                    <svg className="h-5 w-5 flex-shrink-0 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {highlight}
+                  </li>
+                ))}
+              </ul>
+              
+              <Link
+                to={feature.to}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 text-sm font-medium text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg"
+              >
+                {feature.cta}
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="chart-grid">
-        <article className="panel chart-card">
-          <div className="panel__head">
-            <div>
-              <p className="eyebrow">Perfil de {selectedAthlete.name}</p>
-              <h3 className="panel__title">Distribuição de atributos</h3>
-            </div>
-            <span className="panel__meta">Condicionamento {selectedAthlete.cardio}%</span>
-          </div>
-          <div className="chart-area">
-            <StatsRadarChart data={athleteRadarData} />
-          </div>
-        </article>
-
-        <article className="panel chart-card">
-          <div className="panel__head">
-            <div>
-              <p className="eyebrow">Ataques mais utilizados</p>
-              <h3 className="panel__title">Distribuição ofensiva recente</h3>
-            </div>
-            <span className="panel__meta">Últimas 5 lutas</span>
-          </div>
-          <div className="chart-area">
-            <StatsBarChart data={attacksData} />
-          </div>
-        </article>
-
-        <article className="panel chart-card chart-card--wide">
-          <div className="panel__head">
-            <div>
-              <p className="eyebrow">Evolução</p>
-              <h3 className="panel__title">Desempenho dos últimos 6 meses</h3>
-            </div>
-            <span className="panel__meta">+33% no período</span>
-          </div>
-          <div className="chart-area chart-area--large">
-            <StatsLineChart data={evolutionData} />
-          </div>
-        </article>
-      </section>
-
-      <section className="panel">
-        <div className="section-header">
-          <p className="section-header__eyebrow">Próximos passos</p>
-          <h2 className="section-header__title">Escolha o fluxo que deseja seguir</h2>
-        </div>
-        <div className="cta-grid">
-          {quickActions.map((action) => (
-            <Link key={action.title} to={action.to} className="cta-card">
-              <div className="cta-card__icon" aria-hidden="true">
-                {action.icon}
-              </div>
-              <p className="cta-card__title">{action.title}</p>
-              <p className="cta-card__description">{action.description}</p>
-              <span className="cta-card__link">Acessar →</span>
+      {/* Call to Action */}
+      <section className="panel bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="text-center">
+          <h2 className="mb-3 text-2xl font-bold text-slate-900">Pronto para começar?</h2>
+          <p className="mb-6 text-slate-600">
+            Escolha um dos módulos acima para iniciar sua análise tática ou comece cadastrando seu primeiro atleta.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link
+              to="/athletes"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 px-10 text-sm font-medium text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Novo Atleta
             </Link>
-          ))}
+            <Link
+              to="/analyze-video"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-10 text-sm font-medium text-slate-900 shadow-sm transition-all hover:border-slate-400 hover:shadow-md"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Analisar Vídeo
+            </Link>
+          </div>
         </div>
       </section>
     </div>
