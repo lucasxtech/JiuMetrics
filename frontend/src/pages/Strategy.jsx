@@ -94,6 +94,7 @@ export default function Strategy() {
                         ? 'border-slate-900 bg-slate-900/5 text-slate-900'
                         : 'border-transparent bg-slate-50 hover:border-slate-200'
                     }`}
+                    style={{ margin: "1vh" }}
                   >
                     <p className="font-semibold text-slate-900">{athlete.name}</p>
                     <p className="text-sm text-slate-500">{athlete.belt} • {athlete.style} • Cond: {athlete.cardio}%</p>
@@ -123,6 +124,7 @@ export default function Strategy() {
                         ? 'border-slate-900 bg-slate-900/5 text-slate-900'
                         : 'border-transparent bg-slate-50 hover:border-slate-200'
                     }`}
+                    style={{ margin: "1vh" }}
                   >
                     <p className="font-semibold text-slate-900">{opponent.name}</p>
                     <p className="text-sm text-slate-500">{opponent.belt} • {opponent.style} • Cond: {opponent.cardio}%</p>
@@ -155,9 +157,9 @@ export default function Strategy() {
       {(strategy || isLoading) && <AiStrategyBox strategy={strategy} isLoading={isLoading} />}
 
       {!strategy && !isLoading && !selectedAthlete && (
-        <section className="panel text-center">
-          <div className="mx-auto max-w-md space-y-4">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100">
+        <section className="panel text-center" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <div className="mx-auto max-w-md space-y-4" style={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100" style={{ margin: "1vh" }}>
               <svg className="h-10 w-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>

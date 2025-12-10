@@ -1,5 +1,94 @@
 # Sistema de Análise de Lutas e Estratégias Táticas
 
+## 🎯 ATUALIZAÇÃO - Sistema de Estratégia com IA (Gemini)
+
+### Visão Geral
+
+O sistema de estratégia utiliza o **Gemini AI** para analisar comparativamente atletas e adversários, gerando recomendações táticas personalizadas e objetivas para aumentar as chances de vitória.
+
+### Arquitetura
+
+#### Backend
+1. **Rota**: `POST /api/strategy/compare`
+2. **Controller**: `strategyController.compareAndStrategy`
+3. **Service**: `geminiService.generateTacticalStrategy`
+4. **Utilitário**: `athleteStatsUtils.processPersonAnalyses`
+
+#### Frontend
+1. **Página**: `Strategy.jsx` - Interface de seleção e visualização
+2. **Componente**: `AiStrategyBox.jsx` - Exibição da análise em seções
+3. **Service**: `strategyService.compareAndGenerateStrategy`
+
+### Fluxo Completo
+
+```
+1. Usuário seleciona atleta e adversário
+   ↓
+2. Frontend: compareAndGenerateStrategy(athleteId, opponentId)
+   ↓
+3. Backend busca dados completos (atleta + adversário + análises)
+   ↓
+4. Calcula atributos com processPersonAnalyses() - normalizado por análise
+   ↓
+5. Prepara payload: { name, resumo (aiSummary), atributos }
+   ↓
+6. Gemini analisa e retorna estratégia em JSON estruturado
+   ↓
+7. Frontend exibe em AiStrategyBox com seções expansíveis
+```
+
+### Response Structure
+
+```json
+{
+  "athlete": {
+    "id": "uuid",
+    "name": "Nome",
+    "attributes": { "condicionamento": 75, "tecnica": 80, ... },
+    "totalAnalyses": 5
+  },
+  "opponent": { ... },
+  "strategy": {
+    "analise": "Análise direta estilo vs estilo",
+    "estrategia_para_vencer": "Como vencer",
+    "taticas_especificas": "Táticas práticas",
+    "plano_por_fases": {
+      "inicio": "0-60s",
+      "meio": "Meio da luta",
+      "fim": "Final e gestão"
+    },
+    "checklist": {
+      "fazer": ["Ação 1", ...],
+      "evitar": ["Erro 1", ...],
+      "buscar": ["Posição 1", ...],
+      "nunca_permitir": ["Risco 1", ...]
+    }
+  }
+}
+```
+
+### Cálculo de Atributos (Normalizado)
+
+Agora usa **médias por análise** para evitar que quem tem mais vídeos tenha score artificialmente alto:
+
+- **Condicionamento**: `avgActionsPerAnalise × 4 + avgPositions × 2`
+- **Técnica**: `varietyTecnicas × 8 + avgVolume × 3`
+- **Agressividade**: `avgSubmissions × 20 + avgSweeps × 8 + avgBackTakes × 15 + bônus`
+- **Defesa**: `sweepSuccessRate × 40 + avgDefensive × 6 + 20`
+- **Movimentação**: `avgBackTakes × 18 + avgSweeps × 10 + variety × 4 + bônus`
+
+Todos normalizados entre 10-100 com `Math.min/Math.max`.
+
+### Seções da Análise IA
+
+1. **Análise Direta**: Vantagens, desvantagens, equilíbrio, riscos
+2. **Estratégia para Vencer**: Ofensiva, defensiva, áreas
+3. **Táticas Específicas**: Início, anulação, exploração, técnicas
+4. **Plano por Fases**: Início / Meio / Fim da luta
+5. **Checklist Final**: Fazer / Evitar / Buscar / Nunca Permitir
+
+---
+
 ## 📋 Resumo das Funcionalidades Implementadas
 
 ### 1. **Histórico de Análises de Lutas** (`FightAnalysis`)

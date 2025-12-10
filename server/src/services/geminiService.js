@@ -66,7 +66,7 @@ Gráfico de pizza com porcentagens para as maiores tentativas de finalizações:
   Retornar: Quantidade, Tempo médio de controle nas costas, Se houve tentativa de finalização
 (Use apenas o que realmente aparece nos vídeos.)
 
-RESUMO FINAL (campo "summary")
+🧠 RESUMO FINAL (campo "summary")
 
 Depois de analisar todos os vídeos, gere um texto único e profundo contendo:
 - Qual é o estilo geral dele
@@ -229,6 +229,8 @@ async function analyzeFrame(url, context = {}) {
   const prompt = buildPrompt(url, context);
   console.log("🤖 Enviando prompt para Gemini:", prompt);
 
+  console.log("🤖 Enviando prompt para Gemini:", prompt);
+
   try {
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
@@ -388,96 +390,4 @@ function consolidateAnalyses(frameAnalyses) {
   return consolidated;
 }
 
-/**
- * Gera resumo técnico profissional de um atleta usando Gemini AI
- * @param {Object} athleteData - Dados do atleta e suas análises
- * @returns {Promise<string>} Resumo técnico gerado pela IA
- */
-async function generateAthleteSummary(athleteData) {
-  if (!model) {
-    throw new Error('Gemini API não configurada. Configure GEMINI_API_KEY no arquivo .env');
-  }
-
-  const {
-    name,
-    belt,
-    weight,
-    style,
-    analyses = [],
-    stats = {}
-  } = athleteData;
-
-  // Preparar dados das análises
-  const analysesCount = analyses.length;
-  const totalSubmissions = stats.totalSubmissions || 0;
-  const totalSweeps = stats.totalSweeps || 0;
-  const completedSweeps = stats.completedSweeps || 0;
-  const totalBackTakes = stats.totalBackTakes || 0;
-  const topTechniques = stats.topTechniques || [];
-  const attributes = stats.attributes || {};
-
-  // Construir prompt para o Gemini
-  const prompt = `Você é um analista técnico profissional de Jiu-Jitsu brasileiro.
-
-Crie um resumo técnico profissional e objetivo sobre este atleta, baseado nos dados de ${analysesCount} vídeos analisados:
-
-DADOS DO ATLETA:
-- Nome: ${name}
-- Faixa: ${belt || 'Não informada'}
-- Peso: ${weight || 'Não informado'}
-- Estilo declarado: ${style || 'Não informado'}
-
-ESTATÍSTICAS TÉCNICAS (de ${analysesCount} análises):
-- Tentativas de finalização: ${totalSubmissions}
-- Raspagens: ${totalSweeps} (${completedSweeps} concluídas, ${totalSweeps > 0 ? Math.round((completedSweeps/totalSweeps)*100) : 0}% efetividade)
-- Pegadas de costas: ${totalBackTakes}
-- Técnicas mais utilizadas: ${topTechniques.slice(0, 5).join(', ') || 'Dados insuficientes'}
-
-ATRIBUTOS AVALIADOS (escala 0-100):
-- Condicionamento: ${attributes.condicionamento || 0}/100
-- Técnica: ${attributes.tecnica || 0}/100
-- Agressividade: ${attributes.agressividade || 0}/100
-- Defesa: ${attributes.defesa || 0}/100
-- Movimentação: ${attributes.movimentacao || 0}/100
-
-TAREFA:
-Escreva UM ÚNICO PARÁGRAFO (3-5 frases) descrevendo:
-1. Estilo principal de luta (agressivo, técnico, dinâmico, cauteloso, etc)
-2. Preferência de jogo (guarda, passagem, finalização, transições)
-3. Principais armas técnicas
-4. Características marcantes do condicionamento ou movimentação
-
-IMPORTANTE:
-- Seja objetivo e profissional (análise de scout esportivo)
-- Use linguagem técnica de Jiu-Jitsu
-- NÃO invente dados - baseie-se apenas no fornecido
-- NÃO use markdown, asteriscos ou formatação especial
-- Retorne APENAS o texto do parágrafo, sem título ou introdução
-- Mínimo 150 caracteres, máximo 500 caracteres`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let summary = response.text().trim();
-
-    // Remover possíveis formatações markdown
-    summary = summary
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/#{1,6}\s/g, '')
-      .replace(/`/g, '')
-      .trim();
-
-    // Validar tamanho mínimo
-    if (summary.length < 50) {
-      throw new Error('Resumo gerado muito curto');
-    }
-
-    return summary;
-  } catch (error) {
-    console.error('Erro ao gerar resumo com Gemini:', error);
-    throw new Error('Falha ao gerar resumo técnico com IA: ' + error.message);
-  }
-}
-
-module.exports = { analyzeFrame, consolidateAnalyses, generateAthleteSummary };
+module.exports = { analyzeFrame, consolidateAnalyses };
