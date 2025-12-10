@@ -17,7 +17,7 @@ const handleError = (res, operation, error) => {
  */
 exports.getAll = async (req, res) => {
   try {
-    const opponents = await Opponent.getAll();
+    const opponents = await Opponent.getAll(req.userId);
     res.json({
       success: true,
       data: opponents,
@@ -34,7 +34,7 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const opponent = await Opponent.getById(id);
+    const opponent = await Opponent.getById(id, req.userId);
 
     if (!opponent) {
       return res.status(404).json({
@@ -76,7 +76,7 @@ exports.create = async (req, res) => {
       weaknesses: weaknesses || '',
       cardio: Number(cardio) || 50,
       videoUrl: videoUrl || '',
-    });
+    }, req.userId);
 
     res.status(201).json({
       success: true,
@@ -94,7 +94,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const opponent = await Opponent.getById(id);
+    const opponent = await Opponent.getById(id, req.userId);
 
     if (!opponent) {
       return res.status(404).json({
@@ -103,7 +103,7 @@ exports.update = async (req, res) => {
       });
     }
 
-    const updatedOpponent = await Opponent.update(id, req.body);
+    const updatedOpponent = await Opponent.update(id, req.body, req.userId);
 
     res.json({
       success: true,
@@ -121,7 +121,7 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const opponent = await Opponent.getById(id);
+    const opponent = await Opponent.getById(id, req.userId);
 
     if (!opponent) {
       return res.status(404).json({
@@ -130,7 +130,7 @@ exports.delete = async (req, res) => {
       });
     }
 
-    const deletedOpponent = await Opponent.delete(id);
+    const deletedOpponent = await Opponent.delete(id, req.userId);
 
     res.json({
       success: true,

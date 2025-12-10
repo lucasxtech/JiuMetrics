@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const authRoutes = require('./src/routes/auth');
 const athleteRoutes = require('./src/routes/athletes');
 const opponentRoutes = require('./src/routes/opponents');
 const aiRoutes = require('./src/routes/ai');
@@ -17,13 +18,16 @@ app.use(cors());
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
-// Logs de requisição
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  next();
-});
+// Log de requisições (apenas em desenvolvimento)
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Rotas
+app.use('/api/auth', authRoutes);
 app.use('/api/athletes', athleteRoutes);
 app.use('/api/opponents', opponentRoutes);
 app.use('/api/ai', aiRoutes);

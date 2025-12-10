@@ -1,15 +1,16 @@
 // Modelo de dados para Adversário com Supabase
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers'); // Reutiliza parsers
 
 class Opponent {
   /**
-   * Busca todos os adversários
+   * Busca todos os adversários de um usuário
    */
-  static async getAll() {
+  static async getAll(userId) {
     const { data, error } = await supabase
       .from('opponents')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -17,13 +18,14 @@ class Opponent {
   }
 
   /**
-   * Busca um adversário por ID
+   * Busca um adversário por ID e user_id
    */
-  static async getById(id) {
+  static async getById(id, userId) {
     const { data, error } = await supabase
       .from('opponents')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
     
     if (error) {
@@ -36,10 +38,11 @@ class Opponent {
   /**
    * Cria um novo adversário
    */
-  static async create(opponentData) {
+  static async create(opponentData, userId) {
     const { data, error } = await supabase
       .from('opponents')
       .insert([{
+        user_id: userId,
         name: opponentData.name,
         belt: opponentData.belt,
         weight: opponentData.weight,
@@ -62,7 +65,7 @@ class Opponent {
   /**
    * Atualiza um adversário
    */
-  static async update(id, opponentData) {
+  static async update(id, opponentData, userId) {
     const updateData = {};
     
     if (opponentData.name !== undefined) updateData.name = opponentData.name;
@@ -81,6 +84,7 @@ class Opponent {
       .from('opponents')
       .update(updateData)
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
     
@@ -91,11 +95,12 @@ class Opponent {
   /**
    * Deleta um adversário
    */
-  static async delete(id) {
+  static async delete(id, userId) {
     const { data, error } = await supabase
       .from('opponents')
       .delete()
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
     
@@ -106,8 +111,8 @@ class Opponent {
   /**
    * Atualiza perfil técnico baseado em análises de lutas
    */
-  static async updateTechnicalProfile(id, analysisData) {
-    const opponent = await this.getById(id);
+  static async updateTechnicalProfile(id, analysisData, userId) {
+    const opponent = await this.getById(id, userId);
     if (!opponent) return null;
 
     // Mesclar dados de análise com perfil existente
@@ -116,7 +121,7 @@ class Opponent {
       ...analysisData,
     };
 
-    return this.update(id, { technicalProfile: updatedProfile });
+    return this.update(id, { technicalProfile: updatedProfile }, userId);
   }
 }
 

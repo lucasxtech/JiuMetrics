@@ -1,8 +1,12 @@
 // Rotas de Adversários
 const express = require('express');
 const opponentController = require('../controllers/opponentController');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
+
+// Aplicar middleware de autenticação em todas as rotas
+router.use(authMiddleware);
 
 // GET /api/opponents - Listar todos
 router.get('/', opponentController.getAll);

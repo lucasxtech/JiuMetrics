@@ -1,5 +1,5 @@
 // Modelo de dados para Análise de Lutas com Supabase
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const { parseAnalysisFromDB, parseAnalysesFromDB } = require('../utils/dbParsers');
 
 class FightAnalysis {
