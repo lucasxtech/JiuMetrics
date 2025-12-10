@@ -1,7 +1,21 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getCurrentUser, logout as logoutService } from '../services/authService';
 
-const AuthContext = createContext(null);
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  login: (userData: User, token: string) => void;
+  logout: () => Promise<void>;
+  loading: boolean;
+  isAuthenticated: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -11,8 +25,8 @@ export const useAuth = () => {
   return context;
 };
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +48,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = (userData, token) => {
+  const login = (userData: User, token: string) => {
     setUser(userData);
     localStorage.setItem('authToken', token);
   };
@@ -50,7 +64,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     login,
     logout,
