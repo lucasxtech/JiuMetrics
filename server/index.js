@@ -7,6 +7,7 @@ const aiRoutes = require('./src/routes/ai');
 const videoRoutes = require('./src/routes/video');
 const fightAnalysisRoutes = require('./src/routes/fightAnalysis');
 const strategyRoutes = require('./src/routes/strategy');
+const authRoutes = require('./src/routes/auth');
 const config = require('./config');
 
 const app = express();
@@ -24,6 +25,7 @@ app.use((req, res, next) => {
 });
 
 // Rotas
+app.use('/api/auth', authRoutes);
 app.use('/api/athletes', athleteRoutes);
 app.use('/api/opponents', opponentRoutes);
 app.use('/api/ai', aiRoutes);
