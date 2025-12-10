@@ -15,9 +15,10 @@ describe('videoAnalysisService', () => {
 
   it('envia a URL e o contexto correto para o backend', async () => {
     const payload = {
-      url: 'https://youtube.com/watch?v=abc',
+      videos: ['https://youtube.com/watch?v=abc'],
+      personId: '123',
+      personType: 'athlete',
       athleteName: 'João Silva',
-      giColor: 'preto',
     };
 
     api.post.mockResolvedValue({ data: { success: true } });

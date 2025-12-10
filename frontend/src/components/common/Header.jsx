@@ -16,8 +16,11 @@ export default function Header() {
     { label: 'Estratégia', to: '/strategy' },
   ];
 
+  // Fechar menu mobile quando mudar de rota
   useEffect(() => {
-    setMobileOpen(false);
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 

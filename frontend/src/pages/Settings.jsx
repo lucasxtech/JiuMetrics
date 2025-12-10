@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../services/authService';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const currentUser = useMemo(() => getCurrentUser(), []);
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return localStorage.getItem('ai_model') || 'gemini-2.0-flash';
+  });
   const [successMessage, setSuccessMessage] = useState('');
 
   const aiModels = [
@@ -15,18 +17,10 @@ export default function Settings() {
   ];
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
     if (!currentUser) {
       navigate('/login');
-    } else {
-      setUser(currentUser);
-      
-      const savedModel = localStorage.getItem('ai_model');
-      if (savedModel) {
-        setSelectedModel(savedModel);
-      }
     }
-  }, [navigate]);
+  }, [navigate, currentUser]);
 
   const handleModelChange = (modelId) => {
     setSelectedModel(modelId);
@@ -41,7 +35,7 @@ export default function Settings() {
     navigate('/login');
   };
 
-  if (!user) return null;
+  if (!currentUser) return null;
 
   return (
     <div className="settings-container">
@@ -57,11 +51,11 @@ export default function Settings() {
         </div>
         <div className="user-info-card">
           <div className="user-avatar">
-            {user.name.charAt(0).toUpperCase()}
+            {currentUser.name.charAt(0).toUpperCase()}
           </div>
           <div className="user-details">
-            <h3>{user.name}</h3>
-            <p>{user.email}</p>
+            <h3>{currentUser.name}</h3>
+            <p>{currentUser.email}</p>
           </div>
         </div>
       </div>
