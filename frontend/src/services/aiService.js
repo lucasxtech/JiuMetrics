@@ -22,3 +22,11 @@ export const analyzeStrategy = async (athleteData, opponentData) => {
   });
   return response.data;
 };
+
+/**
+ * Gera resumo técnico de um atleta usando IA
+ */
+export const generateAthleteSummary = async (athleteId) => {
+  const response = await api.post(`/ai/athlete-summary/${athleteId}`);
+  return response.data;
+};
