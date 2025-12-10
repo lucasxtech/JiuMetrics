@@ -1,4 +1,17 @@
-const { extractTechnicalProfile } = require('../videoController');
+// Mock Supabase antes de importar qualquer módulo
+jest.mock('../../config/supabase', () => ({
+  __esModule: true,
+  default: {
+    from: jest.fn(() => ({
+      select: jest.fn(),
+      insert: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn()
+    }))
+  }
+}));
+
+const { extractTechnicalProfile } = require('../../utils/profileUtils');
 
 describe('videoController.extractTechnicalProfile', () => {
   it('organiza dados do gráfico nas chaves corretas', () => {
