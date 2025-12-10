@@ -14,7 +14,7 @@ const api = axios.create({
 // Interceptor para adicionar token se existir
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('jiumetrics_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

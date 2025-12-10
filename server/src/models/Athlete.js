@@ -1,15 +1,16 @@
 // Modelo de dados para Atleta com Supabase
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers');
 
 class Athlete {
   /**
-   * Busca todos os atletas
+   * Busca todos os atletas de um usuário
    */
-  static async getAll() {
+  static async getAll(userId) {
     const { data, error } = await supabase
       .from('athletes')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -17,13 +18,14 @@ class Athlete {
   }
 
   /**
-   * Busca um atleta por ID
+   * Busca um atleta por ID e user_id
    */
-  static async getById(id) {
+  static async getById(id, userId) {
     const { data, error } = await supabase
       .from('athletes')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single();
     
     if (error) {
@@ -36,10 +38,11 @@ class Athlete {
   /**
    * Cria um novo atleta
    */
-  static async create(athleteData) {
+  static async create(athleteData, userId) {
     const { data, error } = await supabase
       .from('athletes')
       .insert([{
+        user_id: userId,
         name: athleteData.name,
         belt: athleteData.belt,
         weight: athleteData.weight,
@@ -62,7 +65,7 @@ class Athlete {
   /**
    * Atualiza um atleta
    */
-  static async update(id, athleteData) {
+  static async update(id, athleteData, userId) {
     const updateData = {};
     
     if (athleteData.name !== undefined) updateData.name = athleteData.name;
@@ -81,6 +84,7 @@ class Athlete {
       .from('athletes')
       .update(updateData)
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
     
@@ -91,11 +95,12 @@ class Athlete {
   /**
    * Deleta um atleta
    */
-  static async delete(id) {
+  static async delete(id, userId) {
     const { data, error } = await supabase
       .from('athletes')
       .delete()
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
     
@@ -106,8 +111,8 @@ class Athlete {
   /**
    * Atualiza perfil técnico baseado em análises de lutas
    */
-  static async updateTechnicalProfile(id, analysisData) {
-    const athlete = await this.getById(id);
+  static async updateTechnicalProfile(id, analysisData, userId) {
+    const athlete = await this.getById(id, userId);
     if (!athlete) return null;
 
     // Mesclar dados de análise com perfil existente
@@ -116,7 +121,7 @@ class Athlete {
       ...analysisData,
     };
 
-    return this.update(id, { technicalProfile: updatedProfile });
+    return this.update(id, { technicalProfile: updatedProfile }, userId);
   }
 }
 

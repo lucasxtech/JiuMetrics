@@ -1,5 +1,3 @@
-const supabase = require('../config/supabase');
-
 /**
  * Converte dados do Supabase (snake_case) para formato da aplicação (camelCase)
  */

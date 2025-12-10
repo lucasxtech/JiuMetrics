@@ -5,7 +5,6 @@ export default function AthleteCard({
   weight, 
   age, 
   style, 
-  cardio = 0,
   technicalProfile,
   onClick,
   type = 'athlete' // 'athlete' ou 'opponent'

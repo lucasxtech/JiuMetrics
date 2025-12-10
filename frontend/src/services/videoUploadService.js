@@ -28,17 +28,13 @@ export async function uploadVideo({ videos, personId = null, personType = null, 
     formData.append('athleteName', athleteName);
   }
 
-  try {
-    const response = await api.post('/video/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+  const response = await api.post('/video/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  return response.data;
 }
 
 /**

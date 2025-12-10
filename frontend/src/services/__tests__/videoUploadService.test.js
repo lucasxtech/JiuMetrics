@@ -15,6 +15,7 @@ class MockFormData {
   }
 }
 
+// eslint-disable-next-line no-undef
 global.FormData = MockFormData;
 
 vi.mock('../api', () => ({
@@ -30,12 +31,13 @@ describe('videoUploadService', () => {
   });
 
   it('monta o FormData com os metadados obrigatórios', async () => {
-    api.post.mockResolvedValue({ data: { success: true } });
+    api.post.mockResolvedValueOnce({ data: { success: true } });
 
     const payload = {
-      file: { name: 'luta.mp4', type: 'video/mp4' },
+      videos: [
+        { file: { name: 'luta.mp4', type: 'video/mp4' }, giColor: 'azul' }
+      ],
       athleteName: 'Maria Santos',
-      giColor: 'azul',
       personId: '1',
       personType: 'athlete',
     };
@@ -50,11 +52,11 @@ describe('videoUploadService', () => {
 
     expect(response).toEqual({ success: true });
     expect(lastFormDataInstance.entries).toEqual([
-      ['video', payload.file],
+      ['videos', payload.videos[0].file],
+      ['giColors[0]', payload.videos[0].giColor],
       ['personId', payload.personId],
       ['personType', payload.personType],
       ['athleteName', payload.athleteName],
-      ['giColor', payload.giColor],
     ]);
   });
 });

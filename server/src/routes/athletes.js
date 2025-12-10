@@ -1,8 +1,12 @@
 // Rotas de Atletas
 const express = require('express');
 const athleteController = require('../controllers/athleteController');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
+
+// Aplicar middleware de autenticação em todas as rotas
+router.use(authMiddleware);
 
 // GET /api/athletes - Listar todos
 router.get('/', athleteController.getAll);

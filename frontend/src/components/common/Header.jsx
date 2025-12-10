@@ -16,8 +16,12 @@ export default function Header() {
     { label: 'Estratégia', to: '/strategy' },
   ];
 
+  // Fechar menu mobile quando mudar de rota
   useEffect(() => {
-    setMobileOpen(false);
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   return (
@@ -58,6 +62,20 @@ export default function Header() {
               <span aria-hidden="true">🤖</span>
               IA
             </Link>
+            <Link
+              to="/settings"
+              className={`inline-flex h-12 w-12 items-center justify-center rounded-xl text-sm font-medium tracking-tight transition-all duration-200 ${
+                isActive('/settings')
+                  ? 'bg-white text-slate-900 shadow-[0_8px_24px_rgba(15,23,42,0.25)] ring-1 ring-white/80'
+                  : 'text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.32)]'
+              }`}
+              title="Configurações"
+            >
+              <svg width="1.25rem" height="1.25rem" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </Link>
           </div>
 
           {/* Menu Mobile (Hambúrguer) */}
@@ -97,6 +115,20 @@ export default function Header() {
             >
               <span aria-hidden="true">🤖</span>
               IA
+            </Link>
+            <Link
+              to="/settings"
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActive('/settings')
+                  ? 'bg-white text-slate-900 shadow'
+                  : 'text-white/75 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <svg width="1rem" height="1rem" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Configurações
             </Link>
           </div>
         )}

@@ -25,7 +25,7 @@ export default function Opponents() {
       setError(null);
       const response = await getAllOpponents();
       setOpponents(response?.data || []);
-    } catch (err) {
+    } catch {
       setError('Erro ao carregar adversários. Tente novamente.');
     } finally {
       setLoading(false);
