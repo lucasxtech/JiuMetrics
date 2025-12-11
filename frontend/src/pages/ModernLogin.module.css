@@ -86,7 +86,8 @@
 
 /* Inputs */
 .formGroup input[type="email"],
-.formGroup input[type="password"] {
+.formGroup input[type="password"],
+.formGroup input[type="text"] {
   width: 100%;
   padding: 0.875rem 1rem;
   font-size: 1rem;
@@ -113,11 +114,18 @@
   position: relative;
 }
 
+.passwordWrapper input[type="password"],
+.passwordWrapper input[type="text"] {
+  padding-right: 3rem !important;
+}
+
 .passwordToggle {
   position: absolute;
   right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  transform: none;
   background: none;
   border: none;
   color: #718096;
@@ -127,10 +135,24 @@
   align-items: center;
   justify-content: center;
   transition: color 0.2s ease;
+  z-index: 10;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  line-height: 0;
 }
 
-.passwordToggle:hover {
+.passwordToggle svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.passwordToggle:hover,
+.passwordToggle:active,
+.passwordToggle:focus {
   color: #2d3748;
+  outline: none;
 }
 
 /* Remember Me */
@@ -237,6 +259,85 @@
 
 .loginFooter a:hover {
   color: #764ba2;
+}
+
+/* Label Row */
+.labelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.forgotLink {
+  font-size: 0.875rem;
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.forgotLink:hover {
+  color: #764ba2;
+}
+
+/* Checkbox Group */
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: #a0aec0;
+  font-size: 0.875rem;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 0.0625rem solid #e2e8f0;
+}
+
+.divider::before {
+  margin-right: 1rem;
+}
+
+.divider::after {
+  margin-left: 1rem;
+}
+
+/* Google Button */
+.googleButton {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: white;
+  border: 0.125rem solid #e2e8f0;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-family: inherit;
+}
+
+.googleButton:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+.googleButton:active {
+  transform: scale(0.98);
 }
 
 /* Responsive */

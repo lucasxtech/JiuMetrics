@@ -26,8 +26,8 @@ const VideoIcon = () => (
 );
 
 // Classes reutilizáveis
-const BUTTON_PRIMARY = "inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 px-10 text-sm font-medium text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg";
-const BUTTON_SECONDARY = "inline-flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-10 text-sm font-medium text-slate-900 shadow-sm transition-all hover:border-slate-400 hover:shadow-md";
+const BUTTON_PRIMARY = "inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 px-6 text-sm font-medium text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg focus:ring-2 focus:ring-slate-900 focus:ring-offset-2";
+const BUTTON_SECONDARY = "inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white py-3 px-6 text-sm font-medium text-slate-900 shadow-sm transition-all hover:border-slate-400 hover:shadow-md focus:ring-2 focus:ring-slate-300 focus:ring-offset-2";
 
 const features = [
   {

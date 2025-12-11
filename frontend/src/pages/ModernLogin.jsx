@@ -60,7 +60,7 @@ export default function ModernLogin() {
       <div className={styles.loginCard}>
         {/* Header */}
         <div className={styles.loginHeader}>
-          <div className="logo">
+          <div className={styles.logo}>
             <img 
               src={beltIcon}
               alt="Faixa Preta"
@@ -90,9 +90,9 @@ export default function ModernLogin() {
 
           {/* Password */}
           <div className={styles.formGroup}>
-            <div className="label-row">
+            <div className={styles.labelRow}>
               <label htmlFor="password">Senha</label>
-              <Link to="/forgot-password" className="forgot-link">
+              <Link to="/forgot-password" className={styles.forgotLink}>
                 Esqueceu a senha?
               </Link>
             </div>
@@ -129,7 +129,7 @@ export default function ModernLogin() {
           </div>
 
           {/* Remember Me */}
-          <div className="checkbox-group">
+          <div className={styles.checkboxGroup}>
             <input
               type="checkbox"
               id="rememberMe"
@@ -151,7 +151,7 @@ export default function ModernLogin() {
           <button type="submit" className={styles.submitButton} disabled={loading}>
             {loading ? (
               <>
-                <svg className="spinner" width="1.25rem" height="1.25rem" viewBox="0 0 24 24">
+                <svg className={styles.spinner} width="1.25rem" height="1.25rem" viewBox="0 0 24 24">
                   <circle className="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -160,22 +160,6 @@ export default function ModernLogin() {
             ) : (
               'Entrar'
             )}
-          </button>
-
-          {/* Divider */}
-          <div className="divider">
-            <span>ou</span>
-          </div>
-
-          {/* Google Button */}
-          <button type="button" className="google-button">
-            <svg width="1.25rem" height="1.25rem" viewBox="0 0 20 20" fill="none">
-              <path d="M19.805 10.227c0-.709-.064-1.39-.182-2.045H10.2v3.868h5.383a4.6 4.6 0 01-1.996 3.018v2.51h3.232c1.891-1.742 2.986-4.305 2.986-7.35z" fill="#4285F4"/>
-              <path d="M10.2 20c2.7 0 4.964-.895 6.618-2.423l-3.232-2.509c-.895.6-2.04.955-3.386.955-2.605 0-4.81-1.76-5.596-4.123H1.277v2.59A9.996 9.996 0 0010.2 20z" fill="#34A853"/>
-              <path d="M4.604 11.9a6.014 6.014 0 010-3.8V5.51H1.277a9.996 9.996 0 000 8.98l3.327-2.59z" fill="#FBBC04"/>
-              <path d="M10.2 3.977c1.468 0 2.786.505 3.823 1.496l2.868-2.868C15.159.99 12.9 0 10.2 0A9.996 9.996 0 001.277 5.51l3.327 2.59c.786-2.364 2.99-4.123 5.596-4.123z" fill="#EA4335"/>
-            </svg>
-            Continuar com Google
           </button>
         </form>
 
