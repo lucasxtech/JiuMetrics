@@ -70,28 +70,39 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
+    console.log('🔐 Login attempt:', { email, hasPassword: !!password });
 
     if (!email || !password) {
+      console.log('❌ Missing email or password');
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
     if (email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
+      console.log('❌ Unauthorized email:', email, 'Expected:', ALLOWED_EMAIL);
       return res.status(403).json({ error: ERROR_MESSAGES.UNAUTHORIZED_EMAIL });
     }
 
     const user = await User.findByEmail(email);
+    console.log('👤 User found:', !!user);
+    
     if (!user) {
+      console.log('❌ User not found in database');
       return res.status(401).json({ error: ERROR_MESSAGES.INVALID_CREDENTIALS });
     }
 
+    console.log('🔑 Verifying password...');
     const isValidPassword = await User.verifyPassword(password, user.password_hash);
+    console.log('🔑 Password valid:', isValidPassword);
+    
     if (!isValidPassword) {
+      console.log('❌ Invalid password');
       return res.status(401).json({ error: ERROR_MESSAGES.INVALID_CREDENTIALS });
     }
 
     const token = generateToken(user.id, rememberMe);
     await User.updateLastLogin(user.id);
 
+    console.log('✅ Login successful for:', email);
     res.json({
       success: true,
       user: {
@@ -102,7 +113,7 @@ exports.login = async (req, res) => {
       token
     });
   } catch (error) {
-    console.error('Erro ao fazer login:', error);
+    console.error('❌ Login error:', error);
     res.status(500).json({ error: 'Erro ao fazer login' });
   }
 };
