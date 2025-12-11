@@ -90,12 +90,7 @@ export default function ModernLogin() {
 
           {/* Password */}
           <div className={styles.formGroup}>
-            <div className={styles.labelRow}>
-              <label htmlFor="password">Senha</label>
-              <Link to="/forgot-password" className={styles.forgotLink}>
-                Esqueceu a senha?
-              </Link>
-            </div>
+            <label htmlFor="password">Senha</label>
             <div className={styles.passwordWrapper}>
               <input
                 type={showPassword ? 'text' : 'password'}

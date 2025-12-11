@@ -1,6 +1,7 @@
 // Configuração de rotas da aplicação
 import './index.css';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/common/Header';
 import Overview from './pages/Overview';
 import Athletes from './pages/Athletes';
@@ -29,15 +30,15 @@ function AppContent() {
           <Routes>
             <Route path="/login" element={<ModernLogin />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/" element={<Overview />} />
-            <Route path="/athletes" element={<Athletes />} />
-            <Route path="/athletes/:id" element={<AthleteDetail />} />
-            <Route path="/opponents" element={<Opponents />} />
-            <Route path="/opponents/:id" element={<AthleteDetail isOpponent />} />
-            <Route path="/compare" element={<Compare />} />
-            <Route path="/strategy" element={<Strategy />} />
-            <Route path="/analyze-video" element={<VideoAnalysis />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
+            <Route path="/athletes" element={<ProtectedRoute><Athletes /></ProtectedRoute>} />
+            <Route path="/athletes/:id" element={<ProtectedRoute><AthleteDetail /></ProtectedRoute>} />
+            <Route path="/opponents" element={<ProtectedRoute><Opponents /></ProtectedRoute>} />
+            <Route path="/opponents/:id" element={<ProtectedRoute><AthleteDetail isOpponent /></ProtectedRoute>} />
+            <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
+            <Route path="/strategy" element={<ProtectedRoute><Strategy /></ProtectedRoute>} />
+            <Route path="/analyze-video" element={<ProtectedRoute><VideoAnalysis /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           </Routes>
         </div>
       </main>
