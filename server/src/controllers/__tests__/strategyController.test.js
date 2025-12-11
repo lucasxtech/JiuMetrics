@@ -73,7 +73,7 @@ describe('strategyController', () => {
 
       await strategyController.compareAndStrategy(req, res);
 
-      expect(Athlete.getById).toHaveBeenCalledWith('999');
+      expect(Athlete.getById).toHaveBeenCalledWith('999', undefined);
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
@@ -88,7 +88,7 @@ describe('strategyController', () => {
 
       await strategyController.compareAndStrategy(req, res);
 
-      expect(Opponent.getById).toHaveBeenCalledWith('999');
+      expect(Opponent.getById).toHaveBeenCalledWith('999', undefined);
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         success: false,
@@ -217,7 +217,7 @@ describe('strategyController', () => {
 
       expect(generateTacticalStrategy).toHaveBeenCalledWith(
         expect.objectContaining({
-          resumo: 'Sem resumo disponível - atleta sem análises de vídeo ainda.'
+          resumo: 'Sem resumo disponível - sem análises de vídeo ainda.'
         }),
         expect.any(Object)
       );
