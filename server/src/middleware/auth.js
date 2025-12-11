@@ -8,7 +8,13 @@ const authMiddleware = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
+    console.log('🔐 Auth middleware - Headers:', { 
+      authorization: authHeader ? 'presente' : 'ausente',
+      path: req.path 
+    });
+    
     if (!authHeader) {
+      console.log('❌ Token não fornecido');
       return res.status(401).json({ error: 'Token não fornecido' });
     }
 

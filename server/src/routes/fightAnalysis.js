@@ -2,6 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const fightAnalysisController = require('../controllers/fightAnalysisController');
+const authMiddleware = require('../middleware/auth');
+
+// Aplicar middleware de autenticação em todas as rotas
+router.use(authMiddleware);
 
 // Listar todas as análises
 router.get('/', fightAnalysisController.getAllAnalyses);

@@ -1,8 +1,12 @@
 // Rotas de IA
 const express = require('express');
 const aiController = require('../controllers/aiController');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
+
+// Aplicar middleware de autenticação em todas as rotas
+router.use(authMiddleware);
 
 // POST /api/ai/strategy - Gerar estratégia (removido)
 // Rota desabilitada após remoção de mock. Mantida comentada para referência.

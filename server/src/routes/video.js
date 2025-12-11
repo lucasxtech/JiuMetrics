@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const videoController = require('../controllers/videoController');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -46,6 +47,6 @@ const upload = multer({
 /**
  * POST /api/video/upload - Upload e análise de múltiplos vídeos
  */
-router.post('/upload', upload.array('videos', 10), videoController.uploadAndAnalyzeVideo);
+router.post('/upload', authMiddleware, upload.array('videos', 10), videoController.uploadAndAnalyzeVideo);
 
 module.exports = router;

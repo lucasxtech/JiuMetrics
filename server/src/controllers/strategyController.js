@@ -24,7 +24,9 @@ function preparePersonData(person, analyses) {
 
 exports.compareAndStrategy = async (req, res) => {
   try {
+    console.log('🎯 Recebendo requisição de estratégia:', req.body);
     const { athleteId, opponentId } = req.body;
+    const userId = req.userId; // Vem do middleware de autenticação
 
     if (!athleteId || !opponentId) {
       return res.status(400).json({
@@ -34,13 +36,20 @@ exports.compareAndStrategy = async (req, res) => {
     }
 
     // Buscar dados
-    const athlete = await Athlete.getById(athleteId);
-    const opponent = await Opponent.getById(opponentId);
+    const athlete = await Athlete.getById(athleteId, userId);
+    const opponent = await Opponent.getById(opponentId, userId);
+
+    console.log('📊 Dados encontrados:', { 
+      athlete: athlete ? athlete.name : 'não encontrado',
+      opponent: opponent ? opponent.name : 'não encontrado'
+    });
 
     if (!athlete) {
+      console.log('❌ Atleta não encontrado:', athleteId);
       return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
     }
     if (!opponent) {
+      console.log('❌ Adversário não encontrado:', opponentId);
       return res.status(404).json({ success: false, error: 'Adversário não encontrado' });
     }
 

@@ -4,7 +4,7 @@ import api from './api';
 /**
  * Gera resumo técnico de um atleta usando IA
  */
-export const generateAthleteSummary = async (athleteId) => {
-  const response = await api.post(`/ai/athlete-summary/${athleteId}`);
+export const generateAthleteSummary = async (athleteData) => {
+  const response = await api.post('/ai/athlete-summary', { athleteData });
   return response.data;
 };

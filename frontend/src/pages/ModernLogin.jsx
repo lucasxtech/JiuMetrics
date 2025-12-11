@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../services/authService';
 import beltIcon from './download.ico';
+import styles from './ModernLogin.module.css';
 
 export default function ModernLogin() {
   const navigate = useNavigate();
@@ -55,10 +56,10 @@ export default function ModernLogin() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
+    <div className={styles.loginContainer}>
+      <div className={styles.loginCard}>
         {/* Header */}
-        <div className="login-header">
+        <div className={styles.loginHeader}>
           <div className="logo">
             <img 
               src={beltIcon}
@@ -71,9 +72,9 @@ export default function ModernLogin() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="login-form">
+        <form onSubmit={handleSubmit} className={styles.loginForm}>
           {/* Email */}
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <label htmlFor="email">E-mail</label>
             <input
               type="email"
@@ -88,14 +89,14 @@ export default function ModernLogin() {
           </div>
 
           {/* Password */}
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <div className="label-row">
               <label htmlFor="password">Senha</label>
               <Link to="/forgot-password" className="forgot-link">
                 Esqueceu a senha?
               </Link>
             </div>
-            <div className="password-wrapper">
+            <div className={styles.passwordWrapper}>
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
@@ -108,7 +109,7 @@ export default function ModernLogin() {
               />
               <button
                 type="button"
-                className="password-toggle"
+                className={styles.passwordToggle}
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
@@ -141,13 +142,13 @@ export default function ModernLogin() {
 
           {/* Error Message */}
           {error && (
-            <div className="error-message">
+            <div className={styles.errorMessage}>
               {error}
             </div>
           )}
 
           {/* Submit Button */}
-          <button type="submit" className="submit-button" disabled={loading}>
+          <button type="submit" className={styles.submitButton} disabled={loading}>
             {loading ? (
               <>
                 <svg className="spinner" width="1.25rem" height="1.25rem" viewBox="0 0 24 24">
@@ -179,370 +180,13 @@ export default function ModernLogin() {
         </form>
 
         {/* Footer */}
-        <div className="login-footer">
+        <div className={styles.loginFooter}>
           <p>
             Não tem uma conta?{' '}
             <Link to="/register">Criar conta</Link>
           </p>
         </div>
       </div>
-
-      <style jsx>{`
-        /* Container Principal */
-        .login-container {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 1.5rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-        }
-
-        /* Card de Login */
-        .login-card {
-          width: 100%;
-          max-width: 28rem;
-          background: white;
-          border-radius: 1.5rem;
-          box-shadow: 0 1.25rem 3.125rem rgba(0, 0, 0, 0.15);
-          padding: 3rem 2rem;
-          animation: fadeInUp 0.6s ease-out;
-        }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(2rem);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        /* Header */
-        .login-header {
-          text-align: center;
-          margin-bottom: 2.5rem;
-        }
-
-        .logo {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 4rem;
-          height: 4rem;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 1rem;
-          color: white;
-          margin-bottom: 1.5rem;
-        }
-
-        .login-header h1 {
-          font-size: 2rem;
-          font-weight: 700;
-          color: #1a202c;
-          margin: 0 0 0.5rem 0;
-          letter-spacing: -0.025em;
-        }
-
-        .login-header p {
-          font-size: 1rem;
-          color: #718096;
-          margin: 0;
-        }
-
-        /* Form */
-        .login-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        /* Form Group */
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .label-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        label {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #2d3748;
-          cursor: pointer;
-        }
-
-        .forgot-link {
-          font-size: 0.875rem;
-          color: #667eea;
-          text-decoration: none;
-          font-weight: 500;
-          transition: color 0.2s ease;
-        }
-
-        .forgot-link:hover {
-          color: #764ba2;
-        }
-
-        /* Inputs */
-        input[type="email"],
-        input[type="password"],
-        input[type="text"] {
-          width: 100%;
-          padding: 0.875rem 1rem;
-          font-size: 1rem;
-          border: 0.125rem solid #e2e8f0;
-          border-radius: 0.75rem;
-          transition: all 0.2s ease;
-          font-family: inherit;
-          background: #f7fafc;
-        }
-
-        input[type="email"]:focus,
-        input[type="password"]:focus,
-        input[type="text"]:focus {
-          outline: none;
-          border-color: #667eea;
-          background: white;
-          box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.1);
-        }
-
-        input::placeholder {
-          color: #a0aec0;
-        }
-
-        /* Password Wrapper */
-        .password-wrapper {
-          position: relative;
-        }
-
-        .password-toggle {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #718096;
-          cursor: pointer;
-          padding: 0.25rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: color 0.2s ease;
-        }
-
-        .password-toggle:hover {
-          color: #2d3748;
-        }
-
-        /* Checkbox */
-        .checkbox-group {
-          display: flex;
-          align-items: center;
-          gap: 0.625rem;
-        }
-
-        input[type="checkbox"] {
-          width: 1.125rem;
-          height: 1.125rem;
-          border: 0.125rem solid #cbd5e0;
-          border-radius: 0.375rem;
-          cursor: pointer;
-          accent-color: #667eea;
-        }
-
-        .checkbox-group label {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #4a5568;
-          margin: 0;
-        }
-
-        /* Error Message */
-        .error-message {
-          padding: 0.875rem 1rem;
-          background: #fff5f5;
-          border: 0.0625rem solid #fc8181;
-          border-radius: 0.75rem;
-          color: #c53030;
-          font-size: 0.875rem;
-          font-weight: 500;
-          animation: shake 0.4s ease;
-        }
-
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-0.5rem); }
-          75% { transform: translateX(0.5rem); }
-        }
-
-        /* Submit Button */
-        .submit-button {
-          width: 100%;
-          padding: 1rem;
-          font-size: 1rem;
-          font-weight: 600;
-          color: white;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          border-radius: 0.75rem;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.625rem;
-          font-family: inherit;
-        }
-
-        .submit-button:hover:not(:disabled) {
-          transform: translateY(-0.125rem);
-          box-shadow: 0 0.625rem 1.875rem rgba(102, 126, 234, 0.4);
-        }
-
-        .submit-button:active:not(:disabled) {
-          transform: translateY(0);
-        }
-
-        .submit-button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        /* Spinner */
-        .spinner {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .spinner-circle {
-          opacity: 0.25;
-          fill: none;
-        }
-
-        .spinner-path {
-          opacity: 0.75;
-        }
-
-        /* Divider */
-        .divider {
-          position: relative;
-          text-align: center;
-          margin: 1rem 0;
-        }
-
-        .divider::before {
-          content: '';
-          position: absolute;
-          top: 50%;
-          left: 0;
-          right: 0;
-          height: 0.0625rem;
-          background: #e2e8f0;
-        }
-
-        .divider span {
-          position: relative;
-          display: inline-block;
-          padding: 0 1rem;
-          background: white;
-          color: #a0aec0;
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-
-        /* Google Button */
-        .google-button {
-          width: 100%;
-          padding: 0.875rem 1rem;
-          font-size: 1rem;
-          font-weight: 600;
-          color: #2d3748;
-          background: white;
-          border: 0.125rem solid #e2e8f0;
-          border-radius: 0.75rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-          font-family: inherit;
-        }
-
-        .google-button:hover {
-          background: #f7fafc;
-          border-color: #cbd5e0;
-        }
-
-        /* Footer */
-        .login-footer {
-          margin-top: 2rem;
-          padding-top: 2rem;
-          border-top: 0.0625rem solid #e2e8f0;
-          text-align: center;
-        }
-
-        .login-footer p {
-          margin: 0;
-          font-size: 0.875rem;
-          color: #718096;
-        }
-
-        .login-footer a {
-          color: #667eea;
-          text-decoration: none;
-          font-weight: 600;
-          transition: color 0.2s ease;
-        }
-
-        .login-footer a:hover {
-          color: #764ba2;
-        }
-
-        /* Responsive */
-        @media (max-width: 48em) {
-          .login-card {
-            padding: 2rem 1.5rem;
-          }
-
-          .login-header h1 {
-            font-size: 1.75rem;
-          }
-
-          .submit-button,
-          .google-button {
-            padding: 0.875rem;
-          }
-        }
-
-        @media (max-width: 30em) {
-          .login-container {
-            padding: 1rem;
-          }
-
-          .login-card {
-            padding: 1.5rem 1rem;
-          }
-
-          .login-header h1 {
-            font-size: 1.5rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }
