@@ -40,6 +40,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5050/api' }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

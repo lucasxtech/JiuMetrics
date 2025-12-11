@@ -51,6 +51,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erro interno do servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🥋 Servidor de Análise Tática rodando em http://localhost:${PORT}`);
-});
+// Para desenvolvimento local
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🥋 Servidor de Análise Tática rodando em http://localhost:${PORT}`);
+  });
+}
+
+// Para Vercel
+module.exports = app;
