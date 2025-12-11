@@ -47,8 +47,11 @@ function AppContent() {
 }
 
 export default function App() {
+  // Usa /JiuMetrics em produção (GitHub Pages) e / em desenvolvimento
+  const basename = import.meta.env.MODE === 'production' ? '/JiuMetrics' : '';
+  
   return (
-    <BrowserRouter basename="/JiuMetrics" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AppContent />
     </BrowserRouter>
   );
