@@ -225,6 +225,7 @@ export const processPersonAnalyses = (analyses, person) => {
       totalActions,
       totalPositions,
       techniqueVariety,
+      topTechniques: attacksData.slice(0, 5).map(t => t.name),
       attributes: {
         condicionamento: Math.round(condicionamento),
         tecnica: Math.round(tecnica),

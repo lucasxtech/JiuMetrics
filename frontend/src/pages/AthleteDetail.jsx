@@ -13,6 +13,7 @@ import { getAthleteById, deleteAthlete } from '../services/athleteService';
 import { getOpponentById, deleteOpponent } from '../services/opponentService';
 import { getAnalysesByPerson, deleteAnalysis } from '../services/fightAnalysisService';
 import { generateAthleteSummary } from '../services/aiService';
+import { processPersonAnalyses } from '../utils/athleteStats';
 
 export default function AthleteDetail({ isOpponent = false }) {
   const { id } = useParams();
@@ -70,45 +71,8 @@ export default function AthleteDetail({ isOpponent = false }) {
     try {
       setLoadingSummary(true);
         
-        // Calcular estatísticas básicas para enviar à IA
-        let totalSubmissions = 0;
-        let totalSweeps = 0;
-        let completedSweeps = 0;
-        let totalBackTakes = 0;
-        const topTechniquesMap = {};
-
-        analyses.forEach(analysis => {
-          const stats = analysis.technical_stats || {};
-          totalSubmissions += stats.submissions_attempted || 0;
-          totalSweeps += stats.sweeps_attempted || 0;
-          completedSweeps += stats.sweeps_completed || 0;
-          totalBackTakes += stats.back_takes || 0;
-
-          // Processar charts para técnicas principais
-          if (analysis.charts && Array.isArray(analysis.charts)) {
-            analysis.charts.forEach(chart => {
-              if (chart.data && Array.isArray(chart.data)) {
-                chart.data.forEach(item => {
-                  if (item.label && item.value > 0) {
-                    topTechniquesMap[item.label] = (topTechniquesMap[item.label] || 0) + item.value;
-                  }
-                });
-              }
-            });
-          }
-        });
-
-        const topTechniques = Object.entries(topTechniquesMap)
-          .sort(([, a], [, b]) => b - a)
-          .slice(0, 5)
-          .map(([name]) => name);
-
-        // Calcular atributos básicos
-        const condicionamento = Math.min(100, (athlete.cardio || 50) + (analyses.length * 5));
-        const tecnica = Math.min(100, Math.max(30, Object.keys(topTechniquesMap).length * 15));
-        const agressividade = Math.min(100, (totalSubmissions * 8) + (totalBackTakes * 12));
-        const defesa = 60; // Placeholder
-        const movimentacao = Math.min(100, 50 + (analyses.length * 8));
+        // Usar utilitário para processar análises e obter estatísticas
+        const { stats } = processPersonAnalyses(analyses, athlete);
 
         const response = await generateAthleteSummary({
           name: athlete.name,
@@ -116,20 +80,7 @@ export default function AthleteDetail({ isOpponent = false }) {
           weight: athlete.weight,
           style: athlete.style,
           analyses: analyses,
-          stats: {
-            totalSubmissions,
-            totalSweeps,
-            completedSweeps,
-            totalBackTakes,
-            topTechniques,
-            attributes: {
-              condicionamento,
-              tecnica,
-              agressividade,
-              defesa,
-              movimentacao
-            }
-          }
+          stats: stats
         });
 
         if (response.success && response.summary) {
@@ -193,239 +144,6 @@ export default function AthleteDetail({ isOpponent = false }) {
     navigate('/video-analysis');
   };
 
-  // Processar dados das análises para gerar métricas dinâmicas
-  const processAnalysesData = () => {
-    if (!analyses || analyses.length === 0 || !athlete) {
-      return {
-        radarData: [
-          { name: 'Condicionamento', value: athlete?.cardio || 50 },
-          { name: 'Técnica', value: 50 },
-          { name: 'Agressividade', value: 50 },
-          { name: 'Defesa', value: 50 },
-          { name: 'Movimentação', value: 50 },
-        ],
-        attacksData: [
-          { name: 'Sem dados', value: 0 },
-        ],
-        stats: {}
-      };
-    }
-
-    // Variáveis para acumular dados
-    const techniquesMap = {};
-    let totalSweeps = 0;
-    let totalSubmissions = 0;
-    let totalBackTakes = 0;
-    let completedSweeps = 0;
-    let totalActions = 0;
-    let totalPositions = 0;
-
-    analyses.forEach((analysis) => {
-      // Processar technical_stats
-      const stats = analysis.technical_stats || {};
-      
-      if (stats.sweeps?.quantidade) {
-        totalSweeps += stats.sweeps.quantidade;
-        completedSweeps += stats.sweeps.concluidas || 0;
-        totalActions += stats.sweeps.quantidade;
-      }
-      
-      if (stats.submissions?.tentativas) {
-        totalSubmissions += stats.submissions.tentativas;
-        totalActions += stats.submissions.tentativas;
-      }
-      
-      if (stats.back_takes?.quantidade) {
-        totalBackTakes += stats.back_takes.quantidade;
-        totalActions += stats.back_takes.quantidade;
-      }
-
-      // Processar CHARTS - principal fonte de dados
-      if (analysis.charts && Array.isArray(analysis.charts)) {
-        analysis.charts.forEach((chart) => {
-          const data = chart.data || [];
-
-          data.forEach(item => {
-            const label = (item.label || '').toLowerCase();
-            const value = parseFloat(item.value) || 0;
-
-            if (value > 0) {
-              totalPositions += value;
-
-              // Adicionar ao mapa de técnicas para o gráfico de barras
-              const techniqueName = item.label || 'Desconhecido';
-              
-              // Categorizar e acumular
-              if (label.includes('raspagem') || label.includes('sweep')) {
-                techniquesMap['Raspagens'] = (techniquesMap['Raspagens'] || 0) + value;
-                totalActions += value;
-              } else if (label.includes('finalização') || label.includes('finaliza') || 
-                         label.includes('submission') || label.includes('armlock') || 
-                         label.includes('kimura') || label.includes('triangulo') ||
-                         label.includes('estrangulamento')) {
-                techniquesMap['Finalizações'] = (techniquesMap['Finalizações'] || 0) + value;
-                totalActions += value;
-              } else if (label.includes('passagem') || label.includes('pass')) {
-                techniquesMap['Passagens de Guarda'] = (techniquesMap['Passagens de Guarda'] || 0) + value;
-                totalActions += value;
-              } else if (label.includes('costas') || label.includes('back')) {
-                techniquesMap['Pegadas de Costas'] = (techniquesMap['Pegadas de Costas'] || 0) + value;
-                totalActions += value;
-              } else if (label.includes('guarda')) {
-                // Tipos de guarda específicos
-                if (!label.includes('passagem') && !label.includes('tempo')) {
-                  techniquesMap[techniqueName] = (techniquesMap[techniqueName] || 0) + value;
-                }
-              } else if (label.includes('defesa') || label.includes('escape')) {
-                techniquesMap['Defesas/Escapes'] = (techniquesMap['Defesas/Escapes'] || 0) + value;
-                totalActions += value;
-              } else if (value >= 5) {
-                // Outras técnicas com valores significativos
-                techniquesMap[techniqueName] = (techniquesMap[techniqueName] || 0) + value;
-              }
-            }
-          });
-        });
-      }
-    });
-
-    // CÁLCULO DOS ATRIBUTOS - ajustado para dados reais
-    
-    // 1. CONDICIONAMENTO - baseado em volume total de ações
-    const condicionamento = athlete.cardio || 
-      Math.min(100, Math.max(30, (totalActions * 2) + (totalPositions * 0.5)));
-
-    // 2. TÉCNICA - variedade e volume de técnicas
-    const techniqueVariety = Object.keys(techniquesMap).length;
-    const totalTechniqueVolume = Object.values(techniquesMap).reduce((sum, val) => sum + val, 0);
-    const tecnica = Math.min(100, Math.max(20, 
-      (techniqueVariety * 10) + (totalTechniqueVolume * 1.5)
-    ));
-
-    // 3. AGRESSIVIDADE - finalizações e ações ofensivas
-    const agressividade = Math.min(100, Math.max(15,
-      (totalSubmissions * 12) + 
-      (totalSweeps * 4) + 
-      (totalBackTakes * 8)
-    ));
-
-    // 4. DEFESA - taxa de sucesso e ações defensivas
-    const sweepSuccessRate = totalSweeps > 0 ? (completedSweeps / totalSweeps) : 0;
-    const defensiveValue = (techniquesMap['Defesas/Escapes'] || 0);
-    const defesa = Math.min(100, Math.max(10,
-      (sweepSuccessRate * 50) + (defensiveValue * 3)
-    ));
-
-    // 5. MOVIMENTAÇÃO - mudanças de posição e transições
-    const movimentacao = Math.min(100, Math.max(15,
-      (totalBackTakes * 12) + 
-      (totalSweeps * 6) + 
-      (techniqueVariety * 5)
-    ));
-
-    const radarData = [
-      { name: 'Condicionamento', value: Math.round(condicionamento) },
-      { name: 'Técnica', value: Math.round(tecnica) },
-      { name: 'Agressividade', value: Math.round(agressividade) },
-      { name: 'Defesa', value: Math.round(defesa) },
-      { name: 'Movimentação', value: Math.round(movimentacao) },
-    ];
-
-    // Converter técnicas para array e ordenar
-    const attacksData = Object.entries(techniquesMap)
-      .map(([name, value]) => ({ 
-        name: name.charAt(0).toUpperCase() + name.slice(1), 
-        value: Math.round(value)
-      }))
-      .filter(item => item.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8); // Top 8 técnicas
-
-    // Gerar insights de Golpes Fortes e Pontos Fracos
-    const strongAttacks = [];
-    const weaknesses = [];
-
-    // Identificar golpes fortes (técnicas mais usadas com sucesso)
-    if (totalSubmissions > 5) {
-      strongAttacks.push(`Finalização (${totalSubmissions} tentativas)`);
-    }
-    if (totalSweeps > 8) {
-      strongAttacks.push(`Raspagens (${totalSweeps} execuções)`);
-    }
-    if (totalBackTakes > 3) {
-      strongAttacks.push(`Pegadas de costas (${totalBackTakes} vezes)`);
-    }
-    
-    // Adicionar técnicas específicas do topo
-    attacksData.slice(0, 3).forEach(tech => {
-      if (tech.value > 10 && !strongAttacks.some(s => s.includes(tech.name))) {
-        strongAttacks.push(`${tech.name} (${tech.value})`);
-      }
-    });
-
-    // Identificar pontos fracos baseados em baixa taxa de sucesso
-    if (totalSweeps > 0 && completedSweeps / totalSweeps < 0.5) {
-      weaknesses.push('Taxa de conclusão de raspagens abaixo de 50%');
-    }
-    if (totalSubmissions > 0 && totalSubmissions < 3) {
-      weaknesses.push('Poucas tentativas de finalização');
-    }
-    if (totalBackTakes === 0 && totalSweeps > 5) {
-      weaknesses.push('Não demonstrou pegadas de costas nos vídeos');
-    }
-    if (techniqueVariety < 3) {
-      weaknesses.push('Pouca variedade técnica observada');
-    }
-    if (defensiveValue === 0) {
-      weaknesses.push('Poucas ações defensivas/escapes identificadas');
-    }
-
-    const strongAttacksText = strongAttacks.length > 0 
-      ? strongAttacks.join(', ')
-      : athlete.strongAttacks || 'Aguardando mais análises para identificar padrões';
-
-    const weaknessesText = weaknesses.length > 0
-      ? weaknesses.join('. ')
-      : athlete.weaknesses || 'Nenhum ponto fraco significativo identificado';
-
-    // Gerar resumo técnico geral do atleta COM IA
-    let technicalSummary = aiSummary; // Usar o resumo gerado pela IA
-    
-    if (!technicalSummary) {
-      // Fallback se a IA ainda não gerou ou falhou
-      if (analyses.length > 0) {
-        technicalSummary = 'Gerando resumo técnico com IA...';
-      } else {
-        technicalSummary = athlete.style 
-          ? `${athlete.name} pratica ${athlete.style}. Aguardando análises de vídeo para gerar perfil técnico detalhado.`
-          : 'Envie vídeos de lutas para a IA gerar um perfil técnico completo automaticamente.';
-      }
-    }
-
-    return { 
-      radarData, 
-      attacksData, 
-      strongAttacksText, 
-      weaknessesText, 
-      technicalSummary,
-      // Exportar stats para usar na geração do resumo IA
-      stats: {
-        totalSubmissions,
-        totalSweeps,
-        completedSweeps,
-        totalBackTakes,
-        topTechniques: attacksData.slice(0, 5).map(t => t.name),
-        attributes: {
-          condicionamento,
-          tecnica,
-          agressividade,
-          defesa,
-          movimentacao
-        }
-      }
-    };
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -450,7 +168,9 @@ export default function AthleteDetail({ isOpponent = false }) {
   }
 
   // Processar dados das análises após confirmar que athlete existe
-  const { radarData: athleteRadarData, attacksData, strongAttacksText, weaknessesText } = processAnalysesData();
+  // Usar utilitário centralizado para evitar duplicação de código
+  const { radarData: athleteRadarData, attacksData, strongAttacksText, weaknessesText } = 
+    processPersonAnalyses(analyses, athlete);
 
   return (
     <div className="space-y-6" style={{ padding: "1vw" }}>

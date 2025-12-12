@@ -7,7 +7,6 @@ import Overview from './pages/Overview';
 import Athletes from './pages/Athletes';
 import AthleteDetail from './pages/AthleteDetail';
 import Opponents from './pages/Opponents';
-import Compare from './pages/Compare';
 import Strategy from './pages/Strategy';
 import VideoAnalysis from './pages/VideoAnalysis';
 import ModernLogin from './pages/ModernLogin';
@@ -35,7 +34,6 @@ function AppContent() {
             <Route path="/athletes/:id" element={<ProtectedRoute><AthleteDetail /></ProtectedRoute>} />
             <Route path="/opponents" element={<ProtectedRoute><Opponents /></ProtectedRoute>} />
             <Route path="/opponents/:id" element={<ProtectedRoute><AthleteDetail isOpponent /></ProtectedRoute>} />
-            <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
             <Route path="/strategy" element={<ProtectedRoute><Strategy /></ProtectedRoute>} />
             <Route path="/analyze-video" element={<ProtectedRoute><VideoAnalysis /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
