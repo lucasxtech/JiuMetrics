@@ -1,0 +1,88 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+
+jobs:
+  # Dependency Review (apenas para PRs)
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+
+  # Code Scanning
+  code-scanning:
+    name: Code Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # Check for secrets
+  secrets-scan:
+    name: Secrets Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+        continue-on-error: true
+
+  # Check package versions
+  outdated-dependencies:
+    name: Check Outdated Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check Frontend Dependencies
+        working-directory: frontend
+        run: |
+          echo "## Frontend Dependencies Status" >> $GITHUB_STEP_SUMMARY
+          npm outdated || true
+          npm outdated >> $GITHUB_STEP_SUMMARY || echo "All dependencies up to date!" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check Backend Dependencies
+        working-directory: server
+        run: |
+          echo "## Backend Dependencies Status" >> $GITHUB_STEP_SUMMARY
+          npm outdated || true
+          npm outdated >> $GITHUB_STEP_SUMMARY || echo "All dependencies up to date!" >> $GITHUB_STEP_SUMMARY
