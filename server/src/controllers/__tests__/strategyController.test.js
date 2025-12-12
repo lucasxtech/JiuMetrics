@@ -167,7 +167,8 @@ describe('strategyController', () => {
           name: 'Pedro Santos',
           resumo: 'Lutador agressivo focado em passagem',
           atributos: opponentAttributes
-        }
+        },
+        undefined
       );
       expect(res.json).toHaveBeenCalledWith({
         success: true,
@@ -219,7 +220,8 @@ describe('strategyController', () => {
         expect.objectContaining({
           resumo: 'Sem resumo disponível - sem análises de vídeo ainda.'
         }),
-        expect.any(Object)
+        expect.any(Object),
+        undefined
       );
     });
 

@@ -25,7 +25,7 @@ function preparePersonData(person, analyses) {
 exports.compareAndStrategy = async (req, res) => {
   try {
     console.log('🎯 Recebendo requisição de estratégia:', req.body);
-    const { athleteId, opponentId } = req.body;
+    const { athleteId, opponentId, model } = req.body;
     const userId = req.userId; // Vem do middleware de autenticação
 
     if (!athleteId || !opponentId) {
@@ -33,6 +33,11 @@ exports.compareAndStrategy = async (req, res) => {
         success: false,
         error: 'athleteId e opponentId são obrigatórios',
       });
+    }
+
+    // Log do modelo selecionado
+    if (model) {
+      console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
     }
 
     // Buscar dados
@@ -60,8 +65,8 @@ exports.compareAndStrategy = async (req, res) => {
     const athleteData = preparePersonData(athlete, athleteAnalyses);
     const opponentData = preparePersonData(opponent, opponentAnalyses);
 
-    // Gerar estratégia com IA
-    const strategy = await generateTacticalStrategy(athleteData, opponentData);
+    // Gerar estratégia com IA (passando o modelo escolhido)
+    const strategy = await generateTacticalStrategy(athleteData, opponentData, model);
 
     res.json({
       success: true,

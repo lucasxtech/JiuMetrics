@@ -19,7 +19,7 @@ exports.analyzeVideo = async (req, res) => {
  */
 exports.generateAthleteSummary = async (req, res) => {
   try {
-    const { athleteData } = req.body;
+    const { athleteData, model } = req.body;
 
     if (!athleteData) {
       return res.status(400).json({
@@ -28,7 +28,12 @@ exports.generateAthleteSummary = async (req, res) => {
       });
     }
 
-    const summary = await generateAthleteSummary(athleteData);
+    // Log do modelo selecionado
+    if (model) {
+      console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
+    }
+
+    const summary = await generateAthleteSummary(athleteData, model);
 
     res.json({
       success: true,

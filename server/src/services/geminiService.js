@@ -8,7 +8,20 @@ if (!apiKey) {
 }
 
 const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const model = ai ? ai.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
+
+/**
+ * Cria uma instância do modelo Gemini com o modelo especificado
+ * @param {string} modelName - Nome do modelo (ex: 'gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-3.0')
+ * @returns {Object} Instância do modelo Gemini
+ */
+const getModel = (modelName = 'gemini-2.0-flash') => {
+  if (!ai) return null;
+  console.log(`🤖 Usando modelo: ${modelName}`);
+  return ai.getGenerativeModel({ model: modelName });
+};
+
+// Modelo padrão para compatibilidade com código existente
+const model = getModel();
 
 const BASE_PROMPT = (url) => {
   return `Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Performance Scout).
@@ -221,15 +234,17 @@ function buildPrompt(url, context = {}) {
 /**
  * Analisa um frame usando Gemini Vision
  */
-async function analyzeFrame(url, context = {}) {
-  if (!model) {
+async function analyzeFrame(url, context = {}, customModel = null) {
+  const modelToUse = customModel ? getModel(customModel) : model;
+  
+  if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
   }
 
   const prompt = buildPrompt(url, context);
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await modelToUse.generateContent(prompt);
     const responseText = result.response.text();
     const analysis = extractJson(responseText);
     return analysis;
@@ -374,8 +389,10 @@ function consolidateAnalyses(frameAnalyses) {
 /**
  * Gera estratégia tática comparando atleta vs adversário
  */
-async function generateTacticalStrategy(athleteData, opponentData) {
-  if (!model) {
+async function generateTacticalStrategy(athleteData, opponentData, customModel = null) {
+  const modelToUse = customModel ? getModel(customModel) : model;
+  
+  if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
   }
 
@@ -457,7 +474,7 @@ Gere uma estratégia técnica, objetiva e personalizada.
 Retorne APENAS o JSON. Sem texto adicional antes ou depois.`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await modelToUse.generateContent(prompt);
     const responseText = result.response.text();
     const strategy = extractJson(responseText);
     return strategy;
@@ -470,8 +487,10 @@ Retorne APENAS o JSON. Sem texto adicional antes ou depois.`;
 /**
  * Gera resumo técnico profissional de um atleta
  */
-async function generateAthleteSummary(athleteData) {
-  if (!model) {
+async function generateAthleteSummary(athleteData, customModel = null) {
+  const modelToUse = customModel ? getModel(customModel) : model;
+  
+  if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
   }
 
@@ -503,7 +522,7 @@ Retorne APENAS um texto corrido (sem JSON), direto e profissional, como um relat
 Máximo 250 palavras.`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await modelToUse.generateContent(prompt);
     const summary = result.response.text();
     return summary;
   } catch (error) {
