@@ -1,5 +1,6 @@
 const { analyzeFrame, consolidateAnalyses } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
+const ApiUsage = require('../models/ApiUsage');
 
 function extractYouTubeId(url) {
   try {
@@ -24,6 +25,7 @@ function extractYouTubeId(url) {
 exports.analyzeLink = async (req, res) => {
   try {
     const { videos, athleteName, personId, personType, model } = req.body || {};
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return res.status(400).json({ 
@@ -77,6 +79,7 @@ exports.analyzeLink = async (req, res) => {
     // Analisar cada vídeo separadamente
     console.log(`🔬 Analisando ${videoData.length} vídeo(s) individualmente...`);
     const analyses = [];
+    const usageRecords = [];
     
     for (let i = 0; i < videoData.length; i++) {
       const video = videoData[i];
@@ -88,7 +91,9 @@ exports.analyzeLink = async (req, res) => {
           giColor: video.giColor,
           videos: [video] // Passa apenas este vídeo para o prompt
         }, model); // Passa o modelo selecionado
-        analyses.push(result);
+        
+        analyses.push(result.analysis);
+        usageRecords.push(result.usage);
         console.log(`✅ Vídeo ${i + 1} analisado com sucesso`);
       } catch (error) {
         console.error(`❌ Erro ao analisar vídeo ${i + 1}:`, error.message);
@@ -105,6 +110,29 @@ exports.analyzeLink = async (req, res) => {
     
     console.log(`\n📊 Consolidando ${analyses.length} análise(s)...`);
     const consolidated = consolidateAnalyses(analyses);
+    
+    // Salvar uso da API
+    if (req.user?.id && usageRecords.length > 0) {
+      const totalUsage = usageRecords.reduce((acc, usage) => ({
+        promptTokens: acc.promptTokens + usage.promptTokens,
+        completionTokens: acc.completionTokens + usage.completionTokens,
+        totalTokens: acc.totalTokens + usage.totalTokens
+      }), { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+      
+      await ApiUsage.logUsage({
+        userId: req.user.id,
+        modelName: usageRecords[0].modelName,
+        operationType: 'video_analysis',
+        promptTokens: totalUsage.promptTokens,
+        completionTokens: totalUsage.completionTokens,
+        accessToken,
+        metadata: {
+          videosCount: videoData.length,
+          athleteName,
+          personType
+        }
+      });
+    }
     
     // Salvar análise se personId for fornecido
     if (personId && personType) {

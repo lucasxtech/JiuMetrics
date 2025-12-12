@@ -25,7 +25,10 @@ describe('videoAnalysisService', () => {
 
     const response = await analyzeVideoLink(payload);
 
-    expect(api.post).toHaveBeenCalledWith('/ai/analyze-link', payload);
+    expect(api.post).toHaveBeenCalledWith('/ai/analyze-link', {
+      ...payload,
+      model: expect.any(String) // Aceita qualquer modelo
+    });
     expect(response).toEqual({ success: true });
   });
 

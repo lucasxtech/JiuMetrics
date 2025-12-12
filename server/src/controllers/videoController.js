@@ -6,6 +6,7 @@ const { analyzeFrame, consolidateAnalyses } = require('../services/geminiService
 const { generateQuickChartUrl } = require('../utils/chartUtils');
 const { extractTechnicalProfile } = require('../utils/profileUtils');
 const FightAnalysis = require('../models/FightAnalysis');
+const ApiUsage = require('../models/ApiUsage');
 
 /**
  * POST /api/video/upload - Processa múltiplos vídeos enviados
@@ -22,6 +23,7 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
 
     const videos = req.files;
     const { personId, personType, athleteName, model } = req.body;
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
     
     // Log do modelo selecionado
     if (model) {
@@ -39,6 +41,7 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     console.log(`🥋 Cores de kimono:`, giColors);
 
     const allFrameAnalyses = [];
+    const usageRecords = [];
     const videoNames = [];
 
     // Processar cada vídeo
@@ -92,8 +95,9 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
           // analyzeFrame aceita: (url, context, customModel)
           // Como estamos passando base64, precisamos passá-lo como URL data URI
           const dataUri = `data:image/png;base64,${frameDataArray[j]}`;
-          const analysis = await analyzeFrame(dataUri, frameContext, model);
-          allFrameAnalyses.push(analysis);
+          const result = await analyzeFrame(dataUri, frameContext, model);
+          allFrameAnalyses.push(result.analysis);
+          usageRecords.push(result.usage);
         } catch (error) {
           console.error(`   ❌ Erro ao analisar frame ${j + 1}:`, error.message);
         }
@@ -120,6 +124,30 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
 
     // Consolidar todas as análises
     const consolidatedAnalysis = consolidateAnalyses(allFrameAnalyses);
+    
+    // Salvar uso da API
+    if (req.user?.id && usageRecords.length > 0) {
+      const totalUsage = usageRecords.reduce((acc, usage) => ({
+        promptTokens: acc.promptTokens + usage.promptTokens,
+        completionTokens: acc.completionTokens + usage.completionTokens,
+        totalTokens: acc.totalTokens + usage.totalTokens
+      }), { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+      
+      await ApiUsage.logUsage({
+        userId: req.user.id,
+        modelName: usageRecords[0].modelName,
+        operationType: 'video_analysis',
+        promptTokens: totalUsage.promptTokens,
+        completionTokens: totalUsage.completionTokens,
+        accessToken,
+        metadata: {
+          videosCount: videos.length,
+          framesAnalyzed: allFrameAnalyses.length,
+          athleteName,
+          personType
+        }
+      });
+    }
 
     console.log(`5️⃣ Gerando URLs dos gráficos...`);
 

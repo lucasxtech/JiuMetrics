@@ -5,6 +5,7 @@ const FightAnalysis = require('../models/FightAnalysis');
 const { generateTacticalStrategy } = require('../services/geminiService');
 const { processPersonAnalyses } = require('../utils/athleteStatsUtils');
 const StrategyService = require('../services/strategyService');
+const ApiUsage = require('../models/ApiUsage');
 
 /**
  * POST /api/strategy/compare - Compara atleta vs adversário e gera estratégia com IA
@@ -27,6 +28,7 @@ exports.compareAndStrategy = async (req, res) => {
     console.log('🎯 Recebendo requisição de estratégia:', req.body);
     const { athleteId, opponentId, model } = req.body;
     const userId = req.userId; // Vem do middleware de autenticação
+    const accessToken = req.headers.authorization?.replace('Bearer ', ''); // Token JWT
 
     if (!athleteId || !opponentId) {
       return res.status(400).json({
@@ -66,7 +68,27 @@ exports.compareAndStrategy = async (req, res) => {
     const opponentData = preparePersonData(opponent, opponentAnalyses);
 
     // Gerar estratégia com IA (passando o modelo escolhido)
-    const strategy = await generateTacticalStrategy(athleteData, opponentData, model);
+    const result = await generateTacticalStrategy(athleteData, opponentData, model);
+    
+    // Salvar uso da API (desabilitado temporariamente devido a problemas de RLS)
+    /* TEMPORARIAMENTE DESABILITADO
+    if (userId && result.usage) {
+      await ApiUsage.logUsage({
+        userId,
+        modelName: result.usage.modelName,
+        operationType: 'strategy',
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        accessToken, // Passar o token JWT
+        metadata: {
+          athleteId,
+          athleteName: athlete.name,
+          opponentId,
+          opponentName: opponent.name
+        }
+      });
+    }
+    */
 
     res.json({
       success: true,
@@ -83,7 +105,7 @@ exports.compareAndStrategy = async (req, res) => {
           attributes: opponentData.atributos,
           totalAnalyses: opponentAnalyses.length
         },
-        strategy,
+        strategy: result.strategy,
         generatedAt: new Date().toISOString()
       }
     });

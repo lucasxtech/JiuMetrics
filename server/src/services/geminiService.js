@@ -11,7 +11,7 @@ const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 /**
  * Cria uma instância do modelo Gemini com o modelo especificado
- * @param {string} modelName - Nome do modelo (ex: 'gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-3.0')
+ * @param {string} modelName - Nome do modelo (ex: 'gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-3-pro-preview')
  * @returns {Object} Instância do modelo Gemini
  */
 const getModel = (modelName = 'gemini-2.0-flash') => {
@@ -236,6 +236,7 @@ function buildPrompt(url, context = {}) {
  */
 async function analyzeFrame(url, context = {}, customModel = null) {
   const modelToUse = customModel ? getModel(customModel) : model;
+  const modelName = customModel || 'gemini-2.0-flash';
   
   if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
@@ -246,8 +247,26 @@ async function analyzeFrame(url, context = {}, customModel = null) {
   try {
     const result = await modelToUse.generateContent(prompt);
     const responseText = result.response.text();
+    
+    console.log('\n📝 Resposta do Gemini (primeiros 1000 chars):');
+    console.log(responseText.substring(0, 1000));
+    console.log('\n📝 Resposta do Gemini (últimos 500 chars):');
+    console.log(responseText.substring(responseText.length - 500));
+    
     const analysis = extractJson(responseText);
-    return analysis;
+    
+    // Extrair metadata de uso
+    const usageMetadata = result.response.usageMetadata || {};
+    
+    return {
+      analysis,
+      usage: {
+        modelName,
+        promptTokens: usageMetadata.promptTokenCount || 0,
+        completionTokens: usageMetadata.candidatesTokenCount || 0,
+        totalTokens: usageMetadata.totalTokenCount || 0
+      }
+    };
   } catch (error) {
     console.error("❌ Erro ao analisar frame com Gemini:", error.message);
     throw error;
@@ -391,6 +410,7 @@ function consolidateAnalyses(frameAnalyses) {
  */
 async function generateTacticalStrategy(athleteData, opponentData, customModel = null) {
   const modelToUse = customModel ? getModel(customModel) : model;
+  const modelName = customModel || 'gemini-2.0-flash';
   
   if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
@@ -447,37 +467,72 @@ Gere uma estratégia técnica, objetiva e personalizada.
 - Plano cronológico da luta
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 FORMATO DE SAÍDA (JSON PURO)
+📦 FORMATO DE SAÍDA (JSON VÁLIDO)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+IMPORTANTE: 
+- Retorne APENAS JSON válido
+- NÃO use markdown (**negrito**, \`code\`, etc)
+- NÃO use aspas duplas dentro de strings (use aspas simples se necessário)
+- NÃO quebre linhas com \\n dentro de valores
+- NÃO adicione texto antes ou depois do JSON
+- NÃO use código markdown \`\`\`json
+
+EXEMPLO DO FORMATO CORRETO:
 {
-  "analise": "Análise direta e objetiva. Compare os estilos, identifique vantagens numéricas claras nos atributos, aponte desequilíbrios técnicos. Seja específico sobre o que cada um faz bem e onde o outro falha.",
-  
-  "estrategia_para_vencer": "Como vencer esta luta. Ofensiva: quais técnicas usar e quando. Defensiva: o que anular e como se proteger. Exploração: onde atacar com base nos pontos fracos dele.",
-  
-  "taticas_especificas": "Táticas práticas. No início da luta: fazer X. Para anular o jogo dele: fazer Y. Para explorar fraquezas: fazer Z. Técnicas prioritárias: listar 3-5 movimentos.",
-  
+  "analise": "Texto direto sem quebras de linha e sem 'aspas duplas' problemáticas",
+  "estrategia_para_vencer": "Descrição em uma linha contínua",
+  "taticas_especificas": "Lista de táticas separadas por vírgula ou ponto",
   "plano_por_fases": {
-    "inicio": "Primeiros 0-60 segundos. O que fazer ao cumprimentar, como começar, qual posição buscar imediatamente.",
-    "meio": "Meio da luta. Como manter controle, onde pressionar, como gerenciar energia, quando acelerar.",
-    "fim": "Final da luta. Se estiver vencendo: como segurar. Se estiver perdendo: como virar."
+    "inicio": "Instrução clara",
+    "meio": "Instrução clara",
+    "fim": "Instrução clara"
   },
-  
   "checklist": {
-    "fazer": ["Ação concreta 1", "Ação concreta 2", "Ação concreta 3"],
-    "evitar": ["Erro específico 1", "Erro específico 2"],
-    "buscar": ["Posição ideal 1", "Posição ideal 2"],
-    "nunca_permitir": ["Situação de alto risco 1", "Situação de alto risco 2"]
+    "fazer": ["Ação 1", "Ação 2"],
+    "evitar": ["Erro 1", "Erro 2"],
+    "buscar": ["Posição 1", "Posição 2"],
+    "nunca_permitir": ["Risco 1", "Risco 2"]
   }
 }
 
-Retorne APENAS o JSON. Sem texto adicional antes ou depois.`;
+CONTEÚDO ESPERADO:
+- analise: Compare estilos, identifique vantagens numéricas, aponte desequilíbrios
+- estrategia_para_vencer: Como vencer - ofensiva, defensiva, exploração de fraquezas
+- taticas_especificas: Táticas práticas para início, meio e fim
+- plano_por_fases.inicio: Primeiros 60 segundos
+- plano_por_fases.meio: Meio da luta - controle e pressão
+- plano_por_fases.fim: Final - como segurar ou virar
+- checklist.fazer: 3-5 ações concretas
+- checklist.evitar: 2-3 erros específicos
+- checklist.buscar: 2-3 posições ideais
+- checklist.nunca_permitir: 2-3 situações de risco
+
+RETORNE APENAS O JSON. SEM EXPLICAÇÕES ADICIONAIS.`;
 
   try {
     const result = await modelToUse.generateContent(prompt);
     const responseText = result.response.text();
+    
+    console.log('\n📝 Resposta do Gemini para estratégia (primeiros 1000 chars):');
+    console.log(responseText.substring(0, 1000));
+    console.log('\n📝 Resposta do Gemini para estratégia (últimos 500 chars):');
+    console.log(responseText.substring(responseText.length - 500));
+    
     const strategy = extractJson(responseText);
-    return strategy;
+    
+    // Extrair metadata de uso
+    const usageMetadata = result.response.usageMetadata || {};
+    
+    return {
+      strategy,
+      usage: {
+        modelName,
+        promptTokens: usageMetadata.promptTokenCount || 0,
+        completionTokens: usageMetadata.candidatesTokenCount || 0,
+        totalTokens: usageMetadata.totalTokenCount || 0
+      }
+    };
   } catch (error) {
     console.error('❌ Erro ao gerar estratégia tática:', error.message);
     throw error;
@@ -489,6 +544,7 @@ Retorne APENAS o JSON. Sem texto adicional antes ou depois.`;
  */
 async function generateAthleteSummary(athleteData, customModel = null) {
   const modelToUse = customModel ? getModel(customModel) : model;
+  const modelName = customModel || 'gemini-2.0-flash';
   
   if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
@@ -524,7 +580,19 @@ Máximo 250 palavras.`;
   try {
     const result = await modelToUse.generateContent(prompt);
     const summary = result.response.text();
-    return summary;
+    
+    // Extrair metadata de uso
+    const usageMetadata = result.response.usageMetadata || {};
+    
+    return {
+      summary,
+      usage: {
+        modelName,
+        promptTokens: usageMetadata.promptTokenCount || 0,
+        completionTokens: usageMetadata.candidatesTokenCount || 0,
+        totalTokens: usageMetadata.totalTokenCount || 0
+      }
+    };
   } catch (error) {
     console.error('❌ Erro ao gerar resumo do atleta:', error.message);
     throw error;

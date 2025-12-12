@@ -57,6 +57,7 @@ describe('videoUploadService', () => {
       ['personId', payload.personId],
       ['personType', payload.personType],
       ['athleteName', payload.athleteName],
+      ['model', expect.any(String)] // Aceita qualquer modelo
     ]);
   });
 });

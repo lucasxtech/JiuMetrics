@@ -157,6 +157,158 @@
   transform: scale(0.98);
 }
 
+/* Usage Stats */
+.periodSelector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.periodButton {
+  padding: 0.5rem 1rem;
+  background: #f7fafc;
+  border: 0.125rem solid #e2e8f0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4a5568;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.periodButton:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.periodButton.active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.loadingUsage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0.25rem solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.usageStats {
+  display: grid;
+  gap: 1rem;
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-radius: 0.75rem;
+  border: 0.0625rem solid #e2e8f0;
+}
+
+.statIcon {
+  font-size: 2rem;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.statContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: #718096;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.breakdown {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 0.75rem;
+}
+
+.breakdown h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.breakdownItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 0.0625rem solid #e2e8f0;
+}
+
+.breakdownItem:last-child {
+  border-bottom: none;
+}
+
+.breakdownLabel {
+  font-size: 0.875rem;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.breakdownStats {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #718096;
+}
+
+.breakdownCost {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.noUsage {
+  text-align: center;
+  padding: 3rem;
+  color: #718096;
+}
+
 @media (max-width: 48em) {
   .settingsContainer {
     padding: 1.5rem 1rem;
@@ -173,5 +325,11 @@
   .userInfoCard {
     flex-direction: column;
     text-align: center;
+  }
+
+  .breakdownStats {
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-end;
   }
 }

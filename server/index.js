@@ -8,6 +8,7 @@ const aiRoutes = require('./src/routes/ai');
 const videoRoutes = require('./src/routes/video');
 const fightAnalysisRoutes = require('./src/routes/fightAnalysis');
 const strategyRoutes = require('./src/routes/strategy');
+const usageRoutes = require('./src/routes/usage');
 const config = require('./config');
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/fight-analysis', fightAnalysisRoutes);
 app.use('/api/strategy', strategyRoutes);
+app.use('/api/usage', usageRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

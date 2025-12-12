@@ -1,5 +1,6 @@
 // Controlador de IA - Análise de vídeos com Gemini Vision
 const { analyzeFrame, consolidateAnalyses, generateAthleteSummary } = require('../services/geminiService');
+const ApiUsage = require('../models/ApiUsage');
 
 /**
  * POST /api/ai/analyze-video - Analisa vídeo enviado (via upload com FFmpeg + Gemini Vision)
@@ -20,6 +21,7 @@ exports.analyzeVideo = async (req, res) => {
 exports.generateAthleteSummary = async (req, res) => {
   try {
     const { athleteData, model } = req.body;
+    const accessToken = req.headers.authorization?.replace('Bearer ', '');
 
     if (!athleteData) {
       return res.status(400).json({
@@ -33,11 +35,26 @@ exports.generateAthleteSummary = async (req, res) => {
       console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
     }
 
-    const summary = await generateAthleteSummary(athleteData, model);
+    const result = await generateAthleteSummary(athleteData, model);
+    
+    // Salvar uso da API
+    if (req.userId && result.usage) {
+      await ApiUsage.logUsage({
+        userId: req.userId,
+        modelName: result.usage.modelName,
+        operationType: 'summary',
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        accessToken,
+        metadata: {
+          athleteName: athleteData.name
+        }
+      });
+    }
 
     res.json({
       success: true,
-      summary
+      summary: result.summary
     });
   } catch (error) {
     console.error('Erro ao gerar resumo do atleta:', error);
