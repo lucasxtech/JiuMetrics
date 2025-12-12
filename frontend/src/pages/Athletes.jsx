@@ -56,6 +56,7 @@ export default function Athletes() {
         <div className="hero-meta space-y-4">
           <p className="mb-4">Crie novos perfis e mantenha as informações prontas para as comparações e estratégias.</p>
           <button
+            style={{ marginTop: "2vh" }}
             type="button"
             onClick={() => setShowForm(!showForm)}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-700"

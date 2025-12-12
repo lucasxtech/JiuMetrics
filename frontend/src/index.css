@@ -518,3 +518,7 @@ button:active:not(:disabled) {
   font-size: 0.9rem;
   color: #4f46e5;
 }
+
+.allItensMargin * {
+  margin: 0.25vw;
+}

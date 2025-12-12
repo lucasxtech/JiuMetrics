@@ -453,7 +453,7 @@ export default function AthleteDetail({ isOpponent = false }) {
   const { radarData: athleteRadarData, attacksData, strongAttacksText, weaknessesText } = processAnalysesData();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ padding: "1vw" }}>
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -488,7 +488,7 @@ export default function AthleteDetail({ isOpponent = false }) {
 
       {/* Resumo Técnico Geral - Gerado pela IA */}
       {analyses.length > 0 && (
-        <section className="panel bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-indigo-200">
+        <section className="panel bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-indigo-200 allItensMargin" style={{ width: "100vw", margin: "1vh" }}>
           <div className="panel__head mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -548,7 +548,7 @@ export default function AthleteDetail({ isOpponent = false }) {
       )}
 
       {isEditing && (
-        <section className="panel">
+        <section className="panel allItensMargin" style={{ width: "100vw", margin: "1vh" }}>
           <div className="panel__head mb-6">
             <div>
               <p className="eyebrow">Edição</p>
@@ -561,7 +561,7 @@ export default function AthleteDetail({ isOpponent = false }) {
       )}
 
       {/* Informações Básicas */}
-      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
+      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`} style={{ width: "100vw", margin: "1vh" }}>
         <div className="panel__head mb-4">
           <div>
             <p className="eyebrow">Perfil geral</p>
@@ -598,7 +598,7 @@ export default function AthleteDetail({ isOpponent = false }) {
       </section>
 
       {/* Análises de Vídeo com IA - Nova UI */}
-      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
+      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`} style={{ width: "100vw", margin: "1vh" }}>
         <div className="panel__head mb-6">
           <div className="flex items-center justify-between">
             <div>
@@ -647,8 +647,8 @@ export default function AthleteDetail({ isOpponent = false }) {
       )}
 
       {/* Gráficos */}
-      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
-        <section className="panel">
+      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`} style={{ display: "flex", justifyContent: "center", gap: "1vw", width: "100vw" }}>
+        <section className="panel allItensMargin" style={{  }}>
           <div className="panel__head mb-4">
             <div className="flex items-start justify-between">
               <div>
@@ -674,7 +674,7 @@ export default function AthleteDetail({ isOpponent = false }) {
             <StatsRadarChart data={athleteRadarData} />
           </div>
         </section>
-        <section className="panel">
+        <section className="panel allItensMargin" style={{  }}>
           <div className="panel__head mb-4">
             <div className="flex items-start justify-between">
               <div>
@@ -703,7 +703,7 @@ export default function AthleteDetail({ isOpponent = false }) {
       </div>
 
       {/* Informações Detalhadas */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 allItensMargin" style={{ display: "flex", justifyContent: "center", gap: "1vw", width: "98.5vw" }}>
         {[{
           title: 'Golpes Fortes',
           description: strongAttacksText,
@@ -715,8 +715,9 @@ export default function AthleteDetail({ isOpponent = false }) {
           hasAI: analyses.length > 0
         }].map((block) => (
           <section
+            style={{ width: "50vw" }}
             key={block.title}
-            className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}
+            className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`}
           >
             <div className="panel__head mb-3">
               <div className="flex items-center justify-between">
@@ -740,7 +741,7 @@ export default function AthleteDetail({ isOpponent = false }) {
 
       {/* Vídeos */}
       {athlete.videoUrl && (
-        <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
+        <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`} style={{ width: "100vw", margin: "1vh" }}>
           <div className="panel__head mb-4">
             <p className="eyebrow">Referências</p>
             <h3 className="panel__title">Vídeos de referência</h3>
