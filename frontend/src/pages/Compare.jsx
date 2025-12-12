@@ -105,6 +105,7 @@ export default function Compare() {
                   const isSelected = selectedAthlete?.id === athlete.id;
                   return (
                     <button
+                      style={{ margin: "1vh" }}
                       key={athlete.id}
                       type="button"
                       onClick={() => setSelectedAthlete(athlete)}
@@ -138,6 +139,7 @@ export default function Compare() {
                   const isSelected = selectedOpponent?.id === opponent.id;
                   return (
                     <button
+                      style={{ margin: "1vh" }}
                       key={opponent.id}
                       type="button"
                       onClick={() => setSelectedOpponent(opponent)}
