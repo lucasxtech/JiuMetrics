@@ -331,7 +331,7 @@ export default function VideoAnalysisComponent() {
           </div>
 
           {analysis.data?.summary && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-amber-900">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-amber-900" style={{ padding: "0.5vh", margin: "1vh" }}>
               <p className="mb-2 text-xs font-semibold tracking-wide text-amber-700">Resumo técnico</p>
               <p>{analysis.data.summary}</p>
             </div>
@@ -339,7 +339,7 @@ export default function VideoAnalysisComponent() {
 
           {/* Estatísticas Técnicas */}
           {analysis.data?.technical_stats && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6" style={{ padding: "0.5vh", margin: "1vh" }}>
               <p className="mb-4 text-sm font-bold text-blue-900">📊 Estatísticas Técnicas</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Raspagens */}
