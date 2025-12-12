@@ -12,7 +12,6 @@ export default function Header() {
     { label: 'Overview', to: '/' },
     { label: 'Atletas', to: '/athletes' },
     { label: 'Adversários', to: '/opponents' },
-    { label: 'Comparar', to: '/compare' },
     { label: 'Estratégia', to: '/strategy' },
   ];
 

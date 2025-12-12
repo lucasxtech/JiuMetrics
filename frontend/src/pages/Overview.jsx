@@ -47,14 +47,6 @@ const features = [
     cta: 'Ver Adversários'
   },
   {
-    icon: '📊',
-    title: 'Comparação Tática',
-    description: 'Compare atletas e adversários lado a lado para identificar vantagens e desvantagens técnicas.',
-    highlights: ['Comparação visual', 'Análise de atributos', 'Matchup insights'],
-    to: '/compare',
-    cta: 'Comparar Lutadores'
-  },
-  {
     icon: '🤖',
     title: 'Estratégia com IA',
     description: 'Gere planos de luta personalizados usando inteligência artificial baseada nos perfis técnicos.',
