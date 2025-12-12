@@ -197,7 +197,7 @@ export default function Strategy() {
       {(strategy || isLoading) && <AiStrategyBox strategy={strategy} isLoading={isLoading} />}
 
       {!strategy && !isLoading && !selectedAthlete && (
-        <section className="panel text-center">
+        <section className="panel text-center" style={{ display: "flex", justifyContent: "center" }}>
           <div className="mx-auto max-w-md space-y-4 flex flex-col items-center">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100">
               <svg className="h-10 w-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
