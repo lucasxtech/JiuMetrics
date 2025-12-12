@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { login } from '../services/authService';
 import beltIcon from './download.ico';
 import styles from './ModernLogin.module.css';
 
 export default function ModernLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -51,8 +54,8 @@ export default function ModernLogin() {
       console.log('📨 Resposta do login:', response);
       
       if (response.success) {
-        console.log('✅ Login bem-sucedido, redirecionando...');
-        navigate('/');
+        console.log('✅ Login bem-sucedido, redirecionando para:', from);
+        navigate(from, { replace: true });
       } else {
         console.log('❌ Login falhou:', response.error);
         setError(response.error || 'Email ou senha inválidos');

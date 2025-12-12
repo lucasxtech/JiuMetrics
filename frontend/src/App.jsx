@@ -37,6 +37,7 @@ function AppContent() {
             <Route path="/strategy" element={<ProtectedRoute><Strategy /></ProtectedRoute>} />
             <Route path="/analyze-video" element={<ProtectedRoute><VideoAnalysis /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="*" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
           </Routes>
         </div>
       </main>
