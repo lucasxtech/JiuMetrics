@@ -23,13 +23,18 @@ function extractYouTubeId(url) {
 
 exports.analyzeLink = async (req, res) => {
   try {
-    const { videos, athleteName, personId, personType } = req.body || {};
+    const { videos, athleteName, personId, personType, model } = req.body || {};
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return res.status(400).json({ 
         success: false, 
         error: 'Array de vídeos é obrigatório (mínimo 1 vídeo)' 
       });
+    }
+
+    // Log do modelo selecionado
+    if (model) {
+      console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
     }
 
     console.log(`🎬 Iniciando análise de ${videos.length} vídeo(s)...`);
@@ -82,7 +87,7 @@ exports.analyzeLink = async (req, res) => {
           athleteName: athleteName?.trim(),
           giColor: video.giColor,
           videos: [video] // Passa apenas este vídeo para o prompt
-        });
+        }, model); // Passa o modelo selecionado
         analyses.push(result);
         console.log(`✅ Vídeo ${i + 1} analisado com sucesso`);
       } catch (error) {

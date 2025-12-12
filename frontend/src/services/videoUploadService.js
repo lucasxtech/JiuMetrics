@@ -1,6 +1,13 @@
 import api from './api';
 
 /**
+ * Obtém o modelo de IA selecionado pelo usuário
+ */
+const getSelectedModel = () => {
+  return localStorage.getItem('ai_model') || 'gemini-2.0-flash';
+};
+
+/**
  * Faz upload de vídeos e retorna análise
  * @param {Object} payload
  * @param {Array} payload.videos - Array de objetos {file, giColor}
@@ -10,6 +17,9 @@ import api from './api';
  */
 export async function uploadVideo({ videos, personId = null, personType = null, athleteName }) {
   const formData = new FormData();
+  const model = getSelectedModel();
+  
+  console.log('🤖 Modelo selecionado:', model);
   
   // Adicionar cada vídeo com sua cor de kimono
   videos.forEach((video, index) => {
@@ -27,6 +37,8 @@ export async function uploadVideo({ videos, personId = null, personType = null, 
   if (athleteName) {
     formData.append('athleteName', athleteName);
   }
+  // Adicionar modelo selecionado
+  formData.append('model', model);
 
   const response = await api.post('/video/upload', formData, {
     headers: {

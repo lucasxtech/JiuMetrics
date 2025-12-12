@@ -1,6 +1,13 @@
 import api from './api';
 
 /**
+ * Obtém o modelo de IA selecionado pelo usuário
+ */
+const getSelectedModel = () => {
+  return localStorage.getItem('ai_model') || 'gemini-2.0-flash';
+};
+
+/**
  * Envia links de vídeos para análise pela IA
  * @param {Object} payload
  * @param {Array} payload.videos - Array de objetos {url, giColor}
@@ -11,6 +18,8 @@ import api from './api';
  */
 export async function analyzeVideoLink({ videos, athleteName, personId, personType }) {
   console.log('Analisando vídeos:', videos, athleteName, personId, personType);
+  const model = getSelectedModel();
+  console.log('🤖 Modelo selecionado:', model);
 
   try {
     const response = await api.post('/ai/analyze-link', {
@@ -18,6 +27,7 @@ export async function analyzeVideoLink({ videos, athleteName, personId, personTy
       athleteName,
       personId,
       personType,
+      model
     });
     return response.data;
   } catch (error) {

@@ -21,7 +21,12 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     }
 
     const videos = req.files;
-    const { personId, personType, athleteName } = req.body;
+    const { personId, personType, athleteName, model } = req.body;
+    
+    // Log do modelo selecionado
+    if (model) {
+      console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
+    }
     
     // Obter cores de kimono do body (formato: giColors[0], giColors[1], etc)
     const giColors = [];
@@ -84,7 +89,10 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
       for (let j = 0; j < frameDataArray.length; j++) {
         try {
           console.log(`      📸 Analisando frame ${j + 1}/${frameDataArray.length} do vídeo ${i + 1}...`);
-          const analysis = await analyzeFrame(frameDataArray[j], 'image/png', frameContext);
+          // analyzeFrame aceita: (url, context, customModel)
+          // Como estamos passando base64, precisamos passá-lo como URL data URI
+          const dataUri = `data:image/png;base64,${frameDataArray[j]}`;
+          const analysis = await analyzeFrame(dataUri, frameContext, model);
           allFrameAnalyses.push(analysis);
         } catch (error) {
           console.error(`   ❌ Erro ao analisar frame ${j + 1}:`, error.message);
