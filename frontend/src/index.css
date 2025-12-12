@@ -313,6 +313,7 @@ button:active:not(:disabled) {
   flex-direction: column;
   gap: var(--space-lg);
   width: 100vw;
+  padding: 1.5vw;
 }
 
 .panel {
