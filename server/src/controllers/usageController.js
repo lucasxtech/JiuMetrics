@@ -1,13 +1,40 @@
 const ApiUsage = require('../models/ApiUsage');
 
+// Constantes de período
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const DAYS_PER_WEEK = 7;
+const DECIMAL_PLACES = 6;
+const MAX_RECENT_RECORDS = 10;
+
+/**
+ * Calcula data inicial baseada no período solicitado
+ * @param {string} period - Período (today, week, month, all)
+ * @returns {Date|null} Data inicial ou null para 'all'
+ */
+function calculateStartDate(period) {
+  const now = new Date();
+  
+  switch (period) {
+    case 'today':
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    case 'week':
+      return new Date(now.getTime() - DAYS_PER_WEEK * MILLISECONDS_PER_DAY);
+    case 'month':
+      return new Date(now.getFullYear(), now.getMonth(), 1);
+    case 'all':
+    default:
+      return null;
+  }
+}
+
 /**
  * GET /api/usage/stats
  * Retorna estatísticas de uso da API Gemini
- * Query params: period (today, week, month, all)
+ * @param {Object} req.query.period - Período: today, week, month, all (default: month)
  */
 exports.getStats = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.userId;
     
     if (!userId) {
       return res.status(401).json({
@@ -17,25 +44,8 @@ exports.getStats = async (req, res) => {
     }
 
     const { period = 'month' } = req.query;
-
-    // Calcular datas baseado no período
-    let startDate = null;
+    const startDate = calculateStartDate(period);
     const now = new Date();
-
-    switch (period) {
-      case 'today':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'all':
-      default:
-        startDate = null;
-    }
 
     // Buscar registros de uso
     const usageRecords = await ApiUsage.getUsageStats(userId, startDate?.toISOString(), null);
@@ -50,29 +60,28 @@ exports.getStats = async (req, res) => {
     // Agregar estatísticas
     const stats = ApiUsage.aggregateStats(usageRecords);
 
-    // Adicionar informações de período
     const response = {
       success: true,
       period,
       startDate: startDate?.toISOString() || null,
       endDate: now.toISOString(),
       stats: {
-        totalCost: parseFloat(stats.totalCost.toFixed(6)),
+        totalCost: parseFloat(stats.totalCost.toFixed(DECIMAL_PLACES)),
         totalTokens: stats.totalTokens,
         requestsCount: stats.count,
         byModel: Object.entries(stats.byModel).map(([model, data]) => ({
           model,
           tokens: data.tokens,
-          cost: parseFloat(data.cost.toFixed(6)),
+          cost: parseFloat(data.cost.toFixed(DECIMAL_PLACES)),
           count: data.count
         })),
         byOperation: Object.entries(stats.byOperation).map(([operation, data]) => ({
           operation,
           tokens: data.tokens,
-          cost: parseFloat(data.cost.toFixed(6)),
+          cost: parseFloat(data.cost.toFixed(DECIMAL_PLACES)),
           count: data.count
         })),
-        recentUsage: usageRecords.slice(0, 10).map(record => ({
+        recentUsage: usageRecords.slice(0, MAX_RECENT_RECORDS).map(record => ({
           id: record.id,
           model: record.model_name,
           operation: record.operation_type,
@@ -85,11 +94,10 @@ exports.getStats = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error('❌ Erro ao buscar estatísticas de uso:', error);
+    console.error('❌ Erro ao buscar estatísticas:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Erro ao buscar estatísticas de uso',
-      details: error.message
+      error: 'Erro ao buscar estatísticas de uso'
     });
   }
 };
@@ -107,10 +115,10 @@ exports.getPricing = async (req, res) => {
       unit: 'per 1M tokens'
     });
   } catch (error) {
-    console.error('❌ Erro ao buscar preços:', error);
+    console.error('❌ Erro ao buscar preços:', error.message);
     res.status(500).json({
       success: false,
-      error: 'Erro ao buscar preços'
+      error: 'Erro interno do servidor'
     });
   }
 };

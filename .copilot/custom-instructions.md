@@ -281,6 +281,12 @@ JWT_SECRET=xxx
 PORT=5050
 ```
 
+**⚠️ Importante:**
+- Backend usa JWT customizado (não Supabase Auth)
+- Middleware `authMiddleware` seta `req.userId` (não `req.user.id`)
+- Tabela `api_usage` deve ter RLS **DESABILITADO** (JWT customizado não é reconhecido por `auth.uid()`)
+- Outras tabelas (`athletes`, `opponents`, `fight_analyses`) devem ter RLS **HABILITADO** com policies usando casting `::text`
+
 ## 📝 Regras Importantes
 
 ### ⚠️ NUNCA FAÇA:
@@ -336,13 +342,17 @@ Seguir padrão **Conventional Commits**:
 feat(auth): adiciona login com remember me
 fix(video): corrige upload de arquivos grandes
 refactor(athletes): simplifica lógica de filtros
-test(strategy): adiciona testes de geração de IA
-docs(readme): atualiza instruções de setup
-```
-
-## 🔐 Segurança
-
-1. **JWT**: Tokens com expiração (7 dias padrão, 30 com remember me)
+test(strategy): adicustomizados (não Supabase Auth) com expiração (7 dias padrão, 30 com remember me)
+2. **Password hashing**: bcrypt com salt rounds
+3. **CORS**: Configurado apenas para origens permitidas
+4. **Input validation**: Validação no backend e frontend
+5. **SQL Injection**: Prevenido por Supabase/Postgres parametrizado
+6. **XSS**: React escapa automaticamente
+7. **Secrets**: Nunca commitar `.env` files
+8. **RLS (Row Level Security)**:
+   - **Habilitado** em: `athletes`, `opponents`, `fight_analyses`, `users`
+   - **Desabilitado** em: `api_usage` (dados não sensíveis, JWT customizado)
+   - Policies devem usar casting `::text` para comparar UUIDs: `auth.uid()::text = user_id::text`drão, 30 com remember me)
 2. **Password hashing**: bcrypt com salt rounds
 3. **CORS**: Configurado apenas para origens permitidas
 4. **Input validation**: Validação no backend e frontend
@@ -355,20 +365,35 @@ docs(readme): atualiza instruções de setup
 ### Google Gemini
 
 **Modelos disponíveis:**
-- `gemini-2.0-flash-exp` (padrão) - Rápido e eficiente
-- `gemini-2.5-pro` - Mais preciso
-- `gemini-3.0` - Experimental
+- `gemini-2.0-flash` (padrão) - Rápido e eficiente ($0.075/$0.30 por 1M tokens)
+- `gemini-2.5-pro` - Mais preciso ($1.25/$5.00 por 1M tokens)
+- `gemini-3-pro-preview` - Preview gratuito (experimental)
 
 **Configuração:**
 - Modelo selecionável em Settings
 - Salvo em `localStorage` como `ai_model`
 - Passado como parâmetro opcional nas chamadas
 
+**Rastreamento de Custos:**
+- Tabela `api_usage` no Supabase rastreia tokens e custos
+- Modelo `ApiUsage.js` calcula custos automaticamente
+- Endpoint `/api/usage/stats` retorna estatísticas por período
+- UI em Settings mostra gastos em tempo real
+
 **Funcionalidades:**
 - Análise de vídeos (frames + context)
 - Geração de estratégias táticas
 - Resumos de atletas
 - Análise de padrões de luta
+
+**⚠️ JSON Parsing:**
+- Gemini pode retornar JSON com markdown, `\n` literais, ou aspas duplas aninhadas
+- `extractJson()` em `chartUtils.js` faz limpeza robusta:
+  - Remove markdown code blocks (````json)
+  - Remove `\n` literais e `**negrito**`
+  - Conta chaves para encontrar fechamento correto do objeto
+  - Fallback para gráficos padrão em caso de erro
+- Prompt de estratégia proíbe explicitamente markdown e quebras de linha
 
 ## 🎯 Fluxo de Desenvolvimento
 
@@ -409,9 +434,22 @@ docs(readme): atualiza instruções de setup
 - Verificar VITE_API_URL no frontend
 - Verificar origem permitida no backend
 
-**Erro: "Supabase connection failed"**
-- Verificar credenciais no `.env`
-- Verificar status do Supabase
+**Erro: "PGRST301: No suitable key or wrong key type"**
+- Problema com RLS ou Primary Key não reconhecida pelo PostgREST
+- Soluções:
+  1. Executar `NOTIFY pgrst, 'reload config';` no SQL Editor (recarrega cache)
+  2. Verificar se `uuid-ossp` extension está habilitada
+  3. Desabilitar RLS se a tabela não precisa de proteção: `ALTER TABLE x DISABLE ROW LEVEL SECURITY;`
+  4. Usar policies com casting: `auth.uid()::text = user_id::text`
+  5. Para tabela `api_usage`: sempre desabilitar RLS (JWT customizado)
+
+**Erro: "Request failed with status code 401" em /usage/stats**
+- Verificar se controller usa `req.userId` (não `req.user.id`)
+- Verificar se token JWT está sendo enviado no header Authorization
+
+---
+
+**Última atualização:** 14base
 
 ---
 

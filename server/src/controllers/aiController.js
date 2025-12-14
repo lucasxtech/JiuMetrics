@@ -1,38 +1,32 @@
-// Controlador de IA - Análise de vídeos com Gemini Vision
-const { analyzeFrame, consolidateAnalyses, generateAthleteSummary } = require('../services/geminiService');
+const { generateAthleteSummary } = require('../services/geminiService');
 const ApiUsage = require('../models/ApiUsage');
 
 /**
- * POST /api/ai/analyze-video - Analisa vídeo enviado (via upload com FFmpeg + Gemini Vision)
- * Nota: Esta rota é chamada pelo videoController após extrair frames
- * Mantida aqui para compatibilidade com rotas existentes
+ * POST /api/ai/analyze-video
+ * Rota descontinuada - use POST /api/video/upload
  */
 exports.analyzeVideo = async (req, res) => {
   res.status(400).json({
     success: false,
-    error: 'Use POST /api/video/upload para enviar um vídeo para análise com frames extraídos',
-    info: 'A análise por URL direto (link) é feita no videoAnalysisService do frontend'
+    error: 'Use POST /api/video/upload para enviar um vídeo para análise'
   });
 };
 
 /**
- * POST /api/ai/athlete-summary - Gera resumo técnico profissional do atleta via Gemini
+ * POST /api/ai/athlete-summary
+ * Gera resumo técnico profissional do atleta via Gemini
+ * @param {Object} req.body.athleteData - Dados do atleta
+ * @param {string} req.body.model - Modelo Gemini (opcional)
  */
 exports.generateAthleteSummary = async (req, res) => {
   try {
     const { athleteData, model } = req.body;
-    const accessToken = req.headers.authorization?.replace('Bearer ', '');
 
     if (!athleteData) {
       return res.status(400).json({
         success: false,
         error: 'Dados do atleta são obrigatórios'
       });
-    }
-
-    // Log do modelo selecionado
-    if (model) {
-      console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
     }
 
     const result = await generateAthleteSummary(athleteData, model);
@@ -45,10 +39,7 @@ exports.generateAthleteSummary = async (req, res) => {
         operationType: 'summary',
         promptTokens: result.usage.promptTokens,
         completionTokens: result.usage.completionTokens,
-        accessToken,
-        metadata: {
-          athleteName: athleteData.name
-        }
+        metadata: { athleteName: athleteData.name }
       });
     }
 
@@ -57,10 +48,10 @@ exports.generateAthleteSummary = async (req, res) => {
       summary: result.summary
     });
   } catch (error) {
-    console.error('Erro ao gerar resumo do atleta:', error);
+    console.error('❌ Erro ao gerar resumo:', error.message);
     res.status(500).json({
       success: false,
-      error: error.message || 'Erro ao gerar resumo do atleta'
+      error: 'Erro ao gerar resumo do atleta'
     });
   }
 };

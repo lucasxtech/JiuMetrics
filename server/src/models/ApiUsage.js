@@ -1,28 +1,13 @@
 const { supabase } = require('../config/supabase');
-const { createClient } = require('@supabase/supabase-js');
 
-/**
- * Cria um cliente Supabase autenticado com o token do usuário
- */
-function getAuthenticatedClient(accessToken) {
-  if (!accessToken) return supabase;
-  
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      }
-    }
-  );
-}
+// Constantes
+const TOKENS_PER_MILLION = 1000000;
+const DEFAULT_MODEL = 'gemini-2.0-flash';
 
 /**
  * Preços do Google Gemini (USD por 1 milhão de tokens)
  * Fonte: https://ai.google.dev/pricing
+ * @constant {Object}
  */
 const PRICING = {
   'gemini-2.0-flash': {
@@ -41,37 +26,45 @@ const PRICING = {
 
 /**
  * Calcula o custo estimado baseado nos tokens e modelo
+ * @param {string} modelName - Nome do modelo Gemini
+ * @param {number} promptTokens - Tokens do prompt
+ * @param {number} completionTokens - Tokens da resposta
+ * @returns {number} Custo total em USD
  */
 function calculateCost(modelName, promptTokens, completionTokens) {
-  const pricing = PRICING[modelName] || PRICING['gemini-2.0-flash'];
+  if (!modelName || promptTokens < 0 || completionTokens < 0) {
+    return 0;
+  }
   
-  const inputCost = (promptTokens / 1000000) * pricing.input;
-  const outputCost = (completionTokens / 1000000) * pricing.output;
+  const pricing = PRICING[modelName] || PRICING[DEFAULT_MODEL];
+  const inputCost = (promptTokens / TOKENS_PER_MILLION) * pricing.input;
+  const outputCost = (completionTokens / TOKENS_PER_MILLION) * pricing.output;
   
   return inputCost + outputCost;
 }
 
 /**
- * Registra uso da API Gemini
+ * Registra uso da API Gemini no banco de dados
+ * @param {Object} params - Parâmetros do registro
+ * @param {string} params.userId - ID do usuário
+ * @param {string} params.modelName - Nome do modelo usado
+ * @param {string} params.operationType - Tipo de operação (strategy, summary, analysis)
+ * @param {number} params.promptTokens - Tokens do prompt
+ * @param {number} params.completionTokens - Tokens da resposta
+ * @param {Object} params.metadata - Dados adicionais
+ * @returns {Promise<Object|null>} Registro criado ou null em caso de erro
  */
-async function logUsage({ userId, modelName, operationType, promptTokens, completionTokens, metadata = {}, accessToken = null }) {
+async function logUsage({ userId, modelName, operationType, promptTokens, completionTokens, metadata = {} }) {
   try {
+    if (!userId || !modelName || !operationType) {
+      console.warn('⚠️ Parâmetros inválidos para logUsage - registro ignorado');
+      return null;
+    }
+
     const totalTokens = promptTokens + completionTokens;
     const estimatedCost = calculateCost(modelName, promptTokens, completionTokens);
 
-    // Usar cliente autenticado se tiver token
-    const client = getAuthenticatedClient(accessToken);
-    
-    console.log('📊 Tentando salvar uso da API:', {
-      userId,
-      modelName,
-      operationType,
-      totalTokens,
-      estimatedCost,
-      hasToken: !!accessToken
-    });
-
-    const { data, error } = await client
+    const { data, error } = await supabase
       .from('api_usage')
       .insert({
         user_id: userId,
@@ -83,30 +76,33 @@ async function logUsage({ userId, modelName, operationType, promptTokens, comple
         estimated_cost_usd: estimatedCost,
         metadata
       })
-      .select()
-      .single();
+      .select();
 
     if (error) {
-      console.error('❌ Erro ao salvar api_usage:', error);
-      console.error('💡 Sugestão: Verifique se a tabela api_usage foi criada e as policies RLS estão corretas no Supabase');
-      // Não lançar erro - apenas logar e continuar
+      console.error('❌ Falha ao salvar uso da API:', error.message);
       return null;
     }
 
-    console.log(`💰 Uso registrado: ${modelName} - ${totalTokens} tokens - $${estimatedCost.toFixed(6)}`);
-    return data;
+    return data?.[0] || null;
   } catch (err) {
-    console.error('❌ Erro ao registrar uso da API:', err.message);
-    // Não lançar erro - apenas logar e continuar
+    console.error('❌ Erro inesperado ao registrar uso:', err.message);
     return null;
   }
 }
 
 /**
  * Busca estatísticas de uso por período
+ * @param {string} userId - ID do usuário
+ * @param {string|null} startDate - Data inicial (ISO string)
+ * @param {string|null} endDate - Data final (ISO string)
+ * @returns {Promise<Array|null>} Registros de uso ou null em caso de erro
  */
 async function getUsageStats(userId, startDate = null, endDate = null) {
   try {
+    if (!userId) {
+      return [];
+    }
+
     let query = supabase
       .from('api_usage')
       .select('*')
@@ -123,19 +119,21 @@ async function getUsageStats(userId, startDate = null, endDate = null) {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Erro ao buscar usage stats:', error);
+      console.error('❌ Erro ao buscar estatísticas:', error.message);
       return null;
     }
 
-    return data;
+    return data || [];
   } catch (err) {
-    console.error('❌ Erro ao buscar estatísticas:', err);
+    console.error('❌ Erro inesperado ao buscar estatísticas:', err.message);
     return null;
   }
 }
 
 /**
- * Calcula estatísticas agregadas
+ * Calcula estatísticas agregadas de registros de uso
+ * @param {Array} usageRecords - Array de registros de uso da API
+ * @returns {Object} Estatísticas agregadas (custo total, tokens, por modelo, por operação)
  */
 function aggregateStats(usageRecords) {
   if (!usageRecords || usageRecords.length === 0) {

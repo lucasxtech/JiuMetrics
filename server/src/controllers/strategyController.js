@@ -1,18 +1,15 @@
-// Controlador para Estratégias Táticas
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
 const FightAnalysis = require('../models/FightAnalysis');
 const { generateTacticalStrategy } = require('../services/geminiService');
 const { processPersonAnalyses } = require('../utils/athleteStatsUtils');
-const StrategyService = require('../services/strategyService');
 const ApiUsage = require('../models/ApiUsage');
 
 /**
- * POST /api/strategy/compare - Compara atleta vs adversário e gera estratégia com IA
- * Body: { athleteId, opponentId }
- */
-/**
- * Prepara dados da pessoa para IA
+ * Prepara dados da pessoa (atleta ou adversário) para IA
+ * @param {Object} person - Dados da pessoa
+ * @param {Array} analyses - Análises de vídeo
+ * @returns {Object} Dados formatados para IA
  */
 function preparePersonData(person, analyses) {
   const attributes = processPersonAnalyses(analyses, person);
@@ -23,55 +20,51 @@ function preparePersonData(person, analyses) {
   };
 }
 
+/**
+ * POST /api/strategy/compare
+ * Compara atleta vs adversário e gera estratégia tática com IA
+ * @param {string} req.body.athleteId - ID do atleta
+ * @param {string} req.body.opponentId - ID do adversário
+ * @param {string} req.body.model - Modelo Gemini (opcional)
+ */
 exports.compareAndStrategy = async (req, res) => {
   try {
-    console.log('🎯 Recebendo requisição de estratégia:', req.body);
     const { athleteId, opponentId, model } = req.body;
-    const userId = req.userId; // Vem do middleware de autenticação
-    const accessToken = req.headers.authorization?.replace('Bearer ', ''); // Token JWT
+    const userId = req.userId;
 
     if (!athleteId || !opponentId) {
       return res.status(400).json({
         success: false,
-        error: 'athleteId e opponentId são obrigatórios',
+        error: 'athleteId e opponentId são obrigatórios'
       });
     }
 
-    // Log do modelo selecionado
-    if (model) {
-      console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
-    }
-
     // Buscar dados
-    const athlete = await Athlete.getById(athleteId, userId);
-    const opponent = await Opponent.getById(opponentId, userId);
-
-    console.log('📊 Dados encontrados:', { 
-      athlete: athlete ? athlete.name : 'não encontrado',
-      opponent: opponent ? opponent.name : 'não encontrado'
-    });
+    const [athlete, opponent] = await Promise.all([
+      Athlete.getById(athleteId, userId),
+      Opponent.getById(opponentId, userId)
+    ]);
 
     if (!athlete) {
-      console.log('❌ Atleta não encontrado:', athleteId);
       return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
     }
     if (!opponent) {
-      console.log('❌ Adversário não encontrado:', opponentId);
       return res.status(404).json({ success: false, error: 'Adversário não encontrado' });
     }
 
     // Buscar análises e preparar dados
-    const athleteAnalyses = await FightAnalysis.getByPersonId(athleteId);
-    const opponentAnalyses = await FightAnalysis.getByPersonId(opponentId);
+    const [athleteAnalyses, opponentAnalyses] = await Promise.all([
+      FightAnalysis.getByPersonId(athleteId),
+      FightAnalysis.getByPersonId(opponentId)
+    ]);
     
     const athleteData = preparePersonData(athlete, athleteAnalyses);
     const opponentData = preparePersonData(opponent, opponentAnalyses);
 
-    // Gerar estratégia com IA (passando o modelo escolhido)
+    // Gerar estratégia com IA
     const result = await generateTacticalStrategy(athleteData, opponentData, model);
     
-    // Salvar uso da API (desabilitado temporariamente devido a problemas de RLS)
-    /* TEMPORARIAMENTE DESABILITADO
+    // Salvar uso da API
     if (userId && result.usage) {
       await ApiUsage.logUsage({
         userId,
@@ -79,7 +72,6 @@ exports.compareAndStrategy = async (req, res) => {
         operationType: 'strategy',
         promptTokens: result.usage.promptTokens,
         completionTokens: result.usage.completionTokens,
-        accessToken, // Passar o token JWT
         metadata: {
           athleteId,
           athleteName: athlete.name,
@@ -88,7 +80,6 @@ exports.compareAndStrategy = async (req, res) => {
         }
       });
     }
-    */
 
     res.json({
       success: true,
@@ -111,38 +102,10 @@ exports.compareAndStrategy = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao gerar estratégia:', error);
+    console.error('❌ Erro ao gerar estratégia:', error.message);
     res.status(500).json({
       success: false,
-      error: error.message,
-    });
-  }
-};
-
-/**
- * GET /api/strategy/best-matchup/:opponentId - Encontra melhor atleta para enfrentar adversário
- */
-exports.findBestMatchup = async (req, res) => {
-  try {
-    const { opponentId } = req.params;
-
-    if (!opponentId) {
-      return res.status(400).json({
-        success: false,
-        error: 'opponentId é obrigatório',
-      });
-    }
-
-    const result = StrategyService.findBestMatchup(opponentId);
-
-    res.json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
+      error: 'Erro ao gerar estratégia tática'
     });
   }
 };
