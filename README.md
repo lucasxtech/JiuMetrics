@@ -5,10 +5,12 @@ Sistema completo de análise de vídeos de Jiu-Jitsu com IA (Google Gemini), ger
 ## 🚀 Funcionalidades
 
 - ✅ **Análise de Vídeos com IA**: Upload ou link do YouTube com análise via Google Gemini Vision
+- ✅ **Seleção de Modelos Gemini**: Escolha entre gemini-2.0-flash, gemini-2.5-pro ou gemini-3-pro-preview
+- ✅ **Rastreamento de Custos API**: Acompanhe gastos com a API do Gemini em tempo real
 - ✅ **Gerenciamento de Atletas e Adversários**: CRUD completo com perfis técnicos
 - ✅ **Histórico de Análises**: Todas as análises ficam salvas no perfil de cada pessoa
 - ✅ **Gráficos e Dashboards**: Visualização de dados técnicos e estatísticos
-- ✅ **Comparação e Estratégias**: Compare atletas e gere estratégias de luta
+- ✅ **Comparação e Estratégias**: Compare atletas e gere estratégias de luta com IA
 - ✅ **Banco de Dados Supabase**: Persistência de dados em PostgreSQL
 
 ## 📦 Tecnologias
@@ -67,10 +69,14 @@ cp .env.example .env
 ### 4. Configure o Supabase
 
 1. Acesse https://supabase.com e crie um projeto
-2. No **SQL Editor**, execute o script `server/supabase-schema.sql`
+2. No **SQL Editor**, execute os scripts na ordem:
+   - `server/supabase-schema.sql` (tabelas principais)
+   - `server/supabase-api-usage-FINAL.sql` (rastreamento de custos API)
 3. Copie as credenciais em **Settings > API** para o `.env`
 
-📖 **Guia detalhado:** [SETUP_SUPABASE.md](./SETUP_SUPABASE.md)
+📖 **Guias detalhados:** 
+- [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) - Setup completo
+- [SETUP_API_USAGE.md](./SETUP_API_USAGE.md) - Sistema de rastreamento de custos
 
 ## 🎯 Como Usar
 
@@ -91,9 +97,20 @@ npm run dev
 ```
 
 Acesse: **http://localhost:5173**
+SETUP_API_USAGE.md](./SETUP_API_USAGE.md) - Sistema de rastreamento de custos da API Gemini
+- [API.md](./API.md) - Documentação da API REST
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Arquitetura do sistema
+- [DEVELOPMENT.md](./DEVELOPMENT.md) - Guia de desenvolvimento
 
-## 📚 Documentação
+## 💰 Modelos Gemini Disponíveis
 
+| Modelo | Custo (Input) | Custo (Output) | Uso Recomendado |
+|--------|---------------|----------------|-----------------|
+| gemini-2.0-flash | $0.075/1M tokens | $0.30/1M tokens | Análises rápidas (padrão) |
+| gemini-2.5-pro | $1.25/1M tokens | $5.00/1M tokens | Análises detalhadas |
+| gemini-3-pro-preview | Grátis | Grátis | Preview (recursos experimentais) |
+
+💡 **Acompanhe seus gastos** em tempo real na aba **Configurações**
 - [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) - Guia completo de setup do Supabase
 - [API.md](./API.md) - Documentação da API REST
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Arquitetura do sistema

@@ -3,20 +3,24 @@ const { extractJson } = require("../utils/chartUtils");
 
 const apiKey = process.env.GEMINI_API_KEY;
 
+// Constantes
+const DEFAULT_MODEL = 'gemini-2.0-flash';
+const MAX_SUMMARY_WORDS = 250;
+const DEBUG_RESPONSE_CHARS = { first: 500, last: 300 };
+
 if (!apiKey) {
-  console.warn('⚠️ GEMINI_API_KEY não configurada. As análises de vídeo retornarão erro até que a variável esteja definida.');
+  console.warn('⚠️ GEMINI_API_KEY não configurada. As análises retornarão erro até que a variável esteja definida.');
 }
 
 const ai = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 /**
- * Cria uma instância do modelo Gemini com o modelo especificado
- * @param {string} modelName - Nome do modelo (ex: 'gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-3-pro-preview')
- * @returns {Object} Instância do modelo Gemini
+ * Cria uma instância do modelo Gemini
+ * @param {string} modelName - Nome do modelo
+ * @returns {Object|null} Instância do modelo ou null se API key não configurada
  */
-const getModel = (modelName = 'gemini-2.0-flash') => {
+const getModel = (modelName = DEFAULT_MODEL) => {
   if (!ai) return null;
-  console.log(`🤖 Usando modelo: ${modelName}`);
   return ai.getGenerativeModel({ model: modelName });
 };
 
@@ -232,11 +236,15 @@ function buildPrompt(url, context = {}) {
 }
 
 /**
- * Analisa um frame usando Gemini Vision
+ * Analisa um frame de vídeo usando Gemini Vision
+ * @param {string} url - URL do vídeo para análise
+ * @param {Object} context - Contexto adicional (athleteName, giColor, videos)
+ * @param {string|null} customModel - Modelo customizado (opcional)
+ * @returns {Promise<Object>} Análise e metadados de uso
  */
 async function analyzeFrame(url, context = {}, customModel = null) {
   const modelToUse = customModel ? getModel(customModel) : model;
-  const modelName = customModel || 'gemini-2.0-flash';
+  const modelName = customModel || DEFAULT_MODEL;
   
   if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
@@ -247,15 +255,8 @@ async function analyzeFrame(url, context = {}, customModel = null) {
   try {
     const result = await modelToUse.generateContent(prompt);
     const responseText = result.response.text();
-    
-    console.log('\n📝 Resposta do Gemini (primeiros 1000 chars):');
-    console.log(responseText.substring(0, 1000));
-    console.log('\n📝 Resposta do Gemini (últimos 500 chars):');
-    console.log(responseText.substring(responseText.length - 500));
-    
     const analysis = extractJson(responseText);
     
-    // Extrair metadata de uso
     const usageMetadata = result.response.usageMetadata || {};
     
     return {
@@ -268,13 +269,15 @@ async function analyzeFrame(url, context = {}, customModel = null) {
       }
     };
   } catch (error) {
-    console.error("❌ Erro ao analisar frame com Gemini:", error.message);
+    console.error("❌ Erro ao analisar frame:", error.message);
     throw error;
   }
 }
 
 /**
- * Consolida análises de múltiplos frames
+ * Consolida múltiplas análises de frames em uma única análise agregada
+ * @param {Array<Object>} frameAnalyses - Array de análises de frames
+ * @returns {Object} Análise consolidada com médias
  */
 function consolidateAnalyses(frameAnalyses) {
   if (!frameAnalyses || frameAnalyses.length === 0) {
@@ -406,11 +409,15 @@ function consolidateAnalyses(frameAnalyses) {
 }
 
 /**
- * Gera estratégia tática comparando atleta vs adversário
+ * Gera estratégia tática comparando atleta vs adversário usando IA
+ * @param {Object} athleteData - Dados do atleta (name, resumo, atributos)
+ * @param {Object} opponentData - Dados do adversário
+ * @param {string|null} customModel - Modelo customizado
+ * @returns {Promise<Object>} Estratégia e metadados de uso
  */
 async function generateTacticalStrategy(athleteData, opponentData, customModel = null) {
   const modelToUse = customModel ? getModel(customModel) : model;
-  const modelName = customModel || 'gemini-2.0-flash';
+  const modelName = customModel || DEFAULT_MODEL;
   
   if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
@@ -513,15 +520,8 @@ RETORNE APENAS O JSON. SEM EXPLICAÇÕES ADICIONAIS.`;
   try {
     const result = await modelToUse.generateContent(prompt);
     const responseText = result.response.text();
-    
-    console.log('\n📝 Resposta do Gemini para estratégia (primeiros 1000 chars):');
-    console.log(responseText.substring(0, 1000));
-    console.log('\n📝 Resposta do Gemini para estratégia (últimos 500 chars):');
-    console.log(responseText.substring(responseText.length - 500));
-    
     const strategy = extractJson(responseText);
     
-    // Extrair metadata de uso
     const usageMetadata = result.response.usageMetadata || {};
     
     return {
@@ -534,17 +534,20 @@ RETORNE APENAS O JSON. SEM EXPLICAÇÕES ADICIONAIS.`;
       }
     };
   } catch (error) {
-    console.error('❌ Erro ao gerar estratégia tática:', error.message);
+    console.error('❌ Erro ao gerar estratégia:', error.message);
     throw error;
   }
 }
 
 /**
- * Gera resumo técnico profissional de um atleta
+ * Gera resumo técnico profissional de um atleta usando IA
+ * @param {Object} athleteData - Dados do atleta (name, analyses, attributes)
+ * @param {string|null} customModel - Modelo customizado
+ * @returns {Promise<Object>} Resumo e metadados de uso
  */
 async function generateAthleteSummary(athleteData, customModel = null) {
   const modelToUse = customModel ? getModel(customModel) : model;
-  const modelName = customModel || 'gemini-2.0-flash';
+  const modelName = customModel || DEFAULT_MODEL;
   
   if (!modelToUse) {
     throw new Error('GEMINI_API_KEY não configurada no servidor');
@@ -575,7 +578,7 @@ INSTRUÇÕES:
 - Seja técnico, objetivo e específico
 
 Retorne APENAS um texto corrido (sem JSON), direto e profissional, como um relatório de scouting.
-Máximo 250 palavras.`;
+Máximo ${MAX_SUMMARY_WORDS} palavras.`;
 
   try {
     const result = await modelToUse.generateContent(prompt);

@@ -32,7 +32,7 @@ export default function Settings() {
   const fetchUsageStats = async () => {
     setLoadingUsage(true);
     try {
-      const response = await api.get(`/api/usage/stats?period=${usagePeriod}`);
+      const response = await api.get(`/usage/stats?period=${usagePeriod}`);
       if (response.data.success) {
         setUsageStats(response.data.stats);
       }
