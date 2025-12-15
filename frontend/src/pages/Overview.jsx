@@ -59,7 +59,7 @@ const features = [
 const capabilities = [
   {
     title: 'Inteligência Artificial',
-    description: 'Análise de vídeos e geração de estratégias usando Gemini 2.0 Flash',
+    description: 'Análise de vídeos e geração de estratégias usando Gemini AI da Google',
     icon: '🧠'
   },
   {

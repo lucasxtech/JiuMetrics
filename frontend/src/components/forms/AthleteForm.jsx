@@ -210,9 +210,7 @@ export default function AthleteForm({
             name="belt"
             value={formData.belt}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 ${
-              isOpponent ? 'focus:ring-orange-500 focus:border-orange-500' : 'focus:ring-blue-500 focus:border-blue-500'
-            } outline-none transition-all bg-white`}
+            className="w-full"
           >
             {belts.map((belt) => (
               <option key={belt} value={belt}>
@@ -230,9 +228,7 @@ export default function AthleteForm({
             name="style"
             value={formData.style}
             onChange={handleChange}
-            className={`w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 ${
-              isOpponent ? 'focus:ring-orange-500 focus:border-orange-500' : 'focus:ring-blue-500 focus:border-blue-500'
-            } outline-none transition-all bg-white`}
+            className="w-full"
           >
             {styles.map((style) => (
               <option key={style} value={style}>
@@ -243,31 +239,11 @@ export default function AthleteForm({
         </div>
       </div>
 
-      {/* Video URL */}
-      <div>
-        <label className="block text-sm font-bold text-gray-700 mb-2">
-          Link do Vídeo para Análise (opcional)
-        </label>
-        <input
-          type="url"
-          name="videoUrl"
-          value={formData.videoUrl}
-          onChange={handleChange}
-          className={`w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 ${
-            isOpponent ? 'focus:ring-orange-500 focus:border-orange-500' : 'focus:ring-blue-500 focus:border-blue-500'
-          } outline-none transition-all`}
-          placeholder="https://youtube.com/..."
-        />
-        <p className="text-xs text-gray-500 mt-2">
-          💡 Após cadastrar, você poderá enviar vídeos para a IA analisar e gerar o perfil técnico automaticamente
-        </p>
-      </div>
-
       {/* Botão Submit */}
       <button
         type="submit"
         disabled={loading}
-        className={`w-full ${
+        className={`w-full mt-15 ${
           isOpponent 
             ? 'bg-orange-600 hover:bg-orange-700' 
             : 'bg-blue-600 hover:bg-blue-700'

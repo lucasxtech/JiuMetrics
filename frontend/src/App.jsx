@@ -18,14 +18,10 @@ function AppContent() {
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   return (
-    <div className={isAuthPage ? '' : 'min-h-screen bg-gray-100 px-4 sm:px-8 lg:px-12 xl:px-16 2xl:px-20'}>
-      {!isAuthPage && (
-        <div className="mx-auto w-full max-w-[1500px]">
-          <Header />
-        </div>
-      )}
-      <main className={isAuthPage ? '' : 'pt-20 pb-12 sm:pt-24 sm:pb-14'}>
-        <div className={isAuthPage ? '' : 'mx-auto w-full max-w-[1500px]'}>
+    <div className={isAuthPage ? '' : 'min-h-screen bg-gray-100'}>
+      {!isAuthPage && <Header />}
+      <main className={isAuthPage ? '' : 'pt-6 pb-8'}>
+        <div className={isAuthPage ? '' : 'mx-auto w-full max-w-[1500px] px-4'}>
           <Routes>
             <Route path="/login" element={<ModernLogin />} />
             <Route path="/register" element={<Register />} />

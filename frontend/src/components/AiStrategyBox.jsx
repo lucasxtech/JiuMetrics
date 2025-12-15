@@ -32,8 +32,8 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
 
   if (isLoading) {
     return (
-      <section className="panel text-center">
-        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-b-slate-900"></div>
+      <section className="panel flex flex-col items-center justify-center text-center min-h-[300px]">
+        <div className="mb-4 h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-b-slate-900"></div>
         <p className="text-slate-600">Gerando estratégia de luta com IA...</p>
         <p className="text-sm text-slate-500 mt-2">Analisando perfis e gerando recomendações táticas...</p>
       </section>
