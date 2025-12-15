@@ -1,7 +1,6 @@
 // Página de Detalhe do Atleta
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import StatsRadarChart from '../components/charts/StatsRadarChart';
 import StatsBarChart from '../components/charts/StatsBarChart';
 import AthleteForm from '../components/forms/AthleteForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -169,7 +168,7 @@ export default function AthleteDetail({ isOpponent = false }) {
 
   // Processar dados das análises após confirmar que athlete existe
   // Usar utilitário centralizado para evitar duplicação de código
-  const { radarData: athleteRadarData, attacksData, strongAttacksText, weaknessesText } = 
+  const { attacksData, strongAttacksText, weaknessesText } = 
     processPersonAnalyses(analyses, athlete);
 
   return (
@@ -367,33 +366,7 @@ export default function AthleteDetail({ isOpponent = false }) {
       )}
 
       {/* Gráficos */}
-      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`} style={{ display: "flex", justifyContent: "center", gap: "1vw", width: "100vw" }}>
-        <section className="panel allItensMargin" style={{  }}>
-          <div className="panel__head mb-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="eyebrow">Perfil</p>
-                <h3 className="panel__title">Perfil de atributos</h3>
-              </div>
-              {analyses.length > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200">
-                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-xs font-medium text-emerald-700">Dados da IA</span>
-                </div>
-              )}
-            </div>
-            {analyses.length > 0 && (
-              <p className="text-xs text-slate-500 mt-2">
-                Baseado em {analyses.length} {analyses.length === 1 ? 'análise' : 'análises'} de vídeo
-              </p>
-            )}
-          </div>
-          <div className="chart-area">
-            <StatsRadarChart data={athleteRadarData} />
-          </div>
-        </section>
+      <div className={`grid grid-cols-1 gap-6 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`} style={{ display: "flex", justifyContent: "center", gap: "1vw", width: "100vw" }}>
         <section className="panel allItensMargin" style={{  }}>
           <div className="panel__head mb-4">
             <div className="flex items-start justify-between">

@@ -2,6 +2,7 @@
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
 const FightAnalysis = require('../models/FightAnalysis');
+const geminiService = require('./geminiService');
 
 class StrategyService {
   /**
@@ -256,6 +257,209 @@ class StrategyService {
       },
       recommendations: matchups,
       generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Consolida múltiplas análises de um lutador em um único resumo técnico
+   * usando IA para detectar padrões, evolução e tendências consistentes
+   * 
+   * @param {string} personId - ID do atleta ou adversário
+   * @param {string|null} customModel - Modelo Gemini customizado (opcional)
+   * @returns {Promise<Object>} { resumo: string, analysesCount: number, model: string }
+   */
+  static async consolidateAnalyses(personId, customModel = null) {
+    // Buscar todas as análises da pessoa
+    const analyses = await FightAnalysis.getByPersonId(personId);
+    
+    if (!analyses || analyses.length === 0) {
+      return {
+        resumo: 'Nenhuma análise disponível para este lutador.',
+        analysesCount: 0,
+        model: null
+      };
+    }
+
+    // Se houver apenas 1 análise, retornar diretamente
+    if (analyses.length === 1) {
+      return {
+        resumo: analyses[0].summary || 'Resumo não disponível.',
+        analysesCount: 1,
+        model: null // Sem uso de IA
+      };
+    }
+
+    // Múltiplas análises: consolidar usando IA
+    const summaries = analyses
+      .map(a => a.summary)
+      .filter(Boolean)
+      .slice(0, 10); // Limitar a 10 análises mais recentes para evitar prompts enormes
+
+    if (summaries.length === 0) {
+      return {
+        resumo: 'Análises encontradas, mas sem resumos técnicos disponíveis.',
+        analysesCount: analyses.length,
+        model: null
+      };
+    }
+
+    // Preparar prompt de consolidação
+    const consolidationPrompt = `Você é um Analista Tático de Jiu-Jitsu de alto nível.
+
+Você recebeu ${summaries.length} análises técnicas de um mesmo lutador, coletadas em diferentes lutas.
+
+Sua tarefa é CONSOLIDAR essas análises em um ÚNICO RESUMO TÉCNICO UNIFICADO.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 ANÁLISES INDIVIDUAIS (${summaries.length} lutas)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${summaries.map((s, i) => `LUTA ${i + 1}:\n${s}\n`).join('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 INSTRUÇÕES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Analise TODAS as lutas acima e gere um resumo consolidado que identifique:
+
+1. **PADRÕES CONSISTENTES**: Comportamentos que aparecem em MÚLTIPLAS lutas
+2. **EVOLUÇÃO TÉCNICA**: Mudanças no estilo ao longo do tempo (se houver progressão visível)
+3. **TENDÊNCIAS DOMINANTES**: Técnicas, posições e estratégias mais frequentes
+4. **PONTOS FORTES RECORRENTES**: O que ele faz bem consistentemente
+5. **FRAQUEZAS REPETIDAS**: Erros ou limitações que aparecem em várias lutas
+6. **ESTILO GERAL**: Caracterização do perfil técnico geral do lutador
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 FORMATO DE SAÍDA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Retorne APENAS texto puro, SEM formatação markdown, SEM JSON.
+
+Escreva um parágrafo único e coeso (200-300 palavras) que sintetize o perfil técnico consolidado.
+
+Seja específico, objetivo e baseado em evidências das múltiplas análises.
+
+PROIBIDO: 
+- Usar markdown (**negrito**, \`code\`, listas numeradas)
+- Mencionar "Luta 1", "Luta 2" explicitamente
+- Repetir informações redundantes
+- Generalizações vazias
+
+OBRIGATÓRIO:
+- Texto corrido em parágrafo único
+- Foco em padrões que aparecem em múltiplas lutas
+- Síntese inteligente das tendências dominantes
+- Linguagem técnica e precisa`;
+
+    try {
+      const modelToUse = customModel || 'gemini-2.0-flash';
+      const model = geminiService.getModel ? geminiService.getModel(modelToUse) : null;
+      
+      if (!model) {
+        // Fallback: se IA não disponível, concatenar resumos
+        return {
+          resumo: summaries.join(' '),
+          analysesCount: summaries.length,
+          model: null
+        };
+      }
+
+      const result = await model.generateContent(consolidationPrompt);
+      const consolidatedResumo = result.response.text().trim();
+
+      return {
+        resumo: consolidatedResumo,
+        analysesCount: summaries.length,
+        model: modelToUse,
+        usage: {
+          promptTokens: result.response.usageMetadata?.promptTokenCount || 0,
+          completionTokens: result.response.usageMetadata?.candidatesTokenCount || 0,
+          totalTokens: result.response.usageMetadata?.totalTokenCount || 0
+        }
+      };
+    } catch (error) {
+      console.error('❌ Erro ao consolidar análises:', error);
+      
+      // Fallback em caso de erro: concatenar resumos
+      return {
+        resumo: summaries.join(' '),
+        analysesCount: summaries.length,
+        model: null,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Retorna a quantidade de análises disponíveis para um lutador
+   * @param {string} personId - ID do atleta ou adversário
+   * @returns {Promise<number>} Número de análises
+   */
+  static async getAnalysesCount(personId) {
+    const analyses = await FightAnalysis.getByPersonId(personId);
+    return analyses ? analyses.length : 0;
+  }
+
+  /**
+   * Gera estratégia tática usando resumos consolidados de TODAS as análises
+   * @param {string} athleteId - ID do atleta
+   * @param {string} opponentId - ID do adversário
+   * @param {string|null} userId - ID do usuário (para validação)
+   * @param {string|null} customModel - Modelo Gemini customizado (opcional)
+   * @returns {Promise<Object>} Estratégia tática gerada pela IA
+   */
+  static async generateStrategy(athleteId, opponentId, userId = null, customModel = null) {
+    // Buscar dados básicos
+    const athlete = await Athlete.getById(athleteId, userId);
+    const opponent = await Opponent.getById(opponentId, userId);
+
+    if (!athlete || !opponent) {
+      throw new Error('Atleta ou adversário não encontrado');
+    }
+
+    // Consolidar análises de ambos os lutadores
+    const [athleteConsolidation, opponentConsolidation] = await Promise.all([
+      this.consolidateAnalyses(athleteId, customModel),
+      this.consolidateAnalyses(opponentId, customModel)
+    ]);
+
+    // Preparar dados para a IA
+    const athleteData = {
+      name: athlete.name,
+      resumo: athleteConsolidation.resumo
+    };
+
+    const opponentData = {
+      name: opponent.name,
+      resumo: opponentConsolidation.resumo
+    };
+
+    // Gerar estratégia usando geminiService
+    const strategyResult = await geminiService.generateTacticalStrategy(
+      athleteData,
+      opponentData,
+      customModel
+    );
+
+    return {
+      strategy: strategyResult.strategy,
+      metadata: {
+        athlete: {
+          id: athleteId,
+          name: athlete.name,
+          analysesCount: athleteConsolidation.analysesCount,
+          consolidationModel: athleteConsolidation.model
+        },
+        opponent: {
+          id: opponentId,
+          name: opponent.name,
+          analysesCount: opponentConsolidation.analysesCount,
+          consolidationModel: opponentConsolidation.model
+        },
+        strategyModel: customModel || 'gemini-2.0-flash',
+        usage: strategyResult.usage,
+        generatedAt: new Date().toISOString()
+      }
     };
   }
 }

@@ -28,78 +28,87 @@ const getModel = (modelName = DEFAULT_MODEL) => {
 const model = getModel();
 
 const BASE_PROMPT = (url) => {
-  return `Você é um Analista Sênior de Estatísticas de Jiu-Jitsu (BJJ Performance Scout).
-Sua tarefa é assistir cuidadosamente aos vídeos abaixo, identificar padrões técnicos e gerar um perfil estatístico completo do lutador alvo:
+  return `
+[SISTEMA: ATIVAR MODO SCOUT FAIXA PRETA & ÁRBITRO IBJJF]
+[CONTEXTO: ANÁLISE DE ALTO RENDIMENTO PARA PLATAFORMA DE ESTRATÉGIA]
+
+Você é a autoridade máxima em análise de dados de Jiu-Jitsu. Sua missão é dissecar o vídeo abaixo, ignorando ruídos e focando obsessivamente no "Atleta Alvo".
+Seu objetivo não é apenas descrever o que aconteceu, mas quantificar o comportamento tático para criar um algoritmo de vitória contra ele.
+
+URL DO VÍDEO:
 ${url}
 
-Ignore completamente o oponente — foque apenas no atleta principal.
+---
 
-TAREFA PRINCIPAL
+⛔ PROTOCOLO ANTI-ALUCINAÇÃO (O PROBLEMA DO "GUARDEIRO PURO")
+Este é o passo mais importante da sua análise. LEIA COM ATENÇÃO:
 
-Com base em tudo que vê, somado à inferência lógica sobre o estilo do atleta, gere 5 conjuntos estatísticos, onde cada um deve totalizar exatamente 100%.
+1. A REGRA DOS DADOS REAIS:
+   Muitas IAs inventam dados para fazer os gráficos somarem 100%. VOCÊ NÃO FARÁ ISSO.
+   
+2. CENÁRIO DE EXEMPLO:
+   Se o atleta é um "Guarderio" que puxa para a guarda imediatamente e nunca sobe:
+   - O gráfico "Jogo de Passagem" deve ter TODOS os valores iguais a 0.
+   - O gráfico "Comportamento Inicial" deve ter 100% em "puxa pra guarda" e 0 em "troca de queda".
+   
+3. A LEI DO ZERO:
+   Se uma ação não aconteceu, o valor É ZERO. Não tente adivinhar o estilo de passagem de um cara que nunca passou a guarda. Prefiro um gráfico vazio (tudo zero) do que um gráfico mentiroso.
 
-A análise deve ser objetiva, técnica e baseada em observação real, evitando qualquer especulação fantasiosa.
+---
 
-CONJUNTOS DE DADOS NECESSÁRIOS
+📜 DIRETRIZES TÉCNICAS (DEFINIÇÕES DE ÁRBITRO)
 
-Use somente as informações de cada tópico.
-Cada tópico precisa ter o percentual totalizando 100%, e que faça sentido no tópico.
-1) Personalidade Geral na Luta
-Crie um gráfico de pizza com porcentagens distribuídas entre características como:
- agressivo, explosivo, estratégico, conservador, ritmo constante, cansa no final, acelera no final, pressão contínua, contra-atacador.
-(Use apenas o que realmente aparece nos vídeos.)
+1. ANÁLISE DE PERSONALIDADE 
+- "Agressivo": É o atleta que inicia 80% das ações. Ele não aceita andar para trás.
+- "Explosivo": Atleta de "surtos" (blitz). Ele explode por 5 segundos e para para respirar.
+- "Estratégico": Joga com o placar. Faz uma vantagem e trava a luta. Usa a regra a seu favor.
+- "Conservador": Tem aversão ao risco. Só ataca quando sente 100% de segurança.
+- "Ritmo Constante (Grinder)": Não é rápido, mas não para. É uma pressão isométrica contínua.
+- "Cansa no Final": Observe a postura nos últimos minutos. Ele baixa a guarda? Respira pela boca?
+- "Contra-atacador": Ele recua intencionalmente para atrair o oponente para armadilhas.
 
-2) Comportamento Inicial (primeiros ~20 segundos)
-Gráfico de pizza com porcentagens representando o que o lutador tende a fazer no início:
- troca de queda, puxa para guarda, tenta quedas explosivas, busca controle em pé, fica esperando, tenta passar direto ao chão.
-(Use apenas o que realmente aparece nos vídeos.)
+2. COMPORTAMENTO INICIAL 
+- "Troca de Queda": Judô ou Wrestling real. Há disputa de pegada em pé visando projeção.
+- "Puxa pra Guarda": Ele aceita ficar por baixo imediatamente?
+- "Tenta Quedas Explosivas": Double legs ou Single legs com penetração profunda (shots).
+- "Fica Esperando": Passividade, aguardando o oponente definir o nível.
 
-3) Jogo de Guarda (quando ele está por baixo)
-Gráfico de pizza com a probabilidade de comportamentos técnicos como:
- laço, guarda fechada, guarda aberta agressiva, triângulo, omoplata, subir para single-leg, guarda borboleta, amarra o jogo, riscadas/botes sucessivos, scramble, de la riva, meia guarda, one leg, guarda usando lapela.
-Use apenas opções coerentes com o que ele realmente mostra.
+3. JOGO DE GUARDA 
+- "Laço/Aranha": Controle de mangas. Jogo de desaceleração.
+- "Guarda Aberta Agressiva": Uso de ganchos sem pegada fixa para chutar (Collar & Sleeve dinâmica).
+- "Subir de Single-leg (Wrestling Up)": O meta moderno. Ele usa a guarda apenas para levantar e derrubar.
+- "Guarda Borboleta": Ganchos internos visando elevação.
+- "Amarra o jogo": Uso de guarda fechada alta ou lapelas (worm guard) para parar o tempo.
+- "Scramble": Ele não aceita a guarda; ele gira e embola loucamente para não ser estabilizado.
 
-4) Jogo de Passagem de Guarda (quando ele está por cima)
-Gráfico de pizza com porcentagens para estilos de passagem como:
- toreada, over/under, emborcada, pressão de quadril, caminhada lateral, passos rápidos por fora, amarração antes de passar, explosão para lateral, pulando.
-(Use apenas o que realmente aparece nos vídeos.)
+4. JOGO DE PASSAGEM
+- SE ELE NÃO ESTEVE POR CIMA, MANTENHA TUDO ZERO.
+- "Toreada": Passagem em pé, controlando as calças, velocidade lateral.
+- "Over/Under (Emborcada)": Passagem de pressão pura (Stack pass).
+- "Pressão de Quadril (Body Lock)": Trava o tronco e passa "amassando" (Smash pass).
+- "Caminhada Lateral": Long step ou passos curtos cercando a guarda.
 
-5) Finalizações
-Gráfico de pizza com porcentagens para as maiores tentativas de finalizações: arm lock, triângulo, estrangulamento, mata leão, arco e flecha, omoplata, leg lock, chave de pé, mão de vaca, guilhotina, baratoplata, tarikoplata, baseball choke, estrangulamento com lapela, heel hook, mata leão no pé, chave de panturrilha, chave de bíceps, chave de virilha.
-(Use apenas o que realmente aparece nos vídeos.)
+5. REGRAS DE PONTUAÇÃO (CRITÉRIO IBJJF RÍGIDO)
+Para o campo 'technical_stats':
+- RASPAGENS: Só conta se inverter e manter o oponente no chão por 3 SEGUNDOS. Scrambles não contam.
+- PASSAGEM: Só conta se estabilizar lateralmente (100kg), Norte-Sul ou Joelho na Barriga por 3 SEGUNDOS.
+- FINALIZAÇÕES: Só conte tentativas com PERIGO REAL (oponente teve que defender para não bater).
 
-6) Conte e classifique com rigor:
+---
 
-• Raspagens (Sweeps): Considerar raspagem quando o atleta inverte a posição de baixo para cima, assumindo top control.
-  Retornar: Quantidade, Efetividade %
+🧠 RESUMO ESTRATÉGICO (O CAMPO "SUMMARY")
+Gere um relatório de inteligência tática, respondendo:
+1. **O Perfil Biomecânico:** Ele é forte e lento? Rápido e flexível?
+2. **Cadeia de Ataque Preferida:** Qual a sequência "A > B > C" que ele sempre tenta fazer?
+3. **O Erro Sistêmico (Kryptonita):** Onde ele falha consistentemente? (Ex: "Postura ruim no double leg").
+4. **Plano de Jogo:** A estratégia exata para vencê-lo.
 
-• Passagens de guarda (Guard Passes): Contar somente quando ele chega ao controle lateral ou norte-sul.
-  Retornar: Quantidade, Tempo médio para concluir a passagem
+---
 
-• Finalizações (Submissions): Contar tentativas e conexões reais, separando por:
-  Finalizações tentadas, Finalizações ajustadas, Finalizações concluídas, Qual técnica (estrangulamento, armlock, americana, etc.)
+📦 FORMATO DE SAÍDA (JSON ESTRITO)
 
-• Pegadas de costas (Back Takes): Contabilizar somente quando o atleta coloca os dois ganchos ou fechamento de body triangle.
-  Retornar: Quantidade, Tempo médio de controle nas costas, Se houve tentativa de finalização
-(Use apenas o que realmente aparece nos vídeos.)
-
-🧠 RESUMO FINAL (campo "summary")
-
-Depois de analisar todos os vídeos, gere um texto único e profundo contendo:
-- Qual é o estilo geral dele
-- Pontos fortes
-- Pontos fracos
-- Onde ele mais comete erros
-- Como um adversário deveria lutar para vencê-lo
-- Quais estratégias são mais eficientes contra o estilo dele
-- Como o comportamento dele impacta a luta
-- Quais posições ele mais domina e quais evita
-
-O resumo deve ser direto, analítico e técnico — como um relatório profissional de scouting.
-
-📦 FORMATO DE SAÍDA (OBRIGATÓRIO)
-
-Retorne somente um JSON puro, sem explicações adicionais e sem texto fora da estrutura.
+Retorne APENAS o JSON abaixo.
+Lembre-se: SE NÃO ACONTECEU, O VALOR É 0. NÃO FORCE SOMA DE 100% EM GRÁFICOS SEM DADOS.
 
 {
   "charts": [
@@ -121,7 +130,7 @@ Retorne somente um JSON puro, sem explicações adicionais e sem texto fora da e
       "title": "Comportamento Inicial",
       "data": [
         { "label": "troca de queda", "value": 0 },
-        { "label": "puxa guarda", "value": 0 },
+        { "label": "puxa pra guarda", "value": 0 },
         { "label": "tenta quedas explosivas", "value": 0 },
         { "label": "busca controle em pé", "value": 0 },
         { "label": "fica esperando", "value": 0 },
@@ -134,9 +143,7 @@ Retorne somente um JSON puro, sem explicações adicionais e sem texto fora da e
         { "label": "laço", "value": 0 },
         { "label": "guarda fechada", "value": 0 },
         { "label": "guarda aberta agressiva", "value": 0 },
-        { "label": "triângulo", "value": 0 },
-        { "label": "omoplata", "value": 0 },
-        { "label": "subir para single-leg", "value": 0 },
+        { "label": "subir de single-leg", "value": 0 },
         { "label": "guarda borboleta", "value": 0 },
         { "label": "amarra o jogo", "value": 0 },
         { "label": "riscadas/botes sucessivos", "value": 0 },
@@ -217,19 +224,19 @@ function buildPrompt(url, context = {}) {
   let contextText = '';
   
   if (athleteName) {
-    contextText += `\nATLETA ALVO: ${athleteName}`;
+    contextText += `\n\n🎯 ATLETA ALVO: ${athleteName}`;
   }
   
   if (videos && Array.isArray(videos) && videos.length > 0) {
-    contextText += `\n\nVÍDEOS PARA ANÁLISE (${videos.length} vídeo(s)):`;
+    contextText += `\n\n📹 VÍDEOS PARA ANÁLISE (${videos.length} vídeo(s)):`;
     videos.forEach((video, index) => {
-      contextText += `\nVídeo ${index + 1}: ${video.url} - Kimono ${video.giColor}`;
+      contextText += `\n   • Vídeo ${index + 1}: ${video.url} - Kimono ${video.giColor}`;
     });
-    contextText += `\n\nFOCO: Analise APENAS o atleta ${athleteName} em TODOS os vídeos. Em cada vídeo, ele está usando kimono ${videos.map((v, i) => `${v.giColor} (vídeo ${i + 1})`).join(', ')}.`;
-    contextText += `\nIgnore completamente os oponentes. Consolide o comportamento do atleta através de todos os vídeos fornecidos.`;
+    contextText += `\n\n⚠️ INSTRUÇÃO CRÍTICA: Analise APENAS o atleta ${athleteName}. Em cada vídeo, ele está usando kimono ${videos.map((v, i) => `${v.giColor} (vídeo ${i + 1})`).join(', ')}.`;
+    contextText += `\n   Ignore completamente os oponentes. Consolide o comportamento através de TODOS os vídeos.`;
   } else if (giColor) {
-    contextText += `\nKIMONO: ${giColor}`;
-    contextText += `\n\nFOCO: Analise APENAS o atleta que está usando kimono ${giColor}. Ignore o oponente.`;
+    contextText += `\n\n👕 KIMONO DO ATLETA ALVO: ${giColor}`;
+    contextText += `\n\n⚠️ INSTRUÇÃO CRÍTICA: Analise APENAS o atleta que está usando kimono ${giColor}. Ignore o oponente.`;
   }
 
   return `${BASE_PROMPT(url)}${contextText}`;
@@ -410,8 +417,8 @@ function consolidateAnalyses(frameAnalyses) {
 
 /**
  * Gera estratégia tática comparando atleta vs adversário usando IA
- * @param {Object} athleteData - Dados do atleta (name, resumo, atributos)
- * @param {Object} opponentData - Dados do adversário
+ * @param {Object} athleteData - Dados do atleta (name, resumo)
+ * @param {Object} opponentData - Dados do adversário (name, resumo)
  * @param {string|null} customModel - Modelo customizado
  * @returns {Promise<Object>} Estratégia e metadados de uso
  */
@@ -423,99 +430,159 @@ async function generateTacticalStrategy(athleteData, opponentData, customModel =
     throw new Error('GEMINI_API_KEY não configurada no servidor');
   }
 
-  const prompt = `Você é um Analista Tático de Jiu-Jitsu de nível mundial.
+  const prompt = `
+[SISTEMA: ANALISTA ESTRATÉGICO DE ALTO RENDIMENTO - BLACK BELT LEVEL]
+[MODO: FAIXA PRETA]
 
-Sua missão é gerar uma estratégia de luta personalizada comparando dois lutadores.
+Você está conversando com um atleta experiente.
+Sua missão é cruzar os dados dos dois lutadores e encontrar a "Assimetria Tática" (onde um ganha e o outro perde).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 FILTRO DE OBVIEDADES (LEIA ANTES DE ESCREVER)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. PROIBIDO O BÁSICO:
+   - Nunca escreva "Evite ser montado", "Não dê as costas", "Mantenha a postura". ISSO É ÓBVIO.
+   - Só mencione o básico se o adversário tiver uma arma *específica* ali (Ex: "Cuidado com a montada técnica dele, pois ele usa o S-Mount para armlock direto").
+
+2. ESPECIFICIDADE CIRÚRGICA:
+   - Ruim: "Cuidado com as quedas."
+   - Bom: "O tempo de entrada de Double Leg dele é no contra-ataque. Não chute sem fintar antes."
+   - Ruim: "Tente passar a guarda."
+   - Bom: "A guarda De La Riva dele é fraca contra passagem de Long Step para o lado oposto do gancho."
+
+3. CONTEXTO DE PONTUAÇÃO (IBJJF):
+   - Foque em como a regra interage com O ESTILO DELES.
+   - Ex: "Ele aceita a raspagem para pegar o pé. Use isso para fazer 2 pontos e travar a 50/50 por cima."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 DADOS DO CONFRONTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 🥋 ATLETA (SEU LUTADOR)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 Nome: ${athleteData.name}
 
-Resumo Técnico:
+📊 PERFIL TÉCNICO CONSOLIDADO:
 ${athleteData.resumo}
 
-Atributos (0-100):
-• Condicionamento: ${athleteData.atributos.condicionamento}/100
-• Técnica: ${athleteData.atributos.tecnica}/100
-• Agressividade: ${athleteData.atributos.agressividade}/100
-• Defesa: ${athleteData.atributos.defesa}/100
-• Movimentação: ${athleteData.atributos.movimentacao}/100
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 🎯 ADVERSÁRIO (ALVO)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 Nome: ${opponentData.name}
 
-Resumo Técnico:
+📊 PERFIL TÉCNICO CONSOLIDADO:
 ${opponentData.resumo}
 
-Atributos (0-100):
-• Condicionamento: ${opponentData.atributos.condicionamento}/100
-• Técnica: ${opponentData.atributos.tecnica}/100
-• Agressividade: ${opponentData.atributos.agressividade}/100
-• Defesa: ${opponentData.atributos.defesa}/100
-• Movimentação: ${opponentData.atributos.movimentacao}/100
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 INSTRUÇÕES
+⚠️ FORMATO JSON ESTRITO (ANTI-MARKDOWN)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Gere uma estratégia técnica, objetiva e personalizada.
-
-**PROIBIDO**: Respostas genéricas, frases motivacionais vazias, ou recomendações que servem para qualquer luta.
-
-**OBRIGATÓRIO**: 
-- Análise específica dos dois estilos
-- Explorar pontos fracos reais do adversário
-- Recomendações técnicas precisas
-- Plano cronológico da luta
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 FORMATO DE SAÍDA (JSON VÁLIDO)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-IMPORTANTE: 
+IMPORTANTE:
 - Retorne APENAS JSON válido
 - NÃO use markdown (**negrito**, \`code\`, etc)
-- NÃO use aspas duplas dentro de strings (use aspas simples se necessário)
-- NÃO quebre linhas com \\n dentro de valores
-- NÃO adicione texto antes ou depois do JSON
-- NÃO use código markdown \`\`\`json
+- NÃO quebre linhas com \\n
+- Use aspas simples dentro de strings se necessário
+- NÃO adicione \`\`\`json antes ou depois
 
-EXEMPLO DO FORMATO CORRETO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 ESTRUTURA DO JSON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A linguagem deve ser técnica, direta e específica para ESTE matchup.
+
 {
-  "analise": "Texto direto sem quebras de linha e sem 'aspas duplas' problemáticas",
-  "estrategia_para_vencer": "Descrição em uma linha contínua",
-  "taticas_especificas": "Lista de táticas separadas por vírgula ou ponto",
-  "plano_por_fases": {
-    "inicio": "Instrução clara",
-    "meio": "Instrução clara",
-    "fim": "Instrução clara"
+  "tese_da_vitoria": "A estratégia macro em 1 frase. Ex: 'Negar o judô dele puxando para De La Riva ofensiva, onde sua defesa de raspagem é fraca, e trabalhar subidas técnicas.'",
+
+  "analise_de_matchup": {
+    "vantagem_critica": "Onde nós somos MUITO melhores que ele? (Assimetria positiva). Seja específico com técnicas e percentuais se possível.",
+    "risco_oculto": "O perigo que não é óbvio. Ex: 'Ele entrega a passagem para pegar as costas na transição.'",
+    "fator_chave": "O atributo que vai decidir a luta. Ex: 'Condicionamento nos últimos 2 minutos - ele baixa a guarda.'"
   },
-  "checklist": {
-    "fazer": ["Ação 1", "Ação 2"],
-    "evitar": ["Erro 1", "Erro 2"],
-    "buscar": ["Posição 1", "Posição 2"],
-    "nunca_permitir": ["Risco 1", "Risco 2"]
+
+  "plano_tatico_faseado": {
+    "em_pe_standup": {
+      "acao_recomendada": "Comando claro: Puxar, Quedar ou Contra-atacar",
+      "detalhe_tecnico": "O pulo do gato para vencer nesta fase contra ESSE oponente específico."
+    },
+    "jogo_de_passagem_top": {
+      "caminho_das_pedras": "Qual estilo de passagem anula a guarda específica dele? (Ex: Long step vs DLR, Toreada vs Spider)",
+      "alerta_de_reversao": "Qual a raspagem favorita dele que precisamos bloquear? Seja específico."
+    },
+    "jogo_de_guarda_bottom": {
+      "melhor_posicao": "Qual guarda nossa expõe a fraqueza dele? (Ex: Butterfly sweep vs passador de joelho)",
+      "gatilho_de_ataque": "O momento exato de disparar a raspagem ou finalização."
+    }
+  },
+
+  "cronologia_inteligente": {
+    "inicio": "Como anular o plano principal dele nos primeiros 60 segundos? (Tático e específico)",
+    "meio": "Como explorar o cansaço ou frustração dele no meio da luta? (2-4 minutos)",
+    "final": "Gestão de placar específica. Ex: 'Ele se abre quando está perdendo, busque finalização no erro.'"
+  },
+
+  "checklist_tatico": {
+    "oportunidades_de_pontos": [
+      "Situação específica 1 baseada no erro técnico dele",
+      "Situação específica 2 baseada na nossa melhor arma"
+    ],
+    "armadilhas_dele": [
+      "Não diga 'cuidado com quedas'. Diga: 'O single leg dele vem da lapela solta - mantenha pegada forte.'",
+      "Situação específica onde ele costuma pontuar ou induzir punição"
+    ],
+    "protocolo_de_seguranca": {
+      "jamais_fazer": "O erro técnico específico que encaixa perfeitamente no jogo forte dele.",
+      "saida_de_emergencia": "Se cair na posição forte dele, qual é a rota de fuga? (Ex: 'Na montada, frame no quadril e shrimp para meia guarda')"
+    }
   }
 }
 
-CONTEÚDO ESPERADO:
-- analise: Compare estilos, identifique vantagens numéricas, aponte desequilíbrios
-- estrategia_para_vencer: Como vencer - ofensiva, defensiva, exploração de fraquezas
-- taticas_especificas: Táticas práticas para início, meio e fim
-- plano_por_fases.inicio: Primeiros 60 segundos
-- plano_por_fases.meio: Meio da luta - controle e pressão
-- plano_por_fases.fim: Final - como segurar ou virar
-- checklist.fazer: 3-5 ações concretas
-- checklist.evitar: 2-3 erros específicos
-- checklist.buscar: 2-3 posições ideais
-- checklist.nunca_permitir: 2-3 situações de risco
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 EXEMPLO DE RESPOSTA VÁLIDA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-RETORNE APENAS O JSON. SEM EXPLICAÇÕES ADICIONAIS.`;
+{
+  "tese_da_vitoria": "Negar o single-leg dele puxando De La Riva ofensiva, onde sua defesa de raspagem é 30% inferior, e usar subidas técnicas para pontuar.",
+  "analise_de_matchup": {
+    "vantagem_critica": "Nossa efetividade de raspagem de DLR (estimada em 70%) vs sua taxa de defesa baixa cria assimetria de 30+ pontos.",
+    "risco_oculto": "Ele entrega a passagem intencionalmente para pegar kani basami no pé durante a transição.",
+    "fator_chave": "Condicionamento cardio nos últimos 2 minutos - ele baixa a postura em 80% das lutas longas."
+  },
+  "plano_tatico_faseado": {
+    "em_pe_standup": {
+      "acao_recomendada": "Puxar para De La Riva antes dele estabelecer pegada de judô",
+      "detalhe_tecnico": "Entrada com control de manga cruzada para evitar o grip fight onde ele domina"
+    },
+    "jogo_de_passagem_top": {
+      "caminho_das_pedras": "Toreada com pressão lateral - sua guarda aranha colapsa contra movimento circular rápido",
+      "alerta_de_reversao": "Ele usa flower sweep quando você fica estático na toreada - mantenha pressão constante"
+    },
+    "jogo_de_guarda_bottom": {
+      "melhor_posicao": "De La Riva com controle de manga - ele não tem resposta efetiva para long step sweep",
+      "gatilho_de_ataque": "Quando ele tenta circular para passar, disparar raspagem para single-leg X"
+    }
+  },
+  "cronologia_inteligente": {
+    "inicio": "Puxar para DLR nos primeiros 20 segundos antes dele aquecer o jogo de pegadas - ele demora para entrar no ritmo",
+    "meio": "Manter pressão constante de raspagens - ele fica frustrado e comete erros de base por volta dos 3 minutos",
+    "final": "Se estiver ganhando, trabalhar controle de tempo em top. Se perdendo, explorar a fadiga dele com ataques contínuos"
+  },
+  "checklist_tatico": {
+    "oportunidades_de_pontos": [
+      "Raspagem de DLR quando ele tenta circular (2 pontos garantidos pela fraqueza dele)",
+      "Passagem de toreada quando ele fica cansado e baixa os joelhos (3 pontos)"
+    ],
+    "armadilhas_dele": [
+      "O single-leg dele vem especificamente quando você solta a manga na troca de pegada - nunca solte sem substituir",
+      "Ele finge aceitar a passagem para pegar turtle e buscar as costas - sempre controlar o quadril na finalização"
+    ],
+    "protocolo_de_seguranca": {
+      "jamais_fazer": "Nunca trabalhar half guard bottom - é onde ele domina o smash pass com 90% de taxa de sucesso",
+      "saida_de_emergencia": "Se cair no smash pass, shrimp imediato para recuperar DLR antes da pressão estabilizar (janela de 2 segundos)"
+    }
+  }
+}
+
+RETORNE APENAS O JSON. SEM TEXTO ADICIONAL.`;
 
   try {
     const result = await modelToUse.generateContent(prompt);
@@ -606,5 +673,6 @@ module.exports = {
   analyzeFrame, 
   consolidateAnalyses, 
   generateTacticalStrategy, 
-  generateAthleteSummary 
+  generateAthleteSummary,
+  getModel
 };
