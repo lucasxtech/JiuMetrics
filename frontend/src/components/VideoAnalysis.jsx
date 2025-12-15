@@ -28,7 +28,6 @@ export default function VideoAnalysisComponent() {
     { value: 'preto', label: 'Preto' },
     { value: 'branco', label: 'Branco' },
     { value: 'azul', label: 'Azul' },
-    { value: 'colorido', label: 'Outro' },
   ];
 
   // Carregar atletas e adversários
@@ -181,7 +180,7 @@ export default function VideoAnalysisComponent() {
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-600">Tipo</label>
                 <select
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
+                  className="w-full"
                   value={personType}
                   onChange={(e) => {
                     setPersonType(e.target.value);
@@ -199,7 +198,7 @@ export default function VideoAnalysisComponent() {
                   {personType === 'athlete' ? 'Atleta' : 'Adversário'}
                 </label>
                 <select
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition cursor-pointer"
+                  className="w-full"
                   value={personId}
                   onChange={(e) => {
                     setPersonId(e.target.value);
@@ -324,99 +323,134 @@ export default function VideoAnalysisComponent() {
         </section>
 
       {analysis && (
-        <section className="panel space-y-6">
-          <div className="section-header">
+        <section className="panel">
+          <div className="section-header mb-8">
             <p className="section-header__eyebrow">Resultado</p>
             <h2 className="section-header__title">Análise concluída</h2>
           </div>
 
+          {/* Resumo Técnico - Cards Organizados */}
           {analysis.data?.summary && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-amber-900" style={{ padding: "0.5vh", margin: "1vh" }}>
-              <p className="mb-2 text-xs font-semibold tracking-wide text-amber-700">Resumo técnico</p>
-              <p>{analysis.data.summary}</p>
+            <div className="mb-8">
+              <h3 className="text-base font-bold text-slate-900 mb-4">📋 Resumo Técnico</h3>
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <div className="text-sm text-slate-700 leading-relaxed space-y-3">
+                  {analysis.data.summary.split(/\n\n|\. (?=[A-Z])/).filter(p => p.trim()).map((paragraph, idx) => (
+                    <p key={idx}>{paragraph.trim()}{paragraph.endsWith('.') ? '' : '.'}</p>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Estatísticas Técnicas */}
+          {/* KPI Dashboard - Estatísticas */}
           {analysis.data?.technical_stats && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6" style={{ padding: "0.5vh", margin: "1vh" }}>
-              <p className="mb-4 text-sm font-bold text-blue-900">📊 Estatísticas Técnicas</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Raspagens */}
-                {analysis.data.technical_stats.sweeps?.quantidade > 0 && (
-                  <div className="bg-white rounded-xl p-4 border border-blue-100">
-                    <p className="text-xs font-semibold text-blue-600 mb-2">RASPAGENS</p>
-                    <div className="space-y-1">
-                      <p className="text-sm text-slate-700">
-                        <span className="font-bold text-lg">{analysis.data.technical_stats.sweeps.quantidade}</span>
-                        <span className="text-xs ml-1">tentativas</span>
-                      </p>
-                      <p className="text-sm text-slate-700">
-                        <span className="font-bold text-green-600">{analysis.data.technical_stats.sweeps.efetividade_percentual}%</span>
-                        <span className="text-xs ml-1">efetividade</span>
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Passagens de Guarda */}
-                {analysis.data.technical_stats.guard_passes?.quantidade > 0 && (
-                  <div className="bg-white rounded-xl p-4 border border-blue-100">
-                    <p className="text-xs font-semibold text-blue-600 mb-2">PASSAGENS DE GUARDA</p>
-                    <div className="space-y-1">
-                      <p className="text-sm text-slate-700">
-                        <span className="font-bold text-lg">{analysis.data.technical_stats.guard_passes.quantidade}</span>
-                        <span className="text-xs ml-1">passagens</span>
-                      </p>
-                      <p className="text-sm text-slate-700">
-                        <span className="font-bold text-orange-600">{analysis.data.technical_stats.guard_passes.tempo_medio_segundos}s</span>
-                        <span className="text-xs ml-1">tempo médio</span>
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Finalizações */}
+            <div className="mb-8">
+              <h3 className="text-base font-bold text-slate-900 mb-4">📊 Dashboard de Performance</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                {/* Finalizações KPI */}
                 {analysis.data.technical_stats.submissions?.tentativas > 0 && (
-                  <div className="bg-white rounded-xl p-4 border border-blue-100">
-                    <p className="text-xs font-semibold text-blue-600 mb-2">FINALIZAÇÕES</p>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-600">
-                        Tentativas: <span className="font-bold">{analysis.data.technical_stats.submissions.tentativas}</span>
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        Ajustadas: <span className="font-bold">{analysis.data.technical_stats.submissions.ajustadas}</span>
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        Concluídas: <span className="font-bold text-green-600">{analysis.data.technical_stats.submissions.concluidas}</span>
-                      </p>
-                      {analysis.data.technical_stats.submissions.detalhes?.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-blue-100">
-                          <p className="text-xs font-semibold text-slate-700 mb-1">Detalhes:</p>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold tracking-wide text-slate-500 uppercase">Finalizações</span>
+                      <span className="text-xl">🎯</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-3xl font-bold text-slate-900">{analysis.data.technical_stats.submissions.tentativas}</p>
+                        <p className="text-xs text-slate-500 mt-1">Tentativas</p>
+                      </div>
+                      <div className="flex gap-3 pt-2 border-t border-slate-100">
+                        <div>
+                          <p className="text-xl font-bold text-blue-600">{analysis.data.technical_stats.submissions.ajustadas}</p>
+                          <p className="text-xs text-slate-500">Ajustadas</p>
+                        </div>
+                        <div>
+                          <p className="text-xl font-bold text-green-600">{analysis.data.technical_stats.submissions.concluidas}</p>
+                          <p className="text-xs text-slate-500">Concluídas</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Badges dos golpes */}
+                    {analysis.data.technical_stats.submissions.detalhes?.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <p className="text-xs font-semibold text-slate-600 mb-2">Golpes:</p>
+                        <div className="flex flex-wrap gap-1.5">
                           {analysis.data.technical_stats.submissions.detalhes.map((detail, idx) => (
-                            <p key={idx} className="text-xs text-slate-600">• {detail}</p>
+                            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              {detail}
+                            </span>
                           ))}
                         </div>
-                      )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Raspagens KPI */}
+                {analysis.data.technical_stats.sweeps?.quantidade > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold tracking-wide text-slate-500 uppercase">Raspagens</span>
+                      <span className="text-xl">🔄</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-3xl font-bold text-slate-900">{analysis.data.technical_stats.sweeps.quantidade}</p>
+                        <p className="text-xs text-slate-500 mt-1">Tentativas</p>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100">
+                        <p className="text-xl font-bold text-green-600">{analysis.data.technical_stats.sweeps.efetividade_percentual}%</p>
+                        <p className="text-xs text-slate-500">Taxa de sucesso</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Pegadas de Costas */}
+                {/* Passagens de Guarda KPI */}
+                {analysis.data.technical_stats.guard_passes?.quantidade > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold tracking-wide text-slate-500 uppercase">Passagens</span>
+                      <span className="text-xl">🚀</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-3xl font-bold text-slate-900">{analysis.data.technical_stats.guard_passes.quantidade}</p>
+                        <p className="text-xs text-slate-500 mt-1">Passagens</p>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100">
+                        <p className="text-xl font-bold text-orange-600">{analysis.data.technical_stats.guard_passes.tempo_medio_segundos}s</p>
+                        <p className="text-xs text-slate-500">Tempo médio</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pegadas de Costas KPI */}
                 {analysis.data.technical_stats.back_takes?.quantidade > 0 && (
-                  <div className="bg-white rounded-xl p-4 border border-blue-100">
-                    <p className="text-xs font-semibold text-blue-600 mb-2">PEGADAS DE COSTAS</p>
-                    <div className="space-y-1">
-                      <p className="text-sm text-slate-700">
-                        <span className="font-bold text-lg">{analysis.data.technical_stats.back_takes.quantidade}</span>
-                        <span className="text-xs ml-1">pegadas</span>
-                      </p>
-                      <p className="text-sm text-slate-700">
-                        <span className="font-bold text-purple-600">{analysis.data.technical_stats.back_takes.tempo_medio_segundos}s</span>
-                        <span className="text-xs ml-1">controle médio</span>
-                      </p>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold tracking-wide text-slate-500 uppercase">Costas</span>
+                      <span className="text-xl">🎯</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-3xl font-bold text-slate-900">{analysis.data.technical_stats.back_takes.quantidade}</p>
+                        <p className="text-xs text-slate-500 mt-1">Pegadas</p>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100">
+                        <p className="text-xl font-bold text-purple-600">{analysis.data.technical_stats.back_takes.tempo_medio_segundos}s</p>
+                        <p className="text-xs text-slate-500">Controle médio</p>
+                      </div>
                       {analysis.data.technical_stats.back_takes.tentou_finalizar && (
-                        <p className="text-xs text-green-600 font-semibold mt-2">✓ Tentou finalizar</p>
+                        <div className="pt-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                            ✓ Tentou finalizar
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -425,23 +459,26 @@ export default function VideoAnalysisComponent() {
             </div>
           )}
 
+          {/* Gráficos */}
           {analysis.data?.charts?.map((chart, idx) => (
-            <PieChartSection key={idx} title={chart.title} data={{ titulo: chart.title, dados: chart.data }} />
+            <div key={idx} className="mb-8">
+              <PieChartSection title={chart.title} data={{ titulo: chart.title, dados: chart.data }} />
+            </div>
           ))}
 
           {analysis.data?.chartUrls?.length > 0 && (
-            <div className="space-y-3 border-t border-slate-100 pt-4">
-              <p className="text-sm font-semibold text-slate-900">Gráficos em alta resolução</p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mb-8">
+              <h3 className="text-lg font-bold text-slate-900 mb-6">📈 Gráficos em Alta Resolução</h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {analysis.data.chartUrls.map((chart, idx) => (
                   <a
                     key={idx}
                     href={chart.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
+                    className="bg-white rounded-2xl border border-slate-200 px-6 py-4 text-center font-semibold text-slate-700 shadow-sm hover:shadow-md hover:border-slate-300 transition-all"
                   >
-                    📈 {chart.title}
+                    📊 {chart.title}
                   </a>
                 ))}
               </div>
@@ -455,12 +492,12 @@ export default function VideoAnalysisComponent() {
       )}
 
       {isLoading && (
-        <section className="panel space-y-6">
+        <section className="panel flex flex-col items-center gap-16">
           {/* Barra de progresso animada */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-slate-900">{processingStage}</p>
-              <p className="text-sm font-medium text-slate-600">{processingProgress}%</p>
+          <div className="w-full">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-lg font-semibold text-slate-900">{processingStage}</p>
+              <p className="text-sm font-bold text-blue-600">{processingProgress}%</p>
             </div>
             
             {/* Barra de progresso com gradiente */}
@@ -475,51 +512,58 @@ export default function VideoAnalysisComponent() {
           </div>
 
           {/* Indicador visual */}
-          <div className="flex flex-col items-center space-y-4 text-center py-8">
-            <div className="relative">
-              <div className="h-20 w-20 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+          <div className="flex flex-col items-center text-center">
+            <div className="relative mb-12">
+              <div className="h-24 w-24 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl">{processingProgress < 40 ? '📥' : processingProgress < 90 ? '🤖' : '✨'}</span>
+                <span className="text-3xl">{processingProgress < 40 ? '📥' : processingProgress < 90 ? '🤖' : '✨'}</span>
               </div>
             </div>
             
-            <div className="space-y-2">
-              <p className="text-base font-medium text-slate-700">
+            <div className="max-w-lg">
+              <h3 className="text-xl font-bold text-slate-900 mb-3">
                 Análise em andamento
-              </p>
-              <p className="max-w-md text-sm text-slate-500">
+              </h3>
+              <p className="text-slate-600 leading-relaxed">
                 O Gemini está processando o vídeo completo para gerar dados cirúrgicos e insights técnicos. 
-                Este processo pode levar de <strong>2 a 5 minutos</strong> dependendo da duração do vídeo.
+                Este processo geralmente leva cerca de <strong>40 segundos</strong>.
               </p>
             </div>
+          </div>
 
-            {/* Etapas do processo */}
-            <div className="mt-6 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-4">
-              <div className={`rounded-lg border p-3 transition ${processingProgress >= 20 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
-                <p className="text-xs font-semibold text-slate-700">1. Download</p>
-                <p className="text-2xl">{processingProgress >= 20 ? '✓' : '⏳'}</p>
+          {/* Etapas do processo */}
+          <div className="w-full max-w-3xl">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+              <div className={`rounded-xl border-2 p-5 transition-all ${processingProgress >= 20 ? 'border-green-400 bg-green-50' : 'border-slate-200 bg-white'}`}>
+                <p className="text-sm font-bold text-slate-700 mb-2">1. Download</p>
+                <p className="text-3xl">{processingProgress >= 20 ? '✓' : '⏳'}</p>
               </div>
-              <div className={`rounded-lg border p-3 transition ${processingProgress >= 40 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
-                <p className="text-xs font-semibold text-slate-700">2. Upload</p>
-                <p className="text-2xl">{processingProgress >= 40 ? '✓' : '⏳'}</p>
+              <div className={`rounded-xl border-2 p-5 transition-all ${processingProgress >= 40 ? 'border-green-400 bg-green-50' : 'border-slate-200 bg-white'}`}>
+                <p className="text-sm font-bold text-slate-700 mb-2">2. Upload</p>
+                <p className="text-3xl">{processingProgress >= 40 ? '✓' : '⏳'}</p>
               </div>
-              <div className={`rounded-lg border p-3 transition ${processingProgress >= 70 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
-                <p className="text-xs font-semibold text-slate-700">3. Análise IA</p>
-                <p className="text-2xl">{processingProgress >= 70 ? '✓' : '🤖'}</p>
+              <div className={`rounded-xl border-2 p-5 transition-all ${processingProgress >= 70 ? 'border-green-400 bg-green-50' : 'border-slate-200 bg-white'}`}>
+                <p className="text-sm font-bold text-slate-700 mb-2">3. Análise IA</p>
+                <p className="text-3xl">{processingProgress >= 70 ? '✓' : '🤖'}</p>
               </div>
-              <div className={`rounded-lg border p-3 transition ${processingProgress >= 100 ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
-                <p className="text-xs font-semibold text-slate-700">4. Conclusão</p>
-                <p className="text-2xl">{processingProgress >= 100 ? '✓' : '⏳'}</p>
+              <div className={`rounded-xl border-2 p-5 transition-all ${processingProgress >= 100 ? 'border-green-400 bg-green-50' : 'border-slate-200 bg-white'}`}>
+                <p className="text-sm font-bold text-slate-700 mb-2">4. Conclusão</p>
+                <p className="text-3xl">{processingProgress >= 100 ? '✓' : '⏳'}</p>
               </div>
             </div>
+          </div>
 
-            {/* Dica */}
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left">
-              <p className="text-xs font-semibold text-amber-800">💡 Dica</p>
-              <p className="mt-1 text-xs text-amber-700">
-                Vídeos mais longos requerem mais tempo de processamento. Você pode continuar trabalhando 
-                em outras abas enquanto aguarda.
-              </p>
+          {/* Dica */}
+          <div className="w-full max-w-2xl rounded-xl border-2 border-amber-200 bg-amber-50 px-6 py-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">💡</span>
+              <div className="text-left">
+                <p className="text-sm font-bold text-amber-900 mb-1">Dica</p>
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  Vídeos mais longos podem levar um pouco mais de tempo. Você pode continuar trabalhando 
+                  em outras abas enquanto aguarda.
+                </p>
+              </div>
             </div>
           </div>
         </section>

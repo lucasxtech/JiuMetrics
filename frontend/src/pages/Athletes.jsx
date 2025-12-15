@@ -5,6 +5,7 @@ import AthleteCard from '../components/common/AthleteCard';
 import AthleteForm from '../components/forms/AthleteForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
+import Modal from '../components/common/Modal';
 import { getAllAthletes } from '../services/athleteService';
 
 export default function Athletes() {
@@ -77,29 +78,16 @@ export default function Athletes() {
         />
       )}
 
-      {/* Formulário (colapsável) */}
-      {showForm && (
-        <section className="panel animate-scaleIn">
-          <div className="panel__head">
-            <div>
-              <p className="eyebrow">Cadastro</p>
-              <h3 className="panel__title">Cadastrar novo atleta</h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18 18 6M6 6l12 12" />
-              </svg>
-              Fechar
-            </button>
-          </div>
-          <p className="panel__meta mb-6">Preencha os dados básicos; o perfil avançado pode ser gerado posteriormente com IA.</p>
-          <AthleteForm onSuccess={handleAthleteCreated} />
-        </section>
-      )}
+      {/* Modal de Cadastro */}
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title="Cadastrar novo atleta"
+        subtitle="Preencha os dados básicos; o perfil avançado pode ser gerado posteriormente com IA."
+        size="lg"
+      >
+        <AthleteForm onSuccess={handleAthleteCreated} />
+      </Modal>
 
       {athletes.length > 0 && (
         <section className="panel">
