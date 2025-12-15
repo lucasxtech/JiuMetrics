@@ -374,13 +374,13 @@ export default function VideoAnalysisComponent() {
                     </div>
                     
                     {/* Badges dos golpes */}
-                    {analysis.data.technical_stats.submissions.detalhes?.length > 0 && (
+                    {analysis.data.technical_stats.submissions.detalhes && Array.isArray(analysis.data.technical_stats.submissions.detalhes) && analysis.data.technical_stats.submissions.detalhes.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-100">
                         <p className="text-xs font-semibold text-slate-600 mb-2">Golpes:</p>
                         <div className="flex flex-wrap gap-1.5">
                           {analysis.data.technical_stats.submissions.detalhes.map((detail, idx) => (
                             <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              {detail}
+                              {typeof detail === 'string' ? detail : detail.nome || detail.name || JSON.stringify(detail)}
                             </span>
                           ))}
                         </div>
