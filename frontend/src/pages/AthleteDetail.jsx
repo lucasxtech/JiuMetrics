@@ -172,7 +172,7 @@ export default function AthleteDetail({ isOpponent = false }) {
     processPersonAnalyses(analyses, athlete);
 
   return (
-    <div className="space-y-6" style={{ padding: "1vw" }}>
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -207,7 +207,7 @@ export default function AthleteDetail({ isOpponent = false }) {
 
       {/* Resumo Técnico Geral - Gerado pela IA */}
       {analyses.length > 0 && (
-        <section className="panel bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-indigo-200 allItensMargin" style={{ width: "100vw", margin: "1vh" }}>
+        <section className="panel bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-indigo-200">
           <div className="panel__head mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -267,7 +267,7 @@ export default function AthleteDetail({ isOpponent = false }) {
       )}
 
       {isEditing && (
-        <section className="panel allItensMargin" style={{ width: "100vw", margin: "1vh" }}>
+        <section className="panel">
           <div className="panel__head mb-6">
             <div>
               <p className="eyebrow">Edição</p>
@@ -280,44 +280,66 @@ export default function AthleteDetail({ isOpponent = false }) {
       )}
 
       {/* Informações Básicas */}
-      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`} style={{ width: "100vw", margin: "1vh" }}>
+      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
         <div className="panel__head mb-4">
           <div>
             <p className="eyebrow">Perfil geral</p>
-            <h3 className="panel__title">Informações principais</h3>
+            <h3 className="panel__title">Resumo técnico</h3>
+            <p className="text-sm text-slate-600 mt-1">Gerado pela IA baseado na última análise de vídeo</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {[{
-            label: 'Idade',
-            value: `${athlete.age} anos`,
-            accent: 'text-primary'
-          }, {
-            label: 'Peso',
-            value: `${athlete.weight} kg`,
-            accent: 'text-primary'
-          }, {
-            label: 'Faixa',
-            value: athlete.belt,
-            accent: 'text-secondary'
-          }, {
-            label: 'Condicionamento',
-            value: `${athlete.cardio}%`,
-            accent: 'text-accent'
-          }].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-3xl bg-white px-6 py-8 sm:px-8 sm:py-9 text-center shadow-[0_15px_35px_rgba(15,23,42,0.08)]"
-            >
-              <p className="text-sm font-medium uppercase tracking-wide text-slate-500">{item.label}</p>
-              <p className={`mt-3 text-3xl font-bold text-slate-900 ${item.accent}`}>{item.value}</p>
+        
+        {analyses.length > 0 && analyses[0]?.summary ? (
+          <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 p-8 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <div className="space-y-6">
+                  {(() => {
+                    // Dividir o texto em frases
+                    const sentences = analyses[0].summary.split(/(?<=[.!?])\s+/);
+                    const paragraphs = [];
+                    
+                    // Agrupar frases em parágrafos de 2-3 frases
+                    for (let i = 0; i < sentences.length; i += 3) {
+                      paragraphs.push(sentences.slice(i, i + 3).join(' '));
+                    }
+                    
+                    return paragraphs.map((paragraph, index) => (
+                      <p key={index} className="text-slate-700 leading-relaxed text-[15px]">
+                        {paragraph}
+                      </p>
+                    ));
+                  })()}
+                </div>
+                <div className="mt-5 pt-4 border-t border-slate-200 flex items-center gap-2 text-xs text-slate-500">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Última atualização: {new Date(analyses[0].created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6 text-center">
+            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-amber-900 mb-1">Nenhum resumo disponível</p>
+            <p className="text-xs text-amber-700">Analise um vídeo para gerar o resumo técnico com IA</p>
+          </div>
+        )}
       </section>
 
       {/* Análises de Vídeo com IA - Nova UI */}
-      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`} style={{ width: "100vw", margin: "1vh" }}>
+      <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
         <div className="panel__head mb-6">
           <div className="flex items-center justify-between">
             <div>
@@ -366,8 +388,8 @@ export default function AthleteDetail({ isOpponent = false }) {
       )}
 
       {/* Gráficos */}
-      <div className={`grid grid-cols-1 gap-6 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`} style={{ display: "flex", justifyContent: "center", gap: "1vw", width: "100vw" }}>
-        <section className="panel allItensMargin" style={{  }}>
+      <div className={`grid grid-cols-1 gap-6 ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
+        <section className="panel">
           <div className="panel__head mb-4">
             <div className="flex items-start justify-between">
               <div>
@@ -396,7 +418,7 @@ export default function AthleteDetail({ isOpponent = false }) {
       </div>
 
       {/* Informações Detalhadas */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 allItensMargin" style={{ display: "flex", justifyContent: "center", gap: "1vw", width: "98.5vw" }}>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {[{
           title: 'Golpes Fortes',
           description: strongAttacksText,
@@ -408,9 +430,8 @@ export default function AthleteDetail({ isOpponent = false }) {
           hasAI: analyses.length > 0
         }].map((block) => (
           <section
-            style={{ width: "50vw" }}
             key={block.title}
-            className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`}
+            className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}
           >
             <div className="panel__head mb-3">
               <div className="flex items-center justify-between">
@@ -434,7 +455,7 @@ export default function AthleteDetail({ isOpponent = false }) {
 
       {/* Vídeos */}
       {athlete.videoUrl && (
-        <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''} allItensMargin`} style={{ width: "100vw", margin: "1vh" }}>
+        <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
           <div className="panel__head mb-4">
             <p className="eyebrow">Referências</p>
             <h3 className="panel__title">Vídeos de referência</h3>

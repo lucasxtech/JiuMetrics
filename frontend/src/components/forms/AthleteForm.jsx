@@ -11,11 +11,7 @@ export default function AthleteForm({
 }) {
   const defaultData = {
     name: '',
-    age: '',
-    weight: '',
     belt: 'Branca',
-    style: 'Guarda',
-    videoUrl: '',
   };
 
   const [formData, setFormData] = useState({
@@ -34,8 +30,6 @@ export default function AthleteForm({
     const newErrors = {};
     
     if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório';
-    if (!formData.age || formData.age <= 0) newErrors.age = 'Idade válida é obrigatória';
-    if (!formData.weight || formData.weight <= 0) newErrors.weight = 'Peso válido é obrigatório';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -113,7 +107,6 @@ export default function AthleteForm({
   };
 
   const belts = ['Branca', 'Azul', 'Roxa', 'Marrom', 'Preta'];
-  const styles = ['Guarda', 'Passagem', 'Queda', 'Pressão', 'Explosão', 'Balanced'];
 
   const loading = isLoading || externalLoading;
 
@@ -159,84 +152,25 @@ export default function AthleteForm({
         {errors.name && <p className="text-red-600 text-sm mt-1 font-medium">{errors.name}</p>}
       </div>
 
-      {/* Idade e Peso */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Idade *
-          </label>
-          <input
-            type="number"
-            name="age"
-            value={formData.age}
-            onChange={handleChange}
-            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 ${
-              isOpponent ? 'focus:ring-orange-500 focus:border-orange-500' : 'focus:ring-blue-500 focus:border-blue-500'
-            } outline-none transition-all ${
-              errors.age ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="28"
-          />
-          {errors.age && <p className="text-red-600 text-sm mt-1 font-medium">{errors.age}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Peso (kg) *
-          </label>
-          <input
-            type="number"
-            name="weight"
-            value={formData.weight}
-            onChange={handleChange}
-            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 ${
-              isOpponent ? 'focus:ring-orange-500 focus:border-orange-500' : 'focus:ring-blue-500 focus:border-blue-500'
-            } outline-none transition-all ${
-              errors.weight ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder="85"
-          />
-          {errors.weight && <p className="text-red-600 text-sm mt-1 font-medium">{errors.weight}</p>}
-        </div>
-      </div>
-
-      {/* Faixa e Estilo */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Faixa
-          </label>
-          <select
-            name="belt"
-            value={formData.belt}
-            onChange={handleChange}
-            className="w-full"
-          >
-            {belts.map((belt) => (
-              <option key={belt} value={belt}>
-                {belt}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            Estilo de Jogo
-          </label>
-          <select
-            name="style"
-            value={formData.style}
-            onChange={handleChange}
-            className="w-full"
-          >
-            {styles.map((style) => (
-              <option key={style} value={style}>
-                {style}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Faixa */}
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">
+          Faixa
+        </label>
+        <select
+          name="belt"
+          value={formData.belt}
+          onChange={handleChange}
+          className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 ${
+            isOpponent ? 'focus:ring-orange-500 focus:border-orange-500' : 'focus:ring-blue-500 focus:border-blue-500'
+          } outline-none transition-all border-gray-300`}
+        >
+          {belts.map((belt) => (
+            <option key={belt} value={belt}>
+              {belt}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Botão Submit */}

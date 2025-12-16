@@ -1,6 +1,7 @@
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
 const StrategyService = require('../services/strategyService');
+const TacticalAnalysis = require('../models/TacticalAnalysis');
 const ApiUsage = require('../models/ApiUsage');
 
 /**
@@ -39,6 +40,31 @@ exports.compareAndStrategy = async (req, res) => {
     // Gerar estratégia usando consolidação de todas as análises
     const result = await StrategyService.generateStrategy(athleteId, opponentId, userId, model);
     
+    // Salvar análise tática no histórico
+    let savedAnalysis = null;
+    if (userId) {
+      try {
+        console.log('💾 Tentando salvar análise tática no histórico...');
+        savedAnalysis = await TacticalAnalysis.create({
+          userId,
+          athleteId,
+          athleteName: athlete.name,
+          opponentId,
+          opponentName: opponent.name,
+          strategyData: result.strategy,
+          metadata: result.metadata
+        });
+        console.log('✅ Análise tática salva com sucesso! ID:', savedAnalysis.id);
+      } catch (saveError) {
+        console.error('⚠️ Erro ao salvar análise tática:', saveError);
+        console.error('Detalhes do erro:', saveError.message);
+        console.error('Stack:', saveError.stack);
+        // Não falhar a request se salvar no histórico falhar
+      }
+    } else {
+      console.log('⚠️ userId não disponível, análise não será salva');
+    }
+    
     // Salvar uso da API (consolidação + estratégia)
     if (userId && result.metadata.usage) {
       await ApiUsage.logUsage({
@@ -54,7 +80,8 @@ exports.compareAndStrategy = async (req, res) => {
           opponentId,
           opponentName: opponent.name,
           opponentAnalysesCount: result.metadata.opponent.analysesCount,
-          consolidationModel: result.metadata.athlete.consolidationModel
+          consolidationModel: result.metadata.athlete.consolidationModel,
+          savedAnalysisId: savedAnalysis?.id
         }
       });
     }
@@ -75,7 +102,8 @@ exports.compareAndStrategy = async (req, res) => {
           usedConsolidation: result.metadata.opponent.analysesCount > 1
         },
         strategy: result.strategy,
-        generatedAt: result.metadata.generatedAt
+        generatedAt: result.metadata.generatedAt,
+        analysisId: savedAnalysis?.id // ID para acessar depois
       }
     });
 
@@ -84,6 +112,101 @@ exports.compareAndStrategy = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro ao gerar estratégia tática'
+    });
+  }
+};
+
+/**
+ * GET /api/strategy/analyses
+ * Lista todas as análises táticas salvas do usuário
+ */
+exports.listAnalyses = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { athleteId, opponentId, limit, offset } = req.query;
+
+    console.log('📋 listAnalyses chamado:', { userId, athleteId, opponentId, limit, offset });
+
+    const analyses = await TacticalAnalysis.getAll(userId, {
+      athleteId,
+      opponentId,
+      limit: limit ? parseInt(limit) : undefined,
+      offset: offset ? parseInt(offset) : undefined
+    });
+
+    const total = await TacticalAnalysis.count(userId);
+
+    console.log('📊 Resultado:', { totalEncontradas: analyses.length, total });
+
+    res.json({
+      success: true,
+      data: analyses,
+      total,
+      page: offset ? Math.floor(offset / (limit || 50)) + 1 : 1
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao listar análises:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao listar análises táticas'
+    });
+  }
+};
+
+/**
+ * GET /api/strategy/analyses/:id
+ * Busca uma análise tática específica
+ */
+exports.getAnalysis = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    const analysis = await TacticalAnalysis.getById(id, userId);
+
+    if (!analysis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Análise não encontrada'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: analysis
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao buscar análise:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar análise tática'
+    });
+  }
+};
+
+/**
+ * DELETE /api/strategy/analyses/:id
+ * Deleta uma análise tática
+ */
+exports.deleteAnalysis = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+
+    await TacticalAnalysis.delete(id, userId);
+
+    res.json({
+      success: true,
+      message: 'Análise deletada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao deletar análise:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao deletar análise tática'
     });
   }
 };

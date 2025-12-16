@@ -90,16 +90,31 @@ export default function AnalysisDetailModal({ analysis, onClose }) {
 
           {/* Summary */}
           {analysis.summary && (
-            <div className="p-5 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-200">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-amber-200/50">
-                  <Award className="w-5 h-5 text-amber-700" />
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 shadow-sm">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-blue-100">
+                  <Award className="w-5 h-5 text-blue-600" />
                 </div>
-                <h3 className="text-sm font-bold text-amber-900">Resumo da Análise</h3>
+                <h3 className="text-sm font-bold text-slate-900">Resumo da Análise</h3>
               </div>
-              <p className="text-sm text-amber-900/90 leading-relaxed">
-                {analysis.summary}
-              </p>
+              <div className="space-y-6">
+                {(() => {
+                  // Dividir o texto em frases
+                  const sentences = analysis.summary.split(/(?<=[.!?])\s+/);
+                  const paragraphs = [];
+                  
+                  // Agrupar frases em parágrafos de 2-3 frases
+                  for (let i = 0; i < sentences.length; i += 3) {
+                    paragraphs.push(sentences.slice(i, i + 3).join(' '));
+                  }
+                  
+                  return paragraphs.map((paragraph, index) => (
+                    <p key={index} className="text-sm text-slate-700 leading-relaxed">
+                      {paragraph}
+                    </p>
+                  ));
+                })()}
+              </div>
             </div>
           )}
 

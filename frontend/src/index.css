@@ -29,6 +29,7 @@
 
   html {
     overflow-x: hidden;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -40,6 +41,7 @@
     min-height: 100vh;
     overflow-x: hidden;
     width: 100%;
+    scrollbar-gutter: stable;
   }
 
   code {

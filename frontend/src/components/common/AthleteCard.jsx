@@ -59,16 +59,6 @@ export default function AthleteCard({
               <h3 className="text-lg font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight truncate">
                 {name}
               </h3>
-              <div className="flex items-center gap-2 mt-1 text-sm text-slate-500">
-                <div className="flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="font-medium">{age} anos</span>
-                </div>
-                <span className="text-slate-300">•</span>
-                <span className="text-sm text-slate-500 font-medium">{weight} kg</span>
-              </div>
             </div>
             <span
               className={`badge-modern ${beltStyles[belt] || 'bg-slate-50 text-slate-700'} border-2 text-xs px-3 py-1`}
@@ -80,21 +70,6 @@ export default function AthleteCard({
 
           {/* Info Grid */}
           <div className="grid grid-cols-1 gap-3">
-            {/* Estilo de Jogo */}
-            <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2.5" style={{ marginTop: "0.5vh" }}>
-              <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-xl ${config.icon} flex items-center justify-center`}>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-[0.08em]" style={{ margin: "0.2vw" }}>Estilo</p>
-                  <p className="text-sm font-semibold text-slate-900">{style}</p>
-                </div>
-              </div>
-            </div>
-
             {/* Status de Análise IA */}
             {hasAIProfile ? (
               <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2">

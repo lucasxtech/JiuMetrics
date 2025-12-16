@@ -13,6 +13,7 @@ export default function Header() {
     { label: 'Atletas', to: '/athletes' },
     { label: 'Adversários', to: '/opponents' },
     { label: 'Estratégia', to: '/strategy' },
+    { label: 'Análises', to: '/analyses' },
   ];
 
   // Fechar menu mobile quando mudar de rota

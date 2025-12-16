@@ -9,6 +9,7 @@ import AthleteDetail from './pages/AthleteDetail';
 import Opponents from './pages/Opponents';
 import Strategy from './pages/Strategy';
 import VideoAnalysis from './pages/VideoAnalysis';
+import Analyses from './pages/Analyses';
 import ModernLogin from './pages/ModernLogin';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
@@ -32,6 +33,7 @@ function AppContent() {
             <Route path="/opponents/:id" element={<ProtectedRoute><AthleteDetail isOpponent /></ProtectedRoute>} />
             <Route path="/strategy" element={<ProtectedRoute><Strategy /></ProtectedRoute>} />
             <Route path="/analyze-video" element={<ProtectedRoute><VideoAnalysis /></ProtectedRoute>} />
+            <Route path="/analyses" element={<ProtectedRoute><Analyses /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
           </Routes>
