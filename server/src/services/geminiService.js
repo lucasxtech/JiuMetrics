@@ -97,11 +97,21 @@ Para o campo 'technical_stats':
 ---
 
 🧠 RESUMO ESTRATÉGICO (O CAMPO "SUMMARY")
-Gere um relatório de inteligência tática, respondendo:
-1. **O Perfil Biomecânico:** Ele é forte e lento? Rápido e flexível?
-2. **Cadeia de Ataque Preferida:** Qual a sequência "A > B > C" que ele sempre tenta fazer?
-3. **O Erro Sistêmico (Kryptonita):** Onde ele falha consistentemente? (Ex: "Postura ruim no double leg").
-4. **Plano de Jogo:** A estratégia exata para vencê-lo.
+Gere um relatório de inteligência tática:
+**O Perfil Biomecânico:** Ele é forte e lento? Rápido e flexível?
+**Cadeia de Ataque Preferida:**
+**O Erro Sistêmico (Kryptonita):** Onde ele falha consistentemente? (Ex: "Postura ruim no double leg").
+**Plano de Jogo:** A estratégia exata para vencê-lo.
+
+EXEMPLO DE TEXTO QUE DEVE SER SEGUIDO PARA SER ADICIONADO DENTRO DO CAMPO SUMMARY:  "O atleta possui um perfil ágil e bem condicionado, utilizando principalmente velocidade, mobilidade de quadril e movimentações laterais, em vez de pressão constante. 
+    Não é um passador de amasso, mas tem força para manter posições dominantes quando estabiliza. 
+    Seu jogo começa em pé, forçando o adversário a puxar para a guarda, com passagens móveis como toreada e knee slide, buscando rapidamente a montada para atacar finalizações de alto percentual, especialmente o arm lock.
+
+    Sua principal fragilidade está na transição da passagem para a montada, que pode ser instável.
+    Já conseguiu alcançar a posição, mas perdeu o controle devido a reposições explosivas, mostrando falhas na estabilização. 
+    O plano de jogo contra ele deve focar em anular suas passagens, evitando guardas abertas passivas. 
+    Guardas que controlem a distância e quebrem a postura dificultam sua mobilidade e favorecem raspagens, enquanto a disputa de quedas, com entradas de single ou double leg, o coloca em um cenário menos confortável."
+
 
 ---
 
