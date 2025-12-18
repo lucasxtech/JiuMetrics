@@ -24,7 +24,7 @@ function extractYouTubeId(url) {
 
 exports.analyzeLink = async (req, res) => {
   try {
-    const { videos, athleteName, personId, personType, model } = req.body || {};
+    const { videos, athleteName, personId, personType, model, matchResult } = req.body || {};
     const accessToken = req.headers.authorization?.replace('Bearer ', '');
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
@@ -37,6 +37,11 @@ exports.analyzeLink = async (req, res) => {
     // Log do modelo selecionado
     if (model) {
       console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
+    }
+
+    // Log do resultado da luta se fornecido
+    if (matchResult) {
+      console.log(`📊 Resultado da luta: ${matchResult}`);
     }
 
     console.log(`🎬 Iniciando análise de ${videos.length} vídeo(s)...`);
@@ -72,6 +77,7 @@ exports.analyzeLink = async (req, res) => {
     const frameContext = {
       athleteName: athleteName?.trim(),
       videos: videoData,
+      matchResult: matchResult?.trim(),
     };
 
     console.log('📊 Contexto da análise:', frameContext);
@@ -89,7 +95,8 @@ exports.analyzeLink = async (req, res) => {
         const result = await analyzeFrame(video.url, {
           athleteName: athleteName?.trim(),
           giColor: video.giColor,
-          videos: [video] // Passa apenas este vídeo para o prompt
+          videos: [video], // Passa apenas este vídeo para o prompt
+          matchResult: matchResult?.trim() // Adiciona resultado da luta
         }, model); // Passa o modelo selecionado
         
         analyses.push(result.analysis);

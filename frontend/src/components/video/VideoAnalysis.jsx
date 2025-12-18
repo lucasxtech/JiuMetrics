@@ -16,6 +16,7 @@ export default function VideoAnalysisComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [athleteName, setAthleteName] = useState('');
+  const [matchResult, setMatchResult] = useState(''); // Novo estado para resultado da luta
   
   // Novos estados para vincular análise
   const [personType, setPersonType] = useState('athlete'); // 'athlete' ou 'opponent'
@@ -170,7 +171,8 @@ export default function VideoAnalysisComponent() {
         videos: validVideos.map(v => ({ url: v.url, giColor: v.giColor })),
         athleteName: athleteName.trim(),
         personId,
-        personType
+        personType,
+        matchResult: matchResult || undefined // Adiciona resultado da luta se fornecido
       });
       
       clearInterval(progressInterval);
@@ -251,6 +253,34 @@ export default function VideoAnalysisComponent() {
                   createNewLabel={`Criar novo ${personType === 'athlete' ? 'atleta' : 'adversário'}`}
                 />
               </div>
+            </div>
+
+            {/* Resultado da luta (opcional) */}
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                Resultado da Luta <span className="text-slate-400">(opcional - melhora a precisão)</span>
+              </label>
+              <CustomSelect
+                value={matchResult}
+                onChange={(value) => {
+                  setMatchResult(value);
+                  setError(null);
+                }}
+                options={[
+                  { value: '', label: 'Não informado', subtitle: 'IA analisará sem contexto de resultado' },
+                  { value: 'vitoria-pontos', label: '🏆 Vitória por Pontos', subtitle: 'Venceu no placar' },
+                  { value: 'vitoria-finalizacao', label: '🎯 Vitória por Finalização', subtitle: 'Finalizou o oponente' },
+                  { value: 'vitoria-vantagens', label: '⚖️ Vitória por Vantagens', subtitle: 'Placar empatado, mais vantagens' },
+                  { value: 'derrota-pontos', label: '❌ Derrota por Pontos', subtitle: 'Perdeu no placar' },
+                  { value: 'derrota-finalizacao', label: '🎯 Derrota por Finalização', subtitle: 'Foi finalizado' },
+                  { value: 'derrota-vantagens', label: '⚖️ Derrota por Vantagens', subtitle: 'Placar empatado, menos vantagens' },
+                  { value: 'derrota-desclassificacao', label: '🚫 Derrota por Desclassificação', subtitle: 'Punição ou regra' }
+                ]}
+                placeholder="Selecione o resultado..."
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                💡 Informar o resultado ajuda a IA a identificar se o estilo foi eficaz ou se houve erros críticos
+              </p>
             </div>
 
             {/* Lista de vídeos */}

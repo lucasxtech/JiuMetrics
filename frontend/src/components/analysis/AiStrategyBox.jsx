@@ -278,11 +278,29 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
                 </svg>
                 Oportunidades de Pontos
               </p>
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {strategyData.checklist_tatico.oportunidades_de_pontos?.map((item, idx) => (
                   <li key={idx} className="text-sm text-slate-700 flex items-start gap-2">
                     <span className="text-green-600 font-bold mt-0.5">+</span>
-                    <span className="leading-relaxed">{item}</span>
+                    <div className="leading-relaxed flex-1">
+                      {typeof item === 'string' ? (
+                        <span>{item}</span>
+                      ) : (
+                        <>
+                          <div className="font-semibold text-slate-800 mb-1">
+                            {item.tecnica} ({item.pontos} pontos)
+                            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                              item.probabilidade === 'alta' ? 'bg-green-100 text-green-700' :
+                              item.probabilidade === 'media' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {item.probabilidade}
+                            </span>
+                          </div>
+                          <div className="text-slate-600">{item.quando}</div>
+                        </>
+                      )}
+                    </div>
                   </li>
                 )) || <li className="text-sm text-slate-500 italic">Nenhuma oportunidade identificada</li>}
               </ul>
@@ -296,11 +314,21 @@ export default function AiStrategyBox({ strategy, isLoading = false }) {
                 </svg>
                 Armadilhas Dele
               </p>
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {strategyData.checklist_tatico.armadilhas_dele?.map((item, idx) => (
                   <li key={idx} className="text-sm text-slate-700 flex items-start gap-2">
                     <span className="text-red-600 font-bold mt-0.5">!</span>
-                    <span className="leading-relaxed">{item}</span>
+                    <div className="leading-relaxed flex-1">
+                      {typeof item === 'string' ? (
+                        <span>{item}</span>
+                      ) : (
+                        <>
+                          <div className="font-semibold text-red-800 mb-1">{item.tecnica_perigosa}</div>
+                          <div className="text-slate-600 mb-1"><span className="font-medium">Quando:</span> {item.situacao}</div>
+                          <div className="text-slate-600"><span className="font-medium">Como evitar:</span> {item.como_evitar}</div>
+                        </>
+                      )}
+                    </div>
                   </li>
                 )) || <li className="text-sm text-slate-500 italic">Nenhuma armadilha conhecida</li>}
               </ul>

@@ -266,7 +266,7 @@ class StrategyService {
    * 
    * @param {string} personId - ID do atleta ou adversário
    * @param {string|null} customModel - Modelo Gemini customizado (opcional)
-   * @returns {Promise<Object>} { resumo: string, analysesCount: number, model: string }
+   * @returns {Promise<Object>} { resumo: string, technical_stats: Object, analysesCount: number, model: string }
    */
   static async consolidateAnalyses(personId, customModel = null) {
     // Buscar todas as análises da pessoa
@@ -275,15 +275,17 @@ class StrategyService {
     if (!analyses || analyses.length === 0) {
       return {
         resumo: 'Nenhuma análise disponível para este lutador.',
+        technical_stats: null,
         analysesCount: 0,
         model: null
       };
     }
 
-    // Se houver apenas 1 análise, retornar diretamente
+    // Se houver apenas 1 análise, retornar dados diretamente
     if (analyses.length === 1) {
       return {
         resumo: analyses[0].summary || 'Resumo não disponível.',
+        technical_stats: analyses[0].technical_stats || null,
         analysesCount: 1,
         model: null // Sem uso de IA
       };
@@ -295,9 +297,13 @@ class StrategyService {
       .filter(Boolean)
       .slice(0, 10); // Limitar a 10 análises mais recentes para evitar prompts enormes
 
+    // Consolidar technical_stats de todas as análises
+    const consolidatedStats = this.consolidateTechnicalStats(analyses);
+
     if (summaries.length === 0) {
       return {
         resumo: 'Análises encontradas, mas sem resumos técnicos disponíveis.',
+        technical_stats: consolidatedStats,
         analysesCount: analyses.length,
         model: null
       };
@@ -369,6 +375,7 @@ OBRIGATÓRIO:
 
       return {
         resumo: consolidatedResumo,
+        technical_stats: consolidatedStats,
         analysesCount: summaries.length,
         model: modelToUse,
         usage: {
@@ -383,11 +390,120 @@ OBRIGATÓRIO:
       // Fallback em caso de erro: concatenar resumos
       return {
         resumo: summaries.join(' '),
+        technical_stats: consolidatedStats,
         analysesCount: summaries.length,
         model: null,
         error: error.message
       };
     }
+  }
+
+  /**
+   * Consolida technical_stats de múltiplas análises
+   * Calcula médias e totais de dados quantitativos reais
+   * @param {Array} analyses - Array de análises
+   * @returns {Object} Stats consolidados
+   */
+  static consolidateTechnicalStats(analyses) {
+    const validAnalyses = analyses.filter(a => a.technical_stats);
+    
+    if (validAnalyses.length === 0) {
+      return null;
+    }
+
+    const consolidated = {
+      sweeps: {
+        quantidade_total: 0,
+        quantidade_media: 0,
+        efetividade_percentual_media: 0
+      },
+      guard_passes: {
+        quantidade_total: 0,
+        quantidade_media: 0
+      },
+      submissions: {
+        tentativas_total: 0,
+        tentativas_media: 0,
+        ajustadas_total: 0,
+        ajustadas_media: 0,
+        concluidas_total: 0,
+        concluidas_media: 0,
+        taxa_sucesso_percentual: 0,
+        finalizacoes_mais_usadas: []
+      },
+      back_takes: {
+        quantidade_total: 0,
+        quantidade_media: 0,
+        percentual_com_finalizacao: 0
+      },
+      total_analises: validAnalyses.length
+    };
+
+    // Somar totais
+    validAnalyses.forEach(analysis => {
+      const stats = analysis.technical_stats;
+      
+      if (stats.sweeps) {
+        consolidated.sweeps.quantidade_total += stats.sweeps.quantidade || 0;
+        consolidated.sweeps.efetividade_percentual_media += stats.sweeps.efetividade_percentual || 0;
+      }
+      
+      if (stats.guard_passes) {
+        consolidated.guard_passes.quantidade_total += stats.guard_passes.quantidade || 0;
+      }
+      
+      if (stats.submissions) {
+        consolidated.submissions.tentativas_total += stats.submissions.tentativas || 0;
+        consolidated.submissions.ajustadas_total += stats.submissions.ajustadas || 0;
+        consolidated.submissions.concluidas_total += stats.submissions.concluidas || 0;
+        
+        if (stats.submissions.detalhes && Array.isArray(stats.submissions.detalhes)) {
+          consolidated.submissions.finalizacoes_mais_usadas.push(...stats.submissions.detalhes);
+        }
+      }
+      
+      if (stats.back_takes) {
+        consolidated.back_takes.quantidade_total += stats.back_takes.quantidade || 0;
+        if (stats.back_takes.tentou_finalizar) {
+          consolidated.back_takes.percentual_com_finalizacao += 1;
+        }
+      }
+    });
+
+    // Calcular médias
+    const count = validAnalyses.length;
+    consolidated.sweeps.quantidade_media = Math.round(consolidated.sweeps.quantidade_total / count * 10) / 10;
+    consolidated.sweeps.efetividade_percentual_media = Math.round(consolidated.sweeps.efetividade_percentual_media / count);
+    
+    consolidated.guard_passes.quantidade_media = Math.round(consolidated.guard_passes.quantidade_total / count * 10) / 10;
+    
+    consolidated.submissions.tentativas_media = Math.round(consolidated.submissions.tentativas_total / count * 10) / 10;
+    consolidated.submissions.ajustadas_media = Math.round(consolidated.submissions.ajustadas_total / count * 10) / 10;
+    consolidated.submissions.concluidas_media = Math.round(consolidated.submissions.concluidas_total / count * 10) / 10;
+    
+    if (consolidated.submissions.tentativas_total > 0) {
+      consolidated.submissions.taxa_sucesso_percentual = Math.round(
+        (consolidated.submissions.concluidas_total / consolidated.submissions.tentativas_total) * 100
+      );
+    }
+    
+    consolidated.back_takes.quantidade_media = Math.round(consolidated.back_takes.quantidade_total / count * 10) / 10;
+    consolidated.back_takes.percentual_com_finalizacao = Math.round(
+      (consolidated.back_takes.percentual_com_finalizacao / count) * 100
+    );
+
+    // Contar finalizações mais usadas
+    const submissionCount = {};
+    consolidated.submissions.finalizacoes_mais_usadas.forEach(sub => {
+      submissionCount[sub] = (submissionCount[sub] || 0) + 1;
+    });
+    
+    consolidated.submissions.finalizacoes_mais_usadas = Object.entries(submissionCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ tecnica: name, quantidade: count }));
+
+    return consolidated;
   }
 
   /**
@@ -423,15 +539,17 @@ OBRIGATÓRIO:
       this.consolidateAnalyses(opponentId, customModel)
     ]);
 
-    // Preparar dados para a IA
+    // Preparar dados para a IA (resumo narrativo + dados quantitativos)
     const athleteData = {
       name: athlete.name,
-      resumo: athleteConsolidation.resumo
+      resumo: athleteConsolidation.resumo,
+      technical_stats: athleteConsolidation.technical_stats
     };
 
     const opponentData = {
       name: opponent.name,
-      resumo: opponentConsolidation.resumo
+      resumo: opponentConsolidation.resumo,
+      technical_stats: opponentConsolidation.technical_stats
     };
 
     // Gerar estratégia usando geminiService

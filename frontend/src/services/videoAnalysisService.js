@@ -14,10 +14,11 @@ const getSelectedModel = () => {
  * @param {string} payload.athleteName - Nome do atleta alvo
  * @param {string} payload.personId - ID do atleta/adversário
  * @param {string} payload.personType - 'athlete' ou 'opponent'
+ * @param {string} payload.matchResult - Resultado da luta (opcional)
  * @returns {Promise} Resposta da IA com análise
  */
-export async function analyzeVideoLink({ videos, athleteName, personId, personType }) {
-  console.log('Analisando vídeos:', videos, athleteName, personId, personType);
+export async function analyzeVideoLink({ videos, athleteName, personId, personType, matchResult }) {
+  console.log('Analisando vídeos:', videos, athleteName, personId, personType, matchResult);
   const model = getSelectedModel();
   console.log('🤖 Modelo selecionado:', model);
 
@@ -27,7 +28,8 @@ export async function analyzeVideoLink({ videos, athleteName, personId, personTy
       athleteName,
       personId,
       personType,
-      model
+      model,
+      matchResult
     });
     return response.data;
   } catch (error) {
