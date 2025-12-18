@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { getAllAthletes } from '../services/athleteService';
 import { getAllOpponents } from '../services/opponentService';
 import { compareAndGenerateStrategy } from '../services/strategyService';
-import AiStrategyBox from '../components/AiStrategyBox';
+import AiStrategyBox from '../components/analysis/AiStrategyBox';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 

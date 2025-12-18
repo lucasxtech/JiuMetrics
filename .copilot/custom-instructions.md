@@ -38,25 +38,46 @@
 projeto analise atletas/
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # Componentes reutilizáveis
-│   │   │   ├── common/      # Componentes compartilhados (Header, Cards, etc)
-│   │   │   ├── forms/       # Formulários
-│   │   │   └── charts/      # Gráficos (Recharts)
+│   │   ├── components/      # Componentes reutilizáveis (organizados por feature)
+│   │   │   ├── analysis/    # Componentes de análise (AiStrategyBox, AnalysisCard)
+│   │   │   ├── video/       # Componentes de vídeo (VideoAnalysis, VideoAnalysisCard)
+│   │   │   ├── charts/      # Gráficos (Recharts - Radar, Line, Bar, Pie)
+│   │   │   ├── common/      # Componentes compartilhados (Header, Cards, Modal)
+│   │   │   ├── forms/       # Formulários (AthleteForm)
+│   │   │   └── routing/     # Rotas (ProtectedRoute)
 │   │   ├── pages/           # Páginas/rotas principais
 │   │   ├── services/        # Chamadas API e lógica de negócio
 │   │   ├── hooks/           # Custom React hooks
 │   │   └── utils/           # Funções utilitárias
 │   └── public/              # Assets estáticos
 │
-└── server/
-    ├── src/
-    │   ├── controllers/     # Lógica de controle HTTP
-    │   ├── models/          # Modelos de dados (Supabase)
-    │   ├── routes/          # Definição de rotas Express
-    │   ├── services/        # Serviços externos (Gemini, FFmpeg)
-    │   ├── middleware/      # Middlewares (auth, etc)
-    │   └── utils/           # Funções auxiliares
-    └── uploads/             # Arquivos temporários de upload
+├── server/
+│   ├── src/
+│   │   ├── controllers/     # Lógica de controle HTTP
+│   │   ├── models/          # Modelos de dados (Supabase)
+│   │   ├── routes/          # Definição de rotas Express
+│   │   ├── services/        # Serviços externos (Gemini, FFmpeg)
+│   │   ├── middleware/      # Middlewares (auth, etc)
+│   │   └── utils/           # Funções auxiliares
+│   ├── migrations/          # SQLs do Supabase (001-009, numerados)
+│   ├── tests/               # Testes de integração
+│   └── uploads/             # Arquivos temporários de upload
+│
+├── scripts/                 # Scripts de desenvolvimento
+│   ├── dev.sh              # Comandos de desenvolvimento
+│   ├── start.sh            # Iniciar app completo
+│   └── startup-info.sh     # Documentação interativa
+│
+├── tools/                   # Ferramentas de debug
+│   ├── api-requests.http   # Requests HTTP (REST Client)
+│   └── TEST_TOKEN.js       # Teste de autenticação
+│
+├── docs/                    # Documentação completa
+│   ├── setup/              # Guias de configuração (Supabase, API, Auth)
+│   ├── deployment/         # Guias de deploy (Vercel, GitHub Pages)
+│   └── guides/             # Checklists e tutoriais
+│
+└── .archived/               # Documentação obsoleta
 ```
 
 ## 🎯 Padrões e Convenções
@@ -69,12 +90,24 @@ projeto analise atletas/
 - Pages: `PascalCase.jsx` (ex: `Overview.jsx`)
 - Utilitários: `camelCase.js` (ex: `chartUtils.js`)
 - Testes: `*.test.js` ou `*.test.jsx`
+- Migrations SQL: `001-nome-descritivo.sql` (numeradas sequencialmente)
+- Scripts shell: `kebab-case.sh` (ex: `start-dev.sh`)
 
 **Código:**
 - Componentes: `PascalCase`
 - Funções: `camelCase`
 - Constantes: `UPPER_SNAKE_CASE`
 - Variáveis: `camelCase`
+
+**Organização de Componentes:**
+- Componentes organizados por **feature** em subpastas:
+  - `analysis/` - Componentes de análise tática e estratégia
+  - `video/` - Componentes de análise de vídeo
+  - `charts/` - Todos os gráficos e visualizações
+  - `common/` - Componentes reutilizáveis globais
+  - `forms/` - Formulários de cadastro/edição
+  - `routing/` - Componentes de roteamento
+- Cada pasta pode ter seu próprio `README.md` documentando os componentes
 
 ### Estrutura de Código
 
@@ -264,7 +297,14 @@ npm run dev          # Dev com nodemon (porta 5050)
 npm start            # Produção
 npm test             # Testes
 ```
-
+**Scripts de Desenvolvimento:**
+```bash
+# Da raiz do projeto
+./scripts/dev.sh install      # Instalar todas as dependências
+./scripts/dev.sh both         # Iniciar frontend + backend
+./scripts/start.sh            # Iniciar app completo
+./scripts/startup-info.sh     # Ver documentação interativa
+```
 ### Variáveis de Ambiente
 
 **Frontend (.env):**
@@ -314,6 +354,10 @@ PORT=5050
 8. **Responsive design**: Mobile-first
 9. **Code review**: Antes de merge
 10. **Conventional commits**: Seguir padrão de mensagens
+11. **Organização por feature**: Componentes em pastas categorizadas
+12. **READMEs descritivos**: Documentar cada diretório importante
+13. **Migrations numeradas**: SQLs com prefixo numérico (001-, 002-, etc)
+14. **Imports relativos corretos**: Ajustar paths após mover arquivos
 
 ## 💬 Mensagens de Commit
 
@@ -447,10 +491,32 @@ test(strategy): adicustomizados (não Supabase Auth) com expiração (7 dias pad
 - Verificar se controller usa `req.userId` (não `req.user.id`)
 - Verificar se token JWT está sendo enviado no header Authorization
 
+**Erro: "Cannot find module" após mover componentes**
+- Atualizar imports relativos nos arquivos que usam o componente
+- Verificar paths em `analysis/`, `video/`, `charts/`, `routing/`
+- Testar build: `npm run build`
+
+**Erro: Build warnings sobre chunk size**
+- Normal para bundles >500KB
+- Considerar code splitting com `React.lazy()` e `Suspense`
+- Ver sugestões em `build.rollupOptions.output.manualChunks`
+
+## 📚 Documentação Adicional
+
+O projeto possui documentação completa organizada hierarquicamente:
+
+- **README.md** - Documentação principal do projeto
+- **CONTRIBUTING.md** - Guia de contribuição
+- **CODE_REVIEW.md** - Análise e melhorias do código
+- **docs/setup/** - Guias de configuração (Supabase, API, Auth)
+- **docs/deployment/** - Guias de deploy (Vercel, GitHub Pages)
+- **docs/guides/** - Checklists e tutoriais
+- **scripts/README.md** - Scripts de desenvolvimento
+- **server/migrations/README.md** - Migrations do Supabase
+- **server/tests/README.md** - Testes de integração
+- **tools/README.md** - Ferramentas de debug
+- **frontend/src/components/README.md** - Documentação de componentes
+
 ---
 
-**Última atualização:** 14base
-
----
-
-**Última atualização:** 12 de dezembro de 2025
+**Última atualização:** 18 de dezembro de 2025

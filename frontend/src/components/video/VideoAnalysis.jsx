@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { analyzeVideoLink, isValidVideoUrl } from '../services/videoAnalysisService';
-import { getAllAthletes } from '../services/athleteService';
-import { getAllOpponents } from '../services/opponentService';
-import PieChartSection from './PieChartSection';
+import { analyzeVideoLink, isValidVideoUrl } from '../../services/videoAnalysisService';
+import { getAllAthletes } from '../../services/athleteService';
+import { getAllOpponents } from '../../services/opponentService';
+import PieChartSection from '../charts/PieChartSection';
 
 export default function VideoAnalysisComponent() {
   const [videos, setVideos] = useState([

@@ -1,8 +1,8 @@
 // Página de Histórico de Análises Táticas
 import { useState, useEffect, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
-import AnalysisCard from '../components/AnalysisCard';
-import AiStrategyBox from '../components/AiStrategyBox';
+import AnalysisCard from '../components/analysis/AnalysisCard';
+import AiStrategyBox from '../components/analysis/AiStrategyBox';
 import { getAllAnalyses, deleteAnalysis } from '../services/analysisService';
 
 export default function Analyses() {
@@ -28,11 +28,7 @@ export default function Analyses() {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔍 Carregando análises...');
       const data = await getAllAnalyses(filters);
-      console.log('📦 Dados recebidos:', data);
-      console.log('📦 É array?', Array.isArray(data));
-      console.log('📦 Quantidade:', data?.length);
       // Garantir que sempre seja um array
       setAnalyses(Array.isArray(data) ? data : []);
     } catch (err) {

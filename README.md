@@ -8,7 +8,12 @@ Sistema completo de análise de vídeos de Jiu-Jitsu com IA (Google Gemini), ger
 - ✅ **Seleção de Modelos Gemini**: Escolha entre gemini-2.0-flash, gemini-2.5-pro ou gemini-3-pro-preview
 - ✅ **Rastreamento de Custos API**: Acompanhe gastos com a API do Gemini em tempo real
 - ✅ **Gerenciamento de Atletas e Adversários**: CRUD completo com perfis técnicos
-- ✅ **Histórico de Análises**: Todas as análises ficam salvas no perfil de cada pessoa
+- ✅ **Histórico de Análises Táticas**: Sistema completo de histórico com busca e filtros
+- ✅ **Download PDF**: Exporte análises táticas em PDF formatado
+- ✅ **Modais de Confirmação**: Confirmação visual para todas as ações de exclusão
+- ✅ **Custom Select**: Dropdown moderno e escalável para seleção de atletas/adversários
+- ✅ **Cadastro Rápido**: QuickAdd modal para criar atletas/adversários sem sair da página
+- ✅ **Busca e Filtros**: Sistema de busca em análises por atleta ou adversário
 - ✅ **Gráficos e Dashboards**: Visualização de dados técnicos e estatísticos
 - ✅ **Comparação e Estratégias**: Compare atletas e gere estratégias de luta com IA
 - ✅ **Banco de Dados Supabase**: Persistência de dados em PostgreSQL
@@ -16,10 +21,13 @@ Sistema completo de análise de vídeos de Jiu-Jitsu com IA (Google Gemini), ger
 ## 📦 Tecnologias
 
 **Frontend:**
-- React 18 + Vite
-- TailwindCSS
+- React 19 + Vite
+- TailwindCSS 4
 - Recharts (gráficos)
 - Axios
+- html2pdf.js (geração de PDF)
+- Lucide React (ícones)
+- Vitest (testes unitários)
 
 **Backend:**
 - Node.js + Express
@@ -75,8 +83,8 @@ cp .env.example .env
 3. Copie as credenciais em **Settings > API** para o `.env`
 
 📖 **Guias detalhados:** 
-- [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) - Setup completo
-- [SETUP_API_USAGE.md](./SETUP_API_USAGE.md) - Sistema de rastreamento de custos
+- [SETUP_SUPABASE.md](./docs/setup/SETUP_SUPABASE.md) - Setup completo
+- [SETUP_API_USAGE.md](./docs/setup/SETUP_API_USAGE.md) - Sistema de rastreamento de custos
 
 ## 🎯 Como Usar
 
@@ -97,10 +105,29 @@ npm run dev
 ```
 
 Acesse: **http://localhost:5173**
-SETUP_API_USAGE.md](./SETUP_API_USAGE.md) - Sistema de rastreamento de custos da API Gemini
-- [API.md](./API.md) - Documentação da API REST
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - Arquitetura do sistema
-- [DEVELOPMENT.md](./DEVELOPMENT.md) - Guia de desenvolvimento
+
+## 📚 Documentação
+
+### 📖 Setup e Configuração
+- [docs/setup/SETUP_SUPABASE.md](docs/setup/SETUP_SUPABASE.md) - Guia completo de setup do Supabase
+- [docs/setup/SETUP_API_USAGE.md](docs/setup/SETUP_API_USAGE.md) - Sistema de rastreamento de custos da API Gemini
+- [docs/setup/GUIA_AUTENTICACAO.md](docs/setup/GUIA_AUTENTICACAO.md) - Configuração de autenticação
+
+### 🏗️ Arquitetura e API
+- [docs/API.md](docs/API.md) - Documentação da API REST
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Arquitetura do sistema
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Guia de desenvolvimento
+
+### 🚀 Deploy
+- [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) - Guia de deploy completo
+
+### 🛠️ Ferramentas e Recursos
+- [scripts/README.md](scripts/README.md) - Scripts de desenvolvimento
+- [server/migrations/README.md](server/migrations/README.md) - Migrations do Supabase
+- [server/tests/README.md](server/tests/README.md) - Testes de integração
+- [tools/README.md](tools/README.md) - Ferramentas de debug
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Guia de contribuição
+- [CODE_REVIEW.md](CODE_REVIEW.md) - Análise e melhorias do código
 
 ## 💰 Modelos Gemini Disponíveis
 
@@ -111,33 +138,44 @@ SETUP_API_USAGE.md](./SETUP_API_USAGE.md) - Sistema de rastreamento de custos da
 | gemini-3-pro-preview | Grátis | Grátis | Preview (recursos experimentais) |
 
 💡 **Acompanhe seus gastos** em tempo real na aba **Configurações**
-- [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) - Guia completo de setup do Supabase
-- [API.md](./API.md) - Documentação da API REST
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - Arquitetura do sistema
-- [DEVELOPMENT.md](./DEVELOPMENT.md) - Guia de desenvolvimento
 
 ## 🗂️ Estrutura do Projeto
 
 ```
 projeto analise atletas/
-├── frontend/          # React + Vite
+├── frontend/                   React 19 + Vite + TailwindCSS 4
 │   ├── src/
-│   │   ├── components/   # Componentes React
-│   │   ├── pages/        # Páginas
-│   │   ├── services/     # Chamadas API
-│   │   └── utils/        # Utilitários
-│   └── .env.example
-├── server/           # Node.js + Express
+│   │   ├── components/        Componentes reutilizáveis
+│   │   ├── pages/             Páginas da aplicação
+│   │   ├── services/          Chamadas API
+│   │   ├── hooks/             Custom hooks
+│   │   └── utils/             Funções auxiliares
+│   └── public/                Assets estáticos
+│
+├── server/                     Node.js + Express
 │   ├── src/
-│   │   ├── controllers/  # Lógica de negócio
-│   │   ├── models/       # Modelos Supabase
-│   │   ├── routes/       # Rotas da API
-│   │   ├── services/     # Serviços externos (Gemini, FFmpeg)
-│   │   └── utils/        # Utilitários
-│   ├── uploads/          # Vídeos temporários
-│   ├── .env.example
-│   └── supabase-schema.sql
-└── README.md
+│   │   ├── controllers/       Lógica de negócio
+│   │   ├── models/            Modelos de dados
+│   │   ├── routes/            Rotas da API
+│   │   ├── middleware/        Auth & validações
+│   │   └── services/          Serviços externos (IA)
+│   ├── migrations/            SQLs do Supabase (001-009)
+│   ├── tests/                 Testes de integração
+│   └── uploads/               Arquivos de upload
+│
+├── scripts/                    Scripts de desenvolvimento
+│   ├── dev.sh                 Comandos de desenvolvimento
+│   ├── start.sh               Iniciar app completo
+│   └── startup-info.sh        Documentação interativa
+│
+├── tools/                      Ferramentas de debug
+│   ├── api-requests.http      Requests HTTP
+│   └── TEST_TOKEN.js          Teste de autenticação
+│
+└── docs/                       Documentação completa
+    ├── setup/                 Guias de configuração
+    ├── deployment/            Guias de deploy
+    └── guides/                Checklists e tutoriais
 ```
 
 ## 🔑 Variáveis de Ambiente
