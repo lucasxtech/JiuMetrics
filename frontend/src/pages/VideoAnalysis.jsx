@@ -1,4 +1,4 @@
-import VideoAnalysisComponent from '../components/VideoAnalysis';
+import VideoAnalysisComponent from '../components/video/VideoAnalysis';
 
 export default function VideoAnalysisPage() {
   return (

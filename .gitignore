@@ -30,3 +30,11 @@ build/
 # Vite
 .vite/
 server.log
+
+# Uploads
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Scripts temporários
+organize-files.sh
+reorganize-docs.sh

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { analyzeVideoLink, isValidVideoUrl } from '../services/videoAnalysisService';
-import { getAllAthletes } from '../services/athleteService';
-import { getAllOpponents } from '../services/opponentService';
-import { createAthlete } from '../services/athleteService';
-import { createOpponent } from '../services/opponentService';
-import PieChartSection from './PieChartSection';
-import CustomSelect from './common/CustomSelect';
-import QuickAddModal from './common/QuickAddModal';
+import { analyzeVideoLink, isValidVideoUrl } from '../../services/videoAnalysisService';
+import { getAllAthletes } from '../../services/athleteService';
+import { getAllOpponents } from '../../services/opponentService';
+import { createAthlete } from '../../services/athleteService';
+import { createOpponent } from '../../services/opponentService';
+import PieChartSection from '../charts/PieChartSection';
+import CustomSelect from '../common/CustomSelect';
+import QuickAddModal from '../common/QuickAddModal';
 
 export default function VideoAnalysisComponent() {
   const [videos, setVideos] = useState([

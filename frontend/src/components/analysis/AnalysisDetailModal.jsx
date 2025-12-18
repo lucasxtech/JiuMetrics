@@ -1,5 +1,5 @@
 import { X, Play, Calendar, BarChart3, TrendingUp, Target, Award } from 'lucide-react';
-import PieChartSection from './PieChartSection';
+import PieChartSection from '../charts/PieChartSection';
 
 /**
  * Modal detalhado para visualizar análise completa

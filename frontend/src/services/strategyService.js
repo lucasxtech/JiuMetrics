@@ -11,7 +11,6 @@ const getSelectedModel = () => {
  * Compara atleta vs adversário e gera estratégia tática
  */
 export async function compareAndGenerateStrategy(athleteId, opponentId) {
-  console.log('🎯 Gerando estratégia:', { athleteId, opponentId });
   const model = getSelectedModel();
   const response = await api.post('/strategy/compare', {
     athleteId,

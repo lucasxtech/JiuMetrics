@@ -29,20 +29,16 @@ export default function ModernLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('🎯 handleSubmit chamado!');
     
     const { email, password } = formData;
-    console.log('📧 Dados do form:', { email, hasPassword: !!password });
     
     if (!email || !password) {
-      console.log('❌ Email ou senha vazios');
       setError('Preencha e-mail e senha para continuar!');
       return;
     }
 
     setLoading(true);
     setError('');
-    console.log('🚀 Chamando login...');
 
     try {
       const response = await login({
@@ -51,13 +47,9 @@ export default function ModernLogin() {
         rememberMe: formData.rememberMe
       });
       
-      console.log('📨 Resposta do login:', response);
-      
       if (response.success) {
-        console.log('✅ Login bem-sucedido, redirecionando para:', from);
         navigate(from, { replace: true });
       } else {
-        console.log('❌ Login falhou:', response.error);
         setError(response.error || 'Email ou senha inválidos');
       }
     } catch (err) {
