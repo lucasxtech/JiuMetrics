@@ -49,6 +49,18 @@
       monospace;
   }
 
+  /* Cursor pointer para todos os elementos clicáveis */
+  button,
+  a,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+
   /* Inputs modernos - Estilo consistente e profissional */
   input,
   textarea,

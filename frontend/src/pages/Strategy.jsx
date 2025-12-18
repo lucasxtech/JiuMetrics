@@ -6,6 +6,7 @@ import { compareAndGenerateStrategy } from '../services/strategyService';
 import AiStrategyBox from '../components/AiStrategyBox';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
+import CustomSelect from '../components/common/CustomSelect';
 
 export default function Strategy() {
   const [athletes, setAthletes] = useState([]);
@@ -67,9 +68,6 @@ export default function Strategy() {
     }
   };
 
-  const selectionButtonBase =
-    'w-full rounded-xl border px-4 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300';
-
   if (isLoadingData) {
     return (
       <div className="dashboard-wrapper">
@@ -99,81 +97,103 @@ export default function Strategy() {
           <h2 className="section-header__title">Defina quem será analisado</h2>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Atleta */}
           <article className="panel">
-            <div className="panel__head">
+            <div className="panel__head mb-4">
               <div>
                 <p className="eyebrow">Atleta</p>
                 <h3 className="panel__title">Seu atleta</h3>
               </div>
             </div>
-            <div className="space-y-3">
-              {athletes.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  Nenhum atleta cadastrado ainda
-                </p>
-              ) : (
-                athletes.map((athlete) => {
-                  const isSelected = selectedAthlete?.id === athlete.id;
-                  return (
-                    <button
-                      style={{ margin: "1vh" }}
-                      key={athlete.id}
-                      type="button"
-                      onClick={() => setSelectedAthlete(athlete)}
-                      className={`${selectionButtonBase} ${
-                        isSelected
-                          ? 'border-slate-900 bg-slate-900/5 text-slate-900'
-                          : 'border-transparent bg-slate-50 hover:border-slate-200'
-                      }`}
-                    >
-                      <p className="font-semibold text-slate-900">{athlete.name}</p>
-                      <p className="text-sm text-slate-500">
-                        {athlete.belt || 'N/A'} • {athlete.weight || 'N/A'}kg
-                        {athlete.cardio ? ` • Cond: ${athlete.cardio}%` : ''}
-                      </p>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+            
+            {athletes.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">
+                Nenhum atleta cadastrado ainda
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <CustomSelect
+                  value={selectedAthlete?.id || ''}
+                  onChange={(athleteId) => {
+                    const athlete = athletes.find(a => a.id === athleteId);
+                    setSelectedAthlete(athlete || null);
+                  }}
+                  options={athletes.map(athlete => ({
+                    value: athlete.id,
+                    label: athlete.name,
+                    subtitle: `${athlete.belt || 'N/A'} • ${athlete.weight || 'N/A'}kg${athlete.cardio ? ` • Cond: ${athlete.cardio}%` : ''}`
+                  }))}
+                  placeholder="Selecione um atleta"
+                />
+                
+                {/* Preview card do atleta selecionado */}
+                {selectedAthlete && (
+                  <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-blue-50 to-slate-50 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-lg shadow-lg shadow-blue-600/30">
+                        {selectedAthlete.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900">{selectedAthlete.name}</p>
+                        <p className="text-sm text-slate-600">
+                          {selectedAthlete.belt || 'N/A'} • {selectedAthlete.weight || 'N/A'}kg
+                          {selectedAthlete.cardio ? ` • Condicionamento: ${selectedAthlete.cardio}%` : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </article>
 
+          {/* Adversário */}
           <article className="panel">
-            <div className="panel__head">
+            <div className="panel__head mb-4">
               <div>
                 <p className="eyebrow">Adversário</p>
                 <h3 className="panel__title">Alvo da estratégia</h3>
               </div>
             </div>
-            <div className="space-y-3">
-              {opponents.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">
-                  Nenhum adversário cadastrado ainda
-                </p>
-              ) : (
-                opponents.map((opponent) => {
-                  const isSelected = selectedOpponent?.id === opponent.id;
-                  return (
-                    <button
-                      style={{ margin: "1vh" }}
-                      key={opponent.id}
-                      type="button"
-                      onClick={() => setSelectedOpponent(opponent)}
-                      className={`${selectionButtonBase} ${
-                        isSelected
-                          ? 'border-slate-900 bg-slate-900/5 text-slate-900'
-                          : 'border-transparent bg-slate-50 hover:border-slate-200'
-                      }`}
-                    >
-                      <p className="font-semibold text-slate-900">{opponent.name}</p>
-                      <p className="text-sm text-slate-500">
-                        {opponent.belt || 'N/A'} • {opponent.style || 'N/A'} • {opponent.weight ? `${opponent.weight}kg` : 'N/A'}
-                      </p>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+            
+            {opponents.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">
+                Nenhum adversário cadastrado ainda
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <CustomSelect
+                  value={selectedOpponent?.id || ''}
+                  onChange={(opponentId) => {
+                    const opponent = opponents.find(o => o.id === opponentId);
+                    setSelectedOpponent(opponent || null);
+                  }}
+                  options={opponents.map(opponent => ({
+                    value: opponent.id,
+                    label: opponent.name,
+                    subtitle: `${opponent.belt || 'N/A'} • ${opponent.style || 'N/A'} • ${opponent.weight ? `${opponent.weight}kg` : 'N/A'}`
+                  }))}
+                  placeholder="Selecione um adversário"
+                />
+                
+                {/* Preview card do adversário selecionado */}
+                {selectedOpponent && (
+                  <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-red-50 to-slate-50 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-600 text-white font-bold text-lg shadow-lg shadow-red-600/30">
+                        {selectedOpponent.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900">{selectedOpponent.name}</p>
+                        <p className="text-sm text-slate-600">
+                          {selectedOpponent.belt || 'N/A'} • {selectedOpponent.style || 'N/A'} • {selectedOpponent.weight ? `${selectedOpponent.weight}kg` : 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </article>
         </div>
       </section>

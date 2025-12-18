@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { analyzeVideoLink, isValidVideoUrl } from '../services/videoAnalysisService';
 import { getAllAthletes } from '../services/athleteService';
 import { getAllOpponents } from '../services/opponentService';
+import { createAthlete } from '../services/athleteService';
+import { createOpponent } from '../services/opponentService';
 import PieChartSection from './PieChartSection';
+import CustomSelect from './common/CustomSelect';
+import QuickAddModal from './common/QuickAddModal';
 
 export default function VideoAnalysisComponent() {
   const [videos, setVideos] = useState([
@@ -23,6 +27,9 @@ export default function VideoAnalysisComponent() {
   // Estados para feedback de progresso detalhado
   const [processingStage, setProcessingStage] = useState('');
   const [processingProgress, setProcessingProgress] = useState(0);
+
+  // Estado para modal de cadastro rápido
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
 
   const giColorOptions = [
     { value: 'preto', label: 'Preto' },
@@ -64,6 +71,36 @@ export default function VideoAnalysisComponent() {
       setAthleteName('');
     }
   }, [personId, personType, athletes, opponents]);
+
+  // Função para criar atleta/adversário via Quick Add
+  const handleQuickAdd = async (formData) => {
+    const createFn = personType === 'athlete' ? createAthlete : createOpponent;
+    
+    // Adicionar campos padrão que o backend espera
+    const dataToSend = {
+      ...formData,
+      age: 25, // valor padrão
+      weight: 75, // valor padrão
+      style: 'Guardeiro' // valor padrão
+    };
+    
+    const response = await createFn(dataToSend);
+    
+    if (response.success) {
+      // Recarregar lista
+      const fetchFn = personType === 'athlete' ? getAllAthletes : getAllOpponents;
+      const updatedData = await fetchFn();
+      
+      if (personType === 'athlete') {
+        setAthletes(updatedData.data || []);
+      } else {
+        setOpponents(updatedData.data || []);
+      }
+      
+      // Selecionar automaticamente o novo item
+      setPersonId(response.data.id);
+    }
+  };
 
   const addVideo = () => {
     setVideos([...videos, { id: Date.now(), url: '', file: null, giColor: 'preto' }]);
@@ -179,50 +216,47 @@ export default function VideoAnalysisComponent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-600">Tipo</label>
-                <select
-                  className="w-full"
+                <CustomSelect
                   value={personType}
-                  onChange={(e) => {
-                    setPersonType(e.target.value);
+                  onChange={(value) => {
+                    setPersonType(value);
                     setPersonId('');
                     setError(null);
                   }}
+                  options={[
+                    { value: 'athlete', label: 'Atleta' },
+                    { value: 'opponent', label: 'Adversário' }
+                  ]}
                   disabled={loadingPeople}
-                >
-                  <option value="athlete">Atleta</option>
-                  <option value="opponent">Adversário</option>
-                </select>
+                />
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-600">
                   {personType === 'athlete' ? 'Atleta' : 'Adversário'}
                 </label>
-                <select
-                  className="w-full"
+                <CustomSelect
                   value={personId}
-                  onChange={(e) => {
-                    setPersonId(e.target.value);
+                  onChange={(value) => {
+                    setPersonId(value);
                     setError(null);
                   }}
-                  disabled={loadingPeople}
-                >
-                  <option value="">Selecione...</option>
-                  {personType === 'athlete' 
-                    ? athletes.map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))
-                    : opponents.map(o => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))
+                  options={
+                    personType === 'athlete'
+                      ? athletes.map(a => ({ value: a.id, label: a.name }))
+                      : opponents.map(o => ({ value: o.id, label: o.name }))
                   }
-                </select>
+                  placeholder="Selecione..."
+                  disabled={loadingPeople}
+                  onCreateNew={() => setShowQuickAddModal(true)}
+                  createNewLabel={`Criar novo ${personType === 'athlete' ? 'atleta' : 'adversário'}`}
+                />
               </div>
             </div>
 
             {/* Lista de vídeos */}
             <div className="space-y-3">
               {videos.map((video, index) => (
-                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-sm" style={{ marginBottom: "2vh", marginTop: "2vh", padding: "1.5%" }}>
+                <div key={video.id} className="rounded-lg border border-slate-200 bg-slate-50 p-6 shadow-sm my-4">
                   {/* Header compacto */}
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-900">Vídeo {index + 1}</span>
@@ -580,6 +614,14 @@ export default function VideoAnalysisComponent() {
           </div>
         </section>
       )}
+
+      {/* Modal de Cadastro Rápido */}
+      <QuickAddModal
+        isOpen={showQuickAddModal}
+        onClose={() => setShowQuickAddModal(false)}
+        type={personType}
+        onSuccess={handleQuickAdd}
+      />
     </div>
   );
 }

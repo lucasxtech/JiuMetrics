@@ -22,15 +22,14 @@ export default function AnalysisDetailModal({ analysis, onClose }) {
   const hasTechnicalStats = analysis.technical_stats && Object.keys(analysis.technical_stats).length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={onClose}
       />
-
+      
       {/* Modal */}
-      <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl animate-slideUp">
+      <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="flex items-start justify-between gap-4 p-6">

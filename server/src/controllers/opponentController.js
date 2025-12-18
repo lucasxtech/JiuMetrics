@@ -59,17 +59,17 @@ exports.create = async (req, res) => {
   try {
     const { name, age, weight, belt, style, strongAttacks, weaknesses, cardio, videoUrl } = req.body;
 
-    if (!name || !age || !weight) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        error: 'Nome, idade e peso são obrigatórios',
+        error: 'Nome é obrigatório',
       });
     }
 
     const newOpponent = await Opponent.create({
       name,
-      age: Number(age),
-      weight: Number(weight),
+      age: age ? Number(age) : 25,
+      weight: weight ? Number(weight) : 75,
       belt: belt || 'Branca',
       style: style || 'Guarda',
       strongAttacks: strongAttacks || '',
