@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
 import AnalysisCard from '../components/AnalysisCard';
 import AiStrategyBox from '../components/AiStrategyBox';
+import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal';
 import { getAllAnalyses, deleteAnalysis } from '../services/analysisService';
 
 export default function Analyses() {
@@ -12,6 +13,9 @@ export default function Analyses() {
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [analysisToDelete, setAnalysisToDelete] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const contentRef = useRef(null);
   const [filters, setFilters] = useState({
     athleteId: null,
@@ -49,10 +53,18 @@ export default function Analyses() {
     setShowModal(true);
   };
 
-  const handleDelete = async (analysisId) => {
+  const handleDelete = (analysisId) => {
+    setAnalysisToDelete(analysisId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!analysisToDelete) return;
+    
     try {
-      await deleteAnalysis(analysisId);
-      setAnalyses(prev => prev.filter(a => a.id !== analysisId));
+      await deleteAnalysis(analysisToDelete);
+      setAnalyses(prev => prev.filter(a => a.id !== analysisToDelete));
+      setAnalysisToDelete(null);
     } catch (err) {
       console.error('Erro ao deletar análise:', err);
       alert('Erro ao deletar análise. Tente novamente.');
@@ -66,20 +78,145 @@ export default function Analyses() {
   };
 
   const handleDownloadPDF = async () => {
-    if (!selectedAnalysis || !contentRef.current) return;
+    if (!selectedAnalysis) return;
 
     setIsDownloading(true);
     try {
-      const element = contentRef.current;
+      const strategyData = selectedAnalysis.strategy_data?.strategy || selectedAnalysis.strategy_data;
+      
+      console.log('Full strategy data:', strategyData);
+      
+      // Parsear plano_tatico_faseado se for string
+      let planoTatico = strategyData?.plano_tatico_faseado;
+      if (typeof planoTatico === 'string') {
+        try {
+          planoTatico = JSON.parse(planoTatico);
+        } catch (e) {
+          console.error('Erro ao parsear plano_tatico_faseado:', e);
+        }
+      }
+      
+      // Criar conteúdo formatado para PDF
+      const content = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px;">
+          <h1 style="color: #1f2937; margin-bottom: 10px; font-size: 24px;">
+            ${selectedAnalysis.athlete_name} vs ${selectedAnalysis.opponent_name}
+          </h1>
+          <p style="color: #64748b; margin-bottom: 30px; font-size: 14px;">
+            Criado em ${new Date(selectedAnalysis.created_at).toLocaleDateString('pt-BR')}
+          </p>
+          
+          <!-- Tese da Vitória -->
+          ${strategyData?.tese_da_vitoria ? `
+          <div style="background: #f1f5f9; border: 2px solid #cbd5e1; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <span style="font-size: 20px;">✓</span>
+              <h2 style="color: #475569; margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Tese da Vitória</h2>
+            </div>
+            <p style="color: #0f172a; font-size: 16px; line-height: 1.6; margin: 0;">
+              ${strategyData.tese_da_vitoria}
+            </p>
+          </div>
+          ` : ''}
+          
+          <!-- Análise de Matchup -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">Matchup & Assimetrias</h2>
+            
+            ${strategyData?.analise_de_matchup?.vantagem_critica ? `
+            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+              <p style="color: #065f46; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">✓ Vantagem Crítica</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${strategyData.analise_de_matchup.vantagem_critica}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${strategyData?.analise_de_matchup?.neutralizacao ? `
+            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 15px;">
+              <p style="color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚠ Neutralização</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${strategyData.analise_de_matchup.neutralizacao}
+              </p>
+            </div>
+            ` : ''}
+          </div>
+          
+          <!-- Plano Tático Faseado -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">Plano Tático Faseado</h2>
+            
+            ${planoTatico?.detalhe_tecnico ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #3b82f6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🔍 Detalhe Técnico</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.detalhe_tecnico}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.acao_recomendada ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #10b981; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">✓ Ação Recomendada</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.acao_recomendada}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.alerta_de_reversao ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #f59e0b; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚠️ Alerta de Reversão</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.alerta_de_reversao}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.caminho_das_pedras ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🛣️ Caminho das Pedras</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.caminho_das_pedras}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.melhor_posicao ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #06b6d4; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">📍 Melhor Posição</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.melhor_posicao}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.gatilho_de_ataque ? `
+            <div>
+              <p style="color: #dc2626; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚡ Gatilho de Ataque</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.gatilho_de_ataque}
+              </p>
+            </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = content;
+      document.body.appendChild(tempDiv);
+
       const opt = {
         margin: 10,
         filename: `analise-tatica-${selectedAnalysis.athlete_name}-vs-${selectedAnalysis.opponent_name}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      await html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt).from(tempDiv).save();
+      document.body.removeChild(tempDiv);
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
       alert('Erro ao gerar PDF. Tente novamente.');
@@ -87,6 +224,17 @@ export default function Analyses() {
       setIsDownloading(false);
     }
   };
+
+  // Filtrar análises baseado no termo de busca
+  const filteredAnalyses = analyses.filter((analysis) => {
+    if (!searchTerm.trim()) return true;
+    
+    const term = searchTerm.toLowerCase();
+    const athleteName = (analysis.athlete_name || '').toLowerCase();
+    const opponentName = (analysis.opponent_name || '').toLowerCase();
+    
+    return athleteName.includes(term) || opponentName.includes(term);
+  });
 
   return (
     <div className="page-container">
@@ -98,6 +246,34 @@ export default function Analyses() {
         </p>
       </div>
 
+      {/* Campo de Busca */}
+      <div className="mb-6">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por atleta ou adversário..."
+            className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Stats rápidas */}
       {!loading && Array.isArray(analyses) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -107,6 +283,11 @@ export default function Analyses() {
                 <div>
                   <p className="text-sm font-medium text-slate-600">Total de Análises</p>
                   <p className="text-2xl font-bold text-slate-900 mt-1">{analyses.length}</p>
+                  {searchTerm && filteredAnalyses.length !== analyses.length && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      {filteredAnalyses.length} encontrada(s)
+                    </p>
+                  )}
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,10 +390,38 @@ export default function Analyses() {
         </div>
       )}
 
+      {/* Empty State - Busca sem resultados */}
+      {!loading && !error && analyses.length > 0 && filteredAnalyses.length === 0 && (
+        <div className="panel">
+          <div className="px-6 py-12 text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              Nenhum resultado encontrado
+            </h3>
+            <p className="text-slate-600 mb-4">
+              Não encontramos análises com "{searchTerm}"
+            </p>
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="btn-secondary inline-flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Limpar busca
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Lista de Análises */}
-      {!loading && !error && Array.isArray(analyses) && analyses.length > 0 && (
+      {!loading && !error && Array.isArray(filteredAnalyses) && filteredAnalyses.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {analyses.map((analysis) => (
+          {filteredAnalyses.map((analysis) => (
             <AnalysisCard
               key={analysis.id}
               analysis={analysis}
@@ -225,8 +434,12 @@ export default function Analyses() {
 
       {/* Modal de Visualização */}
       {showModal && selectedAnalysis && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          {/* Backdrop clicável */}
+          <div className="absolute inset-0" onClick={closeModal} />
+          
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header do Modal */}
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
               <div>
@@ -248,7 +461,7 @@ export default function Analyses() {
             </div>
 
             {/* Conteúdo do Modal (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-6" ref={contentRef}>
+            <div className="flex-1 overflow-y-auto p-6">
               <AiStrategyBox strategy={selectedAnalysis.strategy_data} />
             </div>
 
@@ -283,6 +496,17 @@ export default function Analyses() {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setAnalysisToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Excluir Análise Tática"
+        message="Deseja remover esta análise tática? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 }

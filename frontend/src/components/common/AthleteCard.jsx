@@ -42,7 +42,7 @@ export default function AthleteCard({
     <div
       onClick={onClick}
       className="group cursor-pointer rounded-3xl border border-white/60 bg-white/90 shadow-[0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(15,23,42,0.18)] transition-all duration-200 animate-scaleIn"
-      style={{ padding: "1vw" }}
+      
     >
       {/* Header com Avatar */}
       <div className="p-6 pb-4 relative">
@@ -84,13 +84,13 @@ export default function AthleteCard({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2" style={{ marginBottom: "0.5vw" }}>
+              <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2 mb-2">
                 <div className="w-7 h-7 rounded-xl bg-amber-400 flex items-center justify-center">
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <div className="flex-1" style={{ margin: "0.2vw" }}>
+                <div className="flex-1 m-1">
                   <p className="text-xs font-semibold text-amber-900">Aguardando análise</p>
                   <p className="text-xs text-amber-600">Envie um vídeo para IA</p>
                 </div>

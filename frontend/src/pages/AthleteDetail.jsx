@@ -8,6 +8,7 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import VideoAnalysisCard from '../components/VideoAnalysisCard';
 import AnalysisDetailModal from '../components/AnalysisDetailModal';
 import VideoAnalysisEmptyState from '../components/VideoAnalysisEmptyState';
+import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal';
 import { getAthleteById, deleteAthlete } from '../services/athleteService';
 import { getOpponentById, deleteOpponent } from '../services/opponentService';
 import { getAnalysesByPerson, deleteAnalysis } from '../services/fightAnalysisService';
@@ -24,6 +25,8 @@ export default function AthleteDetail({ isOpponent = false }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteAnalysisModal, setShowDeleteAnalysisModal] = useState(false);
+  const [analysisToDelete, setAnalysisToDelete] = useState(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [aiSummary, setAiSummary] = useState('');
@@ -122,15 +125,21 @@ export default function AthleteDetail({ isOpponent = false }) {
     setIsEditing(false);
   };
 
-  const handleDeleteAnalysis = async (analysisId) => {
-    if (confirm('Deseja remover esta análise?')) {
-      try {
-        await deleteAnalysis(analysisId);
-        setAnalyses(analyses.filter(a => a.id !== analysisId));
-      } catch (err) {
-        console.error('Erro ao deletar análise:', err);
-        setError('Erro ao deletar análise. Tente novamente.');
-      }
+  const handleDeleteAnalysis = (analysisId) => {
+    setAnalysisToDelete(analysisId);
+    setShowDeleteAnalysisModal(true);
+  };
+
+  const confirmDeleteAnalysis = async () => {
+    if (!analysisToDelete) return;
+    
+    try {
+      await deleteAnalysis(analysisToDelete);
+      setAnalyses(analyses.filter(a => a.id !== analysisToDelete));
+      setAnalysisToDelete(null);
+    } catch (err) {
+      console.error('Erro ao deletar análise:', err);
+      setError('Erro ao deletar análise. Tente novamente.');
     }
   };
 
@@ -474,41 +483,26 @@ export default function AthleteDetail({ isOpponent = false }) {
         </section>
       )}
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-scaleIn">
-            <div className="flex items-center gap-3 text-red-600 mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wide text-red-500">Atenção</p>
-                <h3 className="text-lg font-semibold text-slate-900">Excluir atleta</h3>
-              </div>
-            </div>
-            <p className="text-slate-600 mb-6">Essa ação é permanente e removerá todos os dados do atleta <strong>{athlete.name}</strong>. Deseja continuar?</p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={isDeleting}
-                className="inline-flex items-center justify-center rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-600 disabled:opacity-60"
-              >
-                {isDeleting ? 'Removendo...' : 'Sim, excluir'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title={`Excluir ${isOpponent ? 'Adversário' : 'Atleta'}`}
+        message={`Essa ação é permanente e removerá todos os dados ${isOpponent ? 'do adversário' : 'do atleta'}. Deseja continuar?`}
+        itemName={athlete?.name}
+        confirmText={isDeleting ? 'Removendo...' : 'Sim, excluir'}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={showDeleteAnalysisModal}
+        onClose={() => {
+          setShowDeleteAnalysisModal(false);
+          setAnalysisToDelete(null);
+        }}
+        onConfirm={confirmDeleteAnalysis}
+        title="Excluir Análise"
+        message="Deseja remover esta análise? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 }
