@@ -1,7 +1,7 @@
 // Configuração de rotas da aplicação
 import './index.css';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/routing/ProtectedRoute';
 import Header from './components/common/Header';
 import Overview from './pages/Overview';
 import Athletes from './pages/Athletes';
