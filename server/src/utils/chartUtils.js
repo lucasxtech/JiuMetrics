@@ -99,6 +99,43 @@ function createFallbackStructure(summary = "Análise baseada em inferência téc
 }
 
 /**
+ * Normaliza os valores de um gráfico para somar exatamente 100%
+ * @param {Array} data - Array de {label, value}
+ * @returns {Array} Array normalizado
+ */
+function normalizeChartData(data) {
+  if (!Array.isArray(data) || data.length === 0) return data;
+  
+  const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+  
+  // Se total é 0, não há dados - retorna como está
+  if (total === 0) return data;
+  
+  // Se total já é 100, retorna como está
+  if (total === 100) return data;
+  
+  // Normalizar para somar 100
+  const factor = 100 / total;
+  let normalized = data.map(item => ({
+    ...item,
+    value: Math.round((Number(item.value) || 0) * factor)
+  }));
+  
+  // Ajustar arredondamento para garantir soma exata de 100
+  const newTotal = normalized.reduce((sum, item) => sum + item.value, 0);
+  if (newTotal !== 100) {
+    const diff = 100 - newTotal;
+    // Adiciona/subtrai a diferença do maior valor não-zero
+    const maxIndex = normalized.reduce((iMax, item, i, arr) => 
+      item.value > arr[iMax].value ? i : iMax, 0
+    );
+    normalized[maxIndex].value += diff;
+  }
+  
+  return normalized;
+}
+
+/**
  * Extraí e parseia JSON de resposta do Gemini, com tratamento robusto de erros
  * @param {string} text - Texto bruto contendo JSON
  * @returns {Object} Objeto parseado ou estrutura de fallback
@@ -117,6 +154,15 @@ function extractJson(text) {
 
   try {
     const parsed = JSON.parse(jsonString);
+    
+    // ⚠️ NORMALIZAR TODOS OS GRÁFICOS PARA GARANTIR 100%
+    if (Array.isArray(parsed.charts)) {
+      parsed.charts = parsed.charts.map(chart => ({
+        ...chart,
+        data: normalizeChartData(chart.data)
+      }));
+    }
+    
     return parsed;
   } catch (error) {
     console.error("❌ Erro ao parsear JSON:", error.message);
@@ -217,4 +263,4 @@ function generateQuickChartUrl(chartData) {
   return `${baseUrl}?${params}`;
 }
 
-module.exports = { extractJson, generateQuickChartUrl };
+module.exports = { extractJson, generateQuickChartUrl, normalizeChartData };
