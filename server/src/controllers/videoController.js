@@ -169,6 +169,7 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     let savedAnalysis = null;
     if (personId && personType) {
       try {
+        console.log('💾 Salvando análise com userId:', req.userId);
         // Criar análise
         savedAnalysis = await FightAnalysis.create({
           personId,
@@ -178,11 +179,12 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
           summary: consolidatedAnalysis.summary || '',
           technicalProfile: consolidatedAnalysis.technicalProfile || '',
           framesAnalyzed: allFrameAnalyses.length,
+          userId: req.userId, // ⚠️ CRÍTICO: Adicionar userId
         });
         
-        console.log(`💾 Análise salva para ${personType} ${personId}`);
+        console.log(`✅ Análise salva com sucesso para ${personType} ${personId}`);
       } catch (saveError) {
-        console.error('⚠️ Erro ao salvar análise:', saveError.message);
+        console.error('❌ Erro ao salvar análise:', saveError.message);
       }
     }
 

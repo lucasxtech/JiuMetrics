@@ -19,14 +19,37 @@ class FightAnalysis {
   /**
    * Busca análises por tipo de pessoa (athlete ou opponent)
    */
-  static async getByPersonId(personId) {
-    const { data, error } = await supabase
+  static async getByPersonId(personId, userId = null) {
+    console.log('🔎 FightAnalysis.getByPersonId:', { personId, userId });
+    
+    let query = supabase
       .from('fight_analyses')
       .select('*')
-      .eq('person_id', personId)
-      .order('created_at', { ascending: false });
+      .eq('person_id', personId);
     
-    if (error) throw error;
+    // Filtrar por user_id se fornecido
+    if (userId) {
+      console.log('🔒 Filtrando por userId:', userId);
+      query = query.eq('user_id', userId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ Erro ao buscar análises:', error);
+      throw error;
+    }
+    
+    console.log('📊 Dados retornados do Supabase:', data?.length || 0, 'registros');
+    if (data && data.length > 0) {
+      console.log('🔍 Primeira análise:', {
+        id: data[0].id,
+        person_id: data[0].person_id,
+        user_id: data[0].user_id,
+        created_at: data[0].created_at
+      });
+    }
+    
     return parseAnalysesFromDB(data);
   }
 
@@ -48,17 +71,24 @@ class FightAnalysis {
    * Cria uma nova análise de luta
    */
   static async create(analysisData) {
+    const insertData = {
+      person_id: analysisData.personId,
+      person_type: analysisData.personType,
+      video_url: analysisData.videoUrl || '',
+      charts: analysisData.charts || [],
+      summary: analysisData.summary || '',
+      technical_profile: analysisData.technicalProfile || '',
+      frames_analyzed: analysisData.framesAnalyzed || 0,
+    };
+    
+    // Adicionar user_id se fornecido
+    if (analysisData.userId) {
+      insertData.user_id = analysisData.userId;
+    }
+    
     const { data, error } = await supabase
       .from('fight_analyses')
-      .insert([{
-        person_id: analysisData.personId,
-        person_type: analysisData.personType,
-        video_url: analysisData.videoUrl || '',
-        charts: analysisData.charts || [],
-        summary: analysisData.summary || '',
-        technical_profile: analysisData.technicalProfile || '',
-        frames_analyzed: analysisData.framesAnalyzed || 0,
-      }])
+      .insert([insertData])
       .select()
       .single();
     

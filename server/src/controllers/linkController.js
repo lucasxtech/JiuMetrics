@@ -144,6 +144,7 @@ exports.analyzeLink = async (req, res) => {
     // Salvar análise se personId for fornecido
     if (personId && personType) {
       try {
+        console.log('💾 Salvando análise com userId:', req.userId);
         await FightAnalysis.create({
           personId,
           personType,
@@ -152,10 +153,11 @@ exports.analyzeLink = async (req, res) => {
           summary: consolidated.summary || '',
           technicalProfile: consolidated.technicalProfile || '',
           framesAnalyzed: videos.length,
+          userId: req.userId, // ⚠️ CRÍTICO: Adicionar userId
         });
-        console.log(`💾 Análise salva para ${personType} ${personId}`);
+        console.log(`✅ Análise salva com sucesso para ${personType} ${personId}`);
       } catch (saveError) {
-        console.error('Erro ao salvar análise:', saveError);
+        console.error('❌ Erro ao salvar análise:', saveError);
         // Não retornar erro, apenas logar
       }
     }

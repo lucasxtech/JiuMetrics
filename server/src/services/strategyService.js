@@ -265,12 +265,13 @@ class StrategyService {
    * usando IA para detectar padrões, evolução e tendências consistentes
    * 
    * @param {string} personId - ID do atleta ou adversário
+   * @param {string|null} userId - ID do usuário (para filtrar análises)
    * @param {string|null} customModel - Modelo Gemini customizado (opcional)
    * @returns {Promise<Object>} { resumo: string, technical_stats: Object, analysesCount: number, model: string }
    */
-  static async consolidateAnalyses(personId, customModel = null) {
+  static async consolidateAnalyses(personId, userId = null, customModel = null) {
     // Buscar todas as análises da pessoa
-    const analyses = await FightAnalysis.getByPersonId(personId);
+    const analyses = await FightAnalysis.getByPersonId(personId, userId);
     
     if (!analyses || analyses.length === 0) {
       return {
@@ -509,10 +510,11 @@ OBRIGATÓRIO:
   /**
    * Retorna a quantidade de análises disponíveis para um lutador
    * @param {string} personId - ID do atleta ou adversário
+   * @param {string|null} userId - ID do usuário (para filtrar análises)
    * @returns {Promise<number>} Número de análises
    */
-  static async getAnalysesCount(personId) {
-    const analyses = await FightAnalysis.getByPersonId(personId);
+  static async getAnalysesCount(personId, userId = null) {
+    const analyses = await FightAnalysis.getByPersonId(personId, userId);
     return analyses ? analyses.length : 0;
   }
 
@@ -535,8 +537,8 @@ OBRIGATÓRIO:
 
     // Consolidar análises de ambos os lutadores
     const [athleteConsolidation, opponentConsolidation] = await Promise.all([
-      this.consolidateAnalyses(athleteId, customModel),
-      this.consolidateAnalyses(opponentId, customModel)
+      this.consolidateAnalyses(athleteId, userId, customModel),
+      this.consolidateAnalyses(opponentId, userId, customModel)
     ]);
 
     // Preparar dados para a IA (resumo narrativo + dados quantitativos)

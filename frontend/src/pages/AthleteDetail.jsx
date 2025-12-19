@@ -37,21 +37,30 @@ export default function AthleteDetail({ isOpponent = false }) {
       try {
         setLoading(true);
         setError(null);
+        
+        console.log('🔍 AthleteDetail - Carregando dados:', { id, isOpponent });
+        
         const response = isOpponent 
           ? await getOpponentById(id)
           : await getAthleteById(id);
         setAthlete(response?.data ?? null);
         
+        console.log('✅ Atleta/Adversário carregado:', response?.data?.name);
+        
         // Buscar análises do atleta
         try {
+          console.log('📊 Buscando análises para person_id:', id);
           const analysesResponse = await getAnalysesByPerson(id);
+          console.log('📊 Resposta de análises:', analysesResponse);
+          console.log('📊 Total de análises:', analysesResponse?.data?.length || 0);
           setAnalyses(analysesResponse?.data ?? []);
         } catch (analysisErr) {
-          console.error('Erro ao carregar análises:', analysisErr);
+          console.error('❌ Erro ao carregar análises:', analysisErr);
+          console.error('❌ Detalhes do erro:', analysisErr.response?.data);
           setAnalyses([]);
         }
       } catch (err) {
-        console.error('Erro ao carregar atleta:', err);
+        console.error('❌ Erro ao carregar atleta:', err);
         setError('Não foi possível carregar o atleta.');
       } finally {
         setLoading(false);
