@@ -558,57 +558,75 @@ IMPORTANTE:
 
 ESTRUTURA DO JSON
 
-A linguagem deve ser técnica, direta e específica para ESTE matchup.
+IMPORTANTE SOBRE O ESTILO DE ESCRITA:
+- Use linguagem CLARA e EXPLICATIVA, como se estivesse conversando com o atleta
+- Evite frases muito técnicas sem contexto - sempre explique O PORQUÊ
+- Cada campo deve ser COMPREENSÍVEL por alguém que não é professor
+- Use exemplos práticos quando possível
+- Conecte as ideias com frases de transição
 
 {
-  "tese_da_vitoria": "A estratégia macro em 1 frase. Ex: 'Negar o judô dele puxando para De La Riva ofensiva, onde sua defesa de raspagem é fraca, e trabalhar subidas técnicas.'",
+  "resumo_rapido": {
+    "como_vencer": "Explicação em 2-3 frases de COMO você vai vencer essa luta. Não seja telegráfico. Ex: 'A chave para vencer essa luta está no jogo de guarda. O adversário tem dificuldade comprovada contra guardas com controle de manga, especialmente a De La Riva. Como você tem 70% de efetividade em raspagens dessa posição, o plano é puxar cedo e forçar ele a jogar onde você domina.'",
+    "tres_prioridades": [
+      "PRIORIDADE 1 com explicação do porquê - ex: 'Puxar para guarda nos primeiros 20 segundos PORQUE ele é mais forte em pé e fica perigoso quando estabelece grip de judô'",
+      "PRIORIDADE 2 com explicação - ex: 'Manter controle de manga PORQUE sem isso ele consegue circular e passar com toreada, que é o ponto forte dele'",
+      "PRIORIDADE 3 com explicação - ex: 'Forçar o ritmo alto PORQUE os dados mostram que ele cai de rendimento após 3 minutos de luta intensa'"
+    ]
+  },
+
+  "tese_da_vitoria": "Explicação completa em 3-4 frases da estratégia macro. Deve responder: O QUE fazer, POR QUE funciona contra ESSE adversário específico, e COMO isso leva à vitória. Ex: 'A estratégia central é negar completamente o jogo de judô do adversário, que é onde ele conquistou 80% das suas vitórias. Para isso, vamos puxar para guarda De La Riva ofensiva logo no início, posição onde sua defesa de raspagem é notadamente fraca (apenas 30% de sucesso em defender). A partir dessa guarda, trabalharemos subidas técnicas para single-leg X, acumulando pontos de forma consistente enquanto evitamos qualquer troca em pé.'",
 
   "analise_de_matchup": {
-    "vantagem_critica": "Onde nós somos MUITO melhores que ele? (Assimetria positiva). Seja específico com técnicas e percentuais.",
-    "risco_oculto": "O perigo que não é óbvio. Ex: 'Ele entrega a passagem para pegar as costas na transição.'",
-    "fator_chave": "O atributo que vai decidir a luta. Ex: 'Condicionamento nos últimos 2 minutos - ele baixa a guarda.'"
+    "vantagem_critica": "Explicação detalhada (2-3 frases) de onde temos vantagem significativa, COM os números que comprovam. Ex: 'Nossa maior vantagem está no jogo de raspagem. Enquanto você tem 70% de efetividade nas raspagens de De La Riva, o adversário consegue defender apenas 30% delas. Isso cria uma assimetria de 40 pontos percentuais a nosso favor - basicamente, a cada 10 tentativas, você deve conseguir 7 raspagens contra apenas 3 defesas dele.'",
+    "risco_oculto": "Explicação do perigo que não é óbvio, com contexto de COMO e QUANDO acontece. Ex: 'Cuidado: ele tem um padrão de aceitar a passagem de guarda intencionalmente. Quando sente que vai perder a guarda, ele vira de costas fingindo proteger, mas na verdade está preparando um kani basami no seu pé durante a transição. Isso já funcionou em 3 das últimas 5 lutas dele. Fique atento quando ele \"desistir fácil\" da guarda.'",
+    "fator_chave": "O elemento decisivo da luta com explicação do impacto. Ex: 'O fator que vai decidir essa luta é o condicionamento físico nos minutos finais. Em 80% das lutas que passam de 4 minutos, o adversário baixa significativamente a postura e começa a cometer erros de base. Se você conseguir manter um ritmo alto e levar a luta para os minutos finais com placar próximo, a probabilidade de conseguir uma raspagem ou finalização aumenta drasticamente.'"
   },
 
   "plano_tatico_faseado": {
     "em_pe_standup": {
       "acao_recomendada": "Comando claro: Puxar, Quedar ou Contra-atacar",
-      "detalhe_tecnico": "O pulo do gato para vencer nesta fase contra ESSE oponente específico."
+      "explicacao": "Por que essa é a melhor opção contra ESSE adversário? (2-3 frases com contexto). Ex: 'Puxar para guarda é a melhor opção porque o adversário tem formação de judô e já venceu 4 lutas por queda seguida de imobilização. Em pé, ele é mais forte e experiente. Ao puxar cedo, tiramos ele da zona de conforto e levamos para onde temos vantagem.'",
+      "como_executar": "O passo-a-passo técnico para fazer funcionar. Ex: 'Entre com controle de manga cruzada (mão direita na manga esquerda dele), puxe a manga para baixo enquanto senta, e estabeleça o gancho de DLR antes dele reagir. Isso evita o grip fight onde ele domina.'"
     },
     "jogo_de_passagem_top": {
-      "caminho_das_pedras": "Qual estilo de passagem anula a guarda específica dele? (Ex: Long step vs DLR, Toreada vs Spider)",
-      "alerta_de_reversao": "Qual a raspagem favorita dele que precisamos bloquear? Seja específico."
+      "estilo_recomendado": "Qual abordagem de passagem funciona contra a guarda específica dele? Ex: 'Passagem com pressão lateral (estilo toreada) funciona melhor porque a guarda aranha dele depende de espaço para funcionar. Quando você pressiona lateralmente e tira o espaço, os ganchos dele perdem força.'",
+      "passo_a_passo": "Como executar a passagem com detalhes. Ex: 'Controle as duas mangas, passe uma para a mesma mão, use a mão livre para pressionar o joelho dele para baixo, e circule rapidamente para o lado. Mantenha pressão constante - se parar, ele recupera a guarda.'",
+      "armadilha_a_evitar": "O contra-ataque principal dele e como neutralizar. Ex: 'Ele usa flower sweep quando você fica estático na passagem. Para evitar, nunca pare o movimento - mantenha pressão e movimento constantes. Se sentir que ele está puxando sua cabeça para baixo, base imediatamente e recomeça.'"
     },
     "jogo_de_guarda_bottom": {
-      "melhor_posicao": "Qual guarda nossa expõe a fraqueza dele? (Ex: Butterfly sweep vs passador de joelho)",
-      "gatilho_de_ataque": "O momento exato de disparar a raspagem ou finalização."
+      "guarda_ideal": "Qual guarda usar e por quê funciona contra o estilo de passagem dele. Ex: 'De La Riva com controle de manga é a guarda ideal porque ele passa primariamente com toreada, e o gancho de DLR impede ele de circular. Além disso, ele não tem resposta efetiva para a raspagem de long step.'",
+      "momento_de_atacar": "Quando e como disparar o ataque. Ex: 'O momento ideal para raspar é quando ele começa a circular para tentar a passagem. Nesse instante, ele está com o peso comprometido para frente. Use o gancho de DLR para desequilibrar e entre no single-leg X para completar a raspagem.'",
+      "se_der_errado": "Plano B se a guarda principal não funcionar. Ex: 'Se ele conseguir tirar o gancho de DLR, transicione imediatamente para X-guard. Não fique tentando reestabelecer DLR - ele é rápido demais. A X-guard mantém controle similar e você pode trabalhar raspagens de lá.'"
     }
   },
 
   "cronologia_inteligente": {
-    "inicio": "Como anular o plano principal dele nos primeiros 60 segundos? (Tático e específico)",
-    "meio": "Como explorar o cansaço ou frustração dele no meio da luta? (2-4 minutos)",
-    "final": "Gestão de placar específica. Ex: 'Ele se abre quando está perdendo, busque finalização no erro.'"
+    "primeiro_minuto": "O que fazer nos primeiros 60 segundos e por quê. Ex: 'Nos primeiros 60 segundos, o objetivo é PUXAR PARA GUARDA o mais rápido possível. O adversário demora cerca de 30 segundos para aquecer e estabelecer suas pegadas de judô. Se você puxar antes disso, ele fica desorientado e você já começa na posição vantajosa.'",
+    "minutos_2_a_4": "Estratégia para o meio da luta com foco em acumular vantagem. Ex: 'Entre os minutos 2 e 4, foque em ACUMULAR PONTOS com raspagens. O adversário começa a ficar frustrado quando não consegue passar sua guarda e perde a calma por volta dos 3 minutos. Mantenha pressão constante de raspagens - mesmo que não complete, força ele a defender e gasta energia.'",
+    "minutos_finais": "Gestão de placar e estratégia de finalização. Ex: 'Nos minutos finais, a estratégia depende do placar. Se estiver GANHANDO: trabalhe controle de tempo por cima, não arrisque - ele vai abrir para tentar empatar. Se estiver PERDENDO: explore a fadiga dele com ataques contínuos - ele comete erros de base quando cansado e já cedeu 3 raspagens em lutas assim.'"
   },
 
   "checklist_tatico": {
     "oportunidades_de_pontos": [
       {
-        "tecnica": "Nome da técnica específica (ex: Raspagem de DLR)",
-        "quando": "Momento ou situação exata (ex: Quando ele tenta circular)",
-        "pontos": "Quantos pontos vale (2, 3, 4)",
-        "probabilidade": "alta|media|baixa - baseado nos dados"
+        "tecnica": "Nome da técnica específica",
+        "situacao": "Contexto completo de quando aplicar (2 frases). Ex: 'Quando ele começa a circular para tentar passar a guarda De La Riva. Nesse momento o peso dele está comprometido para frente e ele não consegue defender a raspagem.'",
+        "pontos": "2, 3 ou 4",
+        "probabilidade": "alta, media ou baixa",
+        "por_que_funciona": "Explicação de por que essa técnica funciona contra ele especificamente. Ex: 'Funciona porque ele não tem base sólida quando está em movimento e os dados mostram que ele só defende 30% das raspagens dessa posição.'"
       }
     ],
     "armadilhas_dele": [
       {
-        "situacao": "Contexto que dispara a armadilha (ex: Quando solta manga na troca)",
-        "tecnica_perigosa": "O que ele faz (ex: Single-leg explosivo)",
-        "como_evitar": "Ação preventiva específica (ex: Nunca soltar sem substituir pegada)"
+        "situacao": "Contexto completo que ativa a armadilha",
+        "o_que_ele_faz": "Descrição da técnica perigosa e como ela funciona. Ex: 'Ele faz um single-leg explosivo aproveitando o timing do momento que você solta a manga para trocar de pegada. É muito rápido e já conseguiu queda em 4 lutas assim.'",
+        "como_evitar": "Ação preventiva detalhada. Ex: 'Nunca solte a manga sem antes ter substituído por outra pegada (gola ou outra manga). Se precisar soltar, faça sentado ou dando um passo para trás - nunca parado na frente dele.'"
       }
     ],
-    "protocolo_de_seguranca": {
-      "jamais_fazer": "Erro técnico específico que encaixa no jogo forte dele (cite posição/técnica exata)",
-      "saida_de_emergencia": "Rota de fuga da posição forte dele com sequência técnica detalhada"
+    "protocolo_de_emergencia": {
+      "posicao_perigosa": "Qual posição evitar a todo custo e por quê. Ex: 'Evite a half-guard por baixo a todo custo. Ele domina o smash pass nessa posição com 90% de taxa de sucesso. Quando você fica em half-guard, ele consegue achatar e passar em menos de 15 segundos na maioria dos casos.'",
+      "como_escapar": "Rota de fuga detalhada se cair na posição perigosa. Ex: 'Se cair no smash pass: shrimp IMEDIATAMENTE para o lado (você tem uns 2 segundos antes dele estabilizar a pressão). Use esse movimento para recuperar De La Riva ou pelo menos colocar um joelho shield. NÃO tente ficar em half-guard - saia para guarda aberta.'"
     }
   }
 }
@@ -616,61 +634,74 @@ A linguagem deve ser técnica, direta e específica para ESTE matchup.
  EXEMPLO DE RESPOSTA VÁLIDA
 
 {
-  "tese_da_vitoria": "Negar o single-leg dele puxando De La Riva ofensiva, onde sua defesa de raspagem é 30% inferior, e usar subidas técnicas para pontuar.",
+  "resumo_rapido": {
+    "como_vencer": "A chave para vencer essa luta está no jogo de guarda. O adversário tem dificuldade comprovada contra guardas com controle de manga, especialmente a De La Riva - ele só consegue defender 30% das raspagens dessa posição. Como você tem 70% de efetividade em raspagens de DLR, o plano é puxar cedo para essa guarda e forçar ele a jogar onde você domina.",
+    "tres_prioridades": [
+      "Puxar para guarda nos primeiros 20 segundos PORQUE ele é mais forte em pé e fica perigoso quando estabelece grip de judô - já venceu 4 lutas assim",
+      "Manter controle de manga durante toda a luta PORQUE sem isso ele consegue circular e passar com toreada, que é o ponto forte dele",
+      "Forçar ritmo alto especialmente após os 3 minutos PORQUE os dados mostram que ele cai de rendimento e comete erros de base quando cansado"
+    ]
+  },
+  "tese_da_vitoria": "A estratégia central é negar completamente o jogo de judô do adversário, que é onde ele conquistou a maioria das vitórias. Para isso, vamos puxar para guarda De La Riva ofensiva logo no início, posição onde a defesa dele é notadamente fraca (apenas 30% de sucesso). A partir dessa guarda, trabalharemos subidas técnicas para single-leg X, acumulando pontos de forma consistente enquanto evitamos qualquer troca em pé onde ele domina.",
   "analise_de_matchup": {
-    "vantagem_critica": "Nossa efetividade de raspagem de DLR (estimada em 70%) vs sua taxa de defesa baixa cria assimetria de 30+ pontos.",
-    "risco_oculto": "Ele entrega a passagem intencionalmente para pegar kani basami no pé durante a transição.",
-    "fator_chave": "Condicionamento cardio nos últimos 2 minutos - ele baixa a postura em 80% das lutas longas."
+    "vantagem_critica": "Nossa maior vantagem está no jogo de raspagem. Enquanto você tem 70% de efetividade nas raspagens de De La Riva, o adversário consegue defender apenas 30% delas. Isso cria uma assimetria de 40 pontos percentuais a nosso favor - basicamente, a cada 10 tentativas, você deve conseguir 7 raspagens contra apenas 3 defesas dele.",
+    "risco_oculto": "Cuidado: ele tem um padrão de aceitar a passagem de guarda intencionalmente. Quando sente que vai perder a guarda, ele vira de costas fingindo proteger, mas na verdade está preparando um kani basami no seu pé durante a transição. Isso já funcionou em 3 das últimas 5 lutas dele. Fique atento quando ele desistir fácil da guarda.",
+    "fator_chave": "O fator que vai decidir essa luta é o condicionamento físico nos minutos finais. Em 80% das lutas que passam de 4 minutos, o adversário baixa significativamente a postura e começa a cometer erros de base. Se você conseguir manter um ritmo alto e levar a luta para os minutos finais, a probabilidade de conseguir uma raspagem ou finalização aumenta muito."
   },
   "plano_tatico_faseado": {
     "em_pe_standup": {
-      "acao_recomendada": "Puxar para De La Riva antes dele estabelecer pegada de judô",
-      "detalhe_tecnico": "Entrada com control de manga cruzada para evitar o grip fight onde ele domina"
+      "acao_recomendada": "Puxar para De La Riva nos primeiros 20 segundos",
+      "explicacao": "Puxar para guarda é a melhor opção porque o adversário tem formação de judô e já venceu 4 lutas por queda seguida de imobilização. Em pé, ele é mais forte e experiente. Ao puxar antes dele estabelecer pegadas, tiramos ele da zona de conforto.",
+      "como_executar": "Entre com controle de manga cruzada (mão direita na manga esquerda dele), puxe a manga para baixo enquanto senta, e estabeleça o gancho de DLR antes dele reagir. Isso evita o grip fight onde ele domina."
     },
     "jogo_de_passagem_top": {
-      "caminho_das_pedras": "Toreada com pressão lateral - sua guarda aranha colapsa contra movimento circular rápido",
-      "alerta_de_reversao": "Ele usa flower sweep quando você fica estático na toreada - mantenha pressão constante"
+      "estilo_recomendado": "Passagem com pressão lateral estilo toreada funciona melhor porque a guarda aranha dele depende de espaço para funcionar. Quando você pressiona lateralmente e tira o espaço, os ganchos dele perdem força e ele não consegue atacar.",
+      "passo_a_passo": "Controle as duas mangas, passe uma para a mesma mão, use a mão livre para pressionar o joelho dele para baixo, e circule rapidamente para o lado. Mantenha pressão constante - se parar o movimento, ele recupera a guarda.",
+      "armadilha_a_evitar": "Ele usa flower sweep quando você fica estático na passagem. Para evitar, nunca pare o movimento lateral - mantenha pressão e movimento constantes. Se sentir que ele está puxando sua cabeça para baixo, base imediatamente e recomeça."
     },
     "jogo_de_guarda_bottom": {
-      "melhor_posicao": "De La Riva com controle de manga - ele não tem resposta efetiva para long step sweep",
-      "gatilho_de_ataque": "Quando ele tenta circular para passar, disparar raspagem para single-leg X"
+      "guarda_ideal": "De La Riva com controle de manga é a guarda ideal porque ele passa primariamente com toreada, e o gancho de DLR impede ele de circular. Além disso, ele não tem resposta efetiva para a raspagem de long step a partir dessa posição.",
+      "momento_de_atacar": "O momento ideal para raspar é quando ele começa a circular para tentar a passagem. Nesse instante, ele está com o peso comprometido para frente. Use o gancho de DLR para desequilibrar e entre no single-leg X para completar a raspagem.",
+      "se_der_errado": "Se ele conseguir tirar o gancho de DLR, transicione imediatamente para X-guard. Não fique tentando reestabelecer DLR - ele é rápido demais. A X-guard mantém controle similar e você pode trabalhar raspagens de lá."
     }
   },
   "cronologia_inteligente": {
-    "inicio": "Puxar para DLR nos primeiros 20 segundos antes dele aquecer o jogo de pegadas - ele demora para entrar no ritmo",
-    "meio": "Manter pressão constante de raspagens - ele fica frustrado e comete erros de base por volta dos 3 minutos",
-    "final": "Se estiver ganhando, trabalhar controle de tempo em top. Se perdendo, explorar a fadiga dele com ataques contínuos"
+    "primeiro_minuto": "Nos primeiros 60 segundos, o objetivo é PUXAR PARA GUARDA o mais rápido possível. O adversário demora cerca de 30 segundos para aquecer e estabelecer suas pegadas de judô. Se você puxar antes disso, ele fica desorientado e você já começa na posição vantajosa.",
+    "minutos_2_a_4": "Entre os minutos 2 e 4, foque em ACUMULAR PONTOS com raspagens. O adversário começa a ficar frustrado quando não consegue passar sua guarda e perde a calma por volta dos 3 minutos. Mantenha pressão constante de raspagens - mesmo que não complete, força ele a defender e gasta energia.",
+    "minutos_finais": "Nos minutos finais, a estratégia depende do placar. Se estiver GANHANDO: trabalhe controle de tempo por cima, não arrisque - ele vai abrir para tentar empatar. Se estiver PERDENDO: explore a fadiga dele com ataques contínuos - ele comete erros de base quando cansado."
   },
   "checklist_tatico": {
     "oportunidades_de_pontos": [
       {
-        "tecnica": "Raspagem de DLR",
-        "quando": "Quando ele tenta circular para passar",
+        "tecnica": "Raspagem de DLR para single-leg X",
+        "situacao": "Quando ele começa a circular para tentar passar a guarda De La Riva. Nesse momento o peso dele está comprometido para frente e ele não consegue defender bem.",
         "pontos": "2",
-        "probabilidade": "alta"
+        "probabilidade": "alta",
+        "por_que_funciona": "Funciona porque ele não tem base sólida quando está em movimento e os dados mostram que ele só defende 30% das raspagens dessa posição."
       },
       {
         "tecnica": "Passagem de toreada",
-        "quando": "Aos 3-4 minutos quando ele fica cansado e baixa os joelhos",
+        "situacao": "Aos 3-4 minutos quando ele fica cansado e começa a baixar os joelhos na guarda. A fadiga faz ele perder a estrutura da guarda aranha.",
         "pontos": "3",
-        "probabilidade": "media"
+        "probabilidade": "media",
+        "por_que_funciona": "A guarda aranha dele depende de ter os braços firmes. Quando cansa, os ganchos ficam fracos e a passagem lateral funciona bem."
       }
     ],
     "armadilhas_dele": [
       {
-        "situacao": "Quando você solta a manga na troca de pegada",
-        "tecnica_perigosa": "Single-leg explosivo com timing preciso",
-        "como_evitar": "Nunca soltar manga sem substituir pegada imediatamente"
+        "situacao": "Quando você solta a manga durante troca de pegada em pé",
+        "o_que_ele_faz": "Ele faz um single-leg explosivo aproveitando o timing do momento que você solta a manga. É muito rápido e já conseguiu queda em 4 lutas assim.",
+        "como_evitar": "Nunca solte a manga sem antes ter substituído por outra pegada. Se precisar soltar, faça sentado ou dando um passo para trás - nunca parado na frente dele."
       },
       {
-        "situacao": "Durante finalização de passagem",
-        "tecnica_perigosa": "Finge aceitar e pega turtle para buscar costas",
-        "como_evitar": "Sempre controlar quadril antes de considerar passagem completa"
+        "situacao": "Durante a finalização da passagem de guarda",
+        "o_que_ele_faz": "Ele finge aceitar a passagem e vira de costas, mas na verdade está preparando kani basami ou entrada para pegar suas costas na transição.",
+        "como_evitar": "Sempre controle o quadril dele completamente antes de considerar a passagem completa. Se ele virar muito fácil, desconfie e mantenha controle do quadril."
       }
     ],
-    "protocolo_de_seguranca": {
-      "jamais_fazer": "Nunca trabalhar half guard bottom - ele domina smash pass nessa posição com 90% de taxa de sucesso",
-      "saida_de_emergencia": "Se cair no smash pass: shrimp imediato para lateral + recover DLR antes da pressão estabilizar (janela crítica de 2 segundos)"
+    "protocolo_de_emergencia": {
+      "posicao_perigosa": "Evite a half-guard por baixo a todo custo. Ele domina o smash pass nessa posição com 90% de taxa de sucesso. Quando você fica em half-guard, ele consegue achatar e passar em menos de 15 segundos.",
+      "como_escapar": "Se cair no smash pass: shrimp IMEDIATAMENTE para o lado (você tem uns 2 segundos antes dele estabilizar). Use esse movimento para recuperar De La Riva ou pelo menos colocar um joelho shield. NÃO tente ficar em half-guard - saia para guarda aberta."
     }
   }
 }
@@ -762,10 +793,405 @@ Máximo ${MAX_SUMMARY_WORDS} palavras.`;
   }
 }
 
+/**
+ * Constrói o system prompt para o chat baseado no contexto
+ * @param {string} contextType - 'analysis' ou 'strategy'
+ * @param {Object} contextData - Dados do contexto
+ * @returns {string} System prompt formatado
+ */
+function buildChatSystemPrompt(contextType, contextData) {
+  if (contextType === 'analysis') {
+    return `[SISTEMA: MODO ASSISTENTE DE ANÁLISE DE LUTA]
+
+Você é um assistente especializado em Jiu-Jitsu que ajuda a refinar análises de vídeo.
+
+CONTEXTO DA ANÁLISE ATUAL:
+- Atleta: ${contextData.athleteName || 'Não informado'}
+- Tipo: ${contextData.personType === 'athlete' ? 'Atleta' : 'Adversário'}
+- Data: ${contextData.createdAt || 'Não informada'}
+
+RESUMO ATUAL DA ANÁLISE:
+${contextData.summary || 'Sem resumo disponível'}
+
+ESTATÍSTICAS TÉCNICAS:
+${JSON.stringify(contextData.technical_stats || {}, null, 2)}
+
+GRÁFICOS DE PERFIL ATUAIS:
+${JSON.stringify(contextData.charts || [], null, 2)}
+
+---
+
+⚠️⚠️⚠️ REGRAS CRÍTICAS - LEIA COM ATENÇÃO ⚠️⚠️⚠️
+
+1. NUNCA MOSTRE JSON NO CHAT
+   - PROIBIDO usar \`\`\`json no chat
+   - PROIBIDO mostrar arrays ou objetos JSON para o usuário
+   - SEMPRE use o formato ---EDIT_SUGGESTION--- para qualquer alteração
+
+2. NUNCA INVENTE DADOS
+   - Use APENAS informações que estão no RESUMO ATUAL DA ANÁLISE
+   - Se o resumo menciona "leg lock", use "leg lock" - NÃO adicione "heel hook", "chave de pé" etc.
+   - Se algo não foi mencionado no resumo, NÃO inclua nos gráficos
+
+3. SOMA DOS GRÁFICOS = EXATAMENTE 100%
+   - ANTES de responder, VERIFIQUE A SOMA de cada gráfico
+   - Se a soma não for 100, AJUSTE os valores até dar 100
+   - EXEMPLO ERRADO: 70 + 40 + 30 + 30 = 170 ❌ ISSO ESTÁ ERRADO!
+   - EXEMPLO CORRETO: 40 + 30 + 20 + 10 = 100 ✅
+   - DICA: Se quiser 3 itens iguais, use 33 + 33 + 34 = 100
+   - DICA: Se quiser 4 itens, distribua como 40 + 30 + 20 + 10 = 100
+   - FAÇA A CONTA ANTES DE ENVIAR!
+
+4. VOCÊ É O ESPECIALISTA
+   - Quando pedirem para gerar gráficos, analise o RESUMO e infira os valores
+   - NÃO peça para o usuário especificar números
+   - Use sua expertise em Jiu-Jitsu para distribuir os percentuais
+
+---
+
+FORMATO OBRIGATÓRIO PARA EDIÇÕES:
+
+Quando o usuário pedir QUALQUER mudança (texto, gráficos, etc), responda com uma frase curta E ADICIONE:
+
+---EDIT_SUGGESTION---
+{
+  "field": "charts",
+  "newValue": [ARRAY DE GRÁFICOS AQUI],
+  "reason": "explicação breve"
+}
+---END_SUGGESTION---
+
+CAMPOS DISPONÍVEIS:
+- "field": "summary" → "newValue" é STRING
+- "field": "charts" → "newValue" é ARRAY de gráficos
+- "field": "technical_stats" → "newValue" é OBJETO
+
+---
+
+FORMATO DOS GRÁFICOS (field="charts"):
+
+REGRAS:
+1. Soma de cada gráfico = EXATAMENTE 100%
+2. Inclua APENAS labels com valor > 0
+3. Inclua APENAS gráficos que tenham dados relevantes baseados no RESUMO
+4. Use APENAS técnicas/características MENCIONADAS no resumo
+
+EXEMPLO BASEADO NO RESUMO "atleta puxa guarda, joga meia guarda, tentou leg lock":
+[
+  {
+    "title": "Comportamento Inicial",
+    "data": [
+      {"label": "puxa pra guarda", "value": 100}
+    ]
+  },
+  {
+    "title": "Jogo de Guarda",
+    "data": [
+      {"label": "meia guarda", "value": 100}
+    ]
+  },
+  {
+    "title": "Tentativas de Finalização",
+    "data": [
+      {"label": "leg lock", "value": 100}
+    ]
+  }
+]
+
+GRÁFICOS POSSÍVEIS:
+- "Personalidade Geral"
+- "Comportamento Inicial"
+- "Jogo de Guarda"
+- "Jogo de Passagem"
+- "Tentativas de Finalização"
+
+LABELS VÁLIDAS:
+- Personalidade Geral: agressivo, explosivo, estratégico, conservador, ritmo constante, cansa no final, acelera no final, pressão contínua, contra-atacador
+- Comportamento Inicial: troca de queda, puxa pra guarda, tenta quedas explosivas, busca controle em pé, fica esperando, tenta passar direto ao chão
+- Jogo de Guarda: laço, guarda fechada, guarda aberta agressiva, subir de single-leg, guarda borboleta, amarra o jogo, riscadas/botes sucessivos, scramble, de la riva, meia guarda, one leg, guarda usando lapela
+- Jogo de Passagem: toreada, over/under, emborcada, pressão de quadril, caminhada lateral, passos rápidos por fora, amarração antes de passar, explosão para lateral, pulando
+- Tentativas de Finalização: arm lock, triângulo, estrangulamento, mata leão, arco e flecha, omoplata, leg lock, chave de pé, mão de vaca, guilhotina, baratoplata, tarikoplata, baseball choke, estrangulamento com lapela, heel hook, mata leão no pé, chave de panturrilha, chave de bíceps, chave de virilha`;
+  }
+
+  // Para edição de perfil técnico
+  if (contextType === 'profile') {
+    return `[SISTEMA: MODO EDITOR DE PERFIL TÉCNICO]
+
+Você é um assistente especializado em Jiu-Jitsu que ajuda a editar e refinar resumos técnicos de lutadores.
+
+CONTEXTO DO PERFIL:
+- Lutador: ${contextData.personName || 'Não informado'}
+- Tipo: ${contextData.personType === 'athlete' ? 'Atleta' : 'Adversário'}
+
+RESUMO TÉCNICO ATUAL:
+${contextData.currentSummary || 'Sem resumo disponível'}
+
+---
+
+⚠️⚠️⚠️ REGRAS CRÍTICAS - LEIA COM ATENÇÃO ⚠️⚠️⚠️
+
+1. VOCÊ É UM EDITOR ESPECIALISTA
+   - O usuário vai pedir para MODIFICAR partes do texto
+   - Você deve entender a solicitação e gerar uma versão editada do resumo
+   - Mantenha o estilo técnico e profissional
+
+2. PRESERVE O QUE NÃO FOI PEDIDO PARA MUDAR
+   - Se o usuário pedir para "remover informações sobre guardas", MANTENHA todo o resto
+   - Faça APENAS as alterações solicitadas
+   
+3. MANTENHA A QUALIDADE
+   - Texto corrido em parágrafos (sem listas ou bullet points)
+   - Linguagem técnica de Jiu-Jitsu
+   - 200-300 palavras idealmente
+
+4. SEMPRE USE O FORMATO DE SUGESTÃO
+   - Responda com uma frase curta explicando o que você fez
+   - E ADICIONE o bloco ---EDIT_SUGGESTION--- com o novo texto
+
+---
+
+FORMATO OBRIGATÓRIO PARA EDIÇÕES:
+
+Quando o usuário pedir QUALQUER mudança, responda com uma frase curta E ADICIONE:
+
+---EDIT_SUGGESTION---
+{
+  "field": "summary",
+  "newValue": "TEXTO COMPLETO DO NOVO RESUMO AQUI",
+  "reason": "explicação breve do que foi alterado"
+}
+---END_SUGGESTION---
+
+IMPORTANTE:
+- "field" é SEMPRE "summary" para edições de perfil
+- "newValue" deve conter o TEXTO COMPLETO do resumo (não apenas a parte editada)
+- Inclua TODO o resumo atualizado, não apenas os trechos modificados
+
+---
+
+EXEMPLOS DE SOLICITAÇÕES E COMO RESPONDER:
+
+SOLICITAÇÃO: "Remova as informações sobre guarda"
+RESPOSTA: "Removi as referências ao jogo de guarda do resumo, mantendo as outras informações técnicas."
++ bloco ---EDIT_SUGGESTION--- com o resumo completo sem as partes de guarda
+
+SOLICITAÇÃO: "Adicione mais detalhes sobre finalizações"
+RESPOSTA: "Adicionei informações mais detalhadas sobre o sistema de finalização do atleta."
++ bloco ---EDIT_SUGGESTION--- com o resumo completo com seção de finalizações expandida
+
+SOLICITAÇÃO: "Simplifique o texto"
+RESPOSTA: "Simplifiquei o texto, tornando-o mais direto e fácil de entender."
++ bloco ---EDIT_SUGGESTION--- com versão mais concisa do resumo`;
+  }
+
+  // Para estratégias
+  if (contextType === 'strategy') {
+    const strategyData = contextData.strategy?.strategy || contextData.strategy || {};
+    
+    return `[SISTEMA: MODO ASSISTENTE DE ESTRATÉGIA DE LUTA]
+
+Você é um assistente especializado em Jiu-Jitsu que ajuda a refinar estratégias de luta.
+
+CONTEXTO DO CONFRONTO:
+- Atleta: ${contextData.athleteName || 'Não informado'}
+- Adversário: ${contextData.opponentName || 'Não informado'}
+
+ESTRATÉGIA ATUAL:
+
+📍 Tese da Vitória:
+${strategyData.tese_da_vitoria || 'Não definida'}
+
+📊 Análise de Matchup:
+- Vantagem Crítica: ${strategyData.analise_de_matchup?.vantagem_critica || 'N/A'}
+- Neutralização: ${strategyData.analise_de_matchup?.neutralizacao || 'N/A'}
+
+🎯 Plano Tático por Fase:
+${JSON.stringify(strategyData.plano_tatico_faseado || {}, null, 2)}
+
+---
+
+⚠️⚠️⚠️ REGRAS CRÍTICAS - LEIA COM ATENÇÃO ⚠️⚠️⚠️
+
+1. VOCÊ É UM ESTRATEGISTA ESPECIALISTA
+   - O usuário vai pedir para REFINAR partes da estratégia
+   - Você deve entender a solicitação e sugerir alterações específicas
+   - Mantenha o estilo técnico e tático
+
+2. PRESERVE O QUE NÃO FOI PEDIDO PARA MUDAR
+   - Se o usuário pedir para "expandir o plano defensivo", MANTENHA o resto
+   - Faça APENAS as alterações solicitadas
+
+3. MANTENHA A ESTRUTURA
+   - Respeite os campos existentes: tese_da_vitoria, analise_de_matchup, plano_tatico_faseado, etc
+   - Seja específico e acionável nas sugestões
+
+4. USE O FORMATO DE SUGESTÃO QUANDO APROPRIADO
+   - Para alterações simples: responda conversacionalmente
+   - Para alterações estruturais: use o bloco ---EDIT_SUGGESTION---
+
+---
+
+FORMATO PARA EDIÇÕES ESTRUTURAIS:
+
+Quando o usuário pedir alterações na estratégia, responda com uma explicação E ADICIONE:
+
+---EDIT_SUGGESTION---
+{
+  "field": "strategy",
+  "section": "tese_da_vitoria|analise_de_matchup|plano_tatico_faseado",
+  "newValue": "NOVO CONTEÚDO AQUI",
+  "reason": "explicação breve"
+}
+---END_SUGGESTION---
+
+SEÇÕES DISPONÍVEIS:
+- "tese_da_vitoria" → newValue é STRING com a nova tese
+- "analise_de_matchup" → newValue é OBJETO {vantagem_critica, neutralizacao}
+- "plano_tatico_faseado" → newValue é OBJETO com fases {inicio, meio, final}
+- "pontos_criticos" → newValue é ARRAY de strings
+- "dicas_especificas" → newValue é ARRAY de strings
+
+---
+
+EXEMPLOS:
+
+SOLICITAÇÃO: "Detalhe mais a tese da vitória"
+RESPOSTA: "Vou expandir a tese da vitória com mais detalhes táticos."
++ bloco ---EDIT_SUGGESTION--- com field="strategy", section="tese_da_vitoria"
+
+SOLICITAÇÃO: "Adicione mais opções para o início da luta"
+RESPOSTA: "Adicionei variações táticas para os primeiros 2 minutos."
++ bloco ---EDIT_SUGGESTION--- com section="plano_tatico_faseado"
+
+SOLICITAÇÃO: "O que você acha da estratégia?"
+RESPOSTA: (análise conversacional sem bloco de sugestão)`;
+  }
+
+  // Fallback genérico
+  return `[SISTEMA: MODO ASSISTENTE DE JIU-JITSU]
+Você é um assistente especializado em Jiu-Jitsu.
+${JSON.stringify(contextData, null, 2)}`;
+}
+
+/**
+ * Extrai sugestão de edição da resposta da IA (se houver)
+ * @param {string} responseText - Texto da resposta
+ * @returns {Object|null} Sugestão de edição ou null
+ */
+function extractEditSuggestion(responseText) {
+  const suggestionMatch = responseText.match(/---EDIT_SUGGESTION---([\s\S]*?)---END_SUGGESTION---/);
+  
+  if (!suggestionMatch) {
+    console.log('ℹ️ Nenhuma sugestão de edição encontrada na resposta');
+    return null;
+  }
+
+  try {
+    const jsonStr = suggestionMatch[1].trim();
+    console.log('📋 JSON da sugestão extraído:', jsonStr.substring(0, 200) + '...');
+    const parsed = JSON.parse(jsonStr);
+    console.log('✅ Sugestão parseada:', {
+      field: parsed.field,
+      reason: parsed.reason,
+      newValueType: typeof parsed.newValue,
+      newValueLength: typeof parsed.newValue === 'string' ? parsed.newValue.length : 'N/A'
+    });
+    return parsed;
+  } catch (error) {
+    console.error('❌ Erro ao parsear sugestão de edição:', error.message);
+    console.error('📄 Texto que tentou parsear:', suggestionMatch[1].substring(0, 300));
+    return null;
+  }
+}
+
+/**
+ * Remove marcadores de sugestão do texto para exibição limpa
+ * @param {string} text - Texto com possíveis marcadores
+ * @returns {string} Texto limpo
+ */
+function cleanResponseText(text) {
+  return text.replace(/---EDIT_SUGGESTION---[\s\S]*?---END_SUGGESTION---/g, '').trim();
+}
+
+/**
+ * Inicia ou continua uma sessão de chat contextual com a IA
+ * @param {Object} params - Parâmetros do chat
+ * @param {string} params.contextType - 'analysis' ou 'strategy'
+ * @param {Object} params.contextData - Dados completos do contexto (análise/estratégia)
+ * @param {Array} params.history - Histórico de mensagens [{role: 'user'|'model', content: string}]
+ * @param {string} params.userMessage - Nova mensagem do usuário
+ * @param {string|null} params.customModel - Modelo customizado (opcional)
+ * @returns {Promise<Object>} Resposta da IA + sugestões de edição + usage
+ */
+async function chat({ contextType, contextData, history = [], userMessage, customModel = null }) {
+  const modelToUse = customModel ? getModel(customModel) : model;
+  const modelName = customModel || DEFAULT_MODEL;
+  
+  if (!modelToUse) {
+    throw new Error('GEMINI_API_KEY não configurada no servidor');
+  }
+
+  // Construir system prompt com contexto
+  const systemPrompt = buildChatSystemPrompt(contextType, contextData);
+
+  // Preparar histórico para o Gemini
+  const geminiHistory = [
+    { 
+      role: 'user', 
+      parts: [{ text: systemPrompt }] 
+    },
+    { 
+      role: 'model', 
+      parts: [{ text: 'Entendi o contexto da análise. Estou pronto para ajudar a refinar os dados. O que você gostaria de ajustar?' }] 
+    },
+    ...history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    }))
+  ];
+
+  try {
+    // Iniciar chat com histórico
+    const chatSession = modelToUse.startChat({
+      history: geminiHistory,
+    });
+
+    // Enviar nova mensagem
+    const result = await chatSession.sendMessage(userMessage);
+    const responseText = result.response.text();
+
+    // Extrair sugestão de edição (se houver)
+    const editSuggestion = extractEditSuggestion(responseText);
+    
+    // Limpar texto para exibição
+    const cleanMessage = cleanResponseText(responseText);
+
+    // Extrair metadata de uso
+    const usageMetadata = result.response.usageMetadata || {};
+
+    return {
+      message: cleanMessage,
+      editSuggestion,
+      usage: {
+        modelName,
+        promptTokens: usageMetadata.promptTokenCount || 0,
+        completionTokens: usageMetadata.candidatesTokenCount || 0,
+        totalTokens: usageMetadata.totalTokenCount || 0
+      }
+    };
+  } catch (error) {
+    console.error('❌ Erro no chat com IA:', error.message);
+    throw error;
+  }
+}
+
 module.exports = { 
   analyzeFrame, 
   consolidateAnalyses, 
   generateTacticalStrategy, 
   generateAthleteSummary,
-  getModel
+  getModel,
+  chat,
+  buildChatSystemPrompt,
+  extractEditSuggestion
 };

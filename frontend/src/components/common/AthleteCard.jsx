@@ -6,6 +6,7 @@ export default function AthleteCard({
   age, 
   style, 
   technicalProfile,
+  analysesCount = 0,
   onClick,
   type = 'athlete' // 'athlete' ou 'opponent'
 }) {
@@ -34,9 +35,6 @@ export default function AthleteCard({
         button: 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800',
         icon: 'bg-orange-100 text-orange-600'
       };
-
-  // Verificar se tem perfil técnico da IA
-  const hasAIProfile = technicalProfile && Object.keys(technicalProfile).length > 0;
 
   return (
     <div
@@ -68,34 +66,19 @@ export default function AthleteCard({
             </span>
           </div>
 
-          {/* Info Grid */}
-          <div className="grid grid-cols-1 gap-3">
-            {/* Status de Análise IA */}
-            {hasAIProfile ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 px-3 py-2">
-                <div className="w-7 h-7 rounded-xl bg-emerald-500 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-emerald-900">Perfil analisado</p>
-                  <p className="text-xs text-emerald-600">IA processou os dados</p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2 mb-2">
-                <div className="w-7 h-7 rounded-xl bg-amber-400 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1 m-1">
-                  <p className="text-xs font-semibold text-amber-900">Aguardando análise</p>
-                  <p className="text-xs text-amber-600">Envie um vídeo para IA</p>
-                </div>
-              </div>
-            )}
+          {/* Info de Análises */}
+          <div className="flex items-center gap-2 mt-1">
+            <div className={`flex items-center gap-2 rounded-xl px-3 py-1.5 ${analysesCount > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
+              <svg className={`w-4 h-4 ${analysesCount > 0 ? 'text-emerald-600' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span className={`text-xs font-medium ${analysesCount > 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
+                {analysesCount > 0 
+                  ? `${analysesCount} luta${analysesCount > 1 ? 's' : ''} analisada${analysesCount > 1 ? 's' : ''}`
+                  : 'Nenhuma análise'
+                }
+              </span>
+            </div>
           </div>
         </div>
       </div>

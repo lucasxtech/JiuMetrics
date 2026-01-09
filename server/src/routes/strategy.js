@@ -16,6 +16,9 @@ router.get('/analyses', strategyController.listAnalyses);
 // Buscar análise tática específica
 router.get('/analyses/:id', strategyController.getAnalysis);
 
+// Atualizar análise tática
+router.patch('/analyses/:id', strategyController.updateAnalysis);
+
 // Deletar análise tática
 router.delete('/analyses/:id', strategyController.deleteAnalysis);
 

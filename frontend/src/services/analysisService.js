@@ -34,6 +34,17 @@ export const getAnalysisById = async (id) => {
 };
 
 /**
+ * Atualiza uma análise tática
+ * @param {string} id - ID da análise
+ * @param {Object} data - Dados a atualizar
+ * @returns {Promise} Response com análise atualizada
+ */
+export const updateAnalysis = async (id, data) => {
+  const response = await api.patch(`/strategy/analyses/${id}`, data);
+  return response.data?.data || response.data;
+};
+
+/**
  * Deleta uma análise tática
  * @param {string} id - ID da análise
  * @returns {Promise} Response

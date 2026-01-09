@@ -37,7 +37,7 @@ O sistema de estratégia utiliza o **Gemini AI** para analisar comparativamente 
 7. Frontend exibe em AiStrategyBox com seções expansíveis
 ```
 
-### Response Structure
+### Response Structure (v2 - Expandida)
 
 ```json
 {
@@ -49,19 +49,63 @@ O sistema de estratégia utiliza o **Gemini AI** para analisar comparativamente 
   },
   "opponent": { ... },
   "strategy": {
-    "analise": "Análise direta estilo vs estilo",
-    "estrategia_para_vencer": "Como vencer",
-    "taticas_especificas": "Táticas práticas",
-    "plano_por_fases": {
-      "inicio": "0-60s",
-      "meio": "Meio da luta",
-      "fim": "Final e gestão"
+    "resumo_rapido": {
+      "como_vencer": "Explicação em 2-3 frases de COMO vencer essa luta",
+      "tres_prioridades": [
+        "PRIORIDADE 1 com explicação do PORQUÊ",
+        "PRIORIDADE 2 com explicação",
+        "PRIORIDADE 3 com explicação"
+      ]
     },
-    "checklist": {
-      "fazer": ["Ação 1", ...],
-      "evitar": ["Erro 1", ...],
-      "buscar": ["Posição 1", ...],
-      "nunca_permitir": ["Risco 1", ...]
+    "tese_da_vitoria": "Explicação completa em 3-4 frases da estratégia macro",
+    "analise_de_matchup": {
+      "vantagem_critica": "2-3 frases detalhando onde temos vantagem significativa",
+      "risco_oculto": "Perigo que não é óbvio, com contexto de COMO e QUANDO",
+      "fator_chave": "Elemento decisivo da luta com explicação do impacto"
+    },
+    "plano_tatico_faseado": {
+      "em_pe_standup": {
+        "acao_recomendada": "Puxar, Quedar ou Contra-atacar",
+        "explicacao": "Por quê essa é a melhor opção (2-3 frases)",
+        "como_executar": "Passo-a-passo técnico"
+      },
+      "jogo_de_passagem_top": {
+        "estilo_recomendado": "Abordagem de passagem contra a guarda específica dele",
+        "passo_a_passo": "Como executar com detalhes",
+        "armadilha_a_evitar": "Contra-ataque principal e como neutralizar"
+      },
+      "jogo_de_guarda_bottom": {
+        "guarda_ideal": "Qual guarda usar e por quê funciona",
+        "momento_de_atacar": "Quando e como disparar o ataque",
+        "se_der_errado": "Plano B se a guarda principal não funcionar"
+      }
+    },
+    "cronologia_inteligente": {
+      "primeiro_minuto": "O que fazer nos primeiros 60 segundos e por quê",
+      "minutos_2_a_4": "Estratégia para o meio da luta",
+      "minutos_finais": "Gestão de placar e estratégia de finalização"
+    },
+    "checklist_tatico": {
+      "oportunidades_de_pontos": [
+        {
+          "tecnica": "Nome da técnica",
+          "situacao": "Contexto completo de quando aplicar",
+          "pontos": "2, 3 ou 4",
+          "probabilidade": "alta, media ou baixa",
+          "por_que_funciona": "Explicação de por que funciona contra ele"
+        }
+      ],
+      "armadilhas_dele": [
+        {
+          "situacao": "Contexto que ativa a armadilha",
+          "o_que_ele_faz": "Descrição da técnica perigosa",
+          "como_evitar": "Ação preventiva detalhada"
+        }
+      ],
+      "protocolo_de_emergencia": {
+        "posicao_perigosa": "Qual posição evitar e por quê",
+        "como_escapar": "Rota de fuga detalhada"
+      }
     }
   }
 }
@@ -79,13 +123,90 @@ Agora usa **médias por análise** para evitar que quem tem mais vídeos tenha s
 
 Todos normalizados entre 10-100 com `Math.min/Math.max`.
 
-### Seções da Análise IA
+### Seções da Análise IA (v2 - Expandida)
 
-1. **Análise Direta**: Vantagens, desvantagens, equilíbrio, riscos
-2. **Estratégia para Vencer**: Ofensiva, defensiva, áreas
-3. **Táticas Específicas**: Início, anulação, exploração, técnicas
-4. **Plano por Fases**: Início / Meio / Fim da luta
-5. **Checklist Final**: Fazer / Evitar / Buscar / Nunca Permitir
+1. **Resumo Rápido** (NOVO): Bloco destacado com "Como Vencer" e 3 prioridades
+2. **Tese da Vitória**: Estratégia macro em 3-4 frases explicativas
+3. **Análise de Matchup**: Vantagem crítica, Risco oculto, Fator chave
+4. **Plano Tático Faseado**: Em pé / Passagem / Guarda (com explicações detalhadas)
+5. **Cronologia Inteligente**: Primeiro minuto / Minutos 2-4 / Minutos finais
+6. **Checklist Tático**: Oportunidades / Armadilhas / Protocolo de emergência
+
+---
+
+## 🤖 Sistema de Chat IA para Estratégias (NOVO)
+
+### Visão Geral
+
+O sistema agora inclui um **Chat IA lateral** para refinar estratégias em tempo real, seguindo o padrão do `ProfileSummaryModal`.
+
+### Componentes
+
+#### Frontend
+1. **StrategySummaryModal.jsx** - Modal principal com:
+   - Visualização completa da estratégia
+   - Painel lateral de Chat IA
+   - Painel de Histórico de versões
+   - Edição manual de cada seção
+   - Botões de salvar/restaurar versões
+
+2. **StrategyChatPanel.jsx** - Chat IA lateral para:
+   - Refinamento de seções específicas
+   - Perguntas sobre a estratégia
+   - Sugestões de ajustes táticos
+
+#### Backend
+1. **Rota**: `POST /api/chat/strategy-send`
+2. **Controller**: `chatController.sendStrategyMessage`
+3. **Service**: `geminiService.chat` (com contexto da estratégia)
+
+### Funcionalidades do Modal
+
+```javascript
+// Edição manual de seções
+const startEditing = (section, currentValue) => {
+  setEditingSection(section);
+  setEditValue(currentValue);
+};
+
+// Salvar versão no histórico
+const saveVersion = (newData, source) => {
+  setVersions(prev => [{
+    id: prev.length + 1,
+    timestamp: new Date().toISOString(),
+    data: newData,
+    source // 'Edição via Chat IA' ou 'Edição manual: seção'
+  }, ...prev]);
+};
+
+// Restaurar versão anterior
+const restoreVersion = (version) => {
+  setCurrentStrategy(version.data);
+  saveVersion(version.data, `Restaurado de: ${version.source}`);
+};
+```
+
+### Fluxo do Chat IA
+
+```
+1. Usuário abre modal da estratégia
+   ↓
+2. Clica em "Chat IA" no header
+   ↓
+3. Painel lateral abre com contexto da estratégia
+   ↓
+4. Usuário faz pergunta ou pede ajuste
+   ↓
+5. Backend: POST /api/chat/strategy-send
+   ↓
+6. Gemini analisa contexto + pergunta
+   ↓
+7. Resposta com sugestão de alteração
+   ↓
+8. Usuário pode aceitar/editar/rejeitar
+   ↓
+9. Versão salva no histórico automaticamente
+```
 
 ---
 
@@ -330,21 +451,49 @@ const analyses = await getAnalysesByPerson(athleteId);
 
 ---
 
-## 🚀 Próximos Passos
+## 🚀 Funcionalidades Implementadas
 
-Para usar o sistema completo:
+### ✅ Componentes Criados
 
-1. **Reinicie o servidor** para carregar as novas rotas
-2. **No frontend**, crie componentes para:
-   - Exibir histórico de análises
-   - Comparar atleta vs adversário
-   - Mostrar estratégias geradas
-   - Listar recomendações de matchup
+1. **AiStrategyBox.jsx** - Exibição da estratégia (seções sempre abertas)
+2. **StrategySummaryModal.jsx** - Modal completo com:
+   - Visualização detalhada
+   - Chat IA lateral (StrategyChatPanel)
+   - Histórico de versões
+   - Edição manual de seções
+3. **StrategyChatPanel.jsx** - Chat lateral para refinamento
+4. **ProfileSummaryModal.jsx** - Modal de perfil de atleta com chat
+5. **ProfileChatPanel.jsx** - Chat para refinamento de perfis
 
-3. **Exemplos de componentes a criar**:
-   - `<FightHistory personId={id} />` - Histórico de lutas
-   - `<StrategyComparison athleteId={} opponentId={} />` - Comparação
-   - `<MatchupRecommendation opponentId={} />` - Recomendações
+### ✅ Rotas de Chat IA
+
+```bash
+# Chat de Estratégia
+POST /api/chat/strategy-send
+{
+  "strategyData": { ... },
+  "athleteName": "João",
+  "opponentName": "Pedro",
+  "question": "Como melhorar a defesa?"
+}
+
+# Chat de Perfil
+POST /api/chat/profile-send
+{
+  "athleteId": "uuid",
+  "athleteName": "João",
+  "currentSummary": "Resumo atual...",
+  "question": "Detalhar finalizações"
+}
+```
+
+### ✅ Melhorias de Prompt
+
+- **Linguagem expandida**: Explicações detalhadas em vez de frases curtas
+- **Campo `resumo_rapido`**: Bloco destacado com 3 prioridades
+- **Campos `por_que_funciona`**: Contexto em cada oportunidade
+- **Campos `explicacao`**: Por quê cada ação é recomendada
+- **Fallbacks**: Suporte a campos antigos E novos
 
 ---
 
@@ -356,3 +505,13 @@ Para usar o sistema completo:
 ✅ **Matchmaking inteligente** - encontra melhor atleta para cada adversário  
 ✅ **Dados persistentes** - análises ficam salvas no sistema  
 ✅ **Integração com IA real** - Gemini Vision analisa vídeos
+
+### Novas Features (v2)
+
+✅ **Chat IA lateral** - Refine estratégias conversando com a IA  
+✅ **Edição manual** - Edite qualquer seção diretamente no modal  
+✅ **Histórico de versões** - Restaure versões anteriores com 1 clique  
+✅ **Explicações expandidas** - Cada recomendação explica o PORQUÊ  
+✅ **Resumo rápido** - 3 prioridades destacadas para memorizar  
+✅ **Protocolo de emergência** - Saiba escapar de situações perigosas  
+✅ **Seções sempre visíveis** - Sem acordions, tudo acessível

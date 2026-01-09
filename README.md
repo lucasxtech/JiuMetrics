@@ -18,6 +18,17 @@ Sistema completo de análise de vídeos de Jiu-Jitsu com IA (Google Gemini), ger
 - ✅ **Comparação e Estratégias**: Compare atletas e gere estratégias de luta com IA
 - ✅ **Banco de Dados Supabase**: Persistência de dados em PostgreSQL
 
+### 🆕 Novas Features (v2.0)
+
+- ✅ **Chat IA para Estratégias**: Refine estratégias conversando com a IA em painel lateral
+- ✅ **Chat IA para Perfis**: Melhore resumos de atletas com sugestões da IA
+- ✅ **Modal de Estratégia Completo**: Visualização detalhada com edição e chat
+- ✅ **Edição Manual de Seções**: Edite qualquer parte da estratégia diretamente
+- ✅ **Histórico de Versões**: Restaure versões anteriores com 1 clique
+- ✅ **Prompt Expandido**: Explicações detalhadas em vez de frases curtas
+- ✅ **Resumo Rápido**: 3 prioridades destacadas para memorizar
+- ✅ **Protocolo de Emergência**: Saiba escapar de situações perigosas
+
 ## 📦 Tecnologias
 
 **Frontend:**
@@ -146,6 +157,12 @@ projeto analise atletas/
 ├── frontend/                   React 19 + Vite + TailwindCSS 4
 │   ├── src/
 │   │   ├── components/        Componentes reutilizáveis
+│   │   │   ├── analysis/      AiStrategyBox, StrategySummaryModal
+│   │   │   ├── chat/          ProfileChatPanel, StrategyChatPanel
+│   │   │   ├── charts/        Gráficos Recharts
+│   │   │   ├── common/        ProfileSummaryModal, Header, Cards
+│   │   │   ├── video/         VideoAnalysis, VideoAnalysisCard
+│   │   │   └── forms/         Formulários
 │   │   ├── pages/             Páginas da aplicação
 │   │   ├── services/          Chamadas API
 │   │   ├── hooks/             Custom hooks
@@ -154,12 +171,12 @@ projeto analise atletas/
 │
 ├── server/                     Node.js + Express
 │   ├── src/
-│   │   ├── controllers/       Lógica de negócio
+│   │   ├── controllers/       chatController, strategyController
 │   │   ├── models/            Modelos de dados
-│   │   ├── routes/            Rotas da API
+│   │   ├── routes/            chat.js, strategy.js
 │   │   ├── middleware/        Auth & validações
-│   │   └── services/          Serviços externos (IA)
-│   ├── migrations/            SQLs do Supabase (001-009)
+│   │   └── services/          geminiService (Chat + Estratégia)
+│   ├── migrations/            SQLs do Supabase (001-014)
 │   ├── tests/                 Testes de integração
 │   └── uploads/               Arquivos de upload
 │
@@ -175,7 +192,7 @@ projeto analise atletas/
 └── docs/                       Documentação completa
     ├── setup/                 Guias de configuração
     ├── deployment/            Guias de deploy
-    └── guides/                Checklists e tutoriais
+    └── guides/                SISTEMA_ESTRATEGIAS.md (atualizado)
 ```
 
 ## 🔑 Variáveis de Ambiente
@@ -203,7 +220,11 @@ SUPABASE_ANON_KEY=      # Chave anon do Supabase (opcional)
    - Escolha a cor do kimono
    - Aguarde a análise
 3. **Visualize análises salvas** no perfil de cada atleta/adversário
-4. **Compare e crie estratégias** nas abas "Comparar" e "Estratégia"
+4. **Compare e crie estratégias** nas abas "Comparar" e "Estratégia":
+   - Clique no botão de expandir para abrir o **Modal de Estratégia**
+   - Use o **Chat IA** para refinar seções específicas
+   - Edite manualmente clicando no botão de edição
+   - Acesse o **Histórico** para restaurar versões anteriores
 
 ## 🤝 Contribuindo
 

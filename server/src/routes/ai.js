@@ -22,4 +22,7 @@ router.post('/analyze-link', linkController.analyzeLink);
 // POST /api/ai/athlete-summary - Gerar resumo técnico do atleta
 router.post('/athlete-summary', aiController.generateAthleteSummary);
 
+// POST /api/ai/consolidate-profile - Consolida todas as análises e salva no perfil
+router.post('/consolidate-profile', aiController.consolidateProfile);
+
 module.exports = router;

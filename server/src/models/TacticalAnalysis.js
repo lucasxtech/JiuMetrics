@@ -113,6 +113,29 @@ class TacticalAnalysis {
   }
 
   /**
+   * Atualiza uma análise tática
+   * @param {string} id - ID da análise
+   * @param {string} userId - ID do usuário (para verificação de segurança)
+   * @param {Object} updateData - Dados a atualizar
+   * @returns {Promise<Object>} Análise atualizada
+   */
+  static async update(id, userId, updateData) {
+    const { data, error } = await supabase
+      .from('tactical_analyses')
+      .update({
+        strategy_data: updateData.strategy_data,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
    * Conta o total de análises do usuário
    * @param {string} userId - ID do usuário
    * @returns {Promise<number>} Total de análises

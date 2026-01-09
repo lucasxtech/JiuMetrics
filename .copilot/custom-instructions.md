@@ -39,9 +39,10 @@ projeto analise atletas/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/      # Componentes reutilizáveis (organizados por feature)
-│   │   │   ├── analysis/    # Componentes de análise (AiStrategyBox, AnalysisCard)
+│   │   │   ├── analysis/    # Componentes de análise (AiStrategyBox, AnalysisCard, StrategySummaryModal)
 │   │   │   ├── video/       # Componentes de vídeo (VideoAnalysis, VideoAnalysisCard)
 │   │   │   ├── charts/      # Gráficos (Recharts - Radar, Line, Bar, Pie)
+│   │   │   ├── chat/        # Componentes de Chat IA (ProfileChatPanel, StrategyChatPanel)
 │   │   │   ├── common/      # Componentes compartilhados (Header, Cards, Modal)
 │   │   │   ├── forms/       # Formulários (AthleteForm)
 │   │   │   └── routing/     # Rotas (ProtectedRoute)
@@ -53,13 +54,13 @@ projeto analise atletas/
 │
 ├── server/
 │   ├── src/
-│   │   ├── controllers/     # Lógica de controle HTTP
+│   │   ├── controllers/     # Lógica de controle HTTP (chatController, strategyController)
 │   │   ├── models/          # Modelos de dados (Supabase)
-│   │   ├── routes/          # Definição de rotas Express
+│   │   ├── routes/          # Definição de rotas Express (chat.js, strategy.js)
 │   │   ├── services/        # Serviços externos (Gemini, FFmpeg)
 │   │   ├── middleware/      # Middlewares (auth, etc)
 │   │   └── utils/           # Funções auxiliares
-│   ├── migrations/          # SQLs do Supabase (001-009, numerados)
+│   ├── migrations/          # SQLs do Supabase (001-014, numerados)
 │   ├── tests/               # Testes de integração
 │   └── uploads/             # Arquivos temporários de upload
 │
@@ -101,10 +102,11 @@ projeto analise atletas/
 
 **Organização de Componentes:**
 - Componentes organizados por **feature** em subpastas:
-  - `analysis/` - Componentes de análise tática e estratégia
+  - `analysis/` - Componentes de análise tática e estratégia (AiStrategyBox, StrategySummaryModal)
+  - `chat/` - Componentes de Chat IA (ProfileChatPanel, StrategyChatPanel)
   - `video/` - Componentes de análise de vídeo
   - `charts/` - Todos os gráficos e visualizações
-  - `common/` - Componentes reutilizáveis globais
+  - `common/` - Componentes reutilizáveis globais (ProfileSummaryModal)
   - `forms/` - Formulários de cadastro/edição
   - `routing/` - Componentes de roteamento
 - Cada pasta pode ter seu próprio `README.md` documentando os componentes
@@ -426,9 +428,45 @@ test(strategy): adicustomizados (não Supabase Auth) com expiração (7 dias pad
 
 **Funcionalidades:**
 - Análise de vídeos (frames + context)
-- Geração de estratégias táticas
+- Geração de estratégias táticas (com prompt expandido)
 - Resumos de atletas
 - Análise de padrões de luta
+- **Chat IA para refinamento** (NOVO)
+
+### Sistema de Chat IA (NOVO)
+
+**Componentes:**
+- `StrategyChatPanel.jsx` - Chat para refinar estratégias
+- `ProfileChatPanel.jsx` - Chat para refinar perfis de atletas
+- `StrategySummaryModal.jsx` - Modal com chat lateral + histórico
+- `ProfileSummaryModal.jsx` - Modal de perfil com chat lateral
+
+**Rotas de Chat:**
+```javascript
+// Chat de Estratégia
+POST /api/chat/strategy-send
+{
+  strategyData: { ... },
+  athleteName: "João",
+  opponentName: "Pedro",
+  question: "Como melhorar a defesa?"
+}
+
+// Chat de Perfil
+POST /api/chat/profile-send
+{
+  athleteId: "uuid",
+  athleteName: "João",
+  currentSummary: "Resumo atual...",
+  question: "Detalhar finalizações"
+}
+```
+
+**Funcionalidades do Modal:**
+- Edição manual de seções (textarea + salvar/cancelar)
+- Histórico de versões com restauração
+- Chat IA lateral para refinamento
+- Botões de ação no header (Chat IA / Histórico)
 
 **⚠️ JSON Parsing:**
 - Gemini pode retornar JSON com markdown, `\n` literais, ou aspas duplas aninhadas
@@ -519,4 +557,33 @@ O projeto possui documentação completa organizada hierarquicamente:
 
 ---
 
-**Última atualização:** 18 de dezembro de 2025
+**Última atualização:** 9 de janeiro de 2026
+
+### Changelog Recente (Branch atual)
+
+**Features de Chat IA:**
+- ✅ `StrategyChatPanel.jsx` - Chat lateral para refinar estratégias
+- ✅ `ProfileChatPanel.jsx` - Chat lateral para refinar perfis
+- ✅ `StrategySummaryModal.jsx` - Modal completo com chat + histórico
+- ✅ `ProfileSummaryModal.jsx` - Modal de perfil com chat lateral
+- ✅ Rotas `/api/chat/strategy-send` e `/api/chat/profile-send`
+- ✅ `chatController.js` e `chatService.js` no backend
+
+**Melhorias de UI:**
+- ✅ `AiStrategyBox.jsx` - Seções sempre abertas (sem acordions)
+- ✅ Edição manual de seções via textarea
+- ✅ Histórico de versões com restauração
+- ✅ Botões de ação no header dos modais
+
+**Melhorias de Prompt (geminiService.js):**
+- ✅ Campo `resumo_rapido` com 3 prioridades
+- ✅ `tese_da_vitoria` expandida (3-4 frases)
+- ✅ Campos `explicacao` e `por_que_funciona`
+- ✅ Cronologia renomeada: `primeiro_minuto`, `minutos_2_a_4`, `minutos_finais`
+- ✅ Checklist com `situacao`, `o_que_ele_faz`, `protocolo_de_emergencia`
+- ✅ Fallbacks para campos antigos E novos
+
+**Correções:**
+- ✅ Fix `aiResponse.response` → `aiResponse.message` em chatController
+- ✅ Fix `ApiUsage.create` → `ApiUsage.logUsage`
+- ✅ Fix contexto de estratégia no chat

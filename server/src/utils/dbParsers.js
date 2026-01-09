@@ -17,6 +17,9 @@ function parseAthleteFromDB(dbAthlete) {
     videoUrl: dbAthlete.video_url,
     cardio: dbAthlete.cardio,
     technicalProfile: dbAthlete.technical_profile || {},
+    technicalSummary: dbAthlete.technical_summary || null,
+    technicalSummaryUpdatedAt: dbAthlete.technical_summary_updated_at || null,
+    analysesCount: dbAthlete.analyses_count || 0,
     createdAt: dbAthlete.created_at,
     updatedAt: dbAthlete.updated_at,
   };
@@ -44,7 +47,12 @@ function parseAnalysisFromDB(dbAnalysis) {
     charts: dbAnalysis.charts || [],
     summary: dbAnalysis.summary,
     technicalProfile: dbAnalysis.technical_profile,
+    technicalStats: dbAnalysis.technical_stats || null,
     framesAnalyzed: dbAnalysis.frames_analyzed,
+    currentVersion: dbAnalysis.current_version || 1,
+    isEdited: dbAnalysis.is_edited || false,
+    originalSummary: dbAnalysis.original_summary,
+    originalCharts: dbAnalysis.original_charts,
     createdAt: dbAnalysis.created_at,
     updatedAt: dbAnalysis.updated_at,
   };

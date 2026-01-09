@@ -4,6 +4,7 @@ import { getAllAthletes } from '../services/athleteService';
 import { getAllOpponents } from '../services/opponentService';
 import { compareAndGenerateStrategy } from '../services/strategyService';
 import AiStrategyBox from '../components/analysis/AiStrategyBox';
+import StrategySummaryModal from '../components/analysis/StrategySummaryModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import CustomSelect from '../components/common/CustomSelect';
@@ -17,6 +18,7 @@ export default function Strategy() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState(null);
+  const [showChat, setShowChat] = useState(false);
 
   // Carregar atletas e adversários ao montar
   useEffect(() => {
@@ -52,6 +54,7 @@ export default function Strategy() {
     setIsLoading(true);
     setStrategy(null);
     setError(null);
+    setShowChat(false);
 
     try {
       const response = await compareAndGenerateStrategy(
@@ -65,6 +68,46 @@ export default function Strategy() {
       setError(err.message || 'Erro ao gerar estratégia. Tente novamente.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handler para atualização de estratégia via chat
+  const handleStrategyUpdated = async (suggestion) => {
+    if (!suggestion) return;
+    
+    try {
+      const currentStrategyData = strategy?.strategy || strategy;
+      let updatedStrategy = { ...currentStrategyData };
+      
+      // Aplicar sugestão baseada na seção
+      if (suggestion.section === 'tese_da_vitoria') {
+        updatedStrategy.tese_da_vitoria = suggestion.newValue;
+      } else if (suggestion.section === 'analise_de_matchup') {
+        updatedStrategy.analise_de_matchup = {
+          ...updatedStrategy.analise_de_matchup,
+          ...suggestion.newValue
+        };
+      } else if (suggestion.section === 'plano_tatico_faseado') {
+        updatedStrategy.plano_tatico_faseado = {
+          ...updatedStrategy.plano_tatico_faseado,
+          ...suggestion.newValue
+        };
+      } else if (suggestion.section === 'pontos_criticos') {
+        updatedStrategy.pontos_criticos = suggestion.newValue;
+      } else if (suggestion.section === 'dicas_especificas') {
+        updatedStrategy.dicas_especificas = suggestion.newValue;
+      } else {
+        // Fallback: tentar aplicar no campo indicado
+        updatedStrategy[suggestion.section || suggestion.field] = suggestion.newValue;
+      }
+      
+      // Atualizar estado
+      setStrategy({ strategy: updatedStrategy });
+      
+      console.log('✅ Estratégia atualizada via chat:', updatedStrategy);
+    } catch (err) {
+      console.error('Erro ao atualizar estratégia:', err);
+      throw err;
     }
   };
 
@@ -216,7 +259,27 @@ export default function Strategy() {
         </div>
       </section>
 
-      {(strategy || isLoading) && <AiStrategyBox strategy={strategy} isLoading={isLoading} />}
+      {(strategy || isLoading) && (
+        <div className="space-y-4">
+          {/* Botão para abrir modal detalhado */}
+          {strategy && !isLoading && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowChat(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/30"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Ver Estratégia Detalhada
+              </button>
+            </div>
+          )}
+          
+          <AiStrategyBox strategy={strategy} isLoading={isLoading} />
+        </div>
+      )}
 
       {!strategy && !isLoading && !selectedAthlete && (
         <section className="panel text-center" style={{ display: "flex", justifyContent: "center" }}>
@@ -231,6 +294,17 @@ export default function Strategy() {
             <p className="text-sm text-slate-500">A saída considera atributos, estilos e histórico recente.</p>
           </div>
         </section>
+      )}
+
+      {/* Modal de Estratégia Detalhada com Chat IA */}
+      {showChat && strategy && (
+        <StrategySummaryModal
+          strategy={strategy}
+          athleteName={selectedAthlete?.name || 'Atleta'}
+          opponentName={selectedOpponent?.name || 'Adversário'}
+          onClose={() => setShowChat(false)}
+          onStrategyUpdated={handleStrategyUpdated}
+        />
       )}
     </div>
   );

@@ -9,6 +9,7 @@ const videoRoutes = require('./src/routes/video');
 const fightAnalysisRoutes = require('./src/routes/fightAnalysis');
 const strategyRoutes = require('./src/routes/strategy');
 const usageRoutes = require('./src/routes/usage');
+const chatRoutes = require('./src/routes/chatRoutes');
 const config = require('./config');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/video', videoRoutes);
 app.use('/api/fight-analysis', fightAnalysisRoutes);
 app.use('/api/strategy', strategyRoutes);
 app.use('/api/usage', usageRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

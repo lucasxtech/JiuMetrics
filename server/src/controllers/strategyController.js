@@ -211,4 +211,58 @@ exports.deleteAnalysis = async (req, res) => {
   }
 };
 
+/**
+ * PATCH /api/strategy/analyses/:id
+ * Atualiza uma análise tática (ex: strategy_data editado pela IA)
+ */
+exports.updateAnalysis = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+    const { strategy_data } = req.body;
+
+    console.log('🔄 updateAnalysis chamado:', { id, userId, hasStrategyData: !!strategy_data });
+    console.log('📦 strategy_data recebido:', JSON.stringify(strategy_data).substring(0, 200) + '...');
+
+    if (!strategy_data) {
+      return res.status(400).json({
+        success: false,
+        error: 'strategy_data é obrigatório'
+      });
+    }
+
+    // Verificar se a análise existe e pertence ao usuário
+    const analysis = await TacticalAnalysis.getById(id, userId);
+    if (!analysis) {
+      console.log('❌ Análise não encontrada para id:', id, 'userId:', userId);
+      return res.status(404).json({
+        success: false,
+        error: 'Análise não encontrada'
+      });
+    }
+
+    console.log('✅ Análise encontrada, atualizando...');
+    
+    // Atualizar
+    const updated = await TacticalAnalysis.update(id, userId, { strategy_data });
+
+    console.log('✅ Análise atualizada com sucesso');
+    
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Análise atualizada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao atualizar análise:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao atualizar análise tática',
+      details: error.message
+    });
+  }
+};
+
 module.exports = exports;
