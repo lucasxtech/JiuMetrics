@@ -3,6 +3,42 @@ import { MessageSquare, Send, Sparkles, X, Loader2, Check, ChevronDown, RefreshC
 import { createStrategyChatSession, sendStrategyChatMessage } from '../../services/chatService';
 
 /**
+ * Formata texto com markdown básico (negrito, itálico)
+ */
+const formatMarkdown = (text) => {
+  if (!text) return null;
+  
+  const parts = [];
+  let remaining = text;
+  let key = 0;
+  
+  // Regex para **negrito** e *itálico*
+  const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+    }
+    
+    if (match[2]) {
+      parts.push(<strong key={key++} className="font-semibold">{match[2]}</strong>);
+    } else if (match[3]) {
+      parts.push(<em key={key++} className="italic">{match[3]}</em>);
+    }
+    
+    lastIndex = regex.lastIndex;
+  }
+  
+  if (lastIndex < text.length) {
+    parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+  }
+  
+  return parts.length > 0 ? parts : text;
+};
+
+/**
  * Componente de mensagem do chat - Versão simplificada
  * O diff agora é mostrado diretamente no AiStrategyBox, não no chat
  */
@@ -35,7 +71,7 @@ const ChatMessage = ({ message, pendingEdit, onAccept, onReject, isApplying }) =
             ? 'bg-slate-900 text-white rounded-br-md' 
             : 'bg-white border border-slate-200 text-slate-700 rounded-bl-md shadow-sm'
         }`}>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">{formatMarkdown(message.content)}</p>
         </div>
         
         {/* Indicador de sugestão pendente - Mostra botões */}
@@ -134,7 +170,7 @@ export default function StrategyChatPanel({
 
   // Sugestões rápidas para estratégia
   const quickSuggestions = [
-    { icon: '🎯', text: 'Detalhe mais a tese da vitória' },
+    { icon: '🎯', text: 'Detalhe mais como vencer essa luta' },
     { icon: '⚔️', text: 'Adicione mais opções de ataque' },
     { icon: '🛡️', text: 'Expanda os pontos defensivos' },
     { icon: '⏱️', text: 'Sugira ajustes para cada fase da luta' },
@@ -227,13 +263,29 @@ Como posso ajudar?`
         if (editSuggestion && onSuggestEdit) {
           const currentStrategy = strategyData?.strategy || strategyData;
           const fieldName = editSuggestion.field;
-          const oldValue = currentStrategy[fieldName] || '';
           
-          // newValue pode ser string ou objeto - garantir que é string
-          let newValue = editSuggestion.newValue;
-          if (typeof newValue === 'object') {
-            newValue = JSON.stringify(newValue, null, 2);
-          }
+          // Mapear o campo para obter o valor antigo correto
+          const getOldValue = (field) => {
+            switch (field) {
+              case 'como_vencer':
+              case 'strategy':
+                return currentStrategy.resumo_rapido?.como_vencer || currentStrategy.tese_da_vitoria || '';
+              case 'plano_tatico':
+              case 'plano_tatico_faseado':
+                return currentStrategy.plano_tatico_faseado || {};
+              case 'cronologia':
+              case 'cronologia_inteligente':
+                return currentStrategy.cronologia_inteligente || {};
+              case 'matchup':
+              case 'analise_de_matchup':
+                return currentStrategy.analise_de_matchup || {};
+              default:
+                return currentStrategy[field] || '';
+            }
+          };
+          
+          const oldValue = getOldValue(fieldName);
+          const newValue = editSuggestion.newValue;
           
           console.log('📤 Enviando sugestão para pai:', {
             messageId,
@@ -245,7 +297,7 @@ Como posso ajudar?`
           onSuggestEdit({
             messageId,
             field: fieldName,
-            oldValue: typeof oldValue === 'string' ? oldValue : JSON.stringify(oldValue),
+            oldValue: oldValue,
             newValue: newValue,
             reason: editSuggestion.reason
           });
@@ -297,13 +349,16 @@ Como posso ajudar?`
   return (
     <div className="flex flex-col h-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-2xl">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
             <MessageSquare className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Chat de Estratégia</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm">Chat IA</h3>
+              <span className="px-2 py-0.5 bg-white/20 rounded text-xs">Refinar Estratégia</span>
+            </div>
             <p className="text-xs text-white/80">{athleteName} vs {opponentName}</p>
           </div>
         </div>
@@ -316,7 +371,7 @@ Como posso ajudar?`
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-50 to-slate-100">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-slate-50 to-slate-100 min-h-0">
         {messages.map((msg) => (
           <ChatMessage
             key={msg.id}
@@ -353,7 +408,7 @@ Como posso ajudar?`
 
       {/* Quick Suggestions */}
       {messages.length <= 2 && (
-        <div className="px-4 py-2 border-t border-slate-100 bg-white">
+        <div className="flex-shrink-0 px-4 py-2 border-t border-slate-100 bg-white">
           <p className="text-xs text-slate-500 mb-2">Sugestões rápidas:</p>
           <div className="flex flex-wrap gap-2">
             {quickSuggestions.map((suggestion, index) => (
@@ -372,7 +427,7 @@ Como posso ajudar?`
       )}
 
       {/* Input */}
-      <div className="p-4 border-t border-slate-200 bg-white">
+      <div className="flex-shrink-0 p-4 border-t border-slate-200 bg-white">
         <div className="flex gap-2">
           <textarea
             ref={inputRef}

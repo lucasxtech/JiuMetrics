@@ -6,12 +6,10 @@
 projeto analise atletas/
 │
 ├── README.md                    # Documentação principal
-├── API.md                       # Documentação da API
-├── DEPLOY.md                    # Guia de deploy
-├── DEVELOPMENT.md               # Guia de desenvolvimento
-├── TESTING.http                 # Exemplos de teste de API
-├── .gitignore                   # Git ignore
-├── dev.sh                       # Script auxiliar de desenvolvimento
+├── CODE_REVIEW.md               # Análise e melhorias do código
+├── CONTRIBUTING.md              # Guia de contribuição
+├── Makefile                     # Comandos de desenvolvimento
+├── package.json                 # Configuração raiz
 │
 ├── frontend/                    # Aplicação React Vite
 │   ├── public/                  # Arquivos estáticos
@@ -21,43 +19,65 @@ projeto analise atletas/
 │   │   │   │   ├── Header.jsx              # Navegação principal
 │   │   │   │   ├── AthleteCard.jsx         # Card de atleta
 │   │   │   │   ├── LoadingSpinner.jsx      # Spinner de loading
-│   │   │   │   └── ErrorMessage.jsx        # Mensagem de erro
+│   │   │   │   ├── ErrorMessage.jsx        # Mensagem de erro
+│   │   │   │   ├── Badge.jsx               # Tag/badge reutilizável
+│   │   │   │   └── FormattedText.jsx       # Texto com markdown
+│   │   │   ├── analysis/
+│   │   │   │   ├── AiStrategyBox.jsx       # Estratégia IA com edição
+│   │   │   │   ├── StrategySummaryModal.jsx # Modal de estratégia
+│   │   │   │   ├── AnalysisCard.jsx        # Card de análise
+│   │   │   │   └── AnalysisDetailModal.jsx # Modal detalhes
+│   │   │   ├── chat/
+│   │   │   │   ├── ProfileChatPanel.jsx    # Chat para perfis
+│   │   │   │   └── StrategyChatPanel.jsx   # Chat para estratégias
 │   │   │   ├── forms/
 │   │   │   │   └── AthleteForm.jsx         # Formulário de atleta
-│   │   │   └── charts/
-│   │   │       ├── StatsRadarChart.jsx     # Gráfico radar
-│   │   │       └── StatsLineChart.jsx      # Gráfico de linha
+│   │   │   ├── charts/
+│   │   │   │   ├── StatsRadarChart.jsx     # Gráfico radar
+│   │   │   │   ├── StatsLineChart.jsx      # Gráfico de linha
+│   │   │   │   ├── StatsBarChart.jsx       # Gráfico de barras
+│   │   │   │   └── PieChartSection.jsx     # Gráfico de pizza
+│   │   │   ├── video/
+│   │   │   │   ├── VideoAnalysis.jsx       # Análise de vídeo
+│   │   │   │   └── VideoAnalysisCard.jsx   # Card de vídeo
+│   │   │   └── routing/
+│   │   │       └── ProtectedRoute.jsx      # Rota protegida
 │   │   │
 │   │   ├── pages/
-│   │   │   ├── Dashboard.jsx               # Dashboard principal
+│   │   │   ├── Overview.jsx                # Dashboard principal
 │   │   │   ├── Athletes.jsx                # Listagem de atletas
 │   │   │   ├── AthleteDetail.jsx           # Detalhe do atleta
 │   │   │   ├── Opponents.jsx               # Listagem de adversários
-│   │   │   ├── Compare.jsx                 # Comparador
-│   │   │   └── Strategy.jsx                # Estratégia com IA
+│   │   │   ├── Analyses.jsx                # Histórico de análises
+│   │   │   ├── Strategy.jsx                # Estratégia com IA
+│   │   │   ├── VideoAnalysis.jsx           # Análise de vídeos
+│   │   │   ├── Settings.jsx                # Configurações
+│   │   │   ├── ModernLogin.jsx             # Tela de login
+│   │   │   └── Register.jsx                # Tela de cadastro
 │   │   │
 │   │   ├── services/
 │   │   │   ├── api.js                      # Configuração Axios
 │   │   │   ├── athleteService.js           # CRUD de atletas
 │   │   │   ├── opponentService.js          # CRUD de adversários
-│   │   │   └── aiService.js                # Serviço de IA
+│   │   │   ├── analysisService.js          # Análises táticas
+│   │   │   ├── chatService.js              # Chat IA
+│   │   │   ├── strategyService.js          # Estratégias
+│   │   │   ├── aiService.js                # Serviço de IA
+│   │   │   └── authService.js              # Autenticação
 │   │   │
-│   │   ├── hooks/                          # Custom hooks (futuro)
-│   │   ├── context/                        # Context API (futuro)
-│   │   ├── utils/                          # Funções utilitárias
+│   │   ├── hooks/                          # Custom hooks
 │   │   │
-│   │   ├── CompareView.jsx                 # Componente de comparação
-│   │   ├── AiStrategyBox.jsx               # Componente de estratégia
+│   │   ├── utils/
+│   │   │   ├── strategyUtils.js            # Manipulação de estratégias
+│   │   │   └── formatters.js               # Formatação de texto
+│   │   │
 │   │   ├── App.jsx                         # Router principal
 │   │   ├── index.css                       # Estilos globais (Tailwind)
 │   │   └── main.jsx                        # Entry point
 │   │
 │   ├── .env                    # Variáveis de ambiente
-│   ├── .env.example            # Template de .env
-│   ├── tailwind.config.js      # Configuração Tailwind
-│   ├── postcss.config.js       # Configuração PostCSS
+│   ├── tailwind.config.js      # Configuração Tailwind 4
 │   ├── vite.config.js          # Configuração Vite
-│   ├── index.html              # HTML principal
 │   └── package.json            # Dependências do frontend
 │
 ├── server/                     # Backend Express
@@ -65,25 +85,50 @@ projeto analise atletas/
 │   │   ├── controllers/
 │   │   │   ├── athleteController.js        # Lógica de atletas
 │   │   │   ├── opponentController.js       # Lógica de adversários
+│   │   │   ├── strategyController.js       # Lógica de estratégias
+│   │   │   ├── chatController.js           # Lógica de chat IA
 │   │   │   └── aiController.js             # Lógica de IA
 │   │   │
 │   │   ├── models/
 │   │   │   ├── Athlete.js                  # Modelo de atleta
-│   │   │   └── Opponent.js                 # Modelo de adversário
+│   │   │   ├── Opponent.js                 # Modelo de adversário
+│   │   │   └── TacticalAnalysis.js         # Modelo de análises
 │   │   │
 │   │   ├── routes/
 │   │   │   ├── athletes.js                 # Rotas de atletas
 │   │   │   ├── opponents.js                # Rotas de adversários
+│   │   │   ├── strategy.js                 # Rotas de estratégias
+│   │   │   ├── chat.js                     # Rotas de chat
 │   │   │   └── ai.js                       # Rotas de IA
 │   │   │
-│   │   └── utils/                          # Funções auxiliares
+│   │   ├── services/
+│   │   │   └── geminiService.js            # Integração Google Gemini
+│   │   │
+│   │   └── middleware/                     # Auth & validações
 │   │
+│   ├── migrations/             # SQLs do Supabase (001-016)
+│   ├── tests/                  # Testes de integração
 │   ├── index.js                # Servidor principal
 │   ├── config.js               # Configurações
-│   ├── .env                    # Variáveis de ambiente
 │   └── package.json            # Dependências do backend
 │
-└── docs/                       # Documentação adicional (futuro)
+├── scripts/                    # Scripts de desenvolvimento
+│   ├── dev.sh                  # Comandos dev
+│   ├── start.sh                # Iniciar app
+│   └── startup-info.sh         # Documentação interativa
+│
+├── tools/                      # Ferramentas de debug
+│   ├── api-requests.http       # Requests HTTP
+│   └── TEST_TOKEN.js           # Teste de autenticação
+│
+└── docs/                       # Documentação
+    ├── API.md                  # Documentação da API
+    ├── architecture.md         # Este arquivo
+    ├── DEVELOPMENT.md          # Guia de desenvolvimento
+    ├── quick-start.md          # Início rápido
+    ├── setup/                  # Guias de configuração
+    ├── deployment/             # Guias de deploy
+    └── guides/                 # Guias de uso
 ```
 
 ---
@@ -239,27 +284,31 @@ npm run start        # Iniciar modo produção
 ## Recursos Implementados
 
 ### ✅ Completados
-- [x] Estrutura React Vite
-- [x] Tailwind CSS configurado
-- [x] React Router com 6 páginas
-- [x] Componentes base (Card, Form, etc)
+- [x] Estrutura React 19 + Vite
+- [x] Tailwind CSS 4 configurado
+- [x] React Router com páginas completas
+- [x] Componentes base reutilizáveis (Badge, FormattedText, etc)
 - [x] Gráficos com Recharts
-- [x] Backend Express
-- [x] CRUD de atletas
-- [x] CRUD de adversários
-- [x] Mock de IA
+- [x] Backend Express com Supabase
+- [x] CRUD de atletas e adversários
+- [x] IA com Google Gemini
+- [x] Chat IA para perfis e estratégias
+- [x] Edição manual de estratégias
+- [x] Histórico de versões
+- [x] Sistema de análises táticas
+- [x] Autenticação com Supabase Auth
 - [x] API REST completa
 - [x] Documentação completa
+- [x] Utilitários centralizados (strategyUtils, formatters)
 
 ### ⏳ Em Desenvolvimento
-- [ ] Integração com banco real
-- [ ] Autenticação
-- [ ] Upload de vídeos
+- [ ] Testes unitários completos
+- [ ] Upload de vídeos (Cloudinary)
 
 ### 📋 Próximos
-- [ ] IA com inteligência real
 - [ ] Mobile app
-- [ ] Analytics
+- [ ] Analytics avançado
+- [ ] Machine Learning customizado
 
 ---
 
@@ -271,7 +320,7 @@ npm run start        # Iniciar modo produção
 | TTI | < 2s |
 | LCP | < 2.5s |
 | API Response | < 200ms |
-| Bundle Size | < 200kb |
+| Bundle Size | < 500kb |
 
 ---
 
@@ -282,10 +331,11 @@ Para contribuições, siga o padrão de commit:
 feat: descrição
 fix: descrição
 docs: descrição
+refactor: descrição
 ```
 
 ---
 
-**Última atualização:** Janeiro 2024
-**Versão:** 1.0.0
-**Status:** ✅ Pronto para desenvolvimento
+**Última atualização:** Janeiro 2026
+**Versão:** 2.0.0
+**Status:** ✅ Em produção

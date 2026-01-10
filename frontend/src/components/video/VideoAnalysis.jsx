@@ -343,16 +343,6 @@ export default function VideoAnalysisComponent() {
                   </div>
                 </div>
               ))}
-
-              {/* Botão adicionar - pequeno e discreto */}
-              <button
-                type="button"
-                onClick={addVideo}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
-              >
-                <span>+</span>
-                Adicionar vídeo
-              </button>
             </div>
 
             {/* Erro */}

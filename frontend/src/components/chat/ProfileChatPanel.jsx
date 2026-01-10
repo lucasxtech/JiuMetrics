@@ -14,6 +14,38 @@ import { sendProfileChatMessage, createProfileChatSession } from '../../services
 import DiffViewer from '../common/DiffViewer';
 
 /**
+ * Formata texto com markdown básico (negrito, itálico)
+ */
+const formatMarkdown = (text) => {
+  if (!text) return null;
+  
+  const parts = [];
+  let key = 0;
+  
+  // Split by **bold** first
+  const boldParts = text.split(/\*\*([^*]+)\*\*/);
+  
+  boldParts.forEach((part, i) => {
+    if (i % 2 === 1) {
+      // Bold text
+      parts.push(<strong key={key++} className="font-semibold">{part}</strong>);
+    } else if (part) {
+      // Check for *italic* in non-bold parts
+      const italicParts = part.split(/\*([^*]+)\*/);
+      italicParts.forEach((italicPart, j) => {
+        if (j % 2 === 1) {
+          parts.push(<em key={key++} className="italic">{italicPart}</em>);
+        } else if (italicPart) {
+          parts.push(<span key={key++}>{italicPart}</span>);
+        }
+      });
+    }
+  });
+  
+  return parts.length > 0 ? parts : text;
+};
+
+/**
  * Componente de mensagem individual do chat
  */
 function ChatMessage({ message, currentSummary, onAcceptSuggestion, onRejectSuggestion, isSaving }) {
@@ -38,7 +70,7 @@ function ChatMessage({ message, currentSummary, onAcceptSuggestion, onRejectSugg
             ? 'bg-indigo-600 text-white rounded-br-md' 
             : 'bg-white text-slate-800 rounded-bl-md shadow-sm border border-slate-100'
         }`}>
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <p className="text-sm whitespace-pre-wrap">{formatMarkdown(message.content)}</p>
         </div>
 
         {/* DiffViewer para sugestão de edição */}

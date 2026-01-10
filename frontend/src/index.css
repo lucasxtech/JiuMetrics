@@ -30,6 +30,8 @@
   html {
     overflow-x: hidden;
     scrollbar-gutter: stable;
+    /* Reduz o tamanho base para ~85% (equivalente a zoom 85%) */
+    font-size: 85%;
   }
 
   body {

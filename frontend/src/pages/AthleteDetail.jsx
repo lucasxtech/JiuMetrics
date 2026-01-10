@@ -239,7 +239,7 @@ export default function AthleteDetail({ isOpponent = false }) {
             ← Voltar
           </button>
           <h1 className="text-3xl font-bold text-primary">{athlete.name}</h1>
-          <p className="text-gray-600 mt-1">{athlete.belt} • {athlete.style}</p>
+          <p className="text-gray-600 mt-1">{athlete.belt}</p>
         </div>
         <div className="flex gap-3 sm:gap-4">
           <button
@@ -341,31 +341,29 @@ export default function AthleteDetail({ isOpponent = false }) {
 
       {/* Informações Básicas */}
       <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
-        <div className="panel__head mb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="eyebrow">Perfil geral</p>
-              <h3 className="panel__title">Resumo técnico</h3>
-              <p className="text-sm text-slate-600 mt-1">
-                {athlete?.technicalSummary 
-                  ? 'Perfil consolidado de todas as análises' 
-                  : 'Gerado pela IA baseado na última análise de vídeo'}
-              </p>
-            </div>
-            {/* Botão de Ver detalhes / Editar */}
-            {(athlete?.technicalSummary || (analyses.length > 0 && analyses[0]?.summary)) && (
-              <button
-                onClick={() => setShowProfileModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                Ver detalhes
-              </button>
-            )}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="eyebrow">Perfil geral</p>
+            <h3 className="panel__title">Resumo técnico</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              {athlete?.technicalSummary 
+                ? 'Perfil consolidado de todas as análises' 
+                : 'Gerado pela IA baseado na última análise de vídeo'}
+            </p>
           </div>
+          {/* Botão de Ver detalhes */}
+          {(athlete?.technicalSummary || (analyses.length > 0 && analyses[0]?.summary)) && (
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Ver detalhes
+            </button>
+          )}
         </div>
         
         {(athlete?.technicalSummary || (analyses.length > 0 && analyses[0]?.summary)) ? (
@@ -437,24 +435,22 @@ export default function AthleteDetail({ isOpponent = false }) {
 
       {/* Análises de Vídeo com IA - Nova UI */}
       <section className={`panel ${isEditing ? 'opacity-60 pointer-events-none' : ''}`}>
-        <div className="panel__head mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="eyebrow">Inteligência Artificial</p>
-              <h3 className="panel__title">Análises de vídeo ({analyses.length})</h3>
-              <p className="text-sm text-slate-600 mt-2">
-                Insights gerados por IA a partir de vídeos de lutas
-              </p>
-            </div>
-            {analyses.length > 0 && (
-              <button
-                onClick={handleNavigateToVideoAnalysis}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 hover:shadow-xl"
-              >
-                + Nova análise
-              </button>
-            )}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <p className="eyebrow">Inteligência Artificial</p>
+            <h3 className="panel__title">Análises de vídeo ({analyses.length})</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              Insights gerados por IA a partir de vídeos de lutas
+            </p>
           </div>
+          {analyses.length > 0 && (
+            <button
+              onClick={handleNavigateToVideoAnalysis}
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 hover:shadow-xl"
+            >
+              + Nova análise
+            </button>
+          )}
         </div>
 
         {analyses.length === 0 ? (

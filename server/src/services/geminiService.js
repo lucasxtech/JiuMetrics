@@ -998,73 +998,95 @@ CONTEXTO DO CONFRONTO:
 
 ESTRATÉGIA ATUAL:
 
-📍 Tese da Vitória:
-${strategyData.tese_da_vitoria || 'Não definida'}
+📍 Tese da Vitória / Como Vencer:
+${strategyData.resumo_rapido?.como_vencer || strategyData.tese_da_vitoria || 'Não definida'}
 
 📊 Análise de Matchup:
-- Vantagem Crítica: ${strategyData.analise_de_matchup?.vantagem_critica || 'N/A'}
-- Neutralização: ${strategyData.analise_de_matchup?.neutralizacao || 'N/A'}
+${JSON.stringify(strategyData.analise_de_matchup || {}, null, 2)}
 
 🎯 Plano Tático por Fase:
 ${JSON.stringify(strategyData.plano_tatico_faseado || {}, null, 2)}
 
----
-
-⚠️⚠️⚠️ REGRAS CRÍTICAS - LEIA COM ATENÇÃO ⚠️⚠️⚠️
-
-1. VOCÊ É UM ESTRATEGISTA ESPECIALISTA
-   - O usuário vai pedir para REFINAR partes da estratégia
-   - Você deve entender a solicitação e sugerir alterações específicas
-   - Mantenha o estilo técnico e tático
-
-2. PRESERVE O QUE NÃO FOI PEDIDO PARA MUDAR
-   - Se o usuário pedir para "expandir o plano defensivo", MANTENHA o resto
-   - Faça APENAS as alterações solicitadas
-
-3. MANTENHA A ESTRUTURA
-   - Respeite os campos existentes: tese_da_vitoria, analise_de_matchup, plano_tatico_faseado, etc
-   - Seja específico e acionável nas sugestões
-
-4. USE O FORMATO DE SUGESTÃO QUANDO APROPRIADO
-   - Para alterações simples: responda conversacionalmente
-   - Para alterações estruturais: use o bloco ---EDIT_SUGGESTION---
+⏱️ Cronologia Inteligente:
+${JSON.stringify(strategyData.cronologia_inteligente || {}, null, 2)}
 
 ---
 
-FORMATO PARA EDIÇÕES ESTRUTURAIS:
+⚠️⚠️⚠️ REGRAS CRÍTICAS - IDENTIFICAÇÃO DO CAMPO ⚠️⚠️⚠️
 
-Quando o usuário pedir alterações na estratégia, responda com uma explicação E ADICIONE:
+VOCÊ DEVE IDENTIFICAR O CAMPO CORRETO BASEADO NO PEDIDO DO USUÁRIO:
+
+| Se o usuário pedir sobre...                    | Use field =                |
+|------------------------------------------------|----------------------------|
+| "como vencer", "tese", "estratégia geral"      | "tese_da_vitoria"          |
+| "fases", "em pé", "passagem", "guarda", "plano"| "plano_tatico_faseado"     |
+| "cronologia", "timeline", "minutos", "tempo"   | "cronologia_inteligente"   |
+| "matchup", "vantagem", "risco", "análise"      | "analise_de_matchup"       |
+
+EXEMPLOS DE MAPEAMENTO:
+- "Sugira ajustes para cada fase da luta" → field: "plano_tatico_faseado"
+- "Melhore a estratégia de guarda" → field: "plano_tatico_faseado"
+- "Ajuste o primeiro minuto" → field: "cronologia_inteligente"
+- "Expanda a tese da vitória" → field: "tese_da_vitoria"
+- "Detalhe as vantagens no matchup" → field: "analise_de_matchup"
+
+---
+
+FORMATO OBRIGATÓRIO PARA EDIÇÕES:
+
+Quando o usuário pedir QUALQUER alteração, responda com explicação E ADICIONE:
 
 ---EDIT_SUGGESTION---
 {
-  "field": "strategy",
-  "section": "tese_da_vitoria|analise_de_matchup|plano_tatico_faseado",
-  "newValue": "NOVO CONTEÚDO AQUI",
+  "field": "CAMPO_CORRETO_DA_TABELA_ACIMA",
+  "newValue": VALOR_ESTRUTURADO,
   "reason": "explicação breve"
 }
 ---END_SUGGESTION---
 
-SEÇÕES DISPONÍVEIS:
-- "tese_da_vitoria" → newValue é STRING com a nova tese
-- "analise_de_matchup" → newValue é OBJETO {vantagem_critica, neutralizacao}
-- "plano_tatico_faseado" → newValue é OBJETO com fases {inicio, meio, final}
-- "pontos_criticos" → newValue é ARRAY de strings
-- "dicas_especificas" → newValue é ARRAY de strings
+ESTRUTURA DO newValue POR CAMPO:
+
+1. field="tese_da_vitoria" → newValue é STRING
+   "Texto da nova tese de vitória..."
+
+2. field="plano_tatico_faseado" → newValue é OBJETO:
+   {
+     "em_pe_standup": {
+       "acao_recomendada": "...",
+       "como_executar": "...",
+       "explicacao": "..."
+     },
+     "jogo_de_passagem_top": {
+       "estilo_recomendado": "...",
+       "passo_a_passo": "...",
+       "armadilha_a_evitar": "..."
+     },
+     "jogo_de_guarda_bottom": {
+       "guarda_ideal": "...",
+       "momento_de_atacar": "...",
+       "se_der_errado": "..."
+     }
+   }
+
+3. field="cronologia_inteligente" → newValue é OBJETO:
+   {
+     "primeiro_minuto": "...",
+     "minutos_2_a_4": "...",
+     "minutos_finais": "..."
+   }
+
+4. field="analise_de_matchup" → newValue é OBJETO:
+   {
+     "vantagem_critica": "...",
+     "risco_oculto": "...",
+     "fator_chave": "..."
+   }
 
 ---
 
-EXEMPLOS:
-
-SOLICITAÇÃO: "Detalhe mais a tese da vitória"
-RESPOSTA: "Vou expandir a tese da vitória com mais detalhes táticos."
-+ bloco ---EDIT_SUGGESTION--- com field="strategy", section="tese_da_vitoria"
-
-SOLICITAÇÃO: "Adicione mais opções para o início da luta"
-RESPOSTA: "Adicionei variações táticas para os primeiros 2 minutos."
-+ bloco ---EDIT_SUGGESTION--- com section="plano_tatico_faseado"
-
-SOLICITAÇÃO: "O que você acha da estratégia?"
-RESPOSTA: (análise conversacional sem bloco de sugestão)`;
+LEMBRE-SE: O field determina ONDE a edição aparece na interface!
+- field errado = edição aparece no lugar errado
+- Sempre use o field da tabela de mapeamento acima`;
   }
 
   // Fallback genérico

@@ -4,6 +4,38 @@ import ProfileChatPanel from '../chat/ProfileChatPanel';
 import ProfileVersionHistoryPanel from '../chat/ProfileVersionHistoryPanel';
 
 /**
+ * Formata texto com markdown básico (negrito, itálico)
+ */
+const formatMarkdown = (text) => {
+  if (!text) return null;
+  
+  const parts = [];
+  let key = 0;
+  
+  // Split by **bold** first
+  const boldParts = text.split(/\*\*([^*]+)\*\*/);
+  
+  boldParts.forEach((part, i) => {
+    if (i % 2 === 1) {
+      // Bold text
+      parts.push(<strong key={key++} className="font-semibold">{part}</strong>);
+    } else if (part) {
+      // Check for *italic* in non-bold parts
+      const italicParts = part.split(/\*([^*]+)\*/);
+      italicParts.forEach((italicPart, j) => {
+        if (j % 2 === 1) {
+          parts.push(<em key={key++} className="italic">{italicPart}</em>);
+        } else if (italicPart) {
+          parts.push(<span key={key++}>{italicPart}</span>);
+        }
+      });
+    }
+  });
+  
+  return parts.length > 0 ? parts : text;
+};
+
+/**
  * Modal detalhado para visualizar e editar o resumo técnico do perfil
  * com chat IA lateral e histórico de versões
  */
@@ -90,7 +122,7 @@ export default function ProfileSummaryModal({
     
     return paragraphs.map((paragraph, index) => (
       <p key={index} className="text-slate-700 leading-relaxed text-[15px]">
-        {paragraph}
+        {formatMarkdown(paragraph)}
       </p>
     ));
   };

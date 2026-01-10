@@ -52,3 +52,26 @@ export const updateAnalysis = async (id, data) => {
 export const deleteAnalysis = async (id) => {
   return api.delete(`/strategy/analyses/${id}`);
 };
+
+// ========== VERSÕES DE ESTRATÉGIA ==========
+
+/**
+ * Busca todas as versões de uma análise tática
+ * @param {string} analysisId - ID da análise
+ * @returns {Promise} Response com lista de versões
+ */
+export const getStrategyVersions = async (analysisId) => {
+  const response = await api.get(`/strategy/analyses/${analysisId}/versions`);
+  return response.data?.versions || [];
+};
+
+/**
+ * Restaura uma versão específica da estratégia
+ * @param {string} analysisId - ID da análise
+ * @param {string} versionId - ID da versão a restaurar
+ * @returns {Promise} Response com nova versão e conteúdo restaurado
+ */
+export const restoreStrategyVersion = async (analysisId, versionId) => {
+  const response = await api.post(`/strategy/analyses/${analysisId}/versions/${versionId}/restore`);
+  return response.data;
+};

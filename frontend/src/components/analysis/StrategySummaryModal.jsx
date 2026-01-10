@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Calendar, MessageSquare, Sparkles, Zap, Shield, Target, Clock, CheckSquare, History, Edit3, Check, Save } from 'lucide-react';
 import StrategyChatPanel from '../chat/StrategyChatPanel';
+import Badge from '../common/Badge';
 
 /**
  * Modal detalhado para visualizar a estratégia gerada com chat IA lateral
@@ -139,6 +140,21 @@ export default function StrategySummaryModal({
       // Aplicar edição baseada na seção
       if (section === 'tese_da_vitoria') {
         updatedData.tese_da_vitoria = editValue.trim();
+      } else if (section === 'resumo_como_vencer') {
+        // Edição do "Como Vencer" no resumo rápido
+        updatedData.resumo_rapido = {
+          ...updatedData.resumo_rapido,
+          como_vencer: editValue.trim()
+        };
+      } else if (section.startsWith('resumo_prioridade_')) {
+        // Edição de uma prioridade específica
+        const idx = parseInt(section.replace('resumo_prioridade_', ''), 10);
+        const prioridades = [...(updatedData.resumo_rapido?.tres_prioridades || [])];
+        prioridades[idx] = editValue.trim();
+        updatedData.resumo_rapido = {
+          ...updatedData.resumo_rapido,
+          tres_prioridades: prioridades
+        };
       } else if (section.startsWith('matchup_')) {
         const field = section.replace('matchup_', '');
         updatedData.analise_de_matchup = {
@@ -202,23 +218,6 @@ export default function StrategySummaryModal({
     saveVersion(version.data, `Restaurado de: ${version.source}`);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
-  };
-
-  // Badge componente
-  const Badge = ({ children, variant = 'default' }) => {
-    const variants = {
-      default: 'bg-slate-100 text-slate-700',
-      success: 'bg-green-100 text-green-700',
-      danger: 'bg-red-100 text-red-700',
-      warning: 'bg-orange-100 text-orange-700',
-      info: 'bg-blue-100 text-blue-700',
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]}`}>
-        {children}
-      </span>
-    );
   };
 
   return (
@@ -321,14 +320,49 @@ export default function StrategySummaryModal({
                   </div>
                 </div>
                 
-                {/* Como Vencer - Texto principal */}
-                <div className="mb-5 p-4 bg-white/10 backdrop-blur rounded-xl">
-                  <p className="text-white/95 leading-relaxed text-base">
-                    {strategyData.resumo_rapido.como_vencer}
-                  </p>
+                {/* Como Vencer - Texto principal com edição */}
+                <div className="mb-5 p-4 bg-white/10 backdrop-blur rounded-xl relative">
+                  {editingSection === 'resumo_como_vencer' ? (
+                    <div className="space-y-3">
+                      <textarea
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="w-full h-28 px-4 py-3 border-0 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-white/50 text-sm text-slate-800 leading-relaxed bg-white"
+                        placeholder="Descreva como vencer esta luta..."
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={cancelEditing}
+                          className="px-3 py-1.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => saveManualEdit('resumo_como_vencer')}
+                          disabled={isSaving}
+                          className="px-3 py-1.5 text-sm bg-white text-indigo-700 rounded-lg hover:bg-white/90 disabled:opacity-50 transition-all flex items-center gap-1.5 font-medium"
+                        >
+                          {isSaving ? 'Salvando...' : <><Save className="w-3.5 h-3.5" /> Salvar</>}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-4">
+                      <p className="text-white/95 leading-relaxed text-base flex-1">
+                        {strategyData.resumo_rapido.como_vencer}
+                      </p>
+                      <button
+                        onClick={() => startEditing('resumo_como_vencer', strategyData.resumo_rapido.como_vencer)}
+                        className="flex-shrink-0 p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-all"
+                        title="Editar"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* 3 Prioridades */}
+                {/* 3 Prioridades com edição */}
                 {strategyData.resumo_rapido.tres_prioridades && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-indigo-200 uppercase tracking-wide">📌 Suas 3 Prioridades</p>
@@ -337,7 +371,35 @@ export default function StrategySummaryModal({
                         <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">
                           {idx + 1}
                         </span>
-                        <p className="text-white/90 text-sm leading-relaxed">{prioridade}</p>
+                        {editingSection === `resumo_prioridade_${idx}` ? (
+                          <div className="flex-1 space-y-2">
+                            <textarea
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              className="w-full h-20 px-3 py-2 border-0 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-white/50 text-sm text-slate-800 leading-relaxed bg-white"
+                            />
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={cancelEditing} className="px-2 py-1 text-xs text-white/80 hover:text-white hover:bg-white/10 rounded">Cancelar</button>
+                              <button 
+                                onClick={() => saveManualEdit(`resumo_prioridade_${idx}`)} 
+                                className="px-2 py-1 text-xs bg-white text-indigo-700 rounded hover:bg-white/90 font-medium"
+                              >
+                                Salvar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-white/90 text-sm leading-relaxed flex-1">{prioridade}</p>
+                            <button
+                              onClick={() => startEditing(`resumo_prioridade_${idx}`, prioridade)}
+                              className="flex-shrink-0 p-1 text-white/60 hover:text-white hover:bg-white/20 rounded transition-all"
+                              title="Editar prioridade"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -345,7 +407,7 @@ export default function StrategySummaryModal({
               </div>
             )}
 
-            {/* 🎯 Tese da Vitória */}
+            {/* 🎯 Como Vencer Esta Luta */}
             <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-50 via-purple-50 to-slate-50 border-2 border-indigo-200 shadow-lg shadow-indigo-500/10">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
@@ -354,7 +416,7 @@ export default function StrategySummaryModal({
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Objetivo Principal</p>
-                    <h3 className="text-lg font-bold text-slate-900">Tese da Vitória</h3>
+                    <h3 className="text-lg font-bold text-slate-900">Como Vencer Esta Luta</h3>
                   </div>
                 </div>
                 {editingSection !== 'tese_da_vitoria' && (
@@ -374,7 +436,7 @@ export default function StrategySummaryModal({
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     className="w-full h-32 px-4 py-3 border border-indigo-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-slate-700 leading-relaxed bg-white"
-                    placeholder="Digite a tese da vitória..."
+                    placeholder="Digite como vencer esta luta..."
                   />
                   <div className="flex items-center justify-end gap-2">
                     <button

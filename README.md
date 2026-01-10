@@ -160,13 +160,13 @@ projeto analise atletas/
 │   │   │   ├── analysis/      AiStrategyBox, StrategySummaryModal
 │   │   │   ├── chat/          ProfileChatPanel, StrategyChatPanel
 │   │   │   ├── charts/        Gráficos Recharts
-│   │   │   ├── common/        ProfileSummaryModal, Header, Cards
+│   │   │   ├── common/        Badge, FormattedText, Header, Cards
 │   │   │   ├── video/         VideoAnalysis, VideoAnalysisCard
 │   │   │   └── forms/         Formulários
 │   │   ├── pages/             Páginas da aplicação
 │   │   ├── services/          Chamadas API
 │   │   ├── hooks/             Custom hooks
-│   │   └── utils/             Funções auxiliares
+│   │   └── utils/             strategyUtils, formatters
 │   └── public/                Assets estáticos
 │
 ├── server/                     Node.js + Express
@@ -176,7 +176,7 @@ projeto analise atletas/
 │   │   ├── routes/            chat.js, strategy.js
 │   │   ├── middleware/        Auth & validações
 │   │   └── services/          geminiService (Chat + Estratégia)
-│   ├── migrations/            SQLs do Supabase (001-014)
+│   ├── migrations/            SQLs do Supabase (001-016)
 │   ├── tests/                 Testes de integração
 │   └── uploads/               Arquivos de upload
 │

@@ -128,11 +128,17 @@ class TacticalAnalysis {
       })
       .eq('id', id)
       .eq('user_id', userId)
-      .select()
-      .single();
+      .select();
 
-    if (error) throw error;
-    return data;
+    if (error) {
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error('Análise não encontrada ou sem permissão para atualizar');
+    }
+    
+    return data[0];
   }
 
   /**
