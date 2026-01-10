@@ -100,6 +100,84 @@ export default function Analyses() {
       console.log('🔍 planoTatico final:', planoTatico);
       console.log('🔍 planoTatico keys:', planoTatico ? Object.keys(planoTatico) : 'null/undefined');
       
+      // Gerar conteúdo HTML para as seções com arrays
+      const renderOportunidades = strategyData?.checklist_tatico?.oportunidades_de_pontos 
+        ? (Array.isArray(strategyData.checklist_tatico.oportunidades_de_pontos) 
+          ? strategyData.checklist_tatico.oportunidades_de_pontos.map(item => {
+              if (typeof item === 'string') {
+                return `<div style="margin-bottom: 6px; padding-left: 8px;"><span style="color: #10b981; font-weight: bold;">+</span> <span style="color: #475569; font-size: 12px;">${item}</span></div>`;
+              } else {
+                const probColor = item.probabilidade === 'alta' ? '#10b981' : item.probabilidade === 'media' ? '#f59e0b' : '#64748b';
+                return `<div style="margin-bottom: 8px; padding: 6px; background: #f9fafb; border-radius: 4px;">
+                  <div style="font-weight: bold; color: #1e293b; font-size: 12px; margin-bottom: 2px;">
+                    <span style="color: #10b981;">+</span> ${item.tecnica} (${item.pontos} pontos)
+                    <span style="background: ${probColor}20; color: ${probColor}; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">${item.probabilidade}</span>
+                  </div>
+                  <div style="color: #64748b; font-size: 11px; padding-left: 12px;">${item.quando}</div>
+                </div>`;
+              }
+            }).join('')
+          : `<p style="color: #64748b; font-size: 12px; font-style: italic;">Nenhuma oportunidade identificada</p>`)
+        : '';
+      
+      const renderArmadilhas = strategyData?.checklist_tatico?.armadilhas_dele
+        ? (Array.isArray(strategyData.checklist_tatico.armadilhas_dele)
+          ? strategyData.checklist_tatico.armadilhas_dele.map(item => {
+              if (typeof item === 'string') {
+                return `<div style="margin-bottom: 6px; padding-left: 8px;"><span style="color: #dc2626; font-weight: bold;">!</span> <span style="color: #475569; font-size: 12px;">${item}</span></div>`;
+              } else {
+                return `<div style="margin-bottom: 8px; padding: 6px; background: #fef2f2; border-radius: 4px;">
+                  <div style="font-weight: bold; color: #991b1b; font-size: 12px; margin-bottom: 3px;">
+                    <span>!</span> ${item.tecnica_perigosa}
+                  </div>
+                  <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;"><strong>Quando:</strong> ${item.situacao}</div>
+                  <div style="color: #64748b; font-size: 11px;"><strong>Como evitar:</strong> ${item.como_evitar}</div>
+                </div>`;
+              }
+            }).join('')
+          : `<p style="color: #64748b; font-size: 12px; font-style: italic;">Nenhuma armadilha conhecida</p>`)
+        : '';
+      
+      const renderPlanoEmPe = planoTatico?.em_pe_standup
+        ? Object.entries(planoTatico.em_pe_standup).map(([key, value]) => `
+            <div style="margin-bottom: 8px;">
+              <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
+                ${key.replace(/_/g, ' ')}:
+              </p>
+              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
+                ${value}
+              </p>
+            </div>
+          `).join('')
+        : '';
+      
+      const renderPlanoPassagem = planoTatico?.jogo_de_passagem_top
+        ? Object.entries(planoTatico.jogo_de_passagem_top).map(([key, value]) => `
+            <div style="margin-bottom: 8px;">
+              <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
+                ${key.replace(/_/g, ' ')}:
+              </p>
+              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
+                ${value}
+              </p>
+            </div>
+          `).join('')
+        : '';
+      
+      const renderPlanoGuarda = planoTatico?.jogo_de_guarda_bottom
+        ? Object.entries(planoTatico.jogo_de_guarda_bottom).map(([key, value]) => `
+            <div style="margin-bottom: 8px;">
+              <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
+                ${key.replace(/_/g, ' ')}:
+              </p>
+              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
+                ${value}
+              </p>
+            </div>
+          `).join('')
+        : '';
+      
+      
       // Criar conteúdo formatado para PDF com suporte a quebra de página
       const content = `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 100%; width: 750px; box-sizing: border-box;">
@@ -166,48 +244,21 @@ export default function Analyses() {
             ${planoTatico.em_pe_standup ? `
             <div style="background: white; border-left: 4px solid #3b82f6; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
               <p style="color: #3b82f6; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">🥋 Em Pé / Standup</p>
-              ${Object.entries(planoTatico.em_pe_standup).map(([key, value]) => `
-                <div style="margin-bottom: 8px;">
-                  <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
-                    ${key.replace(/_/g, ' ')}:
-                  </p>
-                  <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
-                    ${value}
-                  </p>
-                </div>
-              `).join('')}
+              ${renderPlanoEmPe}
             </div>
             ` : ''}
             
             ${planoTatico.jogo_de_passagem_top ? `
             <div style="background: white; border-left: 4px solid #10b981; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
               <p style="color: #10b981; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">⬆️ Jogo de Passagem / Top</p>
-              ${Object.entries(planoTatico.jogo_de_passagem_top).map(([key, value]) => `
-                <div style="margin-bottom: 8px;">
-                  <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
-                    ${key.replace(/_/g, ' ')}:
-                  </p>
-                  <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
-                    ${value}
-                  </p>
-                </div>
-              `).join('')}
+              ${renderPlanoPassagem}
             </div>
             ` : ''}
             
             ${planoTatico.jogo_de_guarda_bottom ? `
             <div style="background: white; border-left: 4px solid #8b5cf6; padding: 12px; page-break-inside: avoid;">
               <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">⬇️ Jogo de Guarda / Bottom</p>
-              ${Object.entries(planoTatico.jogo_de_guarda_bottom).map(([key, value]) => `
-                <div style="margin-bottom: 8px;">
-                  <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
-                    ${key.replace(/_/g, ' ')}:
-                  </p>
-                  <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
-                    ${value}
-                  </p>
-                </div>
-              `).join('')}
+              ${renderPlanoGuarda}
             </div>
             ` : ''}
           </div>
@@ -221,17 +272,39 @@ export default function Analyses() {
             ${strategyData.checklist_tatico.oportunidades_de_pontos ? `
             <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
               <p style="color: #065f46; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">✓ Oportunidades de Pontos</p>
-              ${Array.isArray(strategyData.checklist_tatico.oportunidades_de_pontos) ? 
-                strategyData.checklist_tatico.oportunidades_de_pontos.map(item => {
-                  if (typeof item === 'string') {
-                    return `<div style="margin-bottom: 6px; padding-left: 8px;"><span style="color: #10b981; font-weight: bold;">+</span> <span style="color: #475569; font-size: 12px;">${item}</span></div>`;
-                  } else {
-                    const probColor = item.probabilidade === 'alta' ? '#10b981' : item.probabilidade === 'media' ? '#f59e0b' : '#64748b';
-                    return `<div style="margin-bottom: 8px; padding: 6px; background: #f9fafb; border-radius: 4px;">
-                      <div style="font-weight: bold; color: #1e293b; font-size: 12px; margin-bottom: 2px;">
-                        <span style="color: #10b981;">+</span> ${item.tecnica} (${item.pontos} pontos)
-                        <span style="background: ${probColor}20; color: ${probColor}; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">${item.probabilidade}</span>
-                      </div>? `
+              ${renderOportunidades}
+            </div>
+            ` : ''}
+            
+            ${strategyData.checklist_tatico.armadilhas_dele ? `
+            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
+              <p style="color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">⚠ Armadilhas Dele</p>
+              ${renderArmadilhas}
+            </div>
+            ` : ''}
+            
+            ${strategyData.checklist_tatico.protocolo_de_seguranca ? `
+            <div style="background: white; border: 1px solid #fdba74; border-radius: 6px; padding: 12px; page-break-inside: avoid;">
+              <p style="color: #c2410c; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">🛡️ Protocolo de Segurança</p>
+              ${strategyData.checklist_tatico.protocolo_de_seguranca.jamais_fazer ? `
+              <div style="margin-bottom: 8px; padding: 6px; background: #fef2f2; border-radius: 4px;">
+                <p style="color: #991b1b; font-weight: bold; font-size: 11px; margin: 0 0 3px 0;">❌ Jamais Fazer:</p>
+                <p style="color: #64748b; font-size: 11px; margin: 0;">${strategyData.checklist_tatico.protocolo_de_seguranca.jamais_fazer}</p>
+              </div>
+              ` : ''}
+              ${strategyData.checklist_tatico.protocolo_de_seguranca.saida_de_emergencia ? `
+              <div style="padding: 6px; background: #fef3c7; border-radius: 4px;">
+                <p style="color: #92400e; font-weight: bold; font-size: 11px; margin: 0 0 3px 0;">🚪 Saída de Emergência:</p>
+                <p style="color: #64748b; font-size: 11px; margin: 0;">${strategyData.checklist_tatico.protocolo_de_seguranca.saida_de_emergencia}</p>
+              </div>
+              ` : ''}
+            </div>
+            ` : ''}
+          </div>
+          ` : ''}
+          
+          <!-- Cronologia Inteligente -->
+          ${strategyData?.cronologia_inteligente ? `
           <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
             <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">⏱️ Cronologia Inteligente</h2>
             
@@ -269,60 +342,7 @@ export default function Analyses() {
                 ${strategyData.cronologia_inteligente.final}
               </p>
             </div>
-            ` : ''"color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">⚠ Armadilhas Dele</p>
-              ${Array.isArray(strategyData.checklist_tatico.armadilhas_dele) ?
-                strategyData.checklist_tatico.armadilhas_dele.map(item => {
-                  if (typeof item === 'string') {
-                    return `<div style="margin-bottom: 6px; padding-left: 8px;"><span style="color: #dc2626; font-weight: bold;">!</span> <span style="color: #475569; font-size: 12px;">${item}</span></div>`;
-                  } else {
-                    return `<div style="margin-bottom: 8px; padding: 6px; background: #fef2f2; border-radius: 4px;">
-                      <div style="font-weight: bold; color: #991b1b; font-size: 12px; margin-bottom: 3px;">
-                        <span>!</span> ${item.tecnica_perigosa}
-                      </div>
-                      <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;"><strong>Quando:</strong> ${item.situacao}</div>
-                      <div style="color: #64748b; font-size: 11px;"><strong>Como evitar:</strong> ${item.como_evitar}</div>
-                    </div>`;
-                  }
-                }).join('')
-                : `<p style="color: #64748b; font-size: 12px; font-style: italic;">Nenhuma armadilha conhecida</p>`
-              }
-            </div>
             ` : ''}
-            
-            ${strategyData.checklist_tatico.protocolo_de_seguranca ? `
-            <div style="background: white; border: 1px solid #fdba74; border-radius: 6px; padding: 12px; page-break-inside: avoid;">
-              <p style="color: #c2410c; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">🛡️ Protocolo de Segurança</p>
-              ${strategyData.checklist_tatico.protocolo_de_seguranca.jamais_fazer ? `
-              <div style="margin-bottom: 8px; padding: 6px; background: #fef2f2; border-radius: 4px;">
-                <p style="color: #991b1b; font-weight: bold; font-size: 11px; margin: 0 0 3px 0;">❌ Jamais Fazer:</p>
-                <p style="color: #64748b; font-size: 11px; margin: 0;">${strategyData.checklist_tatico.protocolo_de_seguranca.jamais_fazer}</p>
-              </div>
-              ` : ''}
-              ${strategyData.checklist_tatico.protocolo_de_seguranca.saida_de_emergencia ? `
-              <div style="padding: 6px; background: #fef3c7; border-radius: 4px;">
-                <p style="color: #92400e; font-weight: bold; font-size: 11px; margin: 0 0 3px 0;">🚪 Saída de Emergência:</p>
-                <p style="color: #64748b; font-size: 11px; margin: 0;">${strategyData.checklist_tatico.protocolo_de_seguranca.saida_de_emergencia}</p>
-              </div>
-              ` : ''}
-            </div>
-            ` : ''}
-          </div>
-          ` : ''}
-          
-          <!-- Cronologia Inteligente -->
-          ${strategyData?.cronologia_inteligente && Object.keys(strategyData.cronologia_inteligente).length > 0 ? `
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">⏱️ Cronologia Inteligente</h2>
-            ${Object.entries(strategyData.cronologia_inteligente).map(([fase, conteudo], index) => `
-              <div style="background: white; border-left: 3px solid #f59e0b; padding: 10px 12px; margin-bottom: ${index === Object.keys(strategyData.cronologia_inteligente).length - 1 ? '0' : '10px'}; page-break-inside: avoid;">
-                <p style="color: #d97706; font-weight: bold; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
-                  ${fase.replace(/_/g, ' ')}
-                </p>
-                <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4;">
-                  ${conteudo}
-                </p>
-              </div>
-            `).join('')}
           </div>
           ` : ''}
         </div>
