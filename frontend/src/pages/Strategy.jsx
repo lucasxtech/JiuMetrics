@@ -34,7 +34,19 @@ export default function Strategy() {
         setOpponents(opponentsData.data || []);
       } catch (err) {
         console.error('❌ Erro ao carregar dados:', err);
-        setError('Erro ao carregar atletas e adversários');
+        
+        // Mensagem específica baseada no erro
+        let errorMessage = 'Erro ao carregar atletas e adversários';
+        
+        if (err.response?.status === 401) {
+          errorMessage = 'Sessão expirada. Você será redirecionado para o login.';
+        } else if (err.response?.status === 500) {
+          errorMessage = 'Erro no servidor. Tente novamente mais tarde.';
+        } else if (!navigator.onLine) {
+          errorMessage = 'Sem conexão com a internet.';
+        }
+        
+        setError(errorMessage);
       } finally {
         setIsLoadingData(false);
       }
