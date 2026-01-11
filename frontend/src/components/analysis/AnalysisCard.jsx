@@ -43,7 +43,7 @@ export default function AnalysisCard({ analysis, onView }) {
         )}
 
         {/* Ações */}
-        <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+        <div className="flex items-center gap-2 pt-3 border-t border-slate-100" style={{ marginTop: "3vh" }}>
           <button
             onClick={() => onView(analysis)}
             className="btn-secondary flex-1 flex items-center justify-center gap-2"
