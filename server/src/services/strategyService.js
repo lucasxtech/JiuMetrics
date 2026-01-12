@@ -311,52 +311,53 @@ class StrategyService {
     }
 
     // Preparar prompt de consolidação
-    const consolidationPrompt = `Você é um Analista Tático de Jiu-Jitsu de alto nível.
+    const consolidationPrompt = `Você é um Analista de Jiu-Jitsu.
 
-Você recebeu ${summaries.length} análises técnicas de um mesmo lutador, coletadas em diferentes lutas.
+Você recebeu ${summaries.length} análises de um mesmo lutador, de lutas diferentes.
 
-Sua tarefa é CONSOLIDAR essas análises em um ÚNICO RESUMO TÉCNICO UNIFICADO.
+Sua tarefa: juntar essas análises em um RESUMO ÚNICO.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 ANÁLISES INDIVIDUAIS (${summaries.length} lutas)
+📋 ANÁLISES (${summaries.length} lutas)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${summaries.map((s, i) => `LUTA ${i + 1}:\n${s}\n`).join('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 INSTRUÇÕES
+🎯 O QUE FAZER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Analise TODAS as lutas acima e gere um resumo consolidado que identifique:
+Analise TODAS as lutas e faça um resumo que mostre:
 
-1. **PADRÕES CONSISTENTES**: Comportamentos que aparecem em MÚLTIPLAS lutas
-2. **EVOLUÇÃO TÉCNICA**: Mudanças no estilo ao longo do tempo (se houver progressão visível)
-3. **TENDÊNCIAS DOMINANTES**: Técnicas, posições e estratégias mais frequentes
-4. **PONTOS FORTES RECORRENTES**: O que ele faz bem consistentemente
-5. **FRAQUEZAS REPETIDAS**: Erros ou limitações que aparecem em várias lutas
-6. **ESTILO GERAL**: Caracterização do perfil técnico geral do lutador
+1. PADRÕES: Comportamentos que se repetem em várias lutas
+2. EVOLUÇÃO: Mudanças no estilo ao longo do tempo (se tiver)
+3. TENDÊNCIAS: Técnicas, posições e estratégias mais usadas
+4. PONTOS FORTES: O que ele faz bem sempre
+5. FRAQUEZAS: Erros ou problemas que aparecem em várias lutas
+6. ESTILO: Perfil geral do lutador
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 FORMATO DE SAÍDA
+📦 COMO ESCREVER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Retorne APENAS texto puro, SEM formatação markdown, SEM JSON.
+Retorne texto simples, SEM formatação markdown, SEM JSON.
 
-Escreva um parágrafo único e coeso (200-300 palavras) que sintetize o perfil técnico consolidado.
+Escreva um parágrafo único (200-300 palavras) que resume o perfil do lutador.
 
-Seja específico, objetivo e baseado em evidências das múltiplas análises.
+Seja específico e objetivo.
 
-PROIBIDO: 
-- Usar markdown (**negrito**, \`code\`, listas numeradas)
-- Mencionar "Luta 1", "Luta 2" explicitamente
-- Repetir informações redundantes
-- Generalizações vazias
+NÃO PODE: 
+- Usar markdown (**negrito**, \`code\`, listas)
+- Falar "Luta 1", "Luta 2"
+- Repetir as mesmas coisas
+- Ser genérico demais
+- Usar palavras difíceis ou termos complicados
 
-OBRIGATÓRIO:
-- Texto corrido em parágrafo único
-- Foco em padrões que aparecem em múltiplas lutas
-- Síntese inteligente das tendências dominantes
-- Linguagem técnica e precisa`;
+DEVE:
+- Texto corrido em um parágrafo
+- Focar em padrões que aparecem várias vezes
+- Resumir as tendências principais
+- Usar linguagem clara e simples`;
 
     try {
       const modelToUse = customModel || 'gemini-2.0-flash';

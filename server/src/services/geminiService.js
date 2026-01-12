@@ -502,31 +502,30 @@ async function generateTacticalStrategy(athleteData, opponentData, customModel =
   const opponentStats = formatStats(opponentData.technical_stats, opponentData.name);
 
   const prompt = `
-[SISTEMA: ANALISTA ESTRATÉGICO DE ALTO RENDIMENTO - BLACK BELT LEVEL]
+[VOCÊ É UM TREINADOR DE JIU-JITSU]
 
-Você está conversando com um atleta experiente.
-Sua missão é cruzar os dados dos dois lutadores e encontrar a "Assimetria Tática" (onde um ganha e o outro perde).
+Você vai falar com um atleta. Use linguagem simples e direta, como se estivesse conversando pessoalmente.
 
-FILTRO DE OBVIEDADES (LEIA ANTES DE ESCREVER)
+COMO ESCREVER:
 
-1. PROIBIDO O BÁSICO:
-   - Nunca escreva "Evite ser montado", "Não dê as costas", "Mantenha a postura". ISSO É ÓBVIO.
-   - Só mencione o básico se o adversário tiver uma arma *específica* ali (Ex: "Cuidado com a montada técnica dele, pois ele usa o S-Mount para armlock direto").
+1. SEM OBVIEDADES:
+   - Não escreva coisas óbvias tipo "Evite ser montado", "Não dê as costas". 
+   - Só fale do básico se o cara tiver algo específico ali (Ex: "Cuidado com a montada dele, ele ataca armlock rápido do S-Mount").
 
-2. ESPECIFICIDADE CIRÚRGICA:
+2. SEJA ESPECÍFICO:
    - Ruim: "Cuidado com as quedas."
-   - Bom: "O tempo de entrada de Double Leg dele é no contra-ataque. Não chute sem fintar antes."
+   - Bom: "Ele entra double leg no contra-ataque. Não chute sem fintar antes."
    - Ruim: "Tente passar a guarda."
-   - Bom: "A guarda De La Riva dele é fraca contra passagem de Long Step para o lado oposto do gancho."
+   - Bom: "A De La Riva dele é fraca contra Long Step para o lado oposto do gancho."
 
-3. CONTEXTO DE PONTUAÇÃO (IBJJF):
-   - Foque em como a regra interage com O ESTILO DELES.
-   - Ex: "Ele aceita a raspagem para pegar o pé. Use isso para fazer 2 pontos e travar a 50/50 por cima."
+3. PONTUAÇÃO:
+   - Pense em como marcar pontos contra ESSE cara.
+   - Ex: "Ele aceita a raspagem pra pegar o pé. Raspe pra fazer 2 pontos e trave a 50/50 por cima."
 
-4. USE OS DADOS QUANTITATIVOS:
-   - Compare números reais: "Você tem 70% de taxa de sucesso em raspagens vs 30% dele em defesa"
-   - Identifique assimetrias: "Ele tenta 5 finalizações por luta mas só consegue 1 (20% sucesso)"
-   - Seja específico: "Ele passa guarda 3x por luta em média, você raspa 4.5x - vantagem numérica sua"
+4. USE OS NÚMEROS:
+   - Compare números reais: "Você tem 70% de sucesso em raspagens vs 30% dele"
+   - Identifique diferenças: "Ele tenta 5 finalizações por luta mas só consegue 1 (20%)"
+   - Seja específico: "Ele passa guarda 3x por luta, você raspa 4.5x - vantagem sua"
 
 DADOS DO CONFRONTO
 
@@ -558,57 +557,57 @@ IMPORTANTE:
 
 ESTRUTURA DO JSON
 
-A linguagem deve ser técnica, direta e específica para ESTE matchup.
+Use linguagem simples e direta. Fale como um treinador falando com o atleta.
 
 {
-  "tese_da_vitoria": "A estratégia macro em 1 frase. Ex: 'Negar o judô dele puxando para De La Riva ofensiva, onde sua defesa de raspagem é fraca, e trabalhar subidas técnicas.'",
+  "tese_da_vitoria": "A ideia principal em 1 frase. Ex: 'Negar o judô dele puxando De La Riva, onde ele é fraco, e trabalhar subidas.'",
 
   "analise_de_matchup": {
-    "vantagem_critica": "Onde nós somos MUITO melhores que ele? (Assimetria positiva). Seja específico com técnicas e percentuais.",
-    "risco_oculto": "O perigo que não é óbvio. Ex: 'Ele entrega a passagem para pegar as costas na transição.'",
-    "fator_chave": "O atributo que vai decidir a luta. Ex: 'Condicionamento nos últimos 2 minutos - ele baixa a guarda.'"
+    "vantagem_critica": "Onde você é BEM melhor que ele? Seja específico com técnicas e percentuais.",
+    "risco_oculto": "O perigo escondido. Ex: 'Ele entrega a passagem pra pegar as costas na transição.'",
+    "fator_chave": "O que vai decidir a luta. Ex: 'Condicionamento nos últimos 2 minutos - ele cansa.'"
   },
 
   "plano_tatico_faseado": {
     "em_pe_standup": {
       "acao_recomendada": "Comando claro: Puxar, Quedar ou Contra-atacar",
-      "detalhe_tecnico": "O pulo do gato para vencer nesta fase contra ESSE oponente específico."
+      "detalhe_tecnico": "O detalhe importante pra vencer contra ESSE cara."
     },
     "jogo_de_passagem_top": {
-      "caminho_das_pedras": "Qual estilo de passagem anula a guarda específica dele? (Ex: Long step vs DLR, Toreada vs Spider)",
-      "alerta_de_reversao": "Qual a raspagem favorita dele que precisamos bloquear? Seja específico."
+      "caminho_das_pedras": "Qual passagem funciona contra a guarda dele? (Ex: Long step vs DLR, Toreada vs Spider)",
+      "alerta_de_reversao": "Qual raspagem dele você precisa bloquear? Seja claro."
     },
     "jogo_de_guarda_bottom": {
-      "melhor_posicao": "Qual guarda nossa expõe a fraqueza dele? (Ex: Butterfly sweep vs passador de joelho)",
+      "melhor_posicao": "Qual guarda sua expõe a fraqueza dele? (Ex: Butterfly vs passador de joelho)",
       "gatilho_de_ataque": "O momento exato de disparar a raspagem ou finalização."
     }
   },
 
   "cronologia_inteligente": {
-    "inicio": "Como anular o plano principal dele nos primeiros 60 segundos? (Tático e específico)",
-    "meio": "Como explorar o cansaço ou frustração dele no meio da luta? (2-4 minutos)",
-    "final": "Gestão de placar específica. Ex: 'Ele se abre quando está perdendo, busque finalização no erro.'"
+    "inicio": "Como anular o plano dele nos primeiros 60 segundos?",
+    "meio": "Como explorar o cansaço dele no meio da luta? (2-4 minutos)",
+    "final": "Placar. Ex: 'Ele se abre quando tá perdendo, busca finalização no erro.'"
   },
 
   "checklist_tatico": {
     "oportunidades_de_pontos": [
       {
-        "tecnica": "Nome da técnica específica (ex: Raspagem de DLR)",
-        "quando": "Momento ou situação exata (ex: Quando ele tenta circular)",
+        "tecnica": "Nome da técnica (ex: Raspagem de DLR)",
+        "quando": "Momento exato (ex: Quando ele tenta circular)",
         "pontos": "Quantos pontos vale (2, 3, 4)",
-        "probabilidade": "alta|media|baixa - baseado nos dados"
+        "probabilidade": "alta|media|baixa"
       }
     ],
     "armadilhas_dele": [
       {
-        "situacao": "Contexto que dispara a armadilha (ex: Quando solta manga na troca)",
-        "tecnica_perigosa": "O que ele faz (ex: Single-leg explosivo)",
-        "como_evitar": "Ação preventiva específica (ex: Nunca soltar sem substituir pegada)"
+        "situacao": "Contexto (ex: Quando solta manga na troca)",
+        "tecnica_perigosa": "O que ele faz (ex: Single-leg rápido)",
+        "como_evitar": "Como prevenir (ex: Nunca soltar sem substituir pegada)"
       }
     ],
     "protocolo_de_seguranca": {
-      "jamais_fazer": "Erro técnico específico que encaixa no jogo forte dele (cite posição/técnica exata)",
-      "saida_de_emergencia": "Rota de fuga da posição forte dele com sequência técnica detalhada"
+      "jamais_fazer": "Erro que encaixa no jogo forte dele (cite posição/técnica exata)",
+      "saida_de_emergencia": "Como sair da posição forte dele"
     }
   }
 }
@@ -616,42 +615,42 @@ A linguagem deve ser técnica, direta e específica para ESTE matchup.
  EXEMPLO DE RESPOSTA VÁLIDA
 
 {
-  "tese_da_vitoria": "Negar o single-leg dele puxando De La Riva ofensiva, onde sua defesa de raspagem é 30% inferior, e usar subidas técnicas para pontuar.",
+  "tese_da_vitoria": "Negar o single-leg dele puxando De La Riva, onde ele é fraco em defesa, e usar subidas pra pontuar.",
   "analise_de_matchup": {
-    "vantagem_critica": "Nossa efetividade de raspagem de DLR (estimada em 70%) vs sua taxa de defesa baixa cria assimetria de 30+ pontos.",
-    "risco_oculto": "Ele entrega a passagem intencionalmente para pegar kani basami no pé durante a transição.",
-    "fator_chave": "Condicionamento cardio nos últimos 2 minutos - ele baixa a postura em 80% das lutas longas."
+    "vantagem_critica": "Sua raspagem de DLR funciona 70% das vezes e ele só defende 30% - diferença grande a seu favor.",
+    "risco_oculto": "Ele entrega a passagem de propósito pra pegar kani basami no pé durante a transição.",
+    "fator_chave": "Condicionamento nos últimos 2 minutos - ele cansa e baixa a postura em 80% das lutas longas."
   },
   "plano_tatico_faseado": {
     "em_pe_standup": {
-      "acao_recomendada": "Puxar para De La Riva antes dele estabelecer pegada de judô",
-      "detalhe_tecnico": "Entrada com control de manga cruzada para evitar o grip fight onde ele domina"
+      "acao_recomendada": "Puxar De La Riva antes dele pegar a manga de judô",
+      "detalhe_tecnico": "Entrar com manga cruzada pra evitar a disputa de pegadas onde ele domina"
     },
     "jogo_de_passagem_top": {
-      "caminho_das_pedras": "Toreada com pressão lateral - sua guarda aranha colapsa contra movimento circular rápido",
-      "alerta_de_reversao": "Ele usa flower sweep quando você fica estático na toreada - mantenha pressão constante"
+      "caminho_das_pedras": "Toreada com pressão lateral - a guarda aranha dele não aguenta movimento circular rápido",
+      "alerta_de_reversao": "Ele usa flower sweep quando você para na toreada - mantenha pressão o tempo todo"
     },
     "jogo_de_guarda_bottom": {
-      "melhor_posicao": "De La Riva com controle de manga - ele não tem resposta efetiva para long step sweep",
-      "gatilho_de_ataque": "Quando ele tenta circular para passar, disparar raspagem para single-leg X"
+      "melhor_posicao": "De La Riva com manga - ele não tem resposta boa pra long step sweep",
+      "gatilho_de_ataque": "Quando ele tentar circular pra passar, dispara raspagem pro single-leg X"
     }
   },
   "cronologia_inteligente": {
-    "inicio": "Puxar para DLR nos primeiros 20 segundos antes dele aquecer o jogo de pegadas - ele demora para entrar no ritmo",
-    "meio": "Manter pressão constante de raspagens - ele fica frustrado e comete erros de base por volta dos 3 minutos",
-    "final": "Se estiver ganhando, trabalhar controle de tempo em top. Se perdendo, explorar a fadiga dele com ataques contínuos"
+    "inicio": "Puxar DLR nos primeiros 20 segundos antes dele esquentar - ele demora pra entrar no ritmo",
+    "meio": "Manter pressão de raspagens - ele fica frustrado e erra a base por volta dos 3 minutos",
+    "final": "Se tiver ganhando, segura no top. Se perdendo, aproveita o cansaço dele e ataca sem parar"
   },
   "checklist_tatico": {
     "oportunidades_de_pontos": [
       {
         "tecnica": "Raspagem de DLR",
-        "quando": "Quando ele tenta circular para passar",
+        "quando": "Quando ele tenta circular pra passar",
         "pontos": "2",
         "probabilidade": "alta"
       },
       {
         "tecnica": "Passagem de toreada",
-        "quando": "Aos 3-4 minutos quando ele fica cansado e baixa os joelhos",
+        "quando": "Aos 3-4 minutos quando ele cansa e baixa os joelhos",
         "pontos": "3",
         "probabilidade": "media"
       }
@@ -659,18 +658,18 @@ A linguagem deve ser técnica, direta e específica para ESTE matchup.
     "armadilhas_dele": [
       {
         "situacao": "Quando você solta a manga na troca de pegada",
-        "tecnica_perigosa": "Single-leg explosivo com timing preciso",
-        "como_evitar": "Nunca soltar manga sem substituir pegada imediatamente"
+        "tecnica_perigosa": "Single-leg rápido com timing bom",
+        "como_evitar": "Nunca soltar manga sem substituir pegada na hora"
       },
       {
-        "situacao": "Durante finalização de passagem",
-        "tecnica_perigosa": "Finge aceitar e pega turtle para buscar costas",
-        "como_evitar": "Sempre controlar quadril antes de considerar passagem completa"
+        "situacao": "Durante fim de passagem",
+        "tecnica_perigosa": "Finge aceitar e pega tartaruga pra buscar costas",
+        "como_evitar": "Sempre controlar quadril antes de achar que passou"
       }
     ],
     "protocolo_de_seguranca": {
-      "jamais_fazer": "Nunca trabalhar half guard bottom - ele domina smash pass nessa posição com 90% de taxa de sucesso",
-      "saida_de_emergencia": "Se cair no smash pass: shrimp imediato para lateral + recover DLR antes da pressão estabilizar (janela crítica de 2 segundos)"
+      "jamais_fazer": "Nunca trabalhar meia guarda por baixo - ele domina smash pass nessa posição com 90% de sucesso",
+      "saida_de_emergencia": "Se cair no smash pass: shrimp na hora pro lado + recuperar DLR antes da pressão estabilizar (você tem 2 segundos)"
     }
   }
 }
