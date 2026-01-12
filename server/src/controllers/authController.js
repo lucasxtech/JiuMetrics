@@ -4,7 +4,7 @@ const User = require('../models/User');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 const JWT_EXPIRES_IN = '7d';
 const JWT_EXPIRES_IN_REMEMBER = '30d';
-const ALLOWED_EMAIL = 'lucas.menezes@clint.digital';
+const ALLOWED_EMAILS = ['lucas.menezes@clint.digital', 'contateste@teste.com'];
 
 const ERROR_MESSAGES = {
   REQUIRED_FIELDS: 'Todos os campos são obrigatórios',
@@ -39,7 +39,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: ERROR_MESSAGES.INVALID_EMAIL });
     }
 
-    if (email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
+    const isEmailAllowed = ALLOWED_EMAILS.some(ALLOWED_EMAIL => email.toLowerCase() === ALLOWED_EMAIL.toLowerCase());
+
+    if (!isEmailAllowed) {
       return res.status(403).json({ error: ERROR_MESSAGES.UNAUTHORIZED_EMAIL });
     }
 
@@ -77,8 +79,10 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    if (email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
-      console.log('❌ Unauthorized email:', email, 'Expected:', ALLOWED_EMAIL);
+    const isEmailAllowed = ALLOWED_EMAILS.some(ALLOWED_EMAIL => email.toLowerCase() === ALLOWED_EMAIL.toLowerCase()); 
+
+    if (!isEmailAllowed) {
+      console.log('❌ Unauthorized email:', email);
       return res.status(403).json({ error: ERROR_MESSAGES.UNAUTHORIZED_EMAIL });
     }
 
