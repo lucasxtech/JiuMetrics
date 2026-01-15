@@ -17,10 +17,16 @@ Componentes relacionados a análises táticas e estratégias.
 ### chat/
 Componentes de chat com IA para refinar conteúdo.
 
-- **ProfileChatPanel.jsx** - Chat lateral para melhorar perfis de atletas
-- **StrategyChatPanel.jsx** - Chat lateral para refinar estratégias
+- **AiChatPanel.jsx** - Chat para refinar análises de vídeo
+- **ProfileChatPanel.jsx** - Chat para melhorar perfis de atletas/adversários
+- **StrategyChatPanel.jsx** - Chat para refinar estratégias táticas
+- **EditableAnalysisText.jsx** - Texto editável inline com suporte a diff
+- **VersionHistoryPanel.jsx** - Histórico de versões de análises
+- **ProfileVersionHistoryPanel.jsx** - Histórico de versões de perfis
 
-**Usado em:** `ProfileSummaryModal.jsx`, `StrategySummaryModal.jsx`
+**Fluxo:** Usuário envia mensagem → IA sugere edição → Diff exibido → Aceitar/Rejeitar
+
+**Usado em:** `Analyses.jsx`, `AthleteDetail.jsx`, `Strategy.jsx`
 
 ### video/
 Componentes para análise de vídeos.
@@ -78,8 +84,12 @@ import StrategySummaryModal from '../components/analysis/StrategySummaryModal';
 import AnalysisCard from '../components/analysis/AnalysisCard';
 
 // Chat
+import AiChatPanel from '../components/chat/AiChatPanel';
 import ProfileChatPanel from '../components/chat/ProfileChatPanel';
 import StrategyChatPanel from '../components/chat/StrategyChatPanel';
+import VersionHistoryPanel from '../components/chat/VersionHistoryPanel';
+import ProfileVersionHistoryPanel from '../components/chat/ProfileVersionHistoryPanel';
+import EditableAnalysisText from '../components/chat/EditableAnalysisText';
 
 // Video
 import VideoAnalysis from '../components/video/VideoAnalysis';

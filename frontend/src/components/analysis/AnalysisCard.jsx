@@ -1,12 +1,31 @@
 // Componente de Card de Análise Tática - Design Moderno
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { extractStrategyContent } from '../../utils/strategyUtils';
 
 export default function AnalysisCard({ analysis, onView, onDelete }) {
   const formattedDate = formatDistanceToNow(new Date(analysis.created_at), {
     addSuffix: true,
     locale: ptBR
   });
+
+  // Extrair conteúdo da estratégia (funciona independente de wrappers aninhados)
+  const strategyContent = extractStrategyContent(analysis.strategy_data);
+  
+  // Extrair texto da tese (pode ser string ou objeto)
+  const getTeseText = () => {
+    const tese = strategyContent?.tese_da_vitoria;
+    if (!tese) return null;
+    if (typeof tese === 'string') return tese;
+    // Se for objeto, tentar extrair primeiro valor ou concatenar
+    if (typeof tese === 'object') {
+      const values = Object.values(tese).filter(v => typeof v === 'string');
+      return values.length > 0 ? values[0] : null;
+    }
+    return null;
+  };
+  
+  const teseText = getTeseText();
 
   return (
     <div className="group cursor-pointer rounded-3xl border border-white/60 bg-white/90 shadow-[0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(15,23,42,0.18)] transition-all duration-200 animate-scaleIn">
@@ -44,12 +63,14 @@ export default function AnalysisCard({ analysis, onView, onDelete }) {
             </div>
           </div>
 
-          {/* Preview da tese (se disponível) */}
-          {analysis.strategy_data?.tese_da_vitoria && (
-            <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed bg-gradient-to-r from-slate-50 to-transparent p-3 rounded-xl border-l-4 border-indigo-300">
-              {analysis.strategy_data.tese_da_vitoria}
-            </p>
-          )}
+          {/* Preview da tese (se disponível) - altura mínima para consistência */}
+          <div className="min-h-[4rem]">
+            {teseText && (
+              <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed bg-gradient-to-r from-slate-50 to-transparent p-3 rounded-xl border-l-4 border-indigo-300">
+                {teseText}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

@@ -116,15 +116,21 @@ class FightAnalysis {
     if (analysisData.originalSummary !== undefined) updateData.original_summary = analysisData.originalSummary;
     if (analysisData.originalCharts !== undefined) updateData.original_charts = analysisData.originalCharts;
 
+    // Se não há nada para atualizar, apenas buscar e retornar
+    if (Object.keys(updateData).length === 0) {
+      return this.getById(id);
+    }
+
     const { data, error } = await supabase
       .from('fight_analyses')
       .update(updateData)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
     
     if (error) throw error;
-    return parseAnalysisFromDB(data);
+    
+    // Retornar primeira linha ou null
+    return data && data.length > 0 ? parseAnalysisFromDB(data[0]) : null;
   }
 
   /**
@@ -135,11 +141,10 @@ class FightAnalysis {
       .from('fight_analyses')
       .delete()
       .eq('id', id)
-      .select()
-      .single();
+      .select();
     
     if (error) throw error;
-    return parseAnalysisFromDB(data);
+    return data && data.length > 0 ? parseAnalysisFromDB(data[0]) : null;
   }
 }
 

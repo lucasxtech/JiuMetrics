@@ -138,11 +138,12 @@ class AnalysisVersion {
       .from('analysis_versions')
       .update({ is_current: true })
       .eq('id', versionId)
-      .select()
-      .single();
+      .select();
 
     if (error) throw error;
-    return this.parseFromDB(data);
+    
+    // Retornar a primeira versão (ou null se não encontrou)
+    return data && data.length > 0 ? this.parseFromDB(data[0]) : null;
   }
 
   /**

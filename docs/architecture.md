@@ -171,7 +171,77 @@ generateMockStrategy() (lógica de IA)
 AiStrategyBox renderiza resultado
 ```
 
-### 3. Comparação
+### 3. Sistema de Chat IA
+
+O sistema de chat permite refinamento de conteúdo com IA em três contextos:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     SISTEMA DE CHAT IA                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   ANÁLISES      │  │   PERFIS        │  │   ESTRATÉGIAS   │  │
+│  │   AiChatPanel   │  │ ProfileChatPanel│  │StrategyChatPanel│  │
+│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘  │
+│           │                    │                    │           │
+│           ▼                    ▼                    ▼           │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    chatService.js                           ││
+│  │  - createSession()          - sendMessage()                 ││
+│  │  - applyEditSuggestion()    - saveManualEdit()             ││
+│  │  - getVersions()            - restoreVersion()             ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                              │                                  │
+│                              ▼                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                  chatController.js                          ││
+│  │  Endpoints: /chat/session, /chat/send, /chat/apply-edit    ││
+│  │             /chat/profile-*, /chat/strategy-*              ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                              │                                  │
+│                              ▼                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                   geminiService.js                          ││
+│  │  - Prompts especializados por contexto                     ││
+│  │  - Mapeamento de campos para estratégias                   ││
+│  │  - Retorno estruturado: {field, newValue, reason}          ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Fluxo de Edição por Chat (Estratégias):**
+
+```
+1. Usuário pede: "refaça o checklist tático"
+                    ↓
+2. IA identifica campo via palavras-chave
+   "checklist" → checklist_tatico
+                    ↓
+3. IA retorna: { field: "checklist_tatico", newValue: "...", reason: "..." }
+                    ↓
+4. Frontend recebe via onPendingEdit
+                    ↓
+5. EditableText do campo correspondente exibe DIFF
+                    ↓
+6. Usuário aceita → Estratégia atualizada + Versão salva
+   ou rejeita → Diff removido
+```
+
+**Campos de Estratégia e Mapeamento:**
+
+| Campo | Palavras-chave no pedido |
+|-------|-------------------------|
+| `tese_da_vitoria` | tese, vencer, vitória, ganhar |
+| `plano_tatico_faseado` | plano, faseado, fases, etapas |
+| `cronologia_inteligente` | cronologia, tempo, timeline, minutos |
+| `analise_de_matchup` | matchup, versus, comparação, vantagens |
+| `checklist_tatico` | checklist, lista, não fazer, proibido |
+
+---
+
+### 4. Comparação
 
 ```
 Frontend (Compare page)

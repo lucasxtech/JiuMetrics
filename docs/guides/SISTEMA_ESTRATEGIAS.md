@@ -208,6 +208,41 @@ const restoreVersion = (version) => {
 9. Versão salva no histórico automaticamente
 ```
 
+### Mapeamento de Campos (IA → Frontend)
+
+A IA usa palavras-chave no pedido do usuário para identificar qual campo da estratégia deve ser modificado:
+
+| Palavras no pedido | Campo retornado | Seção no UI |
+|--------------------|-----------------|-------------|
+| "tese", "vencer", "vitória", "ganhar" | `tese_da_vitoria` | Como Vencer Esta Luta |
+| "plano", "faseado", "fases", "etapas" | `plano_tatico_faseado` | Plano Tático Faseado |
+| "cronologia", "tempo", "timeline", "minutos" | `cronologia_inteligente` | Cronologia Inteligente |
+| "matchup", "versus", "comparação", "vantagens" | `analise_de_matchup` | Análise de Matchup |
+| "checklist", "lista", "não fazer", "proibido", "fazer" | `checklist_tatico` | Checklist Tático |
+
+**Exemplo de retorno da IA:**
+```json
+{
+  "field": "checklist_tatico",
+  "newValue": "✅ FAZER:\n- Manter pressão constante\n- Buscar a guarda fechada\n\n❌ NÃO FAZER:\n- Entrar na guarda do adversário\n- Ficar muito tempo em pé",
+  "reason": "Reorganizei o checklist com itens mais específicos e acionáveis"
+}
+```
+
+**Exibição do Diff:**
+O diff é exibido inline no campo correspondente usando o componente `EditableText` dentro de `AiStrategyBox.jsx`. O mapeamento de campos no frontend:
+
+```javascript
+// AiStrategyBox.jsx - fieldMappings
+const fieldMappings = {
+  'tese_da_vitoria': ['tese_da_vitoria', 'como_vencer', 'resumo'],
+  'plano_tatico_faseado': ['plano_tatico_faseado', 'plano_tatico'],
+  'cronologia_inteligente': ['cronologia_inteligente', 'cronologia'],
+  'analise_de_matchup': ['analise_de_matchup', 'matchup'],
+  'checklist_tatico': ['checklist_tatico', 'checklist']
+};
+```
+
 ---
 
 ## 📋 Resumo das Funcionalidades Implementadas

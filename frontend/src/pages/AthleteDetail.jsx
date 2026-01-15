@@ -10,8 +10,8 @@ import AnalysisDetailModal from '../components/analysis/AnalysisDetailModal';
 import ProfileSummaryModal from '../components/analysis/ProfileSummaryModal';
 import VideoAnalysisEmptyState from '../components/video/VideoAnalysisEmptyState';
 import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal';
-import { getAthleteById, deleteAthlete } from '../services/athleteService';
-import { getOpponentById, deleteOpponent } from '../services/opponentService';
+import { getAthleteById, deleteAthlete, updateAthlete } from '../services/athleteService';
+import { getOpponentById, deleteOpponent, updateOpponent } from '../services/opponentService';
 import { getAnalysesByPerson, deleteAnalysis } from '../services/fightAnalysisService';
 import { consolidateProfile } from '../services/aiService';
 import { saveProfileSummary } from '../services/chatService';
@@ -35,6 +35,44 @@ export default function AthleteDetail({ isOpponent = false }) {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [savingBelt, setSavingBelt] = useState(false);
+
+  // Estado para controlar dropdown de faixa
+  const [beltDropdownOpen, setBeltDropdownOpen] = useState(false);
+
+  // Opções de faixa com cores específicas
+  const beltOptions = [
+    { value: 'Branca', bg: '#FFFFFF', text: '#374151', border: '#D1D5DB' },
+    { value: 'Azul', bg: '#2563EB', text: '#FFFFFF', border: '#1D4ED8' },
+    { value: 'Roxa', bg: '#7C3AED', text: '#FFFFFF', border: '#6D28D9' },
+    { value: 'Marrom', bg: '#92400E', text: '#FFFFFF', border: '#78350F' },
+    { value: 'Preta', bg: '#1F2937', text: '#FFFFFF', border: '#111827' },
+  ];
+
+  // Pegar dados da faixa atual
+  const getCurrentBelt = () => {
+    const belt = beltOptions.find(b => b.value === athlete?.belt);
+    return belt || beltOptions[0];
+  };
+
+  // Função para atualizar a faixa
+  const handleBeltChange = async (newBelt) => {
+    if (!athlete || newBelt === athlete.belt) return;
+    
+    try {
+      setSavingBelt(true);
+      const updateFn = isOpponent ? updateOpponent : updateAthlete;
+      const response = await updateFn(athlete.id, { ...athlete, belt: newBelt });
+      
+      if (response.success) {
+        setAthlete({ ...athlete, belt: newBelt });
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar faixa:', err);
+    } finally {
+      setSavingBelt(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchAthlete() {
@@ -239,7 +277,76 @@ export default function AthleteDetail({ isOpponent = false }) {
             ← Voltar
           </button>
           <h1 className="text-3xl font-bold text-primary">{athlete.name}</h1>
-          <p className="text-gray-600 mt-1">{athlete.belt}</p>
+          <div className="flex items-center gap-2 mt-2">
+            {/* Dropdown customizado para faixa */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setBeltDropdownOpen(!beltDropdownOpen)}
+                disabled={savingBelt}
+                style={{
+                  backgroundColor: getCurrentBelt().bg,
+                  color: getCurrentBelt().text,
+                  borderColor: getCurrentBelt().border,
+                }}
+                className={`flex items-center gap-2 px-3 py-1 text-sm font-medium rounded-md border-2 shadow-sm transition-all ${
+                  savingBelt ? 'opacity-50 cursor-wait' : 'hover:opacity-90 cursor-pointer'
+                } focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400`}
+              >
+                <span className="inline-block w-3 h-3 rounded-full border border-current opacity-60" 
+                      style={{ backgroundColor: getCurrentBelt().bg === '#FFFFFF' ? '#E5E7EB' : getCurrentBelt().bg }} />
+                Faixa {getCurrentBelt().value}
+                {savingBelt ? (
+                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </button>
+              
+              {/* Dropdown menu */}
+              {beltDropdownOpen && (
+                <div className="absolute z-50 mt-1 left-0 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[140px]">
+                  {beltOptions.map((belt) => (
+                    <button
+                      key={belt.value}
+                      type="button"
+                      onClick={() => {
+                        handleBeltChange(belt.value);
+                        setBeltDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors ${
+                        getCurrentBelt().value === belt.value ? 'bg-gray-50 font-medium' : ''
+                      }`}
+                    >
+                      <span 
+                        className="inline-block w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                        style={{ backgroundColor: belt.bg }}
+                      />
+                      {belt.value}
+                      {getCurrentBelt().value === belt.value && (
+                        <svg className="w-4 h-4 ml-auto text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Overlay para fechar dropdown ao clicar fora */}
+              {beltDropdownOpen && (
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setBeltDropdownOpen(false)}
+                />
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex gap-3 sm:gap-4">
           <button

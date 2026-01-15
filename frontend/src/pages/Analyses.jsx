@@ -89,12 +89,9 @@ export default function Analyses() {
   // Handler para quando uma versão é restaurada do histórico
   const handleVersionRestored = (restoredContent) => {
     if (selectedAnalysis) {
-      // Atualizar a análise selecionada com o conteúdo restaurado
-      const updatedStrategyData = {
-        ...selectedAnalysis.strategy_data,
-        strategy: restoredContent
-      };
-      setSelectedAnalysis(prev => ({ ...prev, strategy_data: updatedStrategyData }));
+      // O restoredContent já é a estrutura completa da estratégia
+      // Atualizar diretamente como strategy_data
+      setSelectedAnalysis(prev => ({ ...prev, strategy_data: restoredContent }));
       loadAnalyses();
     }
   };

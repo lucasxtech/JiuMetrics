@@ -16,7 +16,8 @@ const EditableText = ({ value, pendingEdit, field, onAccept, onReject, isApplyin
     'strategy': ['strategy', 'tese_da_vitoria', 'como_vencer'],
     'plano_tatico_faseado': ['plano_tatico_faseado', 'plano_tatico'],
     'cronologia_inteligente': ['cronologia_inteligente', 'cronologia'],
-    'analise_de_matchup': ['analise_de_matchup', 'matchup']
+    'analise_de_matchup': ['analise_de_matchup', 'matchup'],
+    'checklist_tatico': ['checklist_tatico', 'checklist']
   };
   
   // Verificar se há edição pendente para este campo específico
@@ -773,152 +774,239 @@ export default function AiStrategyBox({
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Detalhes Táticos</p>
             <h4 className="text-lg font-semibold text-slate-900">Checklist Tático</h4>
           </div>
+          
+          {/* Diff para edições no checklist */}
+          {pendingEdit && (pendingEdit.field === 'checklist_tatico' || pendingEdit.field === 'checklist') && (
+            <div className="px-6 py-4 border-b border-slate-100">
+              <EditableText
+                value={strategyData.checklist_tatico}
+                pendingEdit={pendingEdit}
+                field="checklist_tatico"
+                onAccept={onAcceptEdit}
+                onReject={onRejectEdit}
+                isApplying={isApplyingEdit}
+              />
+            </div>
+          )}
+          
           <div className="px-6 py-5 space-y-4">
-            {/* Oportunidades de Pontos - Expandido */}
-            <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-              <p className="font-semibold text-green-800 flex items-center gap-2 mb-4">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                Oportunidades de Pontos
-              </p>
-              <div className="space-y-3">
-                {strategyData.checklist_tatico.oportunidades_de_pontos?.map((item, idx) => (
-                  <div key={idx} className="bg-white/60 rounded-lg p-3 border border-green-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-green-900">{item.tecnica}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="success">+{item.pontos} pts</Badge>
-                        <Badge variant={item.probabilidade === 'alta' ? 'success' : item.probabilidade === 'media' ? 'warning' : 'default'}>
-                          {item.probabilidade}
-                        </Badge>
+            {/* Se checklist_tatico for string, exibe como texto formatado */}
+            {typeof strategyData.checklist_tatico === 'string' ? (
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <FormattedText text={strategyData.checklist_tatico} />
+              </div>
+            ) : (
+              <>
+                {/* Formato IA simplificado: fazer/nao_fazer */}
+                {(strategyData.checklist_tatico.fazer || strategyData.checklist_tatico.nao_fazer) && (
+                  <>
+                    {/* O que FAZER */}
+                    {strategyData.checklist_tatico.fazer?.length > 0 && (
+                      <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                        <p className="font-semibold text-green-800 flex items-center gap-2 mb-4">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          ✅ O que FAZER
+                        </p>
+                        <ul className="space-y-2">
+                          {strategyData.checklist_tatico.fazer.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                              <span className="text-green-500 mt-0.5">•</span>
+                              <FormattedText text={typeof item === 'string' ? item : item.descricao || item.acao || JSON.stringify(item)} />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {/* O que NÃO FAZER */}
+                    {strategyData.checklist_tatico.nao_fazer?.length > 0 && (
+                      <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                        <p className="font-semibold text-red-800 flex items-center gap-2 mb-4">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                          ❌ O que NÃO FAZER
+                        </p>
+                        <ul className="space-y-2">
+                          {strategyData.checklist_tatico.nao_fazer.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                              <span className="text-red-500 mt-0.5">•</span>
+                              <FormattedText text={typeof item === 'string' ? item : item.descricao || item.acao || JSON.stringify(item)} />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {/* Se estiver perdendo */}
+                    {strategyData.checklist_tatico.se_estiver_perdendo && (
+                      <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                        <p className="font-semibold text-orange-800 flex items-center gap-2 mb-3">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
+                          </svg>
+                          🚨 Se Estiver Perdendo
+                        </p>
+                        <FormattedText text={strategyData.checklist_tatico.se_estiver_perdendo} />
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {/* Formato original: oportunidades_de_pontos/armadilhas_dele */}
+                {(strategyData.checklist_tatico.oportunidades_de_pontos || strategyData.checklist_tatico.armadilhas_dele) && (
+                  <>
+                    {/* Oportunidades de Pontos - Expandido */}
+                    <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                      <p className="font-semibold text-green-800 flex items-center gap-2 mb-4">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Oportunidades de Pontos
+                      </p>
+                      <div className="space-y-3">
+                        {strategyData.checklist_tatico.oportunidades_de_pontos?.map((item, idx) => (
+                          <div key={idx} className="bg-white/60 rounded-lg p-3 border border-green-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-green-900">{item.tecnica}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="success">+{item.pontos} pts</Badge>
+                                <Badge variant={item.probabilidade === 'alta' ? 'success' : item.probabilidade === 'media' ? 'warning' : 'default'}>
+                                  {item.probabilidade}
+                                </Badge>
+                              </div>
+                            </div>
+                            {(item.situacao || item.quando) && (
+                              <p className="text-sm text-slate-700 mb-2 leading-relaxed">
+                                <span className="font-medium text-slate-800">Quando: </span>
+                                <FormattedText text={item.situacao || item.quando} />
+                              </p>
+                            )}
+                            {item.por_que_funciona && (
+                              <p className="text-sm text-green-700 bg-green-100/50 rounded px-2 py-1.5 leading-relaxed">
+                                <span className="font-medium">Por quê funciona: </span>
+                                <FormattedText text={item.por_que_funciona} />
+                              </p>
+                            )}
+                          </div>
+                        )) || <p className="text-sm text-slate-500 italic">Nenhuma oportunidade identificada</p>}
                       </div>
                     </div>
-                    {(item.situacao || item.quando) && (
-                      <p className="text-sm text-slate-700 mb-2 leading-relaxed">
-                        <span className="font-medium text-slate-800">Quando: </span>
-                        <FormattedText text={item.situacao || item.quando} />
-                      </p>
-                    )}
-                    {item.por_que_funciona && (
-                      <p className="text-sm text-green-700 bg-green-100/50 rounded px-2 py-1.5 leading-relaxed">
-                        <span className="font-medium">Por quê funciona: </span>
-                        <FormattedText text={item.por_que_funciona} />
-                      </p>
-                    )}
-                  </div>
-                )) || <p className="text-sm text-slate-500 italic">Nenhuma oportunidade identificada</p>}
-              </div>
-            </div>
 
-            {/* Armadilhas Dele - Expandido */}
-            <div className="bg-red-50 rounded-xl p-4 border border-red-200">
-              <p className="font-semibold text-red-800 flex items-center gap-2 mb-4">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                Armadilhas do Adversário
-              </p>
-              <div className="space-y-3">
-                {strategyData.checklist_tatico.armadilhas_dele?.map((item, idx) => (
-                  <div key={idx} className="bg-white/60 rounded-lg p-3 border border-red-100">
-                    <div className="mb-2">
-                      <span className="font-medium text-red-900 text-sm">Situação de risco:</span>
-                      <p className="text-slate-700 text-sm mt-1"><FormattedText text={item.situacao} /></p>
+                    {/* Armadilhas Dele - Expandido */}
+                    <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                      <p className="font-semibold text-red-800 flex items-center gap-2 mb-4">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        Armadilhas do Adversário
+                      </p>
+                      <div className="space-y-3">
+                        {strategyData.checklist_tatico.armadilhas_dele?.map((item, idx) => (
+                          <div key={idx} className="bg-white/60 rounded-lg p-3 border border-red-100">
+                            <div className="mb-2">
+                              <span className="font-medium text-red-900 text-sm">Situação de risco:</span>
+                              <p className="text-slate-700 text-sm mt-1"><FormattedText text={item.situacao} /></p>
+                            </div>
+                            <div className="mb-2">
+                              <span className="font-medium text-red-800 text-sm">O que ele faz:</span>
+                              <p className="text-slate-700 text-sm mt-1"><FormattedText text={item.o_que_ele_faz || item.tecnica_perigosa} /></p>
+                            </div>
+                            <div className="bg-red-100/50 rounded px-2 py-1.5">
+                              <span className="font-medium text-red-800 text-sm">Como evitar:</span>
+                              <p className="text-red-700 text-sm mt-1 leading-relaxed"><FormattedText text={item.como_evitar} /></p>
+                            </div>
+                          </div>
+                        )) || <p className="text-sm text-slate-500 italic">Nenhuma armadilha identificada</p>}
+                      </div>
                     </div>
-                    <div className="mb-2">
-                      <span className="font-medium text-red-800 text-sm">O que ele faz:</span>
-                      <p className="text-slate-700 text-sm mt-1"><FormattedText text={item.o_que_ele_faz || item.tecnica_perigosa} /></p>
-                    </div>
-                    <div className="bg-red-100/50 rounded px-2 py-1.5">
-                      <span className="font-medium text-red-800 text-sm">Como evitar:</span>
-                      <p className="text-red-700 text-sm mt-1 leading-relaxed"><FormattedText text={item.como_evitar} /></p>
-                    </div>
-                  </div>
-                )) || <p className="text-sm text-slate-500 italic">Nenhuma armadilha identificada</p>}
-              </div>
-            </div>
 
-            {/* Protocolo de Emergência - Expandido */}
-            {(strategyData.checklist_tatico.protocolo_de_emergencia || strategyData.checklist_tatico.protocolo_de_seguranca) && (
-              <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
-                <p className="font-semibold text-orange-800 flex items-center gap-2 mb-4">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
-                  </svg>
-                  Protocolo de Emergência
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {/* Posição Perigosa */}
-                  <div className="bg-white/60 rounded-lg p-3 border border-orange-100">
-                    <div className="flex items-center justify-between mb-1">
-                      <Badge variant="danger">⛔ Posição Perigosa</Badge>
-                      {onManualEdit && editingSection !== 'checklist_posicao_perigosa' && (
-                        <button
-                          onClick={() => startEditing('checklist_posicao_perigosa', strategyData.checklist_tatico.protocolo_de_emergencia?.posicao_perigosa || strategyData.checklist_tatico.protocolo_de_seguranca?.jamais_fazer || '')}
-                          className="p-1 text-orange-600 hover:bg-orange-100 rounded transition-all"
-                          title="Editar"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    {editingSection === 'checklist_posicao_perigosa' ? (
-                      <div className="space-y-2 mt-2">
-                        <textarea
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="w-full h-20 px-3 py-2 border border-orange-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
-                        />
-                        <div className="flex justify-end gap-2">
-                          <button onClick={cancelEditing} className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
-                          <button onClick={() => saveManualEdit('checklist_posicao_perigosa')} className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700">Salvar</button>
+                    {/* Protocolo de Emergência - Expandido */}
+                    {(strategyData.checklist_tatico.protocolo_de_emergencia || strategyData.checklist_tatico.protocolo_de_seguranca) && (
+                      <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                        <p className="font-semibold text-orange-800 flex items-center gap-2 mb-4">
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clipRule="evenodd" />
+                          </svg>
+                          Protocolo de Emergência
+                        </p>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {/* Posição Perigosa */}
+                          <div className="bg-white/60 rounded-lg p-3 border border-orange-100">
+                            <div className="flex items-center justify-between mb-1">
+                              <Badge variant="danger">⛔ Posição Perigosa</Badge>
+                              {onManualEdit && editingSection !== 'checklist_posicao_perigosa' && (
+                                <button
+                                  onClick={() => startEditing('checklist_posicao_perigosa', strategyData.checklist_tatico.protocolo_de_emergencia?.posicao_perigosa || strategyData.checklist_tatico.protocolo_de_seguranca?.jamais_fazer || '')}
+                                  className="p-1 text-orange-600 hover:bg-orange-100 rounded transition-all"
+                                  title="Editar"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            {editingSection === 'checklist_posicao_perigosa' ? (
+                              <div className="space-y-2 mt-2">
+                                <textarea
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  className="w-full h-20 px-3 py-2 border border-orange-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <button onClick={cancelEditing} className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
+                                  <button onClick={() => saveManualEdit('checklist_posicao_perigosa')} className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700">Salvar</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-slate-700 text-sm mt-2 leading-relaxed">
+                                <FormattedText text={strategyData.checklist_tatico.protocolo_de_emergencia?.posicao_perigosa || 
+                                strategyData.checklist_tatico.protocolo_de_seguranca?.jamais_fazer || 
+                                'Nenhuma posição crítica identificada'} />
+                              </p>
+                            )}
+                          </div>
+                          {/* Como Escapar */}
+                          <div className="bg-white/60 rounded-lg p-3 border border-orange-100">
+                            <div className="flex items-center justify-between mb-1">
+                              <Badge variant="warning">🚨 Como Escapar</Badge>
+                              {onManualEdit && editingSection !== 'checklist_como_escapar' && (
+                                <button
+                                  onClick={() => startEditing('checklist_como_escapar', strategyData.checklist_tatico.protocolo_de_emergencia?.como_escapar || strategyData.checklist_tatico.protocolo_de_seguranca?.saida_de_emergencia || '')}
+                                  className="p-1 text-orange-600 hover:bg-orange-100 rounded transition-all"
+                                  title="Editar"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            {editingSection === 'checklist_como_escapar' ? (
+                              <div className="space-y-2 mt-2">
+                                <textarea
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  className="w-full h-20 px-3 py-2 border border-orange-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <button onClick={cancelEditing} className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
+                                  <button onClick={() => saveManualEdit('checklist_como_escapar')} className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700">Salvar</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-slate-700 text-sm mt-2 leading-relaxed">
+                                <FormattedText text={strategyData.checklist_tatico.protocolo_de_emergencia?.como_escapar || 
+                                strategyData.checklist_tatico.protocolo_de_seguranca?.saida_de_emergencia || 
+                                'Nenhuma rota de fuga específica'} />
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    ) : (
-                      <p className="text-slate-700 text-sm mt-2 leading-relaxed">
-                        <FormattedText text={strategyData.checklist_tatico.protocolo_de_emergencia?.posicao_perigosa || 
-                         strategyData.checklist_tatico.protocolo_de_seguranca?.jamais_fazer || 
-                         'Nenhuma posição crítica identificada'} />
-                      </p>
                     )}
-                  </div>
-                  {/* Como Escapar */}
-                  <div className="bg-white/60 rounded-lg p-3 border border-orange-100">
-                    <div className="flex items-center justify-between mb-1">
-                      <Badge variant="warning">🚨 Como Escapar</Badge>
-                      {onManualEdit && editingSection !== 'checklist_como_escapar' && (
-                        <button
-                          onClick={() => startEditing('checklist_como_escapar', strategyData.checklist_tatico.protocolo_de_emergencia?.como_escapar || strategyData.checklist_tatico.protocolo_de_seguranca?.saida_de_emergencia || '')}
-                          className="p-1 text-orange-600 hover:bg-orange-100 rounded transition-all"
-                          title="Editar"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    {editingSection === 'checklist_como_escapar' ? (
-                      <div className="space-y-2 mt-2">
-                        <textarea
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="w-full h-20 px-3 py-2 border border-orange-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
-                        />
-                        <div className="flex justify-end gap-2">
-                          <button onClick={cancelEditing} className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded">Cancelar</button>
-                          <button onClick={() => saveManualEdit('checklist_como_escapar')} className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700">Salvar</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-slate-700 text-sm mt-2 leading-relaxed">
-                        <FormattedText text={strategyData.checklist_tatico.protocolo_de_emergencia?.como_escapar || 
-                         strategyData.checklist_tatico.protocolo_de_seguranca?.saida_de_emergencia || 
-                         'Nenhuma rota de fuga específica'} />
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+                  </>
+                )}
+              </>
             )}
           </div>
         </section>

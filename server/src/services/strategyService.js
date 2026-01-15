@@ -722,6 +722,7 @@ OBRIGATÓRIO:
 
   /**
    * Gera estratégia tática usando resumos consolidados de TODAS as análises
+   * OTIMIZADO: Usa technical_summary salvo no banco quando disponível
    * @param {string} athleteId - ID do atleta
    * @param {string} opponentId - ID do adversário
    * @param {string|null} userId - ID do usuário (para validação)
@@ -737,23 +738,66 @@ OBRIGATÓRIO:
       throw new Error('Atleta ou adversário não encontrado');
     }
 
-    // Consolidar análises de ambos os lutadores
-    const [athleteConsolidation, opponentConsolidation] = await Promise.all([
-      this.consolidateAnalyses(athleteId, userId, customModel),
-      this.consolidateAnalyses(opponentId, userId, customModel)
+    // Contar análises para validação
+    const [athleteAnalysesCount, opponentAnalysesCount] = await Promise.all([
+      this.getAnalysesCount(athleteId, userId),
+      this.getAnalysesCount(opponentId, userId)
     ]);
 
-    // Preparar dados para a IA (resumo narrativo + dados quantitativos)
+    // Validar que há análises suficientes
+    if (athleteAnalysesCount === 0) {
+      throw new Error(`O atleta ${athlete.name} não possui análises de luta. Adicione pelo menos uma análise antes de gerar estratégia.`);
+    }
+
+    if (opponentAnalysesCount === 0) {
+      throw new Error(`O adversário ${opponent.name} não possui análises de luta. Adicione pelo menos uma análise antes de gerar estratégia.`);
+    }
+
+    // Usar technical_summary salvo no banco OU consolidar se não existir
+    let athleteResumo, opponentResumo;
+    let athleteStats, opponentStats;
+    
+    // Atleta: usar resumo salvo ou consolidar
+    if (athlete.technicalSummary) {
+      console.log(`📋 Usando resumo técnico salvo do atleta ${athlete.name}`);
+      athleteResumo = athlete.technicalSummary;
+      // Buscar stats consolidados
+      const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, null);
+      athleteStats = athleteConsolidation.technical_stats;
+    } else {
+      console.log(`🔄 Consolidando análises do atleta ${athlete.name} (sem resumo salvo)`);
+      const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, customModel);
+      athleteResumo = athleteConsolidation.resumo;
+      athleteStats = athleteConsolidation.technical_stats;
+    }
+    
+    // Adversário: usar resumo salvo ou consolidar
+    if (opponent.technicalSummary) {
+      console.log(`📋 Usando resumo técnico salvo do adversário ${opponent.name}`);
+      opponentResumo = opponent.technicalSummary;
+      // Buscar stats consolidados
+      const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, null);
+      opponentStats = opponentConsolidation.technical_stats;
+    } else {
+      console.log(`🔄 Consolidando análises do adversário ${opponent.name} (sem resumo salvo)`);
+      const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, customModel);
+      opponentResumo = opponentConsolidation.resumo;
+      opponentStats = opponentConsolidation.technical_stats;
+    }
+
+    // Preparar dados para a IA (resumo narrativo + dados quantitativos + faixa)
     const athleteData = {
       name: athlete.name,
-      resumo: athleteConsolidation.resumo,
-      technical_stats: athleteConsolidation.technical_stats
+      belt: athlete.belt || null,
+      resumo: athleteResumo,
+      technical_stats: athleteStats
     };
 
     const opponentData = {
       name: opponent.name,
-      resumo: opponentConsolidation.resumo,
-      technical_stats: opponentConsolidation.technical_stats
+      belt: opponent.belt || null,
+      resumo: opponentResumo,
+      technical_stats: opponentStats
     };
 
     // Gerar estratégia usando geminiService
@@ -769,14 +813,16 @@ OBRIGATÓRIO:
         athlete: {
           id: athleteId,
           name: athlete.name,
-          analysesCount: athleteConsolidation.analysesCount,
-          consolidationModel: athleteConsolidation.model
+          belt: athlete.belt,
+          analysesCount: athleteAnalysesCount,
+          usedSavedSummary: !!athlete.technicalSummary
         },
         opponent: {
           id: opponentId,
           name: opponent.name,
-          analysesCount: opponentConsolidation.analysesCount,
-          consolidationModel: opponentConsolidation.model
+          belt: opponent.belt,
+          analysesCount: opponentAnalysesCount,
+          usedSavedSummary: !!opponent.technicalSummary
         },
         strategyModel: customModel || 'gemini-2.0-flash',
         usage: strategyResult.usage,

@@ -36,6 +36,99 @@ const formatMarkdown = (text) => {
 };
 
 /**
+ * Formata texto longo em parágrafos para melhor leitura
+ * Divide a cada 2-3 sentenças
+ */
+const formatTextToParagraphs = (text) => {
+  if (!text) return null;
+  
+  // Dividir em sentenças
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const paragraphs = [];
+  
+  // Agrupar 2-3 sentenças por parágrafo
+  for (let i = 0; i < sentences.length; i += 3) {
+    const paragraph = sentences.slice(i, i + 3).join(' ');
+    if (paragraph.trim()) {
+      paragraphs.push(paragraph);
+    }
+  }
+  
+  return paragraphs.map((paragraph, index) => (
+    <p key={index} className="mb-2 last:mb-0">
+      {formatMarkdown(paragraph)}
+    </p>
+  ));
+};
+
+/**
+ * Componente de diff inline no estilo do AiStrategyBox
+ * Mostra texto antigo (-) e novo (+) em blocos separados com botões de ação
+ */
+const InlineDiff = ({ oldValue, newValue, reason, onAccept, onReject, isLoading }) => {
+  return (
+    <div className="rounded-xl overflow-hidden border border-slate-200 shadow-md">
+      {/* Header com razão da alteração */}
+      {reason && (
+        <div className="px-4 py-2 bg-amber-50 border-b border-amber-200">
+          <p className="text-sm text-amber-700 italic">💡 {reason}</p>
+        </div>
+      )}
+      
+      {/* Diff visual */}
+      <div className="text-base leading-relaxed">
+        {/* Texto antigo - Vermelho */}
+        <div className="flex items-start bg-red-50 border-l-4 border-red-400">
+          <span className="shrink-0 w-8 text-center py-4 text-red-400 font-semibold select-none">−</span>
+          <div className="flex-1 px-4 py-4 text-red-700/80 text-sm leading-relaxed max-h-48 overflow-y-auto">
+            {formatTextToParagraphs(oldValue)}
+          </div>
+        </div>
+        
+        {/* Texto novo - Verde */}
+        <div className="flex items-start bg-green-50 border-l-4 border-green-500">
+          <span className="shrink-0 w-8 text-center py-4 text-green-500 font-semibold select-none">+</span>
+          <div className="flex-1 px-4 py-4 text-green-800 text-sm leading-relaxed">
+            {formatTextToParagraphs(newValue)}
+          </div>
+          
+          {/* Botões de ação inline */}
+          <div className="shrink-0 flex items-center gap-2 px-3 py-3">
+            <button
+              onClick={onAccept}
+              disabled={isLoading}
+              className="p-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-lg"
+              title="Aceitar alteração"
+            >
+              {isLoading ? (
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={onReject}
+              disabled={isLoading}
+              className="p-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-lg"
+              title="Rejeitar alteração"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
  * Modal detalhado para visualizar e editar o resumo técnico do perfil
  * com chat IA lateral e histórico de versões
  */
@@ -53,6 +146,8 @@ export default function ProfileSummaryModal({
   const [editText, setEditText] = useState(currentSummary);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState(null); // { oldValue, newValue, reason, messageId }
+  const [chatCallbacks, setChatCallbacks] = useState(null); // { onAccept, onReject } para sincronizar com chat
 
   if (!person || !summary) return null;
 
@@ -109,6 +204,65 @@ export default function ProfileSummaryModal({
     setEditText(restoredSummary);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  // Handler para receber sugestão pendente do chat
+  const handlePendingEdit = (edit) => {
+    if (edit) {
+      setPendingEdit({
+        oldValue: summary,
+        newValue: edit.newValue,
+        reason: edit.reason,
+        messageId: edit.messageId
+      });
+      // Guardar callbacks do chat para sincronização
+      if (edit.onAccept || edit.onReject) {
+        setChatCallbacks({
+          onAccept: edit.onAccept,
+          onReject: edit.onReject
+        });
+      }
+    } else {
+      setPendingEdit(null);
+      setChatCallbacks(null);
+    }
+  };
+
+  // Handler para aceitar a sugestão do diff inline
+  const handleAcceptInlineEdit = async () => {
+    if (!pendingEdit) return;
+    
+    setIsSaving(true);
+    try {
+      await onSummaryUpdated(pendingEdit.newValue, pendingEdit.reason || 'Sugestão da IA aceita');
+      setSummary(pendingEdit.newValue);
+      setEditText(pendingEdit.newValue);
+      
+      // Notificar o chat que foi aceito
+      if (chatCallbacks?.onAccept) {
+        chatCallbacks.onAccept();
+      }
+      
+      setPendingEdit(null);
+      setChatCallbacks(null);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (error) {
+      console.error('Erro ao aplicar sugestão:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handler para rejeitar a sugestão do diff inline
+  const handleRejectInlineEdit = () => {
+    // Notificar o chat que foi rejeitado
+    if (chatCallbacks?.onReject) {
+      chatCallbacks.onReject();
+    }
+    
+    setPendingEdit(null);
+    setChatCallbacks(null);
   };
 
   // Dividir texto em parágrafos
@@ -287,6 +441,16 @@ export default function ProfileSummaryModal({
                     </div>
                   </div>
                 </div>
+              ) : pendingEdit ? (
+                /* Diff inline quando há sugestão pendente - no estilo do AiStrategyBox */
+                <InlineDiff
+                  oldValue={pendingEdit.oldValue}
+                  newValue={pendingEdit.newValue}
+                  reason={pendingEdit.reason}
+                  onAccept={handleAcceptInlineEdit}
+                  onReject={handleRejectInlineEdit}
+                  isLoading={isSaving}
+                />
               ) : (
                 <div className="space-y-6">
                   {renderParagraphs(summary)}
@@ -341,6 +505,7 @@ export default function ProfileSummaryModal({
                 personName={person.name}
                 onClose={() => setActivePanel(null)}
                 onSummaryUpdated={handleChatUpdate}
+                onPendingEdit={handlePendingEdit}
               />
             )}
             {activePanel === 'history' && (

@@ -234,12 +234,27 @@ Lembre-se: SE NÃO ACONTECEU, O VALOR É 0. SE ACONTECEU, OS GRAFICOS PRECISAM S
 };
 
 function buildPrompt(url, context = {}) {
-  const { athleteName, giColor, videos, matchResult } = context;
+  const { athleteName, giColor, videos, matchResult, belt } = context;
   
   let contextText = '';
   
   if (athleteName) {
     contextText += `\n\n🎯 ATLETA ALVO: ${athleteName}`;
+  }
+  
+  // Adicionar faixa com regras específicas
+  if (belt) {
+    contextText += `\n🥋 FAIXA: ${belt.toUpperCase()}`;
+    
+    // Regras de leg lock por faixa (IBJJF)
+    const beltLower = belt.toLowerCase();
+    if (['branca', 'azul', 'white', 'blue'].includes(beltLower)) {
+      contextText += `\n⚠️ REGRA IBJJF: Faixa ${belt} - LEG LOCKS PROIBIDOS (exceto chave de pé reta). Heel hook, toe hold, kneebar são ILEGAIS.`;
+    } else if (['roxa', 'purple'].includes(beltLower)) {
+      contextText += `\n⚠️ REGRA IBJJF: Faixa ${belt} - Apenas chave de pé reta e toe hold são permitidos. Heel hook e kneebar são ILEGAIS.`;
+    } else if (['marrom', 'preta', 'brown', 'black'].includes(beltLower)) {
+      contextText += `\n⚠️ REGRA IBJJF: Faixa ${belt} - Toe hold, kneebar e chave de pé são permitidos. Heel hook só é permitido em NO-GI.`;
+    }
   }
   
   if (videos && Array.isArray(videos) && videos.length > 0) {
@@ -441,11 +456,63 @@ function consolidateAnalyses(frameAnalyses) {
 
   // Consolidar sumários
   const uniqueSummaries = [...new Set(consolidated.summaries.filter(Boolean))];
-  consolidated.summary = uniqueSummaries.length > 0 ? uniqueSummaries.join(' ') : 'Resumo não disponível';
+  
+  // Se há múltiplos summaries, marcar para consolidação via IA
+  if (uniqueSummaries.length > 1) {
+    consolidated.summariesToConsolidate = uniqueSummaries;
+    consolidated.summary = uniqueSummaries.join(' '); // Fallback
+  } else {
+    consolidated.summary = uniqueSummaries.length > 0 ? uniqueSummaries[0] : 'Resumo não disponível';
+  }
 
   delete consolidated.summaries;
 
   return consolidated;
+}
+
+/**
+ * Consolida múltiplos summaries de vídeos usando IA
+ * @param {Array<string>} summaries - Array de summaries para consolidar
+ * @param {string} athleteName - Nome do atleta
+ * @param {string|null} customModel - Modelo customizado
+ * @returns {Promise<string>} Summary consolidado
+ */
+async function consolidateSummariesWithAI(summaries, athleteName, customModel = null) {
+  if (!summaries || summaries.length <= 1) {
+    return summaries?.[0] || 'Resumo não disponível';
+  }
+  
+  const modelToUse = customModel ? getModel(customModel) : model;
+  
+  if (!modelToUse) {
+    // Fallback: concatenar
+    return summaries.join(' ');
+  }
+  
+  const prompt = `Você é um Analista Tático de Jiu-Jitsu.
+
+Você recebeu ${summaries.length} resumos de análises do MESMO atleta (${athleteName}), feitas em vídeos diferentes da mesma sessão de análise.
+
+Sua tarefa é UNIFICAR esses resumos em UM ÚNICO PARÁGRAFO coeso, eliminando redundâncias e mantendo as informações mais relevantes.
+
+RESUMOS ORIGINAIS:
+${summaries.map((s, i) => `[Vídeo ${i + 1}]: ${s}`).join('\n\n')}
+
+INSTRUÇÕES:
+- Retorne APENAS o resumo unificado (texto puro)
+- NÃO use markdown, listas ou formatação especial
+- Mantenha entre 200-300 palavras
+- Elimine informações repetidas
+- Se houver contradições, priorize padrões que aparecem em múltiplos vídeos
+- Linguagem técnica de Jiu-Jitsu`;
+
+  try {
+    const result = await modelToUse.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (error) {
+    console.error('❌ Erro ao consolidar summaries com IA:', error.message);
+    return summaries.join(' '); // Fallback
+  }
 }
 
 /**
@@ -463,75 +530,167 @@ async function generateTacticalStrategy(athleteData, opponentData, customModel =
     throw new Error('GEMINI_API_KEY não configurada no servidor');
   }
 
-  // Formatar technical_stats para exibição legível
+  // Formatar technical_stats para exibição legível (omitindo zeros)
   const formatStats = (stats, name) => {
     if (!stats) return `${name}: Dados técnicos não disponíveis ainda.`;
     
-    let formatted = `${name} - DADOS QUANTITATIVOS (baseados em ${stats.total_analises} análise(s)):\n\n`;
+    const sections = [];
     
-    formatted += `RASPAGENS:\n`;
-    formatted += `  • Total: ${stats.sweeps.quantidade_total} raspagens\n`;
-    formatted += `  • Média por luta: ${stats.sweeps.quantidade_media}\n`;
-    formatted += `  • Efetividade: ${stats.sweeps.efetividade_percentual_media}%\n\n`;
-    
-    formatted += `PASSAGENS DE GUARDA:\n`;
-    formatted += `  • Total: ${stats.guard_passes.quantidade_total} passagens\n`;
-    formatted += `  • Média por luta: ${stats.guard_passes.quantidade_media}\n\n`;
-    
-    formatted += `FINALIZAÇÕES:\n`;
-    formatted += `  • Tentativas totais: ${stats.submissions.tentativas_total}\n`;
-    formatted += `  • Tentativas médias por luta: ${stats.submissions.tentativas_media}\n`;
-    formatted += `  • Finalizações ajustadas: ${stats.submissions.ajustadas_total}\n`;
-    formatted += `  • Finalizações concluídas: ${stats.submissions.concluidas_total}\n`;
-    formatted += `  • Taxa de sucesso: ${stats.submissions.taxa_sucesso_percentual}%\n`;
-    
-    if (stats.submissions.finalizacoes_mais_usadas && stats.submissions.finalizacoes_mais_usadas.length > 0) {
-      formatted += `  • Técnicas mais usadas: ${stats.submissions.finalizacoes_mais_usadas.map(f => `${f.tecnica} (${f.quantidade}x)`).join(', ')}\n`;
+    // Raspagens (só se tiver dados)
+    if (stats.sweeps?.quantidade_total > 0) {
+      let section = `RASPAGENS:\n`;
+      section += `  • Total: ${stats.sweeps.quantidade_total} raspagens\n`;
+      section += `  • Média por luta: ${stats.sweeps.quantidade_media}\n`;
+      if (stats.sweeps.efetividade_percentual_media > 0) {
+        section += `  • Efetividade: ${stats.sweeps.efetividade_percentual_media}%`;
+      }
+      sections.push(section);
     }
-    formatted += `\n`;
     
-    formatted += `TOMADAS DE COSTAS:\n`;
-    formatted += `  • Total: ${stats.back_takes.quantidade_total}\n`;
-    formatted += `  • Média por luta: ${stats.back_takes.quantidade_media}\n`;
-    formatted += `  • Finalizou após pegar costas: ${stats.back_takes.percentual_com_finalizacao}% das vezes\n`;
+    // Passagens (só se tiver dados)
+    if (stats.guard_passes?.quantidade_total > 0) {
+      let section = `PASSAGENS DE GUARDA:\n`;
+      section += `  • Total: ${stats.guard_passes.quantidade_total} passagens\n`;
+      section += `  • Média por luta: ${stats.guard_passes.quantidade_media}`;
+      sections.push(section);
+    }
     
-    return formatted;
+    // Finalizações (só se tiver dados)
+    if (stats.submissions?.tentativas_total > 0) {
+      let section = `FINALIZAÇÕES:\n`;
+      section += `  • Tentativas: ${stats.submissions.tentativas_total}`;
+      if (stats.submissions.ajustadas_total > 0) {
+        section += ` (${stats.submissions.ajustadas_total} ajustadas)`;
+      }
+      if (stats.submissions.concluidas_total > 0) {
+        section += `\n  • Concluídas: ${stats.submissions.concluidas_total} (${stats.submissions.taxa_sucesso_percentual}% sucesso)`;
+      }
+      if (stats.submissions.finalizacoes_mais_usadas?.length > 0) {
+        section += `\n  • Preferidas: ${stats.submissions.finalizacoes_mais_usadas.map(f => `${f.tecnica} (${f.quantidade}x)`).join(', ')}`;
+      }
+      sections.push(section);
+    }
+    
+    // Tomadas de costas (só se tiver dados)
+    if (stats.back_takes?.quantidade_total > 0) {
+      let section = `TOMADAS DE COSTAS:\n`;
+      section += `  • Total: ${stats.back_takes.quantidade_total}\n`;
+      section += `  • Média por luta: ${stats.back_takes.quantidade_media}`;
+      if (stats.back_takes.percentual_com_finalizacao > 0) {
+        section += `\n  • Finalizou após pegar: ${stats.back_takes.percentual_com_finalizacao}%`;
+      }
+      sections.push(section);
+    }
+    
+    if (sections.length === 0) {
+      return `${name}: Sem dados quantitativos significativos.`;
+    }
+    
+    return `${name} - DADOS QUANTITATIVOS (${stats.total_analises} análise(s)):\n\n${sections.join('\n\n')}`;
   };
 
   const athleteStats = formatStats(athleteData.technical_stats, athleteData.name);
   const opponentStats = formatStats(opponentData.technical_stats, opponentData.name);
 
+  // Formatar informações de faixa e regras IBJJF
+  const formatBeltRules = (belt) => {
+    if (!belt) return '';
+    
+    const beltLower = belt.toLowerCase();
+    let rules = `\n🥋 FAIXA: ${belt.toUpperCase()}\n`;
+    
+    if (['branca', 'white'].includes(beltLower)) {
+      rules += `⚠️ REGRAS IBJJF FAIXA BRANCA:
+   • LEG LOCKS: Apenas CHAVE DE PÉ RETA é permitida
+   • PROIBIDO: Heel hook, toe hold, kneebar, calf slicer, bicep slicer
+   • PROIBIDO: Puxar guarda saltando (jump guard)
+   • PROIBIDO: Scissor takedown (tesoura)
+   • SLAM: Qualquer slam resulta em desclassificação`;
+    } else if (['azul', 'blue'].includes(beltLower)) {
+      rules += `⚠️ REGRAS IBJJF FAIXA AZUL:
+   • LEG LOCKS: Apenas CHAVE DE PÉ RETA é permitida
+   • PROIBIDO: Heel hook, toe hold, kneebar, calf slicer
+   • PROIBIDO: Bicep slicer, scissor takedown
+   • SLAM: Qualquer slam resulta em desclassificação`;
+    } else if (['roxa', 'purple'].includes(beltLower)) {
+      rules += `⚠️ REGRAS IBJJF FAIXA ROXA:
+   • LEG LOCKS: Chave de pé reta + TOE HOLD permitidos
+   • PROIBIDO: Heel hook, kneebar, calf slicer
+   • PERMITIDO: Bicep slicer da montada`;
+    } else if (['marrom', 'brown'].includes(beltLower)) {
+      rules += `⚠️ REGRAS IBJJF FAIXA MARROM:
+   • LEG LOCKS: Chave de pé reta, toe hold, KNEEBAR, CALF SLICER permitidos
+   • PROIBIDO: Heel hook (apenas em NO-GI de algumas federações)
+   • PERMITIDO: Bicep slicer de qualquer posição`;
+    } else if (['preta', 'black'].includes(beltLower)) {
+      rules += `⚠️ REGRAS IBJJF FAIXA PRETA:
+   • LEG LOCKS: Chave de pé reta, toe hold, kneebar, calf slicer permitidos
+   • PROIBIDO: Heel hook (apenas em NO-GI de algumas federações)
+   • PERMITIDO: Todas as chaves de braço e compressões`;
+    }
+    
+    return rules;
+  };
+
+  const athleteBeltInfo = formatBeltRules(athleteData.belt);
+  const opponentBeltInfo = formatBeltRules(opponentData.belt);
+  
+  // Determinar a faixa mais restritiva (para estratégia segura)
+  const getBeltLevel = (belt) => {
+    if (!belt) return 5;
+    const beltLower = belt.toLowerCase();
+    if (['branca', 'white'].includes(beltLower)) return 1;
+    if (['azul', 'blue'].includes(beltLower)) return 2;
+    if (['roxa', 'purple'].includes(beltLower)) return 3;
+    if (['marrom', 'brown'].includes(beltLower)) return 4;
+    if (['preta', 'black'].includes(beltLower)) return 5;
+    return 5;
+  };
+  
+  const athleteLevel = getBeltLevel(athleteData.belt);
+  const opponentLevel = getBeltLevel(opponentData.belt);
+  const restrictiveBelt = athleteLevel <= opponentLevel ? athleteData.belt : opponentData.belt;
+  
+  let beltWarning = '';
+  if (restrictiveBelt && getBeltLevel(restrictiveBelt) < 5) {
+    beltWarning = `\n\n🚨 ATENÇÃO - REGRAS DA COMPETIÇÃO:
+A faixa mais restritiva é ${restrictiveBelt?.toUpperCase()}. 
+NÃO SUGIRA técnicas ilegais para essa faixa (leg locks proibidos, etc).
+Se sugerir leg lock, verifique se é permitido para a faixa.`;
+  }
+
   const prompt = `
-[SISTEMA: ANALISTA ESTRATÉGICO DE ALTO RENDIMENTO - BLACK BELT LEVEL]
+[VOCÊ É UM TREINADOR DE JIU-JITSU]
 
-Você está conversando com um atleta experiente.
-Sua missão é cruzar os dados dos dois lutadores e encontrar a "Assimetria Tática" (onde um ganha e o outro perde).
+Você vai falar com um atleta. Use linguagem simples e direta, como se estivesse conversando pessoalmente.
+${beltWarning}
 
-FILTRO DE OBVIEDADES (LEIA ANTES DE ESCREVER)
+COMO ESCREVER:
 
-1. PROIBIDO O BÁSICO:
-   - Nunca escreva "Evite ser montado", "Não dê as costas", "Mantenha a postura". ISSO É ÓBVIO.
-   - Só mencione o básico se o adversário tiver uma arma *específica* ali (Ex: "Cuidado com a montada técnica dele, pois ele usa o S-Mount para armlock direto").
+1. SEM OBVIEDADES:
+   - Não escreva coisas óbvias tipo "Evite ser montado", "Não dê as costas". 
+   - Só fale do básico se o cara tiver algo específico ali (Ex: "Cuidado com a montada dele, ele ataca armlock rápido do S-Mount").
 
-2. ESPECIFICIDADE CIRÚRGICA:
+2. SEJA ESPECÍFICO:
    - Ruim: "Cuidado com as quedas."
-   - Bom: "O tempo de entrada de Double Leg dele é no contra-ataque. Não chute sem fintar antes."
+   - Bom: "Ele entra double leg no contra-ataque. Não chute sem fintar antes."
    - Ruim: "Tente passar a guarda."
-   - Bom: "A guarda De La Riva dele é fraca contra passagem de Long Step para o lado oposto do gancho."
+   - Bom: "A De La Riva dele é fraca contra Long Step para o lado oposto do gancho."
 
-3. CONTEXTO DE PONTUAÇÃO (IBJJF):
-   - Foque em como a regra interage com O ESTILO DELES.
-   - Ex: "Ele aceita a raspagem para pegar o pé. Use isso para fazer 2 pontos e travar a 50/50 por cima."
+3. PONTUAÇÃO:
+   - Pense em como marcar pontos contra ESSE cara.
+   - Ex: "Ele aceita a raspagem pra pegar o pé. Raspe pra fazer 2 pontos e trave a 50/50 por cima."
 
-4. USE OS DADOS QUANTITATIVOS:
-   - Compare números reais: "Você tem 70% de taxa de sucesso em raspagens vs 30% dele em defesa"
-   - Identifique assimetrias: "Ele tenta 5 finalizações por luta mas só consegue 1 (20% sucesso)"
-   - Seja específico: "Ele passa guarda 3x por luta em média, você raspa 4.5x - vantagem numérica sua"
+4. USE OS NÚMEROS:
+   - Compare números reais: "Você tem 70% de sucesso em raspagens vs 30% dele"
+   - Identifique diferenças: "Ele tenta 5 finalizações por luta mas só consegue 1 (20%)"
+   - Seja específico: "Ele passa guarda 3x por luta, você raspa 4.5x - vantagem sua"
 
 DADOS DO CONFRONTO
 
 ATLETA (SEU LUTADOR)
 Nome: ${athleteData.name}
+${athleteBeltInfo}
 
 ${athleteStats}
 
@@ -541,10 +700,11 @@ ${athleteData.resumo}
 
 ADVERSÁRIO (ALVO)
 Nome: ${opponentData.name}
+${opponentBeltInfo}
 
- ${opponentStats}
+${opponentStats}
 
- PERFIL TÉCNICO CONSOLIDADO:
+PERFIL TÉCNICO CONSOLIDADO:
 ${opponentData.resumo}
 
 FORMATO JSON ESTRITO (ANTI-MARKDOWN)
@@ -1010,18 +1170,22 @@ ${JSON.stringify(strategyData.plano_tatico_faseado || {}, null, 2)}
 ⏱️ Cronologia Inteligente:
 ${JSON.stringify(strategyData.cronologia_inteligente || {}, null, 2)}
 
+✅ Checklist Tático:
+${JSON.stringify(strategyData.checklist_tatico || {}, null, 2)}
+
 ---
 
 ⚠️⚠️⚠️ REGRAS CRÍTICAS - IDENTIFICAÇÃO DO CAMPO ⚠️⚠️⚠️
 
 VOCÊ DEVE IDENTIFICAR O CAMPO CORRETO BASEADO NO PEDIDO DO USUÁRIO:
 
-| Se o usuário pedir sobre...                    | Use field =                |
-|------------------------------------------------|----------------------------|
-| "como vencer", "tese", "estratégia geral"      | "tese_da_vitoria"          |
-| "fases", "em pé", "passagem", "guarda", "plano"| "plano_tatico_faseado"     |
-| "cronologia", "timeline", "minutos", "tempo"   | "cronologia_inteligente"   |
-| "matchup", "vantagem", "risco", "análise"      | "analise_de_matchup"       |
+| Se o usuário pedir sobre...                              | Use field =                |
+|----------------------------------------------------------|----------------------------|
+| "como vencer", "tese", "estratégia geral", "resumo"      | "tese_da_vitoria"          |
+| "fases", "em pé", "passagem", "guarda", "plano tático"   | "plano_tatico_faseado"     |
+| "cronologia", "timeline", "minutos", "tempo"             | "cronologia_inteligente"   |
+| "matchup", "vantagem", "risco", "análise de confronto"   | "analise_de_matchup"       |
+| "checklist", "lista", "não fazer", "proibido", "fazer"   | "checklist_tatico"         |
 
 EXEMPLOS DE MAPEAMENTO:
 - "Sugira ajustes para cada fase da luta" → field: "plano_tatico_faseado"
@@ -1029,6 +1193,8 @@ EXEMPLOS DE MAPEAMENTO:
 - "Ajuste o primeiro minuto" → field: "cronologia_inteligente"
 - "Expanda a tese da vitória" → field: "tese_da_vitoria"
 - "Detalhe as vantagens no matchup" → field: "analise_de_matchup"
+- "Refaça o checklist tático" → field: "checklist_tatico"
+- "O que devo e não devo fazer?" → field: "checklist_tatico"
 
 ---
 
@@ -1081,6 +1247,32 @@ ESTRUTURA DO newValue POR CAMPO:
      "risco_oculto": "...",
      "fator_chave": "..."
    }
+
+5. field="checklist_tatico" → newValue é OBJETO com EXATAMENTE esta estrutura:
+   {
+     "oportunidades_de_pontos": [
+       {
+         "pontos": "2",
+         "tecnica": "Nome da técnica",
+         "situacao": "Quando usar esta técnica",
+         "probabilidade": "alta|media|baixa",
+         "por_que_funciona": "Explicação de por que funciona"
+       }
+     ],
+     "armadilhas_dele": [
+       {
+         "situacao": "Situação de risco",
+         "como_evitar": "Como evitar esta armadilha",
+         "o_que_ele_faz": "O que o adversário faz nesta situação"
+       }
+     ],
+     "protocolo_de_emergencia": {
+       "posicao_perigosa": "Qual posição é mais perigosa",
+       "como_escapar": "Como escapar se cair nessa posição"
+     }
+   }
+   
+   IMPORTANTE: Mantenha os arrays oportunidades_de_pontos e armadilhas_dele com 2-3 itens cada.
 
 ---
 
@@ -1210,6 +1402,7 @@ async function chat({ contextType, contextData, history = [], userMessage, custo
 module.exports = { 
   analyzeFrame, 
   consolidateAnalyses, 
+  consolidateSummariesWithAI,
   generateTacticalStrategy, 
   generateAthleteSummary,
   getModel,

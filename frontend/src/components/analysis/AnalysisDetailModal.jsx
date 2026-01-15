@@ -7,6 +7,119 @@ import VersionHistoryPanel from '../chat/VersionHistoryPanel';
 import { applyEditSuggestion, saveManualEdit } from '../../services/chatService';
 
 /**
+ * Formata texto com markdown básico (negrito, itálico)
+ */
+const formatMarkdown = (text) => {
+  if (!text) return null;
+  
+  const parts = [];
+  let key = 0;
+  
+  const boldParts = text.split(/\*\*([^*]+)\*\*/);
+  
+  boldParts.forEach((part, i) => {
+    if (i % 2 === 1) {
+      parts.push(<strong key={key++} className="font-semibold">{part}</strong>);
+    } else if (part) {
+      const italicParts = part.split(/\*([^*]+)\*/);
+      italicParts.forEach((italicPart, j) => {
+        if (j % 2 === 1) {
+          parts.push(<em key={key++} className="italic">{italicPart}</em>);
+        } else if (italicPart) {
+          parts.push(<span key={key++}>{italicPart}</span>);
+        }
+      });
+    }
+  });
+  
+  return parts.length > 0 ? parts : text;
+};
+
+/**
+ * Formata texto longo em parágrafos
+ */
+const formatTextToParagraphs = (text) => {
+  if (!text) return null;
+  
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const paragraphs = [];
+  
+  for (let i = 0; i < sentences.length; i += 3) {
+    const paragraph = sentences.slice(i, i + 3).join(' ');
+    if (paragraph.trim()) {
+      paragraphs.push(paragraph);
+    }
+  }
+  
+  return paragraphs.map((paragraph, index) => (
+    <p key={index} className="mb-2 last:mb-0">
+      {formatMarkdown(paragraph)}
+    </p>
+  ));
+};
+
+/**
+ * Componente de diff inline para análises
+ */
+const InlineDiff = ({ oldValue, newValue, reason, onAccept, onReject, isLoading }) => {
+  return (
+    <div className="rounded-xl overflow-hidden border border-slate-200 shadow-md">
+      {reason && (
+        <div className="px-4 py-2 bg-amber-50 border-b border-amber-200">
+          <p className="text-sm text-amber-700 italic">💡 {reason}</p>
+        </div>
+      )}
+      
+      <div className="text-base leading-relaxed">
+        <div className="flex items-start bg-red-50 border-l-4 border-red-400">
+          <span className="shrink-0 w-8 text-center py-4 text-red-400 font-semibold select-none">−</span>
+          <div className="flex-1 px-4 py-4 text-red-700/80 text-sm leading-relaxed max-h-48 overflow-y-auto">
+            {formatTextToParagraphs(oldValue)}
+          </div>
+        </div>
+        
+        <div className="flex items-start bg-green-50 border-l-4 border-green-500">
+          <span className="shrink-0 w-8 text-center py-4 text-green-500 font-semibold select-none">+</span>
+          <div className="flex-1 px-4 py-4 text-green-800 text-sm leading-relaxed">
+            {formatTextToParagraphs(newValue)}
+          </div>
+          
+          <div className="shrink-0 flex items-center gap-2 px-3 py-3">
+            <button
+              onClick={onAccept}
+              disabled={isLoading}
+              className="p-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-lg"
+              title="Aceitar alteração"
+            >
+              {isLoading ? (
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={onReject}
+              disabled={isLoading}
+              className="p-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all disabled:opacity-50 shadow-md hover:shadow-lg"
+              title="Rejeitar alteração"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
  * Modal detalhado para visualizar análise completa
  * com gráficos, estatísticas, chat IA e edição
  */
@@ -16,6 +129,7 @@ export default function AnalysisDetailModal({ analysis: initialAnalysis, onClose
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [pendingEdit, setPendingEdit] = useState(null); // { oldValue, newValue, reason, messageId, onAccept, onReject }
   if (!analysis) return null;
 
   const formatDate = (date) => {
@@ -84,10 +198,65 @@ export default function AnalysisDetailModal({ analysis: initialAnalysis, onClose
   };
 
   // Atualizar análise após chat
-  const handleAnalysisUpdated = () => {
-    // Re-fetch seria ideal aqui, mas por simplicidade atualizamos via state
+  const handleAnalysisUpdated = (updatedAnalysis) => {
+    if (updatedAnalysis) {
+      setAnalysis(updatedAnalysis);
+    }
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2000);
+  };
+
+  // Handler para receber sugestão pendente do chat
+  const handlePendingEdit = (edit) => {
+    if (edit) {
+      setPendingEdit({
+        oldValue: analysis.summary,
+        newValue: edit.newValue,
+        reason: edit.reason,
+        messageId: edit.messageId,
+        onAccept: edit.onAccept,
+        onReject: edit.onReject
+      });
+    } else {
+      setPendingEdit(null);
+    }
+  };
+
+  // Handler para aceitar a sugestão do diff inline
+  const handleAcceptInlineEdit = async () => {
+    if (!pendingEdit) return;
+    
+    setIsSaving(true);
+    try {
+      const response = await saveManualEdit(analysis.id, 'summary', pendingEdit.newValue, pendingEdit.reason || 'Sugestão da IA aceita');
+      if (response.success) {
+        setAnalysis(response.data.analysis);
+        
+        // Notificar o chat que foi aceito
+        if (pendingEdit.onAccept) {
+          pendingEdit.onAccept();
+        }
+        
+        setPendingEdit(null);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+        if (onAnalysisUpdated) {
+          onAnalysisUpdated(response.data.analysis);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao aplicar sugestão:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handler para rejeitar a sugestão do diff inline
+  const handleRejectInlineEdit = () => {
+    if (pendingEdit?.onReject) {
+      pendingEdit.onReject();
+    }
+    setPendingEdit(null);
   };
 
   return (
@@ -209,7 +378,7 @@ export default function AnalysisDetailModal({ analysis: initialAnalysis, onClose
                   </div>
                   <h3 className="text-sm font-bold text-slate-900">Resumo da Análise</h3>
                 </div>
-                {!isEditing && (
+                {!isEditing && !pendingEdit && (
                   <button
                     onClick={() => setIsEditing(true)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
@@ -228,6 +397,16 @@ export default function AnalysisDetailModal({ analysis: initialAnalysis, onClose
                   placeholder="Digite o resumo da análise..."
                   maxLength={3000}
                   minHeight={150}
+                />
+              ) : pendingEdit ? (
+                /* Diff inline quando há sugestão pendente */
+                <InlineDiff
+                  oldValue={pendingEdit.oldValue}
+                  newValue={pendingEdit.newValue}
+                  reason={pendingEdit.reason}
+                  onAccept={handleAcceptInlineEdit}
+                  onReject={handleRejectInlineEdit}
+                  isLoading={isSaving}
                 />
               ) : (
                 <div className="space-y-6">
@@ -456,6 +635,7 @@ export default function AnalysisDetailModal({ analysis: initialAnalysis, onClose
                 onClose={() => setActivePanel(null)}
                 onApplySuggestion={handleApplySuggestion}
                 onAnalysisUpdated={handleAnalysisUpdated}
+                onPendingEdit={handlePendingEdit}
               />
             )}
             {activePanel === 'history' && (

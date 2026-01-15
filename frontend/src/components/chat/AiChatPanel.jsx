@@ -15,9 +15,9 @@ import { sendChatMessage, createChatSession } from '../../services/chatService';
 /**
  * Componente de mensagem individual do chat
  */
-function ChatMessage({ message, onAcceptSuggestion }) {
+function ChatMessage({ message, onAcceptSuggestion, onRejectSuggestion, isPending, isSaving }) {
   const isUser = message.role === 'user';
-  const hasSuggestion = message.editSuggestion && !message.suggestionApplied;
+  const hasSuggestion = message.editSuggestion && !message.suggestionApplied && !message.suggestionRejected;
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -40,8 +40,50 @@ function ChatMessage({ message, onAcceptSuggestion }) {
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>
 
-        {/* Card de sugestão de edição */}
-        {hasSuggestion && (
+        {/* Indicador de sugestão pendente - mostra caixa amarela com botões (diff está no modal) */}
+        {hasSuggestion && isPending && (
+          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+              <p className="text-xs font-medium text-amber-700">
+                Alteração sugerida para: <span className="font-bold">Resumo da Análise</span>
+              </p>
+            </div>
+            <p className="text-xs text-amber-600 mb-3">
+              Veja a prévia das alterações no painel à esquerda →
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onRejectSuggestion(message)}
+                disabled={isSaving}
+                className="flex-1 px-3 py-1.5 text-xs font-medium bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                <X className="w-3 h-3 inline mr-1" />
+                Rejeitar
+              </button>
+              <button
+                onClick={() => onAcceptSuggestion(message.editSuggestion)}
+                disabled={isSaving}
+                className="flex-1 px-3 py-1.5 text-xs font-medium bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Aplicando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3 h-3" />
+                    <span>Aceitar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Card de sugestão de edição (fallback quando não há onPendingEdit) */}
+        {hasSuggestion && !isPending && (
           <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-4 h-4 text-amber-600" />
@@ -67,6 +109,14 @@ function ChatMessage({ message, onAcceptSuggestion }) {
             Sugestão aplicada
           </div>
         )}
+        
+        {/* Indicador de sugestão rejeitada */}
+        {message.suggestionRejected && (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+            <X className="w-3 h-3" />
+            Sugestão rejeitada
+          </div>
+        )}
 
         {/* Timestamp */}
         {message.timestamp && (
@@ -89,13 +139,15 @@ export default function AiChatPanel({
   analysis, 
   onClose, 
   onApplySuggestion,
-  onAnalysisUpdated
+  onAnalysisUpdated,
+  onPendingEdit // Callback para mostrar diff inline no modal pai
 }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [error, setError] = useState(null);
+  const [pendingMessageId, setPendingMessageId] = useState(null); // ID da mensagem com diff pendente
   const messagesEndRef = useRef(null);
 
   // Sugestões rápidas
@@ -162,13 +214,49 @@ export default function AiChatPanel({
       const response = await sendChatMessage(sessionId, userMessage);
       
       if (response.success) {
+        const messageId = Date.now().toString();
         const aiMessage = {
+          id: messageId,
           role: 'model',
           content: response.data.message,
           editSuggestion: response.data.editSuggestion,
           timestamp: new Date().toISOString()
         };
         setMessages(prev => [...prev, aiMessage]);
+        
+        // Se há sugestão de edição e onPendingEdit, notificar o modal
+        if (response.data.editSuggestion && onPendingEdit) {
+          setPendingMessageId(messageId);
+          const suggestion = response.data.editSuggestion;
+          onPendingEdit({
+            oldValue: analysis.summary,
+            newValue: suggestion.newValue,
+            reason: suggestion.reason || response.data.message,
+            messageId: messageId,
+            onAccept: () => {
+              setPendingMessageId(null);
+              setMessages(prev => prev.map(msg => 
+                msg.id === messageId ? { ...msg, suggestionApplied: true } : msg
+              ));
+              setMessages(prev => [...prev, {
+                role: 'model',
+                content: '✅ Sugestão aplicada com sucesso!',
+                timestamp: new Date().toISOString()
+              }]);
+            },
+            onReject: () => {
+              setPendingMessageId(null);
+              setMessages(prev => prev.map(msg => 
+                msg.id === messageId ? { ...msg, suggestionRejected: true } : msg
+              ));
+              setMessages(prev => [...prev, {
+                role: 'model',
+                content: 'Sugestão descartada. Me diga se precisa de outra alteração.',
+                timestamp: new Date().toISOString()
+              }]);
+            }
+          });
+        }
       } else {
         setError(response.error || 'Erro ao obter resposta da IA');
       }
@@ -193,6 +281,12 @@ export default function AiChatPanel({
     if (onApplySuggestion) {
       await onApplySuggestion(sessionId, analysis.id, suggestion);
       
+      // Limpar pending state
+      setPendingMessageId(null);
+      if (onPendingEdit) {
+        onPendingEdit(null);
+      }
+      
       // Marcar sugestão como aplicada (para esconder o botão)
       setMessages(prev => prev.map(msg => 
         msg.editSuggestion === suggestion 
@@ -211,6 +305,31 @@ export default function AiChatPanel({
         onAnalysisUpdated();
       }
     }
+  };
+
+  // Rejeitar sugestão de edição
+  const handleRejectSuggestion = (suggestion) => {
+    // Limpar pending state
+    setPendingMessageId(null);
+    
+    // Chamar callback do pai se existir
+    if (onPendingEdit) {
+      onPendingEdit(null);
+    }
+    
+    // Marcar sugestão como rejeitada
+    setMessages(prev => prev.map(msg => 
+      msg.editSuggestion === suggestion 
+        ? { ...msg, suggestionRejected: true }
+        : msg
+    ));
+    
+    // Adicionar mensagem confirmando
+    setMessages(prev => [...prev, {
+      role: 'model',
+      content: '❌ Sugestão descartada. Como posso ajudar de outra forma?',
+      timestamp: new Date().toISOString()
+    }]);
   };
 
   // Usar sugestão rápida
@@ -241,9 +360,12 @@ export default function AiChatPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
         {messages.map((message, index) => (
           <ChatMessage 
-            key={index} 
+            key={message.id || index} 
             message={message}
             onAcceptSuggestion={handleAcceptSuggestion}
+            onRejectSuggestion={handleRejectSuggestion}
+            isPending={pendingMessageId && message.id === pendingMessageId}
+            isSaving={false}
           />
         ))}
         

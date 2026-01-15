@@ -449,13 +449,33 @@ exports.restoreVersion = async (req, res) => {
       });
     }
 
-    // Restaurar conteúdo
-    const updateData = {};
-    if (version.content.summary) updateData.summary = version.content.summary;
-    if (version.content.charts) updateData.charts = version.content.charts;
-    if (version.content.technicalStats) updateData.technicalStats = version.content.technicalStats;
+    console.log('📦 Restaurando versão:', { versionNumber, content: version.content });
 
-    const updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
+    // Restaurar conteúdo - version.content pode ser o conteúdo direto ou ter subcampos
+    const content = version.content || {};
+    const updateData = {};
+    
+    // Tentar extrair campos do content
+    if (content.summary !== undefined) updateData.summary = content.summary;
+    if (content.charts !== undefined) updateData.charts = content.charts;
+    if (content.technicalStats !== undefined) updateData.technicalStats = content.technicalStats;
+    if (content.technical_stats !== undefined) updateData.technicalStats = content.technical_stats;
+
+    // Se updateData está vazio mas content tem dados, usar content diretamente como summary
+    if (Object.keys(updateData).length === 0 && typeof content === 'string') {
+      updateData.summary = content;
+    }
+
+    console.log('📝 Dados para update:', updateData);
+
+    // Só fazer update se houver dados
+    let updatedAnalysis;
+    if (Object.keys(updateData).length > 0) {
+      updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
+    } else {
+      // Buscar análise atual se não há nada para atualizar
+      updatedAnalysis = await FightAnalysis.getById(analysisId);
+    }
 
     // Marcar esta versão como atual
     await AnalysisVersion.setAsCurrent(version.id, analysisId, 'fight');

@@ -102,7 +102,8 @@ export default function DiffViewer({
   reason,
   onAccept,
   onReject,
-  isLoading = false
+  isLoading = false,
+  hideButtons = false // Nova prop para esconder botões (quando quer mostrar só a visualização)
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [viewMode, setViewMode] = useState('inline'); // 'inline' ou 'split'
@@ -201,37 +202,39 @@ export default function DiffViewer({
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-2 px-4 py-3 bg-slate-50 border-t border-slate-200">
-        <button
-          onClick={onReject}
-          disabled={isLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border-2 border-red-200 text-red-600 text-sm font-medium rounded-xl hover:bg-red-50 hover:border-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <X className="w-4 h-4" />
-          Rejeitar
-        </button>
-        <button
-          onClick={onAccept}
-          disabled={isLoading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-medium rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? (
-            <>
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-              </svg>
-              Aplicando...
-            </>
-          ) : (
-            <>
-              <Check className="w-4 h-4" />
-              Aceitar alterações
-            </>
-          )}
-        </button>
-      </div>
+      {/* Action Buttons - Opcional */}
+      {!hideButtons && (
+        <div className="flex items-center justify-end gap-2 px-4 py-3 bg-slate-50 border-t border-slate-200">
+          <button
+            onClick={onReject}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border-2 border-red-200 text-red-600 text-sm font-medium rounded-xl hover:bg-red-50 hover:border-red-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <X className="w-4 h-4" />
+            Rejeitar
+          </button>
+          <button
+            onClick={onAccept}
+            disabled={isLoading}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-medium rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Aplicando...
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4" />
+                Aceitar alterações
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
