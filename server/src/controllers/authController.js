@@ -39,8 +39,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: ERROR_MESSAGES.INVALID_EMAIL });
     }
 
-    const isEmailAllowed = ALLOWED_EMAILS.some(ALLOWED_EMAIL => email.toLowerCase() === ALLOWED_EMAIL.toLowerCase());
-
+    const isEmailAllowed = ALLOWED_EMAILS.some(
+      allowedEmail => allowedEmail.toLowerCase() === email.toLowerCase()
+    );
     if (!isEmailAllowed) {
       return res.status(403).json({ error: ERROR_MESSAGES.UNAUTHORIZED_EMAIL });
     }
@@ -79,10 +80,11 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    const isEmailAllowed = ALLOWED_EMAILS.some(ALLOWED_EMAIL => email.toLowerCase() === ALLOWED_EMAIL.toLowerCase()); 
-
+    const isEmailAllowed = ALLOWED_EMAILS.some(
+      allowedEmail => allowedEmail.toLowerCase() === email.toLowerCase()
+    );
     if (!isEmailAllowed) {
-      console.log('❌ Unauthorized email:', email);
+      console.log('❌ Unauthorized email:', email, 'Allowed:', ALLOWED_EMAILS);
       return res.status(403).json({ error: ERROR_MESSAGES.UNAUTHORIZED_EMAIL });
     }
 

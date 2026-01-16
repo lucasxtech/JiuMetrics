@@ -7,11 +7,26 @@ Estrutura organizada de componentes React por categoria.
 ### analysis/
 Componentes relacionados a análises táticas e estratégias.
 
-- **AiStrategyBox.jsx** - Caixa de estratégia gerada por IA
+- **AiStrategyBox.jsx** - Caixa de estratégia gerada por IA com edição manual
+- **StrategySummaryModal.jsx** - Modal completo para visualizar e editar estratégias
 - **AnalysisCard.jsx** - Card de análise tática
 - **AnalysisDetailModal.jsx** - Modal com detalhes completos da análise
 
 **Usado em:** `Analyses.jsx`, `Strategy.jsx`, `AthleteDetail.jsx`
+
+### chat/
+Componentes de chat com IA para refinar conteúdo.
+
+- **AiChatPanel.jsx** - Chat para refinar análises de vídeo
+- **ProfileChatPanel.jsx** - Chat para melhorar perfis de atletas/adversários
+- **StrategyChatPanel.jsx** - Chat para refinar estratégias táticas
+- **EditableAnalysisText.jsx** - Texto editável inline com suporte a diff
+- **VersionHistoryPanel.jsx** - Histórico de versões de análises
+- **ProfileVersionHistoryPanel.jsx** - Histórico de versões de perfis
+
+**Fluxo:** Usuário envia mensagem → IA sugere edição → Diff exibido → Aceitar/Rejeitar
+
+**Usado em:** `Analyses.jsx`, `AthleteDetail.jsx`, `Strategy.jsx`
 
 ### video/
 Componentes para análise de vídeos.
@@ -40,6 +55,8 @@ Componentes reutilizáveis em toda aplicação.
 - **LoadingSpinner.jsx** - Indicador de carregamento
 - **ErrorMessage.jsx** - Exibição de erros
 - **Modal.jsx** - Modal base reutilizável
+- **Badge.jsx** - Tag/badge reutilizável para categorias e status
+- **FormattedText.jsx** - Renderização de texto com suporte a markdown
 
 **Usado em:** Todas as páginas
 
@@ -63,7 +80,16 @@ Componentes relacionados a roteamento.
 ```jsx
 // Analysis
 import AiStrategyBox from '../components/analysis/AiStrategyBox';
+import StrategySummaryModal from '../components/analysis/StrategySummaryModal';
 import AnalysisCard from '../components/analysis/AnalysisCard';
+
+// Chat
+import AiChatPanel from '../components/chat/AiChatPanel';
+import ProfileChatPanel from '../components/chat/ProfileChatPanel';
+import StrategyChatPanel from '../components/chat/StrategyChatPanel';
+import VersionHistoryPanel from '../components/chat/VersionHistoryPanel';
+import ProfileVersionHistoryPanel from '../components/chat/ProfileVersionHistoryPanel';
+import EditableAnalysisText from '../components/chat/EditableAnalysisText';
 
 // Video
 import VideoAnalysis from '../components/video/VideoAnalysis';
@@ -75,12 +101,30 @@ import PieChartSection from '../components/charts/PieChartSection';
 // Common
 import Header from '../components/common/Header';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import Badge from '../components/common/Badge';
+import FormattedText from '../components/common/FormattedText';
 
 // Forms
 import AthleteForm from '../components/forms/AthleteForm';
 
 // Routing
 import ProtectedRoute from '../components/routing/ProtectedRoute';
+```
+
+## 🛠️ Utilitários
+
+Funções auxiliares em `src/utils/`:
+
+```jsx
+// Manipulação de dados de estratégia
+import { 
+  extractStrategyContent, 
+  updateStrategyField, 
+  normalizeStrategyStructure 
+} from '../utils/strategyUtils';
+
+// Formatação de texto
+import { formatObjectToText } from '../utils/formatters';
 ```
 
 ## 📝 Convenções
@@ -90,11 +134,14 @@ import ProtectedRoute from '../components/routing/ProtectedRoute';
 - **Imports:** Paths relativos (`../components/...`)
 - **Props:** Tipadas com PropTypes ou comentários
 - **Testes:** Na mesma pasta ou em `__tests__/`
+- **Componentes reutilizáveis:** Sempre em `common/`
+- **Funções utilitárias:** Sempre em `utils/`
 
 ## ✨ Melhores Práticas
 
 1. **Separação de responsabilidades:** Cada componente tem função única
 2. **Reutilização:** Componentes em `common/` são genéricos
-3. **Organização por feature:** `analysis/`, `video/` agrupam por funcionalidade
+3. **Organização por feature:** `analysis/`, `video/`, `chat/` agrupam por funcionalidade
 4. **Testes próximos:** Testes na mesma pasta do componente
 5. **Documentação:** Comentários JSDoc para props complexas
+6. **Evitar duplicação:** Extrair código comum para `common/` ou `utils/`

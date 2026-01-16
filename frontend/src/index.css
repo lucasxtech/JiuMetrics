@@ -30,6 +30,8 @@
   html {
     overflow-x: hidden;
     scrollbar-gutter: stable;
+    /* Reduz o tamanho base para ~85% (equivalente a zoom 85%) */
+    font-size: 85%;
   }
 
   body {
@@ -205,6 +207,21 @@
 
 .animate-slideUp {
   animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .animate-shimmer {

@@ -90,19 +90,20 @@ export default function Athletes() {
       </Modal>
 
       {athletes.length > 0 && (
-        <section className="panel">
-          <div className="panel__head">
+        <section className="panel !py-8 !px-6 md:!px-8">
+          <div className="panel__head mb-8">
             <div>
               <p className="eyebrow">Lista</p>
               <h2 className="panel__title">Todos os atletas ({athletes.length})</h2>
             </div>
             <span className="panel__meta">Selecione um atleta para abrir a visão detalhada.</span>
           </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8 xl:grid-cols-3 xl:gap-10">
             {athletes.map((athlete) => (
               <AthleteCard
                 key={athlete.id}
                 {...athlete}
+                analysesCount={athlete.analysesCount || 0}
                 type="athlete"
                 onClick={() => navigate(`/athletes/${athlete.id}`)}
               />

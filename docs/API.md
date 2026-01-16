@@ -291,6 +291,220 @@ Gera uma estratégia de luta personalizada.
 
 ---
 
+## Chat IA
+
+Sistema de chat para refinamento de conteúdo com IA.
+
+### Sessões Genéricas
+
+#### POST /chat/session
+Cria uma nova sessão de chat.
+
+**Body (JSON):**
+```json
+{
+  "contextType": "analysis",
+  "contextId": "uuid-da-analise"
+}
+```
+
+**Resposta (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-da-sessao",
+    "contextType": "analysis",
+    "contextId": "uuid-da-analise",
+    "messages": [],
+    "createdAt": "2025-01-15T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+#### POST /chat/send
+Envia mensagem e recebe resposta da IA.
+
+**Body (JSON):**
+```json
+{
+  "sessionId": "uuid-da-sessao",
+  "message": "Reescreva o resumo de forma mais técnica",
+  "model": "gemini-2.0-flash"
+}
+```
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Aqui está uma versão mais técnica...",
+    "editSuggestion": {
+      "field": "summary",
+      "newValue": "Texto reescrito...",
+      "reason": "Adicionei terminologia técnica de Jiu-Jitsu"
+    }
+  }
+}
+```
+
+---
+
+### Chat de Perfil (Atletas/Adversários)
+
+#### POST /chat/profile-session
+Cria sessão de chat para editar resumo técnico.
+
+**Body (JSON):**
+```json
+{
+  "personId": "uuid-do-atleta",
+  "personType": "athlete",
+  "currentSummary": "Resumo técnico atual..."
+}
+```
+
+---
+
+#### POST /chat/profile-send
+Envia mensagem no chat de perfil.
+
+**Body (JSON):**
+```json
+{
+  "sessionId": "uuid-da-sessao",
+  "message": "Destaque mais os ataques preferidos",
+  "currentSummary": "Resumo atual...",
+  "model": "gemini-2.0-flash"
+}
+```
+
+---
+
+#### POST /chat/profile-save
+Salva edição do resumo técnico.
+
+**Body (JSON):**
+```json
+{
+  "personId": "uuid-do-atleta",
+  "personType": "athlete",
+  "newSummary": "Novo resumo...",
+  "editReason": "Sugestão da IA aceita"
+}
+```
+
+---
+
+#### GET /chat/profile-versions/:personType/:personId
+Lista versões do resumo técnico.
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "versionNumber": 2,
+      "content": "Resumo v2...",
+      "editedBy": "ai",
+      "createdAt": "2025-01-15T11:00:00.000Z",
+      "isCurrent": true
+    },
+    {
+      "versionNumber": 1,
+      "content": "Resumo v1...",
+      "editedBy": "user",
+      "createdAt": "2025-01-15T10:00:00.000Z",
+      "isCurrent": false
+    }
+  ]
+}
+```
+
+---
+
+### Chat de Estratégia
+
+#### POST /chat/strategy-session
+Cria sessão de chat para refinar estratégia de luta.
+
+**Body (JSON):**
+```json
+{
+  "strategyData": { "tese_da_vitoria": "...", "plano_tatico_faseado": "..." },
+  "athleteName": "João Silva",
+  "opponentName": "Pedro Santos"
+}
+```
+
+---
+
+#### POST /chat/strategy-send
+Envia mensagem no chat de estratégia.
+
+**Body (JSON):**
+```json
+{
+  "sessionId": "uuid-da-sessao",
+  "message": "Refaça o checklist tático",
+  "currentStrategy": { "tese_da_vitoria": "...", "checklist_tatico": "..." },
+  "model": "gemini-2.0-flash"
+}
+```
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Aqui está um checklist mais focado...",
+    "editSuggestion": {
+      "field": "checklist_tatico",
+      "newValue": "✅ FAZER:\n- Manter pressão...\n\n❌ NÃO FAZER:\n- Entrar na guarda...",
+      "reason": "Organizei em fazer/não fazer com itens mais específicos"
+    }
+  }
+}
+```
+
+**Campos suportados:**
+| Campo | Descrição |
+|-------|-----------|
+| `tese_da_vitoria` | Tese central de como vencer |
+| `plano_tatico_faseado` | Plano por fases da luta |
+| `cronologia_inteligente` | Timeline de ações |
+| `analise_de_matchup` | Comparação atleta vs adversário |
+| `checklist_tatico` | Lista de fazer/não fazer |
+
+---
+
+### Versões e Histórico
+
+#### GET /chat/versions/:analysisId
+Lista versões de uma análise.
+
+**Query params:**
+- `type` (string): `'fight'` ou `'tactical'`
+
+---
+
+#### POST /chat/restore-version
+Restaura versão anterior de uma análise.
+
+**Body (JSON):**
+```json
+{
+  "analysisId": "uuid-da-analise",
+  "versionNumber": 3
+}
+```
+
+---
+
 ## Códigos de Status HTTP
 
 | Código | Significado |
@@ -334,6 +548,31 @@ curl -X POST http://localhost:5050/api/ai/strategy \
   }'
 ```
 
+### Criar sessão de chat de estratégia
+```bash
+curl -X POST http://localhost:5050/api/chat/strategy-session \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "strategyData": {"tese_da_vitoria": "Vencer por finalização"},
+    "athleteName": "João",
+    "opponentName": "Pedro"
+  }'
+```
+
+### Enviar mensagem no chat de estratégia
+```bash
+curl -X POST http://localhost:5050/api/chat/strategy-send \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "sessionId": "uuid-da-sessao",
+    "message": "Reescreva a tese de forma mais objetiva",
+    "currentStrategy": {"tese_da_vitoria": "Vencer por finalização"},
+    "model": "gemini-2.0-flash"
+  }'
+```
+
 ---
 
-**Última atualização:** Janeiro 2024
+**Última atualização:** Janeiro 2025

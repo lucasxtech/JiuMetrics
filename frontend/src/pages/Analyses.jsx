@@ -3,8 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
 import AnalysisCard from '../components/analysis/AnalysisCard';
 import AiStrategyBox from '../components/analysis/AiStrategyBox';
+import StrategyChatPanel from '../components/chat/StrategyChatPanel';
+import StrategyVersionHistoryPanel from '../components/analysis/StrategyVersionHistoryPanel';
 import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal';
-import { getAllAnalyses, deleteAnalysis } from '../services/analysisService';
+import { getAllAnalyses, deleteAnalysis, updateAnalysis } from '../services/analysisService';
+import { extractStrategyContent, updateStrategyField, normalizeStrategyStructure } from '../utils/strategyUtils';
 
 export default function Analyses() {
   const [analyses, setAnalyses] = useState([]);
@@ -16,7 +19,13 @@ export default function Analyses() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [analysisToDelete, setAnalysisToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const contentRef = useRef(null);
+  
+  // Estado para edição pendente (diff inline)
+  const [pendingEdit, setPendingEdit] = useState(null);
+  const [isApplyingEdit, setIsApplyingEdit] = useState(false);
   const [filters, setFilters] = useState({
     athleteId: null,
     opponentId: null,
@@ -71,6 +80,165 @@ export default function Analyses() {
   const closeModal = () => {
     setShowModal(false);
     setSelectedAnalysis(null);
+    setPendingEdit(null);
+    setIsApplyingEdit(false);
+    setShowChat(false);
+    setShowHistory(false);
+  };
+
+  // Handler para quando uma versão é restaurada do histórico
+  const handleVersionRestored = (restoredContent) => {
+    if (selectedAnalysis) {
+      // O restoredContent já é a estrutura completa da estratégia
+      // Atualizar diretamente como strategy_data
+      setSelectedAnalysis(prev => ({ ...prev, strategy_data: restoredContent }));
+      loadAnalyses();
+    }
+  };
+
+  // Handler para aceitar edição pendente
+  const handleAcceptEdit = async () => {
+    if (!pendingEdit || !selectedAnalysis) {
+      return;
+    }
+
+    setIsApplyingEdit(true);
+    try {
+      const currentStrategyData = selectedAnalysis.strategy_data;
+      const currentStrategy = currentStrategyData?.strategy || currentStrategyData;
+      
+      let updatedStrategy;
+      const field = pendingEdit.field;
+      const newValue = pendingEdit.newValue;
+      
+      // Mapear campo para atualização correta
+      switch (field) {
+        case 'tese_da_vitoria':
+        case 'como_vencer':
+        case 'strategy':
+          // Atualizar tese_da_vitoria e resumo_rapido.como_vencer
+          const teseValue = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
+          updatedStrategy = {
+            ...currentStrategyData,
+            strategy: {
+              ...currentStrategy,
+              tese_da_vitoria: teseValue,
+              resumo_rapido: {
+                ...currentStrategy.resumo_rapido,
+                como_vencer: teseValue
+              }
+            }
+          };
+          break;
+          
+        case 'plano_tatico':
+        case 'plano_tatico_faseado':
+          // Substituir plano_tatico_faseado inteiro
+          updatedStrategy = {
+            ...currentStrategyData,
+            strategy: {
+              ...currentStrategy,
+              plano_tatico_faseado: typeof newValue === 'object' ? newValue : currentStrategy.plano_tatico_faseado
+            }
+          };
+          break;
+          
+        case 'cronologia':
+        case 'cronologia_inteligente':
+          // Substituir cronologia_inteligente inteiro
+          updatedStrategy = {
+            ...currentStrategyData,
+            strategy: {
+              ...currentStrategy,
+              cronologia_inteligente: typeof newValue === 'object' ? newValue : currentStrategy.cronologia_inteligente
+            }
+          };
+          break;
+          
+        case 'matchup':
+        case 'analise_de_matchup':
+          // Substituir analise_de_matchup inteiro
+          updatedStrategy = {
+            ...currentStrategyData,
+            strategy: {
+              ...currentStrategy,
+              analise_de_matchup: typeof newValue === 'object' ? newValue : currentStrategy.analise_de_matchup
+            }
+          };
+          break;
+          
+        default:
+          // Para outros campos, atualizar diretamente
+          updatedStrategy = {
+            ...currentStrategyData,
+            strategy: {
+              ...currentStrategy,
+              [field]: newValue
+            }
+          };
+      }
+      
+    const result = await updateAnalysis(selectedAnalysis.id, { 
+      strategy_data: updatedStrategy,
+      edited_field: field,
+      edited_by: 'ai',
+      edit_reason: pendingEdit.reason || 'Sugestão da IA aceita'
+    });
+      
+    setSelectedAnalysis(prev => ({ ...prev, strategy_data: updatedStrategy }));
+    loadAnalyses();
+    setPendingEdit(null);
+    } catch (err) {
+      console.error('❌ Erro ao aplicar edição:', err);
+      alert('Erro ao aplicar edição. Tente novamente.');
+    } finally {
+      setIsApplyingEdit(false);
+    }
+  };
+
+  // Handler para rejeitar edição pendente
+  const handleRejectEdit = () => {
+    setPendingEdit(null);
+  };
+
+  // Handler para quando o chat sugere uma edição
+  const handleSuggestEdit = (suggestion) => {
+    setPendingEdit(suggestion);
+  };
+
+  // Handler para edição manual direta no AiStrategyBox
+  const handleManualEdit = async (section, newValue) => {
+    if (!selectedAnalysis) return;
+
+    try {
+      const currentStrategyData = selectedAnalysis.strategy_data;
+      
+      // Extrair conteúdo limpo e atualizar campo
+      const currentStrategy = extractStrategyContent(currentStrategyData);
+      const updatedContent = updateStrategyField(currentStrategy, section, newValue);
+      const updatedStrategy = normalizeStrategyStructure(updatedContent);
+      
+      await updateAnalysis(selectedAnalysis.id, { 
+        strategy_data: updatedStrategy,
+        edited_field: section,
+        edited_by: 'user',
+        edit_reason: 'Edição manual'
+      });
+      
+      // Atualizar estado local com os dados limpos
+      setSelectedAnalysis(prev => ({ ...prev, strategy_data: updatedStrategy }));
+      
+      // Atualizar também na lista de análises localmente
+      setAnalyses(prev => prev.map(a => 
+        a.id === selectedAnalysis.id 
+          ? { ...a, strategy_data: updatedStrategy }
+          : a
+      ));
+    } catch (err) {
+      console.error('Erro ao salvar edição manual:', err);
+      alert('Erro ao salvar edição. Tente novamente.');
+      throw err;
+    }
   };
 
   const handleDownloadPDF = async () => {
@@ -80,301 +248,133 @@ export default function Analyses() {
     try {
       const strategyData = selectedAnalysis.strategy_data?.strategy || selectedAnalysis.strategy_data;
       
-      console.log('🔍 Full strategy data:', strategyData);
-      console.log('🔍 Strategy data keys:', Object.keys(strategyData || {}));
-      
       // Parsear plano_tatico_faseado se for string
       let planoTatico = strategyData?.plano_tatico_faseado;
-      console.log('🔍 planoTatico inicial:', planoTatico);
-      console.log('🔍 planoTatico tipo:', typeof planoTatico);
-      
       if (typeof planoTatico === 'string') {
         try {
           planoTatico = JSON.parse(planoTatico);
-          console.log('✅ planoTatico parseado:', planoTatico);
-        } catch (e) {
-          console.error('❌ Erro ao parsear plano_tatico_faseado:', e);
+        } catch {
+          // Ignorar erro de parse
         }
       }
       
-      console.log('🔍 planoTatico final:', planoTatico);
-      console.log('🔍 planoTatico keys:', planoTatico ? Object.keys(planoTatico) : 'null/undefined');
-      
-      // Gerar conteúdo HTML para as seções com arrays
-      const renderOportunidades = strategyData?.checklist_tatico?.oportunidades_de_pontos 
-        ? (Array.isArray(strategyData.checklist_tatico.oportunidades_de_pontos) 
-          ? strategyData.checklist_tatico.oportunidades_de_pontos.map(item => {
-              if (typeof item === 'string') {
-                return `<div style="margin-bottom: 6px; padding-left: 8px;"><span style="color: #10b981; font-weight: bold;">+</span> <span style="color: #475569; font-size: 12px;">${item}</span></div>`;
-              } else {
-                const probColor = item.probabilidade === 'alta' ? '#10b981' : item.probabilidade === 'media' ? '#f59e0b' : '#64748b';
-                return `<div style="margin-bottom: 8px; padding: 6px; background: #f9fafb; border-radius: 4px;">
-                  <div style="font-weight: bold; color: #1e293b; font-size: 12px; margin-bottom: 2px;">
-                    <span style="color: #10b981;">+</span> ${item.tecnica} (${item.pontos} pontos)
-                    <span style="background: ${probColor}20; color: ${probColor}; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 4px;">${item.probabilidade}</span>
-                  </div>
-                  <div style="color: #64748b; font-size: 11px; padding-left: 12px;">${item.quando}</div>
-                </div>`;
-              }
-            }).join('')
-          : `<p style="color: #64748b; font-size: 12px; font-style: italic;">Nenhuma oportunidade identificada</p>`)
-        : '';
-      
-      const renderArmadilhas = strategyData?.checklist_tatico?.armadilhas_dele
-        ? (Array.isArray(strategyData.checklist_tatico.armadilhas_dele)
-          ? strategyData.checklist_tatico.armadilhas_dele.map(item => {
-              if (typeof item === 'string') {
-                return `<div style="margin-bottom: 6px; padding-left: 8px;"><span style="color: #dc2626; font-weight: bold;">!</span> <span style="color: #475569; font-size: 12px;">${item}</span></div>`;
-              } else {
-                return `<div style="margin-bottom: 8px; padding: 6px; background: #fef2f2; border-radius: 4px;">
-                  <div style="font-weight: bold; color: #991b1b; font-size: 12px; margin-bottom: 3px;">
-                    <span>!</span> ${item.tecnica_perigosa}
-                  </div>
-                  <div style="color: #64748b; font-size: 11px; margin-bottom: 2px;"><strong>Quando:</strong> ${item.situacao}</div>
-                  <div style="color: #64748b; font-size: 11px;"><strong>Como evitar:</strong> ${item.como_evitar}</div>
-                </div>`;
-              }
-            }).join('')
-          : `<p style="color: #64748b; font-size: 12px; font-style: italic;">Nenhuma armadilha conhecida</p>`)
-        : '';
-      
-      const renderPlanoEmPe = planoTatico?.em_pe_standup
-        ? Object.entries(planoTatico.em_pe_standup).map(([key, value]) => `
-            <div style="margin-bottom: 8px;">
-              <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
-                ${key.replace(/_/g, ' ')}:
-              </p>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
-                ${value}
-              </p>
-            </div>
-          `).join('')
-        : '';
-      
-      const renderPlanoPassagem = planoTatico?.jogo_de_passagem_top
-        ? Object.entries(planoTatico.jogo_de_passagem_top).map(([key, value]) => `
-            <div style="margin-bottom: 8px;">
-              <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
-                ${key.replace(/_/g, ' ')}:
-              </p>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
-                ${value}
-              </p>
-            </div>
-          `).join('')
-        : '';
-      
-      const renderPlanoGuarda = planoTatico?.jogo_de_guarda_bottom
-        ? Object.entries(planoTatico.jogo_de_guarda_bottom).map(([key, value]) => `
-            <div style="margin-bottom: 8px;">
-              <p style="color: #1e293b; font-weight: 600; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
-                ${key.replace(/_/g, ' ')}:
-              </p>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4; padding-left: 8px;">
-                ${value}
-              </p>
-            </div>
-          `).join('')
-        : '';
-      
-      
-      // Criar conteúdo formatado para PDF com suporte a quebra de página
+      // Criar conteúdo formatado para PDF
       const content = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 100%; width: 750px; box-sizing: border-box;">
-          <!-- Header -->
-          <div style="margin-bottom: 30px;">
-            <h1 style="color: #1f2937; margin-bottom: 8px; font-size: 22px; font-weight: bold;">
-              ${selectedAnalysis.athlete_name} vs ${selectedAnalysis.opponent_name}
-            </h1>
-            <p style="color: #64748b; margin: 0; font-size: 13px;">
-              Criado em ${new Date(selectedAnalysis.created_at).toLocaleDateString('pt-BR')}
-            </p>
-          </div>
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px;">
+          <h1 style="color: #1f2937; margin-bottom: 10px; font-size: 24px;">
+            ${selectedAnalysis.athlete_name} vs ${selectedAnalysis.opponent_name}
+          </h1>
+          <p style="color: #64748b; margin-bottom: 30px; font-size: 14px;">
+            Criado em ${new Date(selectedAnalysis.created_at).toLocaleDateString('pt-BR')}
+          </p>
           
-          <!-- Tese da Vitória -->
+          <!-- Como Vencer Esta Luta -->
           ${strategyData?.tese_da_vitoria ? `
-          <div style="background: #f1f5f9; border: 2px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 18px; page-break-inside: avoid;">
-            <div style="margin-bottom: 10px;">
-              <span style="font-size: 18px; margin-right: 6px;">✓</span>
-              <span style="color: #475569; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold;">Tese da Vitória</span>
+          <div style="background: #f1f5f9; border: 2px solid #cbd5e1; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <span style="font-size: 20px;">✓</span>
+              <h2 style="color: #475569; margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Como Vencer Esta Luta</h2>
             </div>
-            <p style="color: #0f172a; font-size: 14px; line-height: 1.5; margin: 0;">
+            <p style="color: #0f172a; font-size: 16px; line-height: 1.6; margin: 0;">
               ${strategyData.tese_da_vitoria}
             </p>
           </div>
           ` : ''}
           
           <!-- Análise de Matchup -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 18px;">
-            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">📊 Matchup & Assimetrias</h2>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">Matchup & Assimetrias</h2>
             
             ${strategyData?.analise_de_matchup?.vantagem_critica ? `
-            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin-bottom: 10px; page-break-inside: avoid;">
-              <p style="color: #065f46; font-weight: bold; margin: 0 0 6px 0; font-size: 13px;">✓ Vantagem Crítica</p>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.5;">
+            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
+              <p style="color: #065f46; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">✓ Vantagem Crítica</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
                 ${strategyData.analise_de_matchup.vantagem_critica}
               </p>
             </div>
             ` : ''}
             
-            ${strategyData?.analise_de_matchup?.risco_oculto ? `
-            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; margin-bottom: 10px; page-break-inside: avoid;">
-              <p style="color: #991b1b; font-weight: bold; margin: 0 0 6px 0; font-size: 13px;">⚠ Risco Oculto</p>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.5;">
-                ${strategyData.analise_de_matchup.risco_oculto}
-              </p>
-            </div>
-            ` : ''}
-            
-            ${strategyData?.analise_de_matchup?.fator_chave ? `
-            <div style="background: white; border: 1px solid #93c5fd; border-radius: 6px; padding: 12px; page-break-inside: avoid;">
-              <p style="color: #1e40af; font-weight: bold; margin: 0 0 6px 0; font-size: 13px;">⚡ Fator Chave</p>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.5;">
-                ${strategyData.analise_de_matchup.fator_chave}
+            ${strategyData?.analise_de_matchup?.neutralizacao ? `
+            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 15px;">
+              <p style="color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚠ Neutralização</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${strategyData.analise_de_matchup.neutralizacao}
               </p>
             </div>
             ` : ''}
           </div>
           
           <!-- Plano Tático Faseado -->
-          ${planoTatico && Object.keys(planoTatico).length > 0 ? `
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 18px;">
-            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">Plano Tático Faseado</h2>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">Plano Tático Faseado</h2>
             
-            ${planoTatico.em_pe_standup ? `
-            <div style="background: white; border-left: 4px solid #3b82f6; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
-              <p style="color: #3b82f6; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">🥋 Em Pé / Standup</p>
-              ${renderPlanoEmPe}
-            </div>
-            ` : ''}
-            
-            ${planoTatico.jogo_de_passagem_top ? `
-            <div style="background: white; border-left: 4px solid #10b981; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
-              <p style="color: #10b981; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">⬆️ Jogo de Passagem / Top</p>
-              ${renderPlanoPassagem}
-            </div>
-            ` : ''}
-            
-            ${planoTatico.jogo_de_guarda_bottom ? `
-            <div style="background: white; border-left: 4px solid #8b5cf6; padding: 12px; page-break-inside: avoid;">
-              <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">⬇️ Jogo de Guarda / Bottom</p>
-              ${renderPlanoGuarda}
-            </div>
-            ` : ''}
-          </div>
-          ` : ''}
-          
-          <!-- Checklist Tático -->
-          ${strategyData?.checklist_tatico ? `
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 18px;">
-            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">✅ Checklist Tático</h2>
-            
-            ${strategyData.checklist_tatico.oportunidades_de_pontos ? `
-            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
-              <p style="color: #065f46; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">✓ Oportunidades de Pontos</p>
-              ${renderOportunidades}
-            </div>
-            ` : ''}
-            
-            ${strategyData.checklist_tatico.armadilhas_dele ? `
-            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; margin-bottom: 12px; page-break-inside: avoid;">
-              <p style="color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">⚠ Armadilhas Dele</p>
-              ${renderArmadilhas}
-            </div>
-            ` : ''}
-            
-            ${strategyData.checklist_tatico.protocolo_de_seguranca ? `
-            <div style="background: white; border: 1px solid #fdba74; border-radius: 6px; padding: 12px; page-break-inside: avoid;">
-              <p style="color: #c2410c; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">🛡️ Protocolo de Segurança</p>
-              ${strategyData.checklist_tatico.protocolo_de_seguranca.jamais_fazer ? `
-              <div style="margin-bottom: 8px; padding: 6px; background: #fef2f2; border-radius: 4px;">
-                <p style="color: #991b1b; font-weight: bold; font-size: 11px; margin: 0 0 3px 0;">❌ Jamais Fazer:</p>
-                <p style="color: #64748b; font-size: 11px; margin: 0;">${strategyData.checklist_tatico.protocolo_de_seguranca.jamais_fazer}</p>
-              </div>
-              ` : ''}
-              ${strategyData.checklist_tatico.protocolo_de_seguranca.saida_de_emergencia ? `
-              <div style="padding: 6px; background: #fef3c7; border-radius: 4px;">
-                <p style="color: #92400e; font-weight: bold; font-size: 11px; margin: 0 0 3px 0;">🚪 Saída de Emergência:</p>
-                <p style="color: #64748b; font-size: 11px; margin: 0;">${strategyData.checklist_tatico.protocolo_de_seguranca.saida_de_emergencia}</p>
-              </div>
-              ` : ''}
-            </div>
-            ` : ''}
-          </div>
-          ` : ''}
-          
-          <!-- Cronologia Inteligente -->
-          ${strategyData?.cronologia_inteligente ? `
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
-            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">⏱️ Cronologia Inteligente</h2>
-            
-            ${strategyData.cronologia_inteligente.inicio ? `
-            <div style="background: white; border-left: 4px solid #10b981; padding: 12px; margin-bottom: 10px; page-break-inside: avoid;">
-              <div style="margin-bottom: 4px;">
-                <span style="font-size: 16px;">🟢</span>
-                <span style="color: #1e293b; font-weight: bold; font-size: 13px; margin-left: 6px;">Início (0:00 - 1:00)</span>
-              </div>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.5; padding-left: 24px;">
-                ${strategyData.cronologia_inteligente.inicio}
+            ${planoTatico?.detalhe_tecnico ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #3b82f6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🔍 Detalhe Técnico</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.detalhe_tecnico}
               </p>
             </div>
             ` : ''}
             
-            ${strategyData.cronologia_inteligente.meio ? `
-            <div style="background: white; border-left: 4px solid #f59e0b; padding: 12px; margin-bottom: 10px; page-break-inside: avoid;">
-              <div style="margin-bottom: 4px;">
-                <span style="font-size: 16px;">🟡</span>
-                <span style="color: #1e293b; font-weight: bold; font-size: 13px; margin-left: 6px;">Meio (2:00 - 4:00)</span>
-              </div>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.5; padding-left: 24px;">
-                ${strategyData.cronologia_inteligente.meio}
+            ${planoTatico?.acao_recomendada ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #10b981; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">✓ Ação Recomendada</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.acao_recomendada}
               </p>
             </div>
             ` : ''}
             
-            ${strategyData.cronologia_inteligente.final ? `
-            <div style="background: white; border-left: 4px solid #dc2626; padding: 12px; page-break-inside: avoid;">
-              <div style="margin-bottom: 4px;">
-                <span style="font-size: 16px;">🔴</span>
-                <span style="color: #1e293b; font-weight: bold; font-size: 13px; margin-left: 6px;">Final (5:00+)</span>
-              </div>
-              <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.5; padding-left: 24px;">
-                ${strategyData.cronologia_inteligente.final}
+            ${planoTatico?.alerta_de_reversao ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #f59e0b; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚠️ Alerta de Reversão</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.alerta_de_reversao}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.caminho_das_pedras ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🛣️ Caminho das Pedras</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.caminho_das_pedras}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.melhor_posicao ? `
+            <div style="margin-bottom: 15px;">
+              <p style="color: #06b6d4; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">📍 Melhor Posição</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.melhor_posicao}
+              </p>
+            </div>
+            ` : ''}
+            
+            ${planoTatico?.gatilho_de_ataque ? `
+            <div>
+              <p style="color: #dc2626; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚡ Gatilho de Ataque</p>
+              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
+                ${planoTatico.gatilho_de_ataque}
               </p>
             </div>
             ` : ''}
           </div>
-          ` : ''}
         </div>
       `;
 
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = content;
-      tempDiv.style.width = '800px';
-      tempDiv.style.maxWidth = '100%';
       document.body.appendChild(tempDiv);
 
       const opt = {
-        margin: [10, 10, 10, 10],
+        margin: 10,
         filename: `analise-tatica-${selectedAnalysis.athlete_name}-vs-${selectedAnalysis.opponent_name}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          windowWidth: 800
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait',
-          compress: true
-        },
-        pagebreak: { 
-          mode: ['avoid-all', 'css', 'legacy'],
-          before: '.page-break-before',
-          after: '.page-break-after'
-        }
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
       await html2pdf().set(opt).from(tempDiv).save();
@@ -399,272 +399,338 @@ export default function Analyses() {
   });
 
   return (
-    <div className="page-container">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="page-title">Análises Táticas</h1>
-        <p className="text-slate-600">
-          Histórico de todas as estratégias geradas para seus atletas
-        </p>
-      </div>
-
-      {/* Campo de Busca */}
-      <div className="mb-6">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    <div className="dashboard-wrapper animate-fadeIn">
+      {/* Header Hero */}
+      <section className="panel panel--hero flex justify-between items-center">
+        <div>
+          <p className="eyebrow">Histórico</p>
+          <h1 className="hero-title">Análises Táticas</h1>
+          <p className="hero-description">Todas as estratégias geradas para seus atletas em um só lugar.</p>
+        </div>
+        <div className="hero-meta space-y-4">
+          <p className="mb-4">Revise estratégias anteriores e acompanhe a evolução dos seus planos de luta.</p>
+          <a
+            href="/strategy"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-700 transition-colors"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
             </svg>
-          </div>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por atleta ou adversário..."
-            className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
+            Nova estratégia
+          </a>
         </div>
-      </div>
-
-      {/* Stats rápidas */}
-      {!loading && Array.isArray(analyses) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="panel">
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Total de Análises</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{analyses.length}</p>
-                  {searchTerm && filteredAnalyses.length !== analyses.length && (
-                    <p className="text-xs text-blue-600 mt-1">
-                      {filteredAnalyses.length} encontrada(s)
-                    </p>
-                  )}
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="panel">
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Esta Semana</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {analyses.filter(a => {
-                      const weekAgo = new Date();
-                      weekAgo.setDate(weekAgo.getDate() - 7);
-                      return new Date(a.created_at) > weekAgo;
-                    }).length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="panel">
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Atletas Únicos</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {new Set(analyses.map(a => a.athlete_id)).size}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </section>
 
       {/* Loading State */}
       {loading && (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-slate-600 mt-4">Carregando análises...</p>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="text-slate-600 mt-4">Carregando análises...</p>
+          </div>
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="panel bg-red-50 border-red-200">
-          <div className="px-6 py-4">
-            <div className="flex items-center gap-3">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <section className="panel">
+          <div className="px-6 py-8 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-600 mb-4">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-red-800">{error}</p>
             </div>
-            <button onClick={loadAnalyses} className="btn-secondary mt-3">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Erro ao carregar</h3>
+            <p className="text-slate-600 mb-4">{error}</p>
+            <button onClick={loadAnalyses} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-700">
               Tentar novamente
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Empty State */}
       {!loading && !error && analyses.length === 0 && (
-        <div className="panel">
-          <div className="px-6 py-12 text-center">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+        <section className="panel text-center">
+          <div className="mx-auto max-w-md space-y-6 py-8">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-4xl">📊</div>
+            <div>
+              <h3 className="panel__title mb-2">Nenhuma análise encontrada</h3>
+              <p className="text-slate-600">Gere sua primeira estratégia tática para começar a acompanhar o histórico.</p>
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              Nenhuma análise encontrada
-            </h3>
-            <p className="text-slate-600 mb-6">
-              Gere sua primeira estratégia tática na página de Estratégia
-            </p>
-            <a href="/strategy" className="btn-primary inline-flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <a
+              href="/strategy"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-700"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
               </svg>
-              Criar análise tática
+              Criar primeira estratégia
             </a>
           </div>
-        </div>
-      )}
-
-      {/* Empty State - Busca sem resultados */}
-      {!loading && !error && analyses.length > 0 && filteredAnalyses.length === 0 && (
-        <div className="panel">
-          <div className="px-6 py-12 text-center">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              Nenhum resultado encontrado
-            </h3>
-            <p className="text-slate-600 mb-4">
-              Não encontramos análises com "{searchTerm}"
-            </p>
-            <button 
-              onClick={() => setSearchTerm('')}
-              className="btn-secondary inline-flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Limpar busca
-            </button>
-          </div>
-        </div>
+        </section>
       )}
 
       {/* Lista de Análises */}
-      {!loading && !error && Array.isArray(filteredAnalyses) && filteredAnalyses.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredAnalyses.map((analysis) => (
-            <AnalysisCard
-              key={analysis.id}
-              analysis={analysis}
-              onView={handleView}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+      {!loading && !error && Array.isArray(analyses) && analyses.length > 0 && (
+        <section className="panel !py-8 !px-6 md:!px-8">
+          <div className="panel__head mb-6">
+            <div>
+              <p className="eyebrow">Lista</p>
+              <h2 className="panel__title">Todas as análises ({analyses.length})</h2>
+            </div>
+            <span className="panel__meta">Clique em uma análise para ver os detalhes completos.</span>
+          </div>
+
+          {/* Campo de Busca */}
+          <div className="mb-6">
+            <div className="relative max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por atleta ou adversário..."
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {searchTerm && filteredAnalyses.length !== analyses.length && (
+              <p className="text-sm text-indigo-600 mt-2">
+                {filteredAnalyses.length} resultado(s) encontrado(s)
+              </p>
+            )}
+          </div>
+
+          {/* Empty State - Busca sem resultados */}
+          {filteredAnalyses.length === 0 && (
+            <div className="text-center py-12">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 mb-4">
+                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Nenhum resultado</h3>
+              <p className="text-slate-600 mb-4">Não encontramos análises com "{searchTerm}"</p>
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Limpar busca
+              </button>
+            </div>
+          )}
+
+          {/* Grid de Cards */}
+          {filteredAnalyses.length > 0 && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8 xl:grid-cols-3 xl:gap-10">
+              {filteredAnalyses.map((analysis) => (
+                <AnalysisCard
+                  key={analysis.id}
+                  analysis={analysis}
+                  onView={handleView}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Modal de Visualização */}
       {showModal && selectedAnalysis && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           {/* Backdrop clicável */}
-          <div className="absolute inset-0" onClick={closeModal} />
+          <div className="absolute inset-0" onClick={() => { closeModal(); setShowChat(false); }} />
           
-          {/* Modal Content */}
-          <div className="relative bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header do Modal */}
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  {selectedAnalysis.athlete_name} vs {selectedAnalysis.opponent_name}
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  Criado em {new Date(selectedAnalysis.created_at).toLocaleDateString('pt-BR')}
-                </p>
+          {/* Container principal com possível painel lateral */}
+          <div className="relative flex w-full max-w-7xl max-h-[90vh]">
+            {/* Modal Principal */}
+            <div className={`relative w-full overflow-y-auto rounded-2xl bg-white shadow-2xl transition-all duration-300 ${
+              showChat || showHistory ? 'max-w-4xl' : 'max-w-5xl mx-auto'
+            }`}>
+              {/* Header do Modal */}
+              <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+                <div className="flex items-start justify-between gap-4 p-6">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30">
+                      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                        {selectedAnalysis.athlete_name} vs {selectedAnalysis.opponent_name}
+                      </h2>
+                      <div className="flex items-center gap-3 text-sm text-slate-600">
+                        <div className="flex items-center gap-1.5">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          {new Date(selectedAnalysis.created_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+                          Estratégia Tática
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Ações do Header */}
+                  <div className="flex items-center gap-2">
+                    {/* Botão Histórico */}
+                    <button
+                      onClick={() => { setShowHistory(!showHistory); if (!showHistory) setShowChat(false); }}
+                      className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${
+                        showHistory
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
+                      }`}
+                      title="Histórico de Versões"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-medium hidden sm:inline">Versões</span>
+                    </button>
+
+                    {/* Botão Chat IA */}
+                    <button
+                      onClick={() => { setShowChat(!showChat); if (!showChat) setShowHistory(false); }}
+                      className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${
+                        showChat
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+                      }`}
+                      title="Refinar com IA"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      <span className="text-sm font-medium hidden sm:inline">Chat IA</span>
+                    </button>
+
+                    {/* Botão Fechar */}
+                    <button
+                      onClick={() => { closeModal(); setShowChat(false); }}
+                      className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={() => handleDelete(selectedAnalysis.id)}
-                className="btn-ghost text-red-600 hover:bg-red-50 p-2"
-                style={{ marginLeft: "30vw" }}
-                title="Deletar análise"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-              <button
-                onClick={closeModal}
-                className="btn-ghost p-2 hover:bg-slate-100 rounded-lg"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+
+              {/* Conteúdo da Estratégia */}
+              <div className="p-6">
+                <AiStrategyBox 
+                  strategy={selectedAnalysis.strategy_data} 
+                  pendingEdit={pendingEdit}
+                  onAcceptEdit={handleAcceptEdit}
+                  onRejectEdit={handleRejectEdit}
+                  isApplyingEdit={isApplyingEdit}
+                  onManualEdit={handleManualEdit}
+                />
+              </div>
+
+              {/* Footer do Modal */}
+              <div className="sticky bottom-0 border-t border-slate-200 bg-slate-50/95 backdrop-blur-sm px-6 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <span>💡 Use o <strong>Chat IA</strong> para refinar a estratégia de forma inteligente</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => { closeModal(); setShowChat(false); }} 
+                      className="px-6 py-2.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-all"
+                    >
+                      Fechar
+                    </button>
+                    <button
+                      onClick={handleDownloadPDF}
+                      disabled={isDownloading}
+                      className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isDownloading ? (
+                        <>
+                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Gerando PDF...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Baixar PDF
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Conteúdo do Modal (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <AiStrategyBox strategy={selectedAnalysis.strategy_data} />
-            </div>
+            {/* Painel Lateral - Chat */}
+            {showChat && (
+              <div className="w-96 ml-4 flex-shrink-0 animate-fadeIn">
+                <StrategyChatPanel
+                  strategyData={selectedAnalysis.strategy_data}
+                  athleteName={selectedAnalysis.athlete_name}
+                  opponentName={selectedAnalysis.opponent_name}
+                  onClose={() => setShowChat(false)}
+                  pendingEdit={pendingEdit}
+                  onSuggestEdit={handleSuggestEdit}
+                  onAcceptEdit={handleAcceptEdit}
+                  onRejectEdit={handleRejectEdit}
+                  isApplyingEdit={isApplyingEdit}
+                  onStrategyUpdated={async (updatedStrategy) => {
+                    try {
+                      await updateAnalysis(selectedAnalysis.id, { strategy_data: updatedStrategy });
+                      setSelectedAnalysis(prev => ({ ...prev, strategy_data: updatedStrategy }));
+                      loadAnalyses();
+                    } catch (err) {
+                      console.error('Erro ao atualizar estratégia:', err);
+                    }
+                  }}
+                />
+              </div>
+            )}
 
-            {/* Footer do Modal */}
-            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
-              <button onClick={closeModal} className="btn-secondary">
-                Fechar
-              </button>
-              <button
-                onClick={handleDownloadPDF}
-                disabled={isDownloading}
-                className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isDownloading ? (
-                  <>
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Gerando PDF...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Baixar PDF
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Painel Lateral - Histórico de Versões */}
+            {showHistory && (
+              <div className="w-96 ml-4 flex-shrink-0 animate-fadeIn">
+                <StrategyVersionHistoryPanel
+                  analysisId={selectedAnalysis.id}
+                  onVersionRestored={handleVersionRestored}
+                  onClose={() => setShowHistory(false)}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

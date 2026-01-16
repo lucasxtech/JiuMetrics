@@ -34,10 +34,44 @@ export const getAnalysisById = async (id) => {
 };
 
 /**
+ * Atualiza uma análise tática
+ * @param {string} id - ID da análise
+ * @param {Object} data - Dados a atualizar
+ * @returns {Promise} Response com análise atualizada
+ */
+export const updateAnalysis = async (id, data) => {
+  const response = await api.patch(`/strategy/analyses/${id}`, data);
+  return response.data?.data || response.data;
+};
+
+/**
  * Deleta uma análise tática
  * @param {string} id - ID da análise
  * @returns {Promise} Response
  */
 export const deleteAnalysis = async (id) => {
   return api.delete(`/strategy/analyses/${id}`);
+};
+
+// ========== VERSÕES DE ESTRATÉGIA ==========
+
+/**
+ * Busca todas as versões de uma análise tática
+ * @param {string} analysisId - ID da análise
+ * @returns {Promise} Response com lista de versões
+ */
+export const getStrategyVersions = async (analysisId) => {
+  const response = await api.get(`/strategy/analyses/${analysisId}/versions`);
+  return response.data?.versions || [];
+};
+
+/**
+ * Restaura uma versão específica da estratégia
+ * @param {string} analysisId - ID da análise
+ * @param {string} versionId - ID da versão a restaurar
+ * @returns {Promise} Response com nova versão e conteúdo restaurado
+ */
+export const restoreStrategyVersion = async (analysisId, versionId) => {
+  const response = await api.post(`/strategy/analyses/${analysisId}/versions/${versionId}/restore`);
+  return response.data;
 };

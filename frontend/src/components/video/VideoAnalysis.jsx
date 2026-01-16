@@ -60,18 +60,19 @@ export default function VideoAnalysisComponent() {
   }, []);
 
   // Atualizar athleteName quando personId mudar
-  useEffect(() => {
-    if (personId) {
-      const person = personType === 'athlete' 
+  const selectedPerson = personId 
+    ? (personType === 'athlete' 
         ? athletes.find(a => a.id === personId)
-        : opponents.find(o => o.id === personId);
-      if (person) {
-        setAthleteName(person.name);
-      }
+        : opponents.find(o => o.id === personId))
+    : null;
+    
+  useEffect(() => {
+    if (selectedPerson) {
+      setAthleteName(selectedPerson.name);
     } else {
       setAthleteName('');
     }
-  }, [personId, personType, athletes, opponents]);
+  }, [selectedPerson]);
 
   // Função para criar atleta/adversário via Quick Add
   const handleQuickAdd = async (formData) => {
@@ -172,7 +173,8 @@ export default function VideoAnalysisComponent() {
         athleteName: athleteName.trim(),
         personId,
         personType,
-        matchResult: matchResult || undefined // Adiciona resultado da luta se fornecido
+        matchResult: matchResult || undefined, // Adiciona resultado da luta se fornecido
+        belt: selectedPerson?.belt || undefined // Adiciona faixa do atleta
       });
       
       clearInterval(progressInterval);
@@ -343,16 +345,6 @@ export default function VideoAnalysisComponent() {
                   </div>
                 </div>
               ))}
-
-              {/* Botão adicionar - pequeno e discreto */}
-              <button
-                type="button"
-                onClick={addVideo}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
-              >
-                <span>+</span>
-                Adicionar vídeo
-              </button>
             </div>
 
             {/* Erro */}

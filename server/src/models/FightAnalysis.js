@@ -78,7 +78,10 @@ class FightAnalysis {
       charts: analysisData.charts || [],
       summary: analysisData.summary || '',
       technical_profile: analysisData.technicalProfile || '',
+      technical_stats: analysisData.technicalStats || null,
       frames_analyzed: analysisData.framesAnalyzed || 0,
+      current_version: 1,
+      is_edited: false,
     };
     
     // Adicionar user_id se fornecido
@@ -106,17 +109,28 @@ class FightAnalysis {
     if (analysisData.charts !== undefined) updateData.charts = analysisData.charts;
     if (analysisData.summary !== undefined) updateData.summary = analysisData.summary;
     if (analysisData.technicalProfile !== undefined) updateData.technical_profile = analysisData.technicalProfile;
+    if (analysisData.technicalStats !== undefined) updateData.technical_stats = analysisData.technicalStats;
     if (analysisData.framesAnalyzed !== undefined) updateData.frames_analyzed = analysisData.framesAnalyzed;
+    if (analysisData.currentVersion !== undefined) updateData.current_version = analysisData.currentVersion;
+    if (analysisData.isEdited !== undefined) updateData.is_edited = analysisData.isEdited;
+    if (analysisData.originalSummary !== undefined) updateData.original_summary = analysisData.originalSummary;
+    if (analysisData.originalCharts !== undefined) updateData.original_charts = analysisData.originalCharts;
+
+    // Se não há nada para atualizar, apenas buscar e retornar
+    if (Object.keys(updateData).length === 0) {
+      return this.getById(id);
+    }
 
     const { data, error } = await supabase
       .from('fight_analyses')
       .update(updateData)
       .eq('id', id)
-      .select()
-      .single();
+      .select();
     
     if (error) throw error;
-    return parseAnalysisFromDB(data);
+    
+    // Retornar primeira linha ou null
+    return data && data.length > 0 ? parseAnalysisFromDB(data[0]) : null;
   }
 
   /**
@@ -127,11 +141,10 @@ class FightAnalysis {
       .from('fight_analyses')
       .delete()
       .eq('id', id)
-      .select()
-      .single();
+      .select();
     
     if (error) throw error;
-    return parseAnalysisFromDB(data);
+    return data && data.length > 0 ? parseAnalysisFromDB(data[0]) : null;
   }
 }
 

@@ -102,24 +102,63 @@ Os console.logs do backend são importantes para:
 
 ## ✨ Novos Componentes Criados
 
+### Originais (Dezembro 2025)
 1. ✅ `ConfirmDeleteModal.jsx` - Modal reutilizável de confirmação
 2. ✅ `CustomSelect.jsx` - Dropdown moderno com subtitle support
 3. ✅ `QuickAddModal.jsx` - Modal de cadastro rápido
+
+### Refatoração (Janeiro 2026)
+4. ✅ `Badge.jsx` - Componente reutilizável de tag/badge (extraído de AiStrategyBox e StrategySummaryModal)
+5. ✅ `FormattedText.jsx` - Renderização de texto com markdown (extraído de AiStrategyBox)
+
+## 🛠️ Utilitários Criados (Janeiro 2026)
+
+1. ✅ `strategyUtils.js` - Manipulação de dados de estratégia
+   - `extractStrategyContent()` - Remove wrappers aninhados
+   - `updateStrategyField()` - Atualiza campos específicos
+   - `normalizeStrategyStructure()` - Normaliza estrutura de dados
+
+2. ✅ `formatters.js` - Funções de formatação de texto
+   - `formatObjectToText()` - Converte objetos em texto legível
+
+## 🧹 Limpeza de Código (Janeiro 2026)
+
+### Console.logs Removidos:
+- ✅ `frontend/src/services/api.js` - Interceptors
+- ✅ `frontend/src/pages/Analyses.jsx` - handleAcceptEdit, handleSuggestEdit, handleManualEdit
+- ✅ `frontend/src/components/analysis/AiStrategyBox.jsx` - onAcceptEdit
+- ✅ `server/src/controllers/strategyController.js` - strategyController
+- ✅ `server/src/models/TacticalAnalysis.js` - update
+
+### Código Duplicado Eliminado:
+- ✅ Badge definido em 2 arquivos → Extraído para `common/Badge.jsx`
+- ✅ FormattedText duplicado → Extraído para `common/FormattedText.jsx`
+- ✅ formatObjectToText duplicado → Extraído para `utils/formatters.js`
+- ✅ Lógica de extração de estratégia → Centralizada em `strategyUtils.js`
 
 ## 🧪 Testes
 
 - ✅ Todos os 33 testes unitários passando
 - ✅ Sem quebras de funcionalidade
 - ✅ Cobertura mantida
+- ✅ Build de produção sem erros
 
 ## 📊 Estatísticas
 
+### Dezembro 2025
 - **Arquivos modificados:** 14
 - **Componentes novos:** 3
 - **Linhas adicionadas:** 822
 - **Linhas removidas:** 205
 - **Console.logs removidos:** ~10
 - **Funcionalidades novas:** 6
+
+### Janeiro 2026 (Refatoração)
+- **Arquivos modificados:** 8
+- **Componentes extraídos:** 2
+- **Utilitários criados:** 2
+- **Linhas de duplicação removidas:** ~140
+- **Console.logs removidos:** ~15
 
 ## 🎨 Melhorias de UX
 
@@ -130,10 +169,12 @@ Os console.logs do backend são importantes para:
 5. ✅ Download PDF formatado
 6. ✅ Empty states informativos
 7. ✅ Preview cards após seleção
+8. ✅ Edição manual de todas as seções de estratégia
+9. ✅ UI escalonada (85%) para melhor visualização
 
 ## 🔧 Próximos Passos Sugeridos
 
-1. **Reorganizar documentação** conforme estrutura sugerida
+1. ~~**Reorganizar documentação**~~ ✅ Feito
 2. **Remover arquivos obsoletos** (README_OLD.md, etc)
 3. **Considerar logging profissional** no backend (winston/pino)
 4. **Adicionar CHANGELOG.md** para track de versões
@@ -141,8 +182,9 @@ Os console.logs do backend são importantes para:
 6. **Adicionar badges** no README (build status, coverage, etc)
 7. **Criar SECURITY.md** para políticas de segurança
 8. **Adicionar .editorconfig** para consistência de código
+9. **Usar strategyUtils em StrategySummaryModal** (saveManualEdit ainda tem lógica duplicada)
 
 ---
 
-**Data do Review:** 18 de dezembro de 2025
-**Versão:** feature/ui-improvements-modals-select-search
+**Última Atualização:** 10 de janeiro de 2026
+**Versão:** 2.0.0 - Refatoração e eliminação de duplicação

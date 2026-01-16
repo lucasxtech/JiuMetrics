@@ -82,13 +82,13 @@ export default function QuickAddModal({ isOpen, onClose, type, onSuccess }) {
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Faixa
             </label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               {belts.map((belt) => (
                 <button
                   key={belt}
                   type="button"
                   onClick={() => setFormData({ ...formData, belt })}
-                  className={`rounded-lg border py-2 text-xs font-semibold text-center transition-all ${
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold text-center transition-all ${
                     formData.belt === belt
                       ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/20'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'

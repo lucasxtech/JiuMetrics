@@ -5,6 +5,183 @@ const FightAnalysis = require('../models/FightAnalysis');
 const geminiService = require('./geminiService');
 
 class StrategyService {
+
+  /**
+   * Converte gráficos consolidados em texto narrativo para enriquecer o resumo
+   * @param {Array} charts - Array de gráficos consolidados
+   * @returns {string} Texto narrativo descrevendo o perfil comportamental
+   */
+  static formatChartsAsNarrative(charts) {
+    if (!charts || charts.length === 0) {
+      return '';
+    }
+
+    const narratives = [];
+
+    charts.forEach(chart => {
+      if (!chart.data || chart.data.length === 0) return;
+
+      // Ordenar por valor decrescente
+      const sortedData = [...chart.data].sort((a, b) => b.value - a.value);
+      
+      // Pegar os top 3 (ou menos se não houver)
+      const topItems = sortedData.filter(item => item.value > 0).slice(0, 3);
+      
+      if (topItems.length === 0) return;
+
+      switch (chart.title) {
+        case 'Personalidade Geral': {
+          const traits = topItems.map(item => {
+            if (item.value >= 70) return `predominantemente ${item.label}`;
+            if (item.value >= 40) return `tendência ${item.label}`;
+            return `levemente ${item.label}`;
+          });
+          narratives.push(`Perfil psicológico: ${traits.join(', ')}.`);
+          break;
+        }
+        
+        case 'Comportamento Inicial': {
+          const primary = topItems[0];
+          if (primary.value >= 80) {
+            narratives.push(`No início das lutas, SEMPRE ${primary.label}.`);
+          } else if (primary.value >= 50) {
+            narratives.push(`Tendência inicial: ${primary.label} na maioria das vezes.`);
+          } else {
+            narratives.push(`Comportamento inicial variado, com preferência por ${primary.label}.`);
+          }
+          break;
+        }
+        
+        case 'Jogo de Guarda': {
+          const guards = topItems.map(item => item.label);
+          if (topItems[0].value >= 70) {
+            narratives.push(`Jogo de guarda focado em ${guards[0]}.`);
+          } else {
+            narratives.push(`Jogo de guarda: utiliza principalmente ${guards.join(', ')}.`);
+          }
+          break;
+        }
+        
+        case 'Jogo de Passagem': {
+          const passes = topItems.map(item => item.label);
+          if (topItems.length > 0) {
+            narratives.push(`Estilo de passagem: ${passes.join(', ')}.`);
+          }
+          break;
+        }
+        
+        case 'Tentativas de Finalização': {
+          const subs = topItems.map(item => item.label);
+          if (topItems.length > 0) {
+            narratives.push(`Finalizações preferidas: ${subs.join(', ')}.`);
+          }
+          break;
+        }
+      }
+    });
+
+    return narratives.length > 0 
+      ? '\n\nPERFIL COMPORTAMENTAL (baseado nos gráficos):\n' + narratives.join(' ')
+      : '';
+  }
+
+  /**
+   * Formata technical_stats como texto narrativo
+   * @param {Object} stats - Stats consolidados
+   * @returns {string} Texto narrativo
+   */
+  static formatStatsAsNarrative(stats) {
+    if (!stats) return '';
+
+    const narratives = [];
+
+    if (stats.sweeps && stats.sweeps.quantidade_total > 0) {
+      narratives.push(`Raspagens: ${stats.sweeps.quantidade_total} no total (média de ${stats.sweeps.quantidade_media} por luta, ${stats.sweeps.efetividade_percentual_media}% de efetividade).`);
+    }
+
+    if (stats.guard_passes && stats.guard_passes.quantidade_total > 0) {
+      narratives.push(`Passagens de guarda: ${stats.guard_passes.quantidade_total} no total (média de ${stats.guard_passes.quantidade_media} por luta).`);
+    }
+
+    if (stats.submissions && stats.submissions.tentativas_total > 0) {
+      let subText = `Finalizações: ${stats.submissions.tentativas_total} tentativas`;
+      if (stats.submissions.concluidas_total > 0) {
+        subText += `, ${stats.submissions.concluidas_total} concluídas (${stats.submissions.taxa_sucesso_percentual}% de sucesso)`;
+      }
+      if (stats.submissions.finalizacoes_mais_usadas?.length > 0) {
+        const topSubs = stats.submissions.finalizacoes_mais_usadas.slice(0, 3).map(f => f.tecnica);
+        subText += `. Preferência: ${topSubs.join(', ')}`;
+      }
+      narratives.push(subText + '.');
+    }
+
+    if (stats.back_takes && stats.back_takes.quantidade_total > 0) {
+      narratives.push(`Tomadas de costas: ${stats.back_takes.quantidade_total} no total. Finaliza após pegar costas em ${stats.back_takes.percentual_com_finalizacao}% das vezes.`);
+    }
+
+    return narratives.length > 0 
+      ? '\n\nDADOS QUANTITATIVOS (baseado nas análises):\n' + narratives.join(' ')
+      : '';
+  }
+
+  /**
+   * Consolida gráficos de múltiplas análises (média dos valores)
+   * @param {Array} analyses - Array de análises
+   * @returns {Array} Gráficos consolidados
+   */
+  static consolidateCharts(analyses) {
+    const validAnalyses = analyses.filter(a => a.charts && Array.isArray(a.charts));
+    
+    if (validAnalyses.length === 0) {
+      return [];
+    }
+
+    // Estrutura para acumular valores por título e label
+    const chartData = {};
+
+    validAnalyses.forEach(analysis => {
+      analysis.charts.forEach(chart => {
+        if (!chart.title || !chart.data) return;
+        
+        if (!chartData[chart.title]) {
+          chartData[chart.title] = {};
+        }
+        
+        chart.data.forEach(item => {
+          const label = item.label || item.name;
+          const value = Number(item.value) || 0;
+          
+          if (!chartData[chart.title][label]) {
+            chartData[chart.title][label] = [];
+          }
+          chartData[chart.title][label].push(value);
+        });
+      });
+    });
+
+    // Converter para array de gráficos com médias
+    const consolidatedCharts = [];
+    
+    for (const title in chartData) {
+      const data = [];
+      for (const label in chartData[title]) {
+        const values = chartData[title][label];
+        const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+        if (avg > 0) {
+          data.push({ label, value: avg });
+        }
+      }
+      
+      if (data.length > 0) {
+        // Ordenar por valor decrescente
+        data.sort((a, b) => b.value - a.value);
+        consolidatedCharts.push({ title, data });
+      }
+    }
+
+    return consolidatedCharts;
+  }
+
   /**
    * Compara atleta vs adversário e gera estratégia
    */
@@ -263,11 +440,12 @@ class StrategyService {
   /**
    * Consolida múltiplas análises de um lutador em um único resumo técnico
    * usando IA para detectar padrões, evolução e tendências consistentes
+   * ENRIQUECIDO com gráficos e stats convertidos em texto narrativo
    * 
    * @param {string} personId - ID do atleta ou adversário
    * @param {string|null} userId - ID do usuário (para filtrar análises)
    * @param {string|null} customModel - Modelo Gemini customizado (opcional)
-   * @returns {Promise<Object>} { resumo: string, technical_stats: Object, analysesCount: number, model: string }
+   * @returns {Promise<Object>} { resumo: string, technical_stats: Object, charts: Array, analysesCount: number, model: string }
    */
   static async consolidateAnalyses(personId, userId = null, customModel = null) {
     // Buscar todas as análises da pessoa
@@ -277,16 +455,27 @@ class StrategyService {
       return {
         resumo: 'Nenhuma análise disponível para este lutador.',
         technical_stats: null,
+        charts: null,
         analysesCount: 0,
         model: null
       };
     }
 
-    // Se houver apenas 1 análise, retornar dados diretamente
+    // Consolidar technical_stats de todas as análises
+    const consolidatedStats = this.consolidateTechnicalStats(analyses);
+    
+    // Consolidar gráficos de todas as análises
+    const consolidatedCharts = this.consolidateCharts(analyses);
+
+    // Se houver apenas 1 análise, retornar dados diretamente (sem precisar de IA)
     if (analyses.length === 1) {
+      const chartsNarrative = this.formatChartsAsNarrative(analyses[0].charts || []);
+      const statsNarrative = this.formatStatsAsNarrative(consolidatedStats);
+      
       return {
-        resumo: analyses[0].summary || 'Resumo não disponível.',
-        technical_stats: analyses[0].technical_stats || null,
+        resumo: (analyses[0].summary || 'Resumo não disponível.') + chartsNarrative + statsNarrative,
+        technical_stats: consolidatedStats,
+        charts: analyses[0].charts || null,
         analysesCount: 1,
         model: null // Sem uso de IA
       };
@@ -298,75 +487,85 @@ class StrategyService {
       .filter(Boolean)
       .slice(0, 10); // Limitar a 10 análises mais recentes para evitar prompts enormes
 
-    // Consolidar technical_stats de todas as análises
-    const consolidatedStats = this.consolidateTechnicalStats(analyses);
+    // Converter gráficos e stats em texto narrativo para o prompt
+    const chartsNarrative = this.formatChartsAsNarrative(consolidatedCharts);
+    const statsNarrative = this.formatStatsAsNarrative(consolidatedStats);
 
     if (summaries.length === 0) {
       return {
-        resumo: 'Análises encontradas, mas sem resumos técnicos disponíveis.',
+        resumo: 'Análises encontradas, mas sem resumos técnicos disponíveis.' + chartsNarrative + statsNarrative,
         technical_stats: consolidatedStats,
+        charts: consolidatedCharts,
         analysesCount: analyses.length,
         model: null
       };
     }
 
-    // Preparar prompt de consolidação
-    const consolidationPrompt = `Você é um Analista de Jiu-Jitsu.
+    // Preparar prompt de consolidação ENRIQUECIDO
+    const consolidationPrompt = `Você é um Analista Tático de Jiu-Jitsu de alto nível.
 
-Você recebeu ${summaries.length} análises de um mesmo lutador, de lutas diferentes.
+Você recebeu ${summaries.length} análises técnicas de um mesmo lutador, coletadas em diferentes lutas.
+Além disso, você tem dados comportamentais e quantitativos consolidados.
 
-Sua tarefa: juntar essas análises em um RESUMO ÚNICO.
+Sua tarefa é criar um PERFIL TÉCNICO COMPLETO E UNIFICADO que será usado para gerar estratégias de luta.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 ANÁLISES (${summaries.length} lutas)
+📋 ANÁLISES INDIVIDUAIS (${summaries.length} lutas)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${summaries.map((s, i) => `LUTA ${i + 1}:\n${s}\n`).join('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 O QUE FAZER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${chartsNarrative}
 
-Analise TODAS as lutas e faça um resumo que mostre:
-
-1. PADRÕES: Comportamentos que se repetem em várias lutas
-2. EVOLUÇÃO: Mudanças no estilo ao longo do tempo (se tiver)
-3. TENDÊNCIAS: Técnicas, posições e estratégias mais usadas
-4. PONTOS FORTES: O que ele faz bem sempre
-5. FRAQUEZAS: Erros ou problemas que aparecem em várias lutas
-6. ESTILO: Perfil geral do lutador
+${statsNarrative}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 COMO ESCREVER
+🎯 INSTRUÇÕES PARA O RESUMO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Retorne texto simples, SEM formatação markdown, SEM JSON.
+Crie um PERFIL TÉCNICO COMPLETO que inclua:
 
-Escreva um parágrafo único (200-300 palavras) que resume o perfil do lutador.
+1. ESTILO DE LUTA: Guardeiro ou passador? Agressivo ou estratégico? Explosivo ou grinder?
+2. COMPORTAMENTO INICIAL: O que ele faz logo após o "combate"? Puxa guarda? Busca queda?
+3. JOGO DE GUARDA: Quais guardas ele usa? Como ele ataca de baixo?
+4. JOGO DE PASSAGEM: Como ele passa? Pressão? Velocidade? Se não passa, diga isso.
+5. FINALIZAÇÕES: Quais são as armas dele? Onde ele é perigoso?
+6. PONTOS FORTES: O que ele faz muito bem?
+7. PONTOS FRACOS: Onde ele pode ser explorado?
+8. COMO VENCÊ-LO: Resumo tático de como um adversário deveria lutar contra ele.
 
-Seja específico e objetivo.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 FORMATO DE SAÍDA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-NÃO PODE: 
-- Usar markdown (**negrito**, \`code\`, listas)
-- Falar "Luta 1", "Luta 2"
-- Repetir as mesmas coisas
-- Ser genérico demais
-- Usar palavras difíceis ou termos complicados
+Retorne APENAS texto puro, SEM formatação markdown, SEM JSON.
 
-DEVE:
-- Texto corrido em um parágrafo
-- Focar em padrões que aparecem várias vezes
-- Resumir as tendências principais
-- Usar linguagem clara e simples`;
+Escreva um texto técnico em PARÁGRAFOS (pode ter múltiplos parágrafos para organização).
+Entre 250-400 palavras.
+
+Seja específico, use os dados fornecidos, e foque no que é ÚTIL para criar estratégias.
+
+PROIBIDO: 
+- Usar markdown (**negrito**, \`code\`, listas numeradas, cabeçalhos #)
+- Mencionar "Luta 1", "Luta 2" explicitamente
+- Generalizações vazias como "é um bom lutador"
+
+OBRIGATÓRIO:
+- Texto corrido em parágrafos
+- Informações concretas baseadas nos dados
+- Linguagem técnica de Jiu-Jitsu
+- Incluir os dados quantitativos quando relevantes`;
 
     try {
       const modelToUse = customModel || 'gemini-2.0-flash';
       const model = geminiService.getModel ? geminiService.getModel(modelToUse) : null;
       
       if (!model) {
-        // Fallback: se IA não disponível, concatenar resumos
+        // Fallback: se IA não disponível, concatenar resumos + narrativas
         return {
-          resumo: summaries.join(' '),
+          resumo: summaries.join(' ') + chartsNarrative + statsNarrative,
+          technical_stats: consolidatedStats,
+          charts: consolidatedCharts,
           analysesCount: summaries.length,
           model: null
         };
@@ -378,6 +577,7 @@ DEVE:
       return {
         resumo: consolidatedResumo,
         technical_stats: consolidatedStats,
+        charts: consolidatedCharts,
         analysesCount: summaries.length,
         model: modelToUse,
         usage: {
@@ -389,10 +589,11 @@ DEVE:
     } catch (error) {
       console.error('❌ Erro ao consolidar análises:', error);
       
-      // Fallback em caso de erro: concatenar resumos
+      // Fallback em caso de erro: concatenar resumos + narrativas
       return {
-        resumo: summaries.join(' '),
+        resumo: summaries.join(' ') + chartsNarrative + statsNarrative,
         technical_stats: consolidatedStats,
+        charts: consolidatedCharts,
         analysesCount: summaries.length,
         model: null,
         error: error.message
@@ -521,6 +722,7 @@ DEVE:
 
   /**
    * Gera estratégia tática usando resumos consolidados de TODAS as análises
+   * OTIMIZADO: Usa technical_summary salvo no banco quando disponível
    * @param {string} athleteId - ID do atleta
    * @param {string} opponentId - ID do adversário
    * @param {string|null} userId - ID do usuário (para validação)
@@ -536,23 +738,66 @@ DEVE:
       throw new Error('Atleta ou adversário não encontrado');
     }
 
-    // Consolidar análises de ambos os lutadores
-    const [athleteConsolidation, opponentConsolidation] = await Promise.all([
-      this.consolidateAnalyses(athleteId, userId, customModel),
-      this.consolidateAnalyses(opponentId, userId, customModel)
+    // Contar análises para validação
+    const [athleteAnalysesCount, opponentAnalysesCount] = await Promise.all([
+      this.getAnalysesCount(athleteId, userId),
+      this.getAnalysesCount(opponentId, userId)
     ]);
 
-    // Preparar dados para a IA (resumo narrativo + dados quantitativos)
+    // Validar que há análises suficientes
+    if (athleteAnalysesCount === 0) {
+      throw new Error(`O atleta ${athlete.name} não possui análises de luta. Adicione pelo menos uma análise antes de gerar estratégia.`);
+    }
+
+    if (opponentAnalysesCount === 0) {
+      throw new Error(`O adversário ${opponent.name} não possui análises de luta. Adicione pelo menos uma análise antes de gerar estratégia.`);
+    }
+
+    // Usar technical_summary salvo no banco OU consolidar se não existir
+    let athleteResumo, opponentResumo;
+    let athleteStats, opponentStats;
+    
+    // Atleta: usar resumo salvo ou consolidar
+    if (athlete.technicalSummary) {
+      console.log(`📋 Usando resumo técnico salvo do atleta ${athlete.name}`);
+      athleteResumo = athlete.technicalSummary;
+      // Buscar stats consolidados
+      const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, null);
+      athleteStats = athleteConsolidation.technical_stats;
+    } else {
+      console.log(`🔄 Consolidando análises do atleta ${athlete.name} (sem resumo salvo)`);
+      const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, customModel);
+      athleteResumo = athleteConsolidation.resumo;
+      athleteStats = athleteConsolidation.technical_stats;
+    }
+    
+    // Adversário: usar resumo salvo ou consolidar
+    if (opponent.technicalSummary) {
+      console.log(`📋 Usando resumo técnico salvo do adversário ${opponent.name}`);
+      opponentResumo = opponent.technicalSummary;
+      // Buscar stats consolidados
+      const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, null);
+      opponentStats = opponentConsolidation.technical_stats;
+    } else {
+      console.log(`🔄 Consolidando análises do adversário ${opponent.name} (sem resumo salvo)`);
+      const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, customModel);
+      opponentResumo = opponentConsolidation.resumo;
+      opponentStats = opponentConsolidation.technical_stats;
+    }
+
+    // Preparar dados para a IA (resumo narrativo + dados quantitativos + faixa)
     const athleteData = {
       name: athlete.name,
-      resumo: athleteConsolidation.resumo,
-      technical_stats: athleteConsolidation.technical_stats
+      belt: athlete.belt || null,
+      resumo: athleteResumo,
+      technical_stats: athleteStats
     };
 
     const opponentData = {
       name: opponent.name,
-      resumo: opponentConsolidation.resumo,
-      technical_stats: opponentConsolidation.technical_stats
+      belt: opponent.belt || null,
+      resumo: opponentResumo,
+      technical_stats: opponentStats
     };
 
     // Gerar estratégia usando geminiService
@@ -568,14 +813,16 @@ DEVE:
         athlete: {
           id: athleteId,
           name: athlete.name,
-          analysesCount: athleteConsolidation.analysesCount,
-          consolidationModel: athleteConsolidation.model
+          belt: athlete.belt,
+          analysesCount: athleteAnalysesCount,
+          usedSavedSummary: !!athlete.technicalSummary
         },
         opponent: {
           id: opponentId,
           name: opponent.name,
-          analysesCount: opponentConsolidation.analysesCount,
-          consolidationModel: opponentConsolidation.model
+          belt: opponent.belt,
+          analysesCount: opponentAnalysesCount,
+          usedSavedSummary: !!opponent.technicalSummary
         },
         strategyModel: customModel || 'gemini-2.0-flash',
         usage: strategyResult.usage,

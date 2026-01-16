@@ -1,4 +1,4 @@
-const { analyzeFrame, consolidateAnalyses } = require('../services/geminiService');
+const { analyzeFrame, consolidateAnalyses, consolidateSummariesWithAI } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
 
@@ -24,7 +24,7 @@ function extractYouTubeId(url) {
 
 exports.analyzeLink = async (req, res) => {
   try {
-    const { videos, athleteName, personId, personType, model, matchResult } = req.body || {};
+    const { videos, athleteName, personId, personType, model, matchResult, belt } = req.body || {};
     const accessToken = req.headers.authorization?.replace('Bearer ', '');
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
@@ -96,7 +96,8 @@ exports.analyzeLink = async (req, res) => {
           athleteName: athleteName?.trim(),
           giColor: video.giColor,
           videos: [video], // Passa apenas este vídeo para o prompt
-          matchResult: matchResult?.trim() // Adiciona resultado da luta
+          matchResult: matchResult?.trim(), // Adiciona resultado da luta
+          belt: belt?.trim() // Adiciona faixa do atleta
         }, model); // Passa o modelo selecionado
         
         analyses.push(result.analysis);
@@ -116,7 +117,26 @@ exports.analyzeLink = async (req, res) => {
     }
     
     console.log(`\n📊 Consolidando ${analyses.length} análise(s)...`);
-    const consolidated = consolidateAnalyses(analyses);
+    let consolidated = consolidateAnalyses(analyses);
+    
+    // Se há múltiplos summaries, consolidar via IA
+    if (consolidated.summariesToConsolidate && consolidated.summariesToConsolidate.length > 1) {
+      console.log(`🤖 Consolidando ${consolidated.summariesToConsolidate.length} summaries via IA...`);
+      try {
+        const consolidatedSummary = await consolidateSummariesWithAI(
+          consolidated.summariesToConsolidate,
+          athleteName,
+          model
+        );
+        consolidated.summary = consolidatedSummary;
+        delete consolidated.summariesToConsolidate;
+        console.log('✅ Summaries consolidados com sucesso via IA');
+      } catch (aiError) {
+        console.error('⚠️ Erro ao consolidar via IA, usando fallback:', aiError.message);
+        // Fallback já está definido em consolidated.summary
+        delete consolidated.summariesToConsolidate;
+      }
+    }
     
     // Salvar uso da API
     if (req.user?.id && usageRecords.length > 0) {

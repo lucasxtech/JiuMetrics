@@ -3,6 +3,7 @@ const Opponent = require('../models/Opponent');
 const StrategyService = require('../services/strategyService');
 const TacticalAnalysis = require('../models/TacticalAnalysis');
 const ApiUsage = require('../models/ApiUsage');
+const StrategyVersion = require('../models/StrategyVersion');
 
 /**
  * POST /api/strategy/compare
@@ -55,6 +56,14 @@ exports.compareAndStrategy = async (req, res) => {
           metadata: result.metadata
         });
         console.log('✅ Análise tática salva com sucesso! ID:', savedAnalysis.id);
+
+        // Criar versão inicial
+        try {
+          await StrategyVersion.createInitial(savedAnalysis.id, userId, result.strategy);
+          console.log('📜 Versão inicial criada no histórico');
+        } catch (versionError) {
+          console.error('⚠️ Erro ao criar versão inicial:', versionError.message);
+        }
       } catch (saveError) {
         console.error('⚠️ Erro ao salvar análise tática:', saveError);
         console.error('Detalhes do erro:', saveError.message);
@@ -207,6 +216,66 @@ exports.deleteAnalysis = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro ao deletar análise tática'
+    });
+  }
+};
+
+/**
+ * PATCH /api/strategy/analyses/:id
+ * Atualiza uma análise tática (ex: strategy_data editado pela IA)
+ */
+exports.updateAnalysis = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+    const { strategy_data, edited_field, edit_reason, edited_by } = req.body;
+
+    if (!strategy_data) {
+      return res.status(400).json({
+        success: false,
+        error: 'strategy_data é obrigatório'
+      });
+    }
+
+    // Verificar se a análise existe e pertence ao usuário
+    const analysis = await TacticalAnalysis.getById(id, userId);
+    if (!analysis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Análise não encontrada'
+      });
+    }
+    
+    // Atualizar
+    const updated = await TacticalAnalysis.update(id, userId, { strategy_data });
+
+    // Criar versão do histórico (não falhar se der erro)
+    try {
+      await StrategyVersion.create({
+        analysisId: id,
+        userId,
+        content: strategy_data,
+        editedField: edited_field || null,
+        editedBy: edited_by || 'ai',
+        editReason: edit_reason || 'Edição aplicada via chat com IA'
+      });
+    } catch (versionError) {
+      // Log silencioso - criar versão não é crítico
+    }
+    
+    res.json({
+      success: true,
+      data: updated,
+      message: 'Análise atualizada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao atualizar análise:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao atualizar análise tática',
+      details: error.message
     });
   }
 };

@@ -4,17 +4,40 @@ const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers'
 
 class Athlete {
   /**
-   * Busca todos os atletas de um usuário
+   * Busca todos os atletas de um usuário (com contagem de análises)
    */
   static async getAll(userId) {
-    const { data, error } = await supabase
+    // Buscar atletas
+    const { data: athletes, error } = await supabase
       .from('athletes')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
-    return parseAthletesFromDB(data);
+    
+    // Buscar contagem de análises por atleta
+    const { data: analysesCounts, error: countError } = await supabase
+      .from('fight_analyses')
+      .select('person_id')
+      .eq('user_id', userId)
+      .in('person_id', athletes.map(a => a.id));
+    
+    // Contar análises por person_id
+    const countsMap = {};
+    if (analysesCounts && !countError) {
+      analysesCounts.forEach(a => {
+        countsMap[a.person_id] = (countsMap[a.person_id] || 0) + 1;
+      });
+    }
+    
+    // Adicionar contagem a cada atleta
+    const athletesWithCount = athletes.map(athlete => ({
+      ...athlete,
+      analyses_count: countsMap[athlete.id] || 0
+    }));
+    
+    return parseAthletesFromDB(athletesWithCount);
   }
 
   /**
@@ -79,6 +102,8 @@ class Athlete {
     if (athleteData.videoUrl !== undefined) updateData.video_url = athleteData.videoUrl;
     if (athleteData.cardio !== undefined) updateData.cardio = athleteData.cardio;
     if (athleteData.technicalProfile !== undefined) updateData.technical_profile = athleteData.technicalProfile;
+    if (athleteData.technicalSummary !== undefined) updateData.technical_summary = athleteData.technicalSummary;
+    if (athleteData.technicalSummaryUpdatedAt !== undefined) updateData.technical_summary_updated_at = athleteData.technicalSummaryUpdatedAt;
 
     const { data, error } = await supabase
       .from('athletes')
