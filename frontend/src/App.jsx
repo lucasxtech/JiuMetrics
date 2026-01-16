@@ -1,6 +1,7 @@
 // Configuração de rotas da aplicação
 import './index.css';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import ProtectedRoute from './components/routing/ProtectedRoute';
 import Header from './components/common/Header';
 import Overview from './pages/Overview';
@@ -13,10 +14,16 @@ import Analyses from './pages/Analyses';
 import ModernLogin from './pages/ModernLogin';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
+import initializeAuth from './utils/initAuth';
 
 function AppContent() {
   const location = useLocation();
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  
+  // Inicializar autenticação quando o app carrega
+  useEffect(() => {
+    initializeAuth();
+  }, []);
 
   return (
     <div className={isAuthPage ? '' : 'min-h-screen bg-gray-100'}>

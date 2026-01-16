@@ -11,6 +11,12 @@ const api = axios.create({
   },
 });
 
+// Configurar token inicial se existir
+const token = localStorage.getItem('jiumetrics_token');
+if (token) {
+  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+}
+
 // Interceptor para adicionar token se existir
 api.interceptors.request.use(
   (config) => {
@@ -23,11 +29,29 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor para tratamento de erros
+// Interceptor para tratamento de erros e renovação de autenticação
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    console.error('❌ API Error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    
+    // Se receber 401, limpar token inválido e redirecionar para login
+    if (error.response?.status === 401) {
+      console.warn('⚠️ Token inválido ou expirado - limpando autenticação');
+      localStorage.removeItem('jiumetrics_token');
+      localStorage.removeItem('jiumetrics_user');
+      delete api.defaults.headers.common['Authorization'];
+      
+      // Redirecionar para login se não estiver já lá
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
