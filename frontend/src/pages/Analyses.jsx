@@ -248,13 +248,42 @@ export default function Analyses() {
     try {
       const strategyData = selectedAnalysis.strategy_data?.strategy || selectedAnalysis.strategy_data;
       
+      // DEBUG: Ver estrutura completa dos dados
+      console.log('📄 PDF - strategyData completo:', strategyData);
+      console.log('📋 PDF - checklist_tatico:', strategyData?.checklist_tatico);
+      console.log('🎯 PDF - plano_tatico_faseado:', strategyData?.plano_tatico_faseado);
+      console.log('⏱️ PDF - cronologia_inteligente:', strategyData?.cronologia_inteligente);
+      
       // Parsear plano_tatico_faseado se for string
       let planoTatico = strategyData?.plano_tatico_faseado;
       if (typeof planoTatico === 'string') {
         try {
           planoTatico = JSON.parse(planoTatico);
-        } catch {
-          // Ignorar erro de parse
+          console.log('🔄 PDF - plano_tatico após parse:', planoTatico);
+        } catch (e) {
+          console.error('❌ Erro ao parsear plano_tatico:', e);
+        }
+      }
+      
+      // Parsear checklist_tatico se for string
+      let checklistTatico = strategyData?.checklist_tatico;
+      if (typeof checklistTatico === 'string') {
+        try {
+          checklistTatico = JSON.parse(checklistTatico);
+          console.log('🔄 PDF - checklist após parse:', checklistTatico);
+        } catch (e) {
+          console.error('❌ Erro ao parsear checklist:', e);
+        }
+      }
+      
+      // Parsear cronologia se for string
+      let cronologia = strategyData?.cronologia_inteligente;
+      if (typeof cronologia === 'string') {
+        try {
+          cronologia = JSON.parse(cronologia);
+          console.log('🔄 PDF - cronologia após parse:', cronologia);
+        } catch (e) {
+          console.error('❌ Erro ao parsear cronologia:', e);
         }
       }
       
@@ -305,63 +334,100 @@ export default function Analyses() {
           </div>
           
           <!-- Plano Tático Faseado -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
-            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">Plano Tático Faseado</h2>
+          ${planoTatico ? `
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">🎯 Plano Tático Faseado</h2>
             
-            ${planoTatico?.detalhe_tecnico ? `
-            <div style="margin-bottom: 15px;">
-              <p style="color: #3b82f6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🔍 Detalhe Técnico</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${planoTatico.detalhe_tecnico}
-              </p>
+            ${planoTatico.em_pe_standup ? `
+            <div style="background: white; border-left: 3px solid #3b82f6; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
+              <p style="color: #3b82f6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🥋 Em Pé (Standup)</p>
+              ${Object.entries(planoTatico.em_pe_standup).map(([key, value]) => `
+                <div style="margin-bottom: 8px;">
+                  <p style="color: #1e40af; font-weight: bold; font-size: 12px; margin: 0 0 3px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
+                  <p style="color: #64748b; font-size: 12px; margin: 0;">${value}</p>
+                </div>
+              `).join('')}
             </div>
             ` : ''}
             
-            ${planoTatico?.acao_recomendada ? `
-            <div style="margin-bottom: 15px;">
-              <p style="color: #10b981; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">✓ Ação Recomendada</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${planoTatico.acao_recomendada}
-              </p>
+            ${planoTatico.jogo_de_passagem_top ? `
+            <div style="background: white; border-left: 3px solid #10b981; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
+              <p style="color: #10b981; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⬇️ Jogo de Passagem (Top)</p>
+              ${Object.entries(planoTatico.jogo_de_passagem_top).map(([key, value]) => `
+                <div style="margin-bottom: 8px;">
+                  <p style="color: #059669; font-weight: bold; font-size: 12px; margin: 0 0 3px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
+                  <p style="color: #64748b; font-size: 12px; margin: 0;">${value}</p>
+                </div>
+              `).join('')}
             </div>
             ` : ''}
             
-            ${planoTatico?.alerta_de_reversao ? `
-            <div style="margin-bottom: 15px;">
-              <p style="color: #f59e0b; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚠️ Alerta de Reversão</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${planoTatico.alerta_de_reversao}
-              </p>
-            </div>
-            ` : ''}
-            
-            ${planoTatico?.caminho_das_pedras ? `
-            <div style="margin-bottom: 15px;">
-              <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🛣️ Caminho das Pedras</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${planoTatico.caminho_das_pedras}
-              </p>
-            </div>
-            ` : ''}
-            
-            ${planoTatico?.melhor_posicao ? `
-            <div style="margin-bottom: 15px;">
-              <p style="color: #06b6d4; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">📍 Melhor Posição</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${planoTatico.melhor_posicao}
-              </p>
-            </div>
-            ` : ''}
-            
-            ${planoTatico?.gatilho_de_ataque ? `
-            <div>
-              <p style="color: #dc2626; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚡ Gatilho de Ataque</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${planoTatico.gatilho_de_ataque}
-              </p>
+            ${planoTatico.jogo_de_guarda_bottom ? `
+            <div style="background: white; border-left: 3px solid #8b5cf6; padding: 12px; page-break-inside: avoid;">
+              <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⬆️ Jogo de Guarda (Bottom)</p>
+              ${Object.entries(planoTatico.jogo_de_guarda_bottom).map(([key, value]) => `
+                <div style="margin-bottom: 8px;">
+                  <p style="color: #7c3aed; font-weight: bold; font-size: 12px; margin: 0 0 3px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
+                  <p style="color: #64748b; font-size: 12px; margin: 0;">${value}</p>
+                </div>
+              `).join('')}
             </div>
             ` : ''}
           </div>
+          ` : ''}
+          
+          <!-- Checklist Tático -->
+          ${checklistTatico ? `
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; page-break-inside: avoid;">
+            <h2 style="color: #334155; margin: 0 0 15px 0; font-size: 18px; font-weight: bold;">📋 Checklist Tático</h2>
+            
+            ${checklistTatico.fazer?.length > 0 ? `
+            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
+              <p style="color: #065f46; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">✓ Fazer</p>
+              ${checklistTatico.fazer.map(item => `
+                <div style="margin-bottom: 6px; padding-left: 10px; border-left: 2px solid #86efac;">
+                  <p style="color: #64748b; font-size: 11px; margin: 0;">• ${item}</p>
+                </div>
+              `).join('')}
+            </div>
+            ` : ''}
+            
+            ${checklistTatico.nao_fazer?.length > 0 ? `
+            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
+              <p style="color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">❌ Não Fazer</p>
+              ${checklistTatico.nao_fazer.map(item => `
+                <div style="margin-bottom: 6px; padding-left: 10px; border-left: 2px solid #fca5a5;">
+                  <p style="color: #64748b; font-size: 11px; margin: 0;">• ${item}</p>
+                </div>
+              `).join('')}
+            </div>
+            ` : ''}
+            
+            ${checklistTatico.se_estiver_perdendo ? `
+            <div style="background: white; border: 1px solid #fdba74; border-radius: 6px; padding: 12px; page-break-inside: avoid;">
+              <p style="color: #c2410c; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">🔥 Se Estiver Perdendo</p>
+              <p style="color: #64748b; font-size: 11px; margin: 0;">${checklistTatico.se_estiver_perdendo}</p>
+            </div>
+            ` : ''}
+          </div>
+          ` : ''}
+          
+          <!-- Cronologia Inteligente -->
+          ${cronologia && Object.keys(cronologia).length > 0 ? `
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-top: 20px; page-break-inside: avoid;">
+            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">⏱️ Cronologia Inteligente</h2>
+            ${Object.entries(cronologia).map(([fase, conteudo], index) => `
+              <div style="background: white; border-left: 3px solid #f59e0b; padding: 10px 12px; margin-bottom: ${index === Object.keys(cronologia).length - 1 ? '0' : '10px'}; page-break-inside: avoid;">
+                <p style="color: #d97706; font-weight: bold; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
+                  ${fase.replace(/_/g, ' ')}
+                </p>
+                <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4;">
+                  ${conteudo}
+                </p>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
         </div>
       `;
 
