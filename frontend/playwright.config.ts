@@ -36,8 +36,8 @@ export default defineConfig({
 
   // Configurações compartilhadas
   use: {
-    // URL base para navegação
-    baseURL: 'http://localhost:5173',
+    // URL base para navegação (inclui o base path do Vite)
+    baseURL: 'http://localhost:5173/JiuMetrics',
 
     // Coletar trace em caso de falha
     trace: 'on-first-retry',

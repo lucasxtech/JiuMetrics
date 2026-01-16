@@ -25,8 +25,8 @@ interface TestUser {
 // ============================================================================
 
 export const TEST_USER: TestUser = {
-  email: process.env.TEST_USER_EMAIL || 'test@example.com',
-  password: process.env.TEST_USER_PASSWORD || 'testpassword123',
+  email: 'contateste@teste.com',
+  password: '33335929Aa@',
 };
 
 // ============================================================================
@@ -37,15 +37,20 @@ export const TEST_USER: TestUser = {
  * Fixture que fornece uma página já autenticada
  */
 export const test = base.extend<AuthFixtures>({
-  authenticatedPage: async ({ page }, use) => {
+  authenticatedPage: async ({ page, baseURL }, use) => {
     // Fazer login antes do teste
-    await page.goto('/login');
-    await page.getByLabel('Email').fill(TEST_USER.email);
-    await page.getByLabel('Senha').fill(TEST_USER.password);
+    await page.goto(`${baseURL}/login`);
+    
+    // Aguardar a página carregar
+    await page.waitForLoadState('networkidle');
+    
+    // Usar placeholders que são mais específicos
+    await page.getByPlaceholder('seu@email.com').fill(TEST_USER.email);
+    await page.getByPlaceholder('••••••••').fill(TEST_USER.password);
     await page.getByRole('button', { name: /entrar/i }).click();
     
-    // Aguardar redirecionamento após login
-    await page.waitForURL(/\/(overview|dashboard)/);
+    // Aguardar o conteúdo da página logada aparecer (menu de navegação)
+    await page.waitForSelector('text=Overview', { timeout: 15000 });
     
     await use(page);
   },

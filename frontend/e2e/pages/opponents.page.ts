@@ -1,32 +1,30 @@
 /**
- * Page Object Model - Página de Atletas
+ * Page Object Model - Página de Oponentes
  */
 
 import { Page, Locator, expect } from '@playwright/test';
 
-export class AthletesPage {
+export class OpponentsPage {
   readonly page: Page;
   readonly pageTitle: Locator;
-  readonly addAthleteButton: Locator;
-  readonly athleteCards: Locator;
+  readonly addOpponentButton: Locator;
+  readonly opponentCards: Locator;
   readonly loadingSpinner: Locator;
   readonly modal: Locator;
-  readonly errorMessage: Locator;
+  readonly emptyState: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    // Título: "Central de atletas"
-    this.pageTitle = page.getByRole('heading', { name: /central de atletas/i, level: 1 });
-    // Botão "Novo atleta"
-    this.addAthleteButton = page.getByRole('button', { name: /novo atleta/i });
-    this.athleteCards = page.locator('.grid > div, [data-testid="athlete-card"]');
+    this.pageTitle = page.getByRole('heading', { name: /central de adversários/i, level: 1 });
+    this.addOpponentButton = page.getByRole('button', { name: /novo adversário/i });
+    this.opponentCards = page.locator('.grid > div, [data-testid="opponent-card"]');
     this.loadingSpinner = page.locator('.loading-spinner, [data-testid="loading"]');
     this.modal = page.locator('[role="dialog"], .modal');
-    this.errorMessage = page.locator('[role="alert"], .error-message');
+    this.emptyState = page.getByText(/nenhum adversário|sem adversários|lista vazia/i);
   }
 
   async goto(): Promise<void> {
-    await this.page.goto('/athletes');
+    await this.page.goto('/opponents');
     await this.waitForLoad();
   }
 
@@ -40,19 +38,19 @@ export class AthletesPage {
   }
 
   async expectAddButtonVisible(): Promise<void> {
-    await expect(this.addAthleteButton).toBeVisible();
+    await expect(this.addOpponentButton).toBeVisible();
   }
 
-  async openAddAthleteForm(): Promise<void> {
-    await this.addAthleteButton.click();
+  async openAddOpponentForm(): Promise<void> {
+    await this.addOpponentButton.click();
     await expect(this.modal).toBeVisible({ timeout: 5000 });
   }
 
-  async clickAthlete(name: string): Promise<void> {
+  async clickOpponent(name: string): Promise<void> {
     await this.page.getByText(name).first().click();
   }
 
-  async fillAthleteForm(data: { name: string; academy?: string }): Promise<void> {
+  async fillOpponentForm(data: { name: string; academy?: string }): Promise<void> {
     await this.page.getByPlaceholder(/nome completo/i).fill(data.name);
     if (data.academy) {
       await this.page.getByPlaceholder(/academia/i).fill(data.academy);
@@ -63,20 +61,12 @@ export class AthletesPage {
     await this.page.getByRole('button', { name: /salvar|criar|cadastrar/i }).click();
   }
 
-  async expectAthleteInList(name: string): Promise<void> {
+  async expectOpponentInList(name: string): Promise<void> {
     await expect(this.page.getByText(name).first()).toBeVisible();
   }
 
   async expectFormValidationError(): Promise<void> {
     const invalidField = this.page.locator(':invalid');
     await expect(invalidField.first()).toBeVisible({ timeout: 3000 });
-  }
-
-  /**
-   * Verifica se a página está vazia
-   */
-  async expectEmptyState(): Promise<void> {
-    const emptyMessage = this.page.getByText(/nenhum atleta|sem atletas|lista vazia/i);
-    await expect(emptyMessage).toBeVisible();
   }
 }
