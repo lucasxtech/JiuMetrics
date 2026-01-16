@@ -1,16 +1,6 @@
 // Controlador de Adversários
 const Opponent = require('../models/Opponent');
-
-/**
- * Resposta padrão de erro
- */
-const handleError = (res, operation, error) => {
-  res.status(500).json({
-    success: false,
-    error: `Erro ao ${operation}`,
-    details: error.message,
-  });
-};
+const { handleError } = require('../utils/errorHandler');
 
 /**
  * GET /api/opponents - Retorna todos os adversários

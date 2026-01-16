@@ -1,16 +1,6 @@
 // Controlador de Atletas
 const Athlete = require('../models/Athlete');
-
-/**
- * Resposta padrão de erro
- */
-const handleError = (res, operation, error) => {
-  res.status(500).json({
-    success: false,
-    error: `Erro ao ${operation}`,
-    details: error.message,
-  });
-};
+const { handleError } = require('../utils/errorHandler');
 
 /**
  * GET /api/athletes - Retorna todos os atletas

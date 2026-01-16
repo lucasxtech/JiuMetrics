@@ -6,19 +6,11 @@ const FightAnalysis = require('../models/FightAnalysis');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
 const { chat } = require('../services/geminiService');
-const ApiUsage = require('../models/ApiUsage');
 
-/**
- * Helper para tratar erros
- */
-const handleError = (res, operation, error) => {
-  console.error(`❌ Erro ao ${operation}:`, error.message);
-  res.status(500).json({
-    success: false,
-    error: `Erro ao ${operation}`,
-    details: error.message
-  });
-};
+// Utilitários centralizados
+const { handleError } = require('../utils/errorHandler');
+const { logApiUsage } = require('../utils/apiUsageLogger');
+const { ensureOriginalVersion, createAnalysisVersion, saveProfileVersion } = require('../utils/versionManager');
 
 /**
  * Inicia uma nova sessão de chat para uma análise
@@ -121,20 +113,11 @@ exports.sendMessage = async (req, res) => {
     });
 
     // Registrar uso da API
-    if (aiResponse.usage) {
-      try {
-        await ApiUsage.create({
-          userId,
-          endpoint: '/api/chat/send',
-          model: aiResponse.usage.modelName,
-          promptTokens: aiResponse.usage.promptTokens,
-          completionTokens: aiResponse.usage.completionTokens,
-          totalTokens: aiResponse.usage.totalTokens
-        });
-      } catch (usageError) {
-        console.warn('⚠️ Erro ao registrar uso da API:', usageError.message);
-      }
-    }
+    await logApiUsage({
+      userId,
+      endpoint: '/api/chat/send',
+      usage: aiResponse.usage
+    });
 
     res.json({
       success: true,
@@ -235,27 +218,9 @@ exports.applyEdit = async (req, res) => {
       chartsCount: analysis.charts?.length
     });
 
-    // Criar snapshot da versão atual (antes da edição)
-    const currentVersionCount = await AnalysisVersion.countVersions(analysisId, 'fight');
-    console.log('📚 Versões existentes:', currentVersionCount);
-    
-    // Se for a primeira edição, salvar versão original
-    if (currentVersionCount === 0) {
-      await AnalysisVersion.create({
-        analysisId,
-        analysisType: 'fight',
-        versionNumber: 1,
-        content: {
-          summary: analysis.summary,
-          charts: analysis.charts,
-          technicalStats: analysis.technicalStats
-        },
-        editedBy: 'user',
-        editReason: 'Versão original',
-        isCurrent: false
-      });
-      console.log('✅ Versão original salva');
-    }
+    // Garantir versão original antes de editar
+    const newVersionNumber = await ensureOriginalVersion(analysisId, 'fight', analysis);
+    console.log('📚 Próxima versão:', newVersionNumber);
 
     // Preparar dados de atualização baseado na sugestão
     const updateData = {};
@@ -285,19 +250,13 @@ exports.applyEdit = async (req, res) => {
     const updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
 
     // Criar nova versão
-    const newVersionNumber = currentVersionCount + (currentVersionCount === 0 ? 2 : 1);
-    await AnalysisVersion.create({
+    await createAnalysisVersion({
       analysisId,
       analysisType: 'fight',
       versionNumber: newVersionNumber,
-      content: {
-        summary: updatedAnalysis.summary,
-        charts: updatedAnalysis.charts,
-        technicalStats: updatedAnalysis.technicalStats
-      },
+      analysis: updatedAnalysis,
       editedBy: acceptedByUser ? 'ai' : 'ai_suggestion',
       editReason: editSuggestion.reason || 'Sugestão da IA aplicada',
-      isCurrent: true,
       chatSessionId: sessionId || null
     });
 
@@ -343,25 +302,8 @@ exports.manualEdit = async (req, res) => {
       });
     }
 
-    // Criar snapshot da versão atual (antes da edição)
-    const currentVersionCount = await AnalysisVersion.countVersions(analysisId, 'fight');
-    
-    // Se for a primeira edição, salvar versão original
-    if (currentVersionCount === 0) {
-      await AnalysisVersion.create({
-        analysisId,
-        analysisType: 'fight',
-        versionNumber: 1,
-        content: {
-          summary: analysis.summary,
-          charts: analysis.charts,
-          technicalStats: analysis.technicalStats
-        },
-        editedBy: 'user',
-        editReason: 'Versão original',
-        isCurrent: false
-      });
-    }
+    // Garantir versão original antes de editar
+    const newVersionNumber = await ensureOriginalVersion(analysisId, 'fight', analysis);
 
     // Preparar dados de atualização
     const updateData = {};
@@ -377,19 +319,13 @@ exports.manualEdit = async (req, res) => {
     const updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
 
     // Criar nova versão
-    const newVersionNumber = currentVersionCount + (currentVersionCount === 0 ? 2 : 1);
-    await AnalysisVersion.create({
+    await createAnalysisVersion({
       analysisId,
       analysisType: 'fight',
       versionNumber: newVersionNumber,
-      content: {
-        summary: updatedAnalysis.summary,
-        charts: updatedAnalysis.charts,
-        technicalStats: updatedAnalysis.technicalStats
-      },
+      analysis: updatedAnalysis,
       editedBy: 'user',
-      editReason: reason || 'Edição manual do usuário',
-      isCurrent: true
+      editReason: reason || 'Edição manual do usuário'
     });
 
     res.json({
@@ -618,20 +554,11 @@ exports.sendProfileMessage = async (req, res) => {
     });
 
     // Registrar uso da API
-    if (aiResponse.usage) {
-      try {
-        await ApiUsage.create({
-          userId,
-          endpoint: '/api/chat/profile-send',
-          model: aiResponse.usage.modelName,
-          promptTokens: aiResponse.usage.promptTokens,
-          completionTokens: aiResponse.usage.completionTokens,
-          totalTokens: aiResponse.usage.totalTokens
-        });
-      } catch (usageError) {
-        console.warn('⚠️ Erro ao registrar uso da API:', usageError.message);
-      }
-    }
+    await logApiUsage({
+      userId,
+      endpoint: '/api/chat/profile-send',
+      usage: aiResponse.usage
+    });
 
     res.json({
       success: true,
@@ -675,16 +602,14 @@ exports.saveProfileSummary = async (req, res) => {
     }
 
     // Salvar versão anterior (se tinha resumo)
-    if (currentPerson.technicalSummary) {
-      await ProfileVersion.create({
-        personId,
-        personType,
-        userId,
-        content: currentPerson.technicalSummary,
-        editedBy: editReason?.includes('IA') ? 'ai' : 'user',
-        editReason: editReason || 'Edição manual'
-      });
-    }
+    await saveProfileVersion({
+      personId,
+      personType,
+      userId,
+      currentSummary: currentPerson.technicalSummary,
+      editedBy: editReason?.includes('IA') ? 'ai' : 'user',
+      editReason: editReason || 'Edição manual'
+    });
 
     // Atualizar perfil com novo resumo
     const updatedPerson = await Model.update(personId, {
@@ -752,16 +677,14 @@ exports.restoreProfileVersion = async (req, res) => {
 
     // Salvar versão atual antes de restaurar
     const currentPerson = await Model.getById(personId, userId);
-    if (currentPerson?.technicalSummary) {
-      await ProfileVersion.create({
-        personId,
-        personType,
-        userId,
-        content: currentPerson.technicalSummary,
-        editedBy: 'user',
-        editReason: `Backup antes de restaurar versão ${versionNumber}`
-      });
-    }
+    await saveProfileVersion({
+      personId,
+      personType,
+      userId,
+      currentSummary: currentPerson?.technicalSummary,
+      editedBy: 'user',
+      editReason: `Backup antes de restaurar versão ${versionNumber}`
+    });
 
     // Restaurar versão
     const updatedPerson = await Model.update(personId, {
@@ -878,20 +801,11 @@ exports.sendStrategyMessage = async (req, res) => {
     });
 
     // Registrar uso da API
-    if (aiResponse.usage) {
-      try {
-        await ApiUsage.create({
-          userId,
-          endpoint: '/api/chat/strategy-send',
-          model: aiResponse.usage.modelName || model || 'gemini-2.0-flash',
-          promptTokens: aiResponse.usage.promptTokens || 0,
-          completionTokens: aiResponse.usage.completionTokens || 0,
-          totalTokens: aiResponse.usage.totalTokens || 0
-        });
-      } catch (usageError) {
-        console.warn('⚠️ Erro ao registrar uso da API:', usageError.message);
-      }
-    }
+    await logApiUsage({
+      userId,
+      endpoint: '/api/chat/strategy-send',
+      usage: aiResponse.usage
+    });
 
     // Salvar mensagens na sessão
     const newMessages = [
