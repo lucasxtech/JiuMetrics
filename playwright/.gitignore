@@ -1,0 +1,23 @@
+# Dependências
+node_modules/
+package-lock.json
+
+# Gerado pelo Playwright
+reports/
+test-results/
+playwright-report/
+html-report/
+
+# Screenshots e traces
+*.png
+*.webm
+
+# Resultados
+results.json
+
+# Cache
+.cache/
+
+# Ambiente local
+.env
+.env.local

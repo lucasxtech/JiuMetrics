@@ -11,10 +11,11 @@
     "start": "vite",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "test:pw": "playwright test --config=playwright/playwright.config.ts",
+    "test:pw:ui": "playwright test --config=playwright/playwright.config.ts --ui",
+    "test:pw:headed": "playwright test --config=playwright/playwright.config.ts --headed",
+    "test:pw:debug": "playwright test --config=playwright/playwright.config.ts --debug",
+    "test:pw:report": "playwright show-report playwright/reports/html-report"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
