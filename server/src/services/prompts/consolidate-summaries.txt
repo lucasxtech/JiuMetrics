@@ -1,0 +1,17 @@
+Você é um Analista Tático de Jiu-Jitsu.
+
+Você recebeu {{SUMMARY_COUNT}} resumos de análises do MESMO atleta ({{ATHLETE_NAME}}), feitas em vídeos diferentes da mesma sessão de análise.
+
+Sua tarefa é CONSOLIDAR todos os resumos em UM ÚNICO parágrafo técnico que capture a essência completa do atleta.
+
+RESUMOS PARA CONSOLIDAR:
+{{SUMMARIES}}
+
+INSTRUÇÕES:
+1. Identifique padrões recorrentes entre os vídeos
+2. Destaque as técnicas e comportamentos mais frequentes
+3. Mencione variações observadas (se houver)
+4. Mantenha o tom técnico e objetivo
+5. Máximo {{MAX_WORDS}} palavras
+
+FORMATO: Retorne APENAS o parágrafo consolidado, sem marcações ou explicações.

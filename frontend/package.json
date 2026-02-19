@@ -10,7 +10,12 @@
     "preview": "vite preview",
     "start": "vite",
     "test": "vitest",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:pw": "playwright test --config=playwright/playwright.config.ts",
+    "test:pw:ui": "playwright test --config=playwright/playwright.config.ts --ui",
+    "test:pw:headed": "playwright test --config=playwright/playwright.config.ts --headed",
+    "test:pw:debug": "playwright test --config=playwright/playwright.config.ts --debug",
+    "test:pw:report": "playwright show-report playwright/reports/html-report"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
@@ -25,8 +30,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
+    "@types/node": "^25.0.9",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
@@ -38,6 +45,7 @@
     "jsdom": "^25.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
     "vite": "^7.2.4",
     "vitest": "^2.1.5"
   }

@@ -1,11 +1,5 @@
 import api from './api';
-
-/**
- * Obtém o modelo de IA selecionado pelo usuário
- */
-const getSelectedModel = () => {
-  return localStorage.getItem('ai_model') || 'gemini-2.0-flash';
-};
+import { getSelectedModel } from '../utils/aiConfig';
 
 // ====================================
 // SESSÕES DE CHAT

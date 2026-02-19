@@ -2,7 +2,8 @@ const { generateAthleteSummary } = require('../services/geminiService');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const ApiUsage = require('../models/ApiUsage');
+const { handleError } = require('../utils/errorHandler');
+const { logApiUsageWithType } = require('../utils/apiUsageLogger');
 
 /**
  * POST /api/ai/analyze-video
@@ -35,27 +36,19 @@ exports.generateAthleteSummary = async (req, res) => {
     const result = await generateAthleteSummary(athleteData, model);
     
     // Salvar uso da API
-    if (req.userId && result.usage) {
-      await ApiUsage.logUsage({
-        userId: req.userId,
-        modelName: result.usage.modelName,
-        operationType: 'summary',
-        promptTokens: result.usage.promptTokens,
-        completionTokens: result.usage.completionTokens,
-        metadata: { athleteName: athleteData.name }
-      });
-    }
+    await logApiUsageWithType({
+      userId: req.userId,
+      operationType: 'summary',
+      usage: result.usage,
+      metadata: { athleteName: athleteData.name }
+    });
 
     res.json({
       success: true,
       summary: result.summary
     });
   } catch (error) {
-    console.error('❌ Erro ao gerar resumo:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao gerar resumo do atleta'
-    });
+    handleError(res, 'gerar resumo do atleta', error);
   }
 };
 
@@ -127,21 +120,21 @@ exports.consolidateProfile = async (req, res) => {
     console.log('💾 Perfil atualizado com resumo consolidado');
 
     // Salvar uso da API
-    if (userId && consolidation.usage) {
-      await ApiUsage.logUsage({
-        userId,
+    await logApiUsageWithType({
+      userId,
+      operationType: 'consolidate_profile',
+      usage: {
         modelName: consolidation.model || model || 'gemini-2.0-flash',
-        operationType: 'consolidate_profile',
         promptTokens: consolidation.usage?.promptTokens || 0,
-        completionTokens: consolidation.usage?.completionTokens || 0,
-        metadata: {
-          personId,
-          personType,
-          personName: person.name,
-          analysesCount: consolidation.analysesCount
-        }
-      });
-    }
+        completionTokens: consolidation.usage?.completionTokens || 0
+      },
+      metadata: {
+        personId,
+        personType,
+        personName: person.name,
+        analysesCount: consolidation.analysesCount
+      }
+    });
 
     res.json({
       success: true,
@@ -156,10 +149,6 @@ exports.consolidateProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao consolidar perfil:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Erro ao consolidar perfil'
-    });
+    handleError(res, 'consolidar perfil', error);
   }
 };
