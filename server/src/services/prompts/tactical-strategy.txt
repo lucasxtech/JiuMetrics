@@ -34,10 +34,9 @@ ESTRUTURA DA ANÁLISE:
    - Liste 3 prioridades táticas claras e acionáveis
 
 2. ANÁLISE DE MATCHUP
-   - Compare os estilos (guardeiro vs passador, explosivo vs controlador, etc.)
-   - Identifique onde o ATLETA tem vantagem REAL (baseado nos dados)
-   - Identifique onde o ADVERSÁRIO é perigoso (baseado nos dados)
-   - Explique qual é o FATOR CHAVE desta luta
+   - VANTAGEM CRÍTICA: Qual é a maior vantagem do atleta neste confronto específico?
+   - RISCO OCULTO: Qual é o maior perigo que o adversário representa?
+   - FATOR CHAVE: O que vai decidir quem vence esta luta?
 
 3. PLANO TÁTICO FASEADO
    - EM PÉ: O que fazer no stand-up (queda, puxar guarda, etc.)
@@ -68,11 +67,9 @@ FORMATO DE SAÍDA (JSON ESTRITO):
     ]
   },
   "analise_de_matchup": {
-    "estilo_atleta": "string descrevendo o estilo do atleta",
-    "estilo_adversario": "string descrevendo o estilo do adversário",
-    "vantagens_atleta": ["array de vantagens do atleta neste matchup"],
-    "perigos_adversario": ["array de perigos que o adversário representa"],
-    "fator_chave": "string explicando o fator decisivo desta luta"
+    "vantagem_critica": "string descrevendo a MAIOR VANTAGEM do atleta neste matchup (1-2 frases específicas baseadas nos dados)",
+    "risco_oculto": "string descrevendo o MAIOR PERIGO que o adversário representa (1-2 frases específicas sobre técnicas/posições perigosas)",
+    "fator_chave": "string explicando o FATOR DECISIVO desta luta (o que vai determinar quem vence)"
   },
   "plano_tatico_faseado": {
     "em_pe_standup": {
