@@ -18,28 +18,41 @@ Resumo: {{OPPONENT_RESUMO}}
 
 ---
 
-INSTRUÇÕES DETALHADAS:
+INSTRUÇÕES CRÍTICAS:
 
-1. ANÁLISE DE MATCHUP
-   - Compare os estilos (guardeiro vs passador, etc.)
-   - Identifique onde o ATLETA tem vantagem
-   - Identifique onde o ADVERSÁRIO é perigoso
+❗ NÃO deixe campos vazios ou genéricos
+❗ Use os DADOS REAIS dos perfis fornecidos (resumos e stats técnicos)
+❗ Seja ESPECÍFICO: mencione técnicas reais, posições concretas
+❗ Preencha TODAS as seções com informação útil e acionável
 
-2. PLANO TÁTICO FASEADO
-   - FASE 1 (Em pé): Como iniciar a luta?
-   - FASE 2 (Trabalho de solo): Qual posição buscar?
-   - FASE 3 (Finalização): Quais ataques priorizar?
+---
 
-3. CRONOLOGIA INTELIGENTE
-   - MINUTOS 0-3: O que fazer no início?
-   - MINUTOS 3-7: Como gerenciar o meio da luta?
-   - MINUTOS 7-10: Como fechar se estiver ganhando/perdendo?
+ESTRUTURA DA ANÁLISE:
 
-4. CHECKLIST TÁTICO (responda SIM/NÃO com justificativa)
-   - Deve puxar guarda?
-   - Deve disputar em pé?
-   - Deve buscar finalização ou pontos?
-   - Deve acelerar ou controlar o ritmo?
+1. RESUMO RÁPIDO
+   - Sintetize em 1-2 frases COMO o atleta deve vencer
+   - Liste 3 prioridades táticas claras e acionáveis
+
+2. ANÁLISE DE MATCHUP
+   - Compare os estilos (guardeiro vs passador, explosivo vs controlador, etc.)
+   - Identifique onde o ATLETA tem vantagem REAL (baseado nos dados)
+   - Identifique onde o ADVERSÁRIO é perigoso (baseado nos dados)
+   - Explique qual é o FATOR CHAVE desta luta
+
+3. PLANO TÁTICO FASEADO
+   - EM PÉ: O que fazer no stand-up (queda, puxar guarda, etc.)
+   - PASSAGEM: Como passar a guarda dele (se for o caso)
+   - GUARDA: Qual guarda usar e quando atacar (se for o caso)
+
+4. CRONOLOGIA INTELIGENTE
+   - INÍCIO (0-1min): Como começar a luta
+   - MEIO (2-4min): Como desenvolver a estratégia
+   - FINAL (5min+): Como fechar/finalizar
+
+5. CHECKLIST TÁTICO
+   - Oportunidades de pontos REAIS (raspagens, passagens, etc.)
+   - Armadilhas do adversário (finalizações preferidas, contra-ataques)
+   - Protocolo de emergência (posições perigosas e como escapar)
 
 ---
 
@@ -47,60 +60,66 @@ FORMATO DE SAÍDA (JSON ESTRITO):
 
 {
   "resumo_rapido": {
-    "como_vencer": "string com 1-2 frases",
-    "maior_perigo": "string com 1-2 frases",
-    "foco_principal": "string curta"
+    "como_vencer": "string com 1-2 frases sobre A TESE DA VITÓRIA",
+    "tres_prioridades": [
+      "Prioridade 1 - ação específica",
+      "Prioridade 2 - ação específica", 
+      "Prioridade 3 - ação específica"
+    ]
   },
   "analise_de_matchup": {
-    "estilo_atleta": "string",
-    "estilo_adversario": "string",
-    "vantagens_atleta": ["array de strings"],
-    "perigos_adversario": ["array de strings"],
-    "compatibilidade": "string (favorável/neutro/desfavorável)"
+    "estilo_atleta": "string descrevendo o estilo do atleta",
+    "estilo_adversario": "string descrevendo o estilo do adversário",
+    "vantagens_atleta": ["array de vantagens do atleta neste matchup"],
+    "perigos_adversario": ["array de perigos que o adversário representa"],
+    "fator_chave": "string explicando o fator decisivo desta luta"
   },
   "plano_tatico_faseado": {
-    "fase_1_em_pe": {
-      "objetivo": "string",
-      "acoes": ["array de strings"],
-      "evitar": ["array de strings"]
+    "em_pe_standup": {
+      "acao_recomendada": "string curta (ex: 'Puxar guarda imediatamente' ou 'Buscar queda dupla')",
+      "explicacao": "string explicando POR QUÊ esta ação",
+      "como_executar": "string opcional com dica de execução"
     },
-    "fase_2_solo": {
-      "posicao_alvo": "string",
-      "caminho": ["array de strings"],
-      "defesas_prioritarias": ["array de strings"]
+    "jogo_de_passagem_top": {
+      "estilo_recomendado": "string curta (ex: 'Pressão baixa' ou 'Passagem rápida')",
+      "passo_a_passo": "string opcional com sequência recomendada",
+      "armadilha_a_evitar": "string com ALERTA de o que evitar"
     },
-    "fase_3_finalizacao": {
-      "ataques_primarios": ["array de strings"],
-      "ataques_secundarios": ["array de strings"],
-      "setups_recomendados": ["array de strings"]
+    "jogo_de_guarda_bottom": {
+      "guarda_ideal": "string curta (ex: 'Guarda Aranha' ou 'Guarda De la Riva')",
+      "momento_de_atacar": "string explicando QUANDO atacar",
+      "se_der_errado": "string opcional com Plano B"
     }
   },
   "cronologia_inteligente": {
-    "minutos_0_3": {
-      "objetivo": "string",
-      "acoes": ["array de strings"]
-    },
-    "minutos_3_7": {
-      "objetivo": "string",
-      "acoes": ["array de strings"]
-    },
-    "minutos_7_10": {
-      "ganhando": {
-        "objetivo": "string",
-        "acoes": ["array de strings"]
-      },
-      "perdendo": {
-        "objetivo": "string",
-        "acoes": ["array de strings"]
-      }
-    }
+    "primeiro_minuto": "string descrevendo o que fazer no INÍCIO (0:00-1:00)",
+    "minutos_2_a_4": "string descrevendo DESENVOLVIMENTO (2:00-4:00)",
+    "minutos_finais": "string descrevendo RETA FINAL (5:00+)"
   },
   "checklist_tatico": {
-    "puxar_guarda": { "resposta": "SIM/NÃO", "justificativa": "string" },
-    "disputar_em_pe": { "resposta": "SIM/NÃO", "justificativa": "string" },
-    "buscar_finalizacao": { "resposta": "SIM/NÃO", "justificativa": "string" },
-    "controlar_ritmo": { "resposta": "SIM/NÃO", "justificativa": "string" }
+    "oportunidades_de_pontos": [
+      {
+        "tecnica": "string (ex: 'Raspagem de guarda fechada')",
+        "pontos": 2,
+        "probabilidade": "alta/media/baixa",
+        "quando": "string descrevendo a situação ideal",
+        "por_que_funciona": "string explicando por que é efetiva contra este adversário"
+      }
+    ],
+    "armadilhas_dele": [
+      {
+        "situacao": "string descrevendo quando acontece",
+        "o_que_ele_faz": "string descrevendo a técnica perigosa",
+        "como_evitar": "string com DICA PRÁTICA de defesa"
+      }
+    ],
+    "protocolo_de_emergencia": {
+      "posicao_perigosa": "string descrevendo posição que NUNCA deve ficar",
+      "como_escapar": "string com rota de fuga se cair nessa posição"
+    }
   }
 }
+
+IMPORTANTE: Preencha TODAS as seções com dados reais baseados nos perfis fornecidos. NÃO deixe arrays vazios.
 
 Retorne APENAS o JSON, sem explicações ou markdown.
