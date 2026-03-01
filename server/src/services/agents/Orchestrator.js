@@ -16,9 +16,9 @@ class Orchestrator {
   /**
    * @param {Object} geminiClient - Cliente do Google Generative AI
    * @param {string} openaiApiKey - API key da OpenAI
-   * @param {string} model - Modelo do GPT (padrão: gpt-4-turbo-preview)
+   * @param {string} geminiModel - Modelo do Gemini para agentes (padrão: gemini-1.5-pro)
    */
-  constructor(geminiClient, openaiApiKey, model = 'gpt-4-turbo-preview') {
+  constructor(geminiClient, openaiApiKey, geminiModel = 'gemini-1.5-pro') {
     if (!geminiClient) {
       throw new Error('geminiClient é obrigatório');
     }
@@ -32,8 +32,9 @@ class Orchestrator {
     }
 
     this.geminiClient = geminiClient;
+    this.geminiModelName = geminiModel;
     this.openaiClient = new OpenAI({ apiKey: openaiApiKey });
-    this.model = model;
+    this.gptModel = process.env.OPENAI_MODEL || 'gpt-4-turbo-preview'; // Fixo do .env
     this.timeout = GPT_TIMEOUT_MS;
     
     // Instancia os 3 agentes especializados
@@ -43,7 +44,7 @@ class Orchestrator {
       new RulesAgent()
     ];
     
-    console.log(`[Orchestrator] Inicializado com modelo ${model} e ${this.agents.length} agentes`);
+    console.log(`[Orchestrator] Inicializado com GPT: ${this.gptModel}, Gemini: ${geminiModel}, Agentes: ${this.agents.length}`);
   }
 
   /**
@@ -60,10 +61,15 @@ class Orchestrator {
     try {
       // 1. Executar agentes em paralelo (Gemini Vision)
       console.log('[Orchestrator] 🔄 Executando agentes em paralelo...');
+      console.log(`[Orchestrator]    Modelo Gemini: ${this.geminiModelName}`);
+      
+      // Criar modelo Gemini específico para os agentes
+      const geminiModel = this.geminiClient.getGenerativeModel({ model: this.geminiModelName });
+      
       const agentResults = await Promise.all(
         this.agents.map(agent => {
           console.log(`[Orchestrator] → ${agent.name} iniciado`);
-          return agent.analyze(frameData, context, this.geminiClient)
+          return agent.analyze(frameData, context, geminiModel)
             .then(result => {
               console.log(`[Orchestrator] ✓ ${agent.name} concluído (confidence: ${result.confidence})`);
               return result;
@@ -110,7 +116,8 @@ class Orchestrator {
           agentsUsed: this.agents.map(a => a.name),
           agentCount: this.agents.length,
           successfulAgents: successfulAgents.length,
-          orchestrator: this.model,
+          orchestrator: this.gptModel,
+          geminiModel: this.geminiModelName,
           timestamp: new Date().toISOString(),
           elapsedTime: parseFloat(elapsedTime)
         },
@@ -140,7 +147,7 @@ class Orchestrator {
       });
 
       const response = await this.openaiClient.chat.completions.create({
-        model: this.model,
+        model: this.gptModel,
         messages: [
           {
             role: 'system',

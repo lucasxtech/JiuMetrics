@@ -317,12 +317,13 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
 
     // Instanciar orchestrator
     console.log('🤖 Instanciando Orchestrator...');
-    console.log('   - Modelo GPT:', process.env.OPENAI_MODEL || 'gpt-4-turbo-preview');
+    console.log('   - Modelo GPT (fixo):', process.env.OPENAI_MODEL || 'gpt-4-turbo-preview');
+    console.log('   - Modelo Gemini (agentes):', customModel || DEFAULT_MODEL);
     
     const orchestrator = new Orchestrator(
       genAI, // Cliente do Gemini
       process.env.OPENAI_API_KEY,
-      process.env.OPENAI_MODEL || 'gpt-4-turbo-preview'
+      customModel || DEFAULT_MODEL // Gemini model para agentes
     );
     
     console.log('✅ Orchestrator criado com sucesso');
