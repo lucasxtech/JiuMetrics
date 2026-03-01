@@ -51,8 +51,10 @@ function AppContent() {
 }
 
 export default function App() {
-  // Usa /JiuMetrics em produção (GitHub Pages) e / em desenvolvimento
-  const basename = import.meta.env.MODE === 'production' ? '/JiuMetrics' : '';
+  // GitHub Pages usa /JiuMetrics como base
+  // Vercel e desenvolvimento local usam / (raiz)
+  const isGitHubPages = window.location.hostname.includes('github.io');
+  const basename = isGitHubPages ? '/JiuMetrics' : '';
   
   return (
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
