@@ -92,5 +92,76 @@ module.exports = {
       extraRules: 'Todas as chaves de braço e compressões permitidas'
     },
     black: { alias: 'preta' }
+  },
+
+  // Configuração do Sistema Multi-Agentes
+  ORCHESTRATOR_CONFIG: {
+    PROVIDER: 'openai', // 'openai' para GPT-4/GPT-5
+    MODEL: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview', // ou 'gpt-5' quando disponível
+    TEMPERATURE: 0.2, // Determinístico para análises
+    MAX_TOKENS: 4000,
+    RESPONSE_FORMAT: { type: 'json_object' } // Força resposta em JSON
+  },
+
+  AGENT_CONFIG: {
+    // Feature flag: ativar/desativar sistema multi-agentes
+    ENABLED: process.env.USE_MULTI_AGENTS === 'true',
+    
+    // Agentes especializados disponíveis
+    AGENTS: [
+      { 
+        name: 'technical', 
+        enabled: true,
+        description: 'Análise técnica: guarda, passagem, finalizações, transições'
+      },
+      { 
+        name: 'tactical', 
+        enabled: true,
+        description: 'Análise tática: gameplan, timing, posicionamento, pressão'
+      },
+      { 
+        name: 'rules', 
+        enabled: true,
+        description: 'Análise de regras: pontuação, vantagens, técnicas ilegais'
+      }
+    ],
+    
+    // Execução
+    PARALLEL_EXECUTION: true, // Executar agentes em paralelo (mais rápido)
+    
+    // Resolução de conflitos
+    CONFLICT_RESOLUTION: 'highest_confidence', // ou 'weighted_average'
+    MIN_CONFIDENCE_THRESHOLD: 0.6, // Confidence mínimo aceitável
+    
+    // Configuração do Gemini para agentes
+    GEMINI_CONFIG: {
+      TEMPERATURE: 0.3, // Mais determinístico que o padrão
+      TOP_P: 0.8,
+      TOP_K: 40
+    },
+    
+    // Retry logic
+    RETRY_CONFIG: {
+      MAX_RETRIES: 3,
+      INITIAL_DELAY: 1000, // ms
+      MAX_DELAY: 10000, // ms (10 segundos)
+      BACKOFF_MULTIPLIER: 2 // Exponential backoff
+    }
+  },
+
+  // Custos estimados (USD por 1M tokens) - Atualizar conforme pricing
+  PRICING: {
+    GEMINI_FLASH_2_0: {
+      input: 0.075,
+      output: 0.30
+    },
+    GPT_4_TURBO: {
+      input: 10.00,
+      output: 30.00
+    },
+    GPT_5: { // Estimativa - ajustar quando disponível
+      input: 15.00,
+      output: 40.00
+    }
   }
 };

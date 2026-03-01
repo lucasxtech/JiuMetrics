@@ -40,7 +40,67 @@ const prompt = getPrompt('nome-do-prompt', { VARIAVEL: valor });
 
 Arquivos de prompt ficam em `server/src/services/prompts/*.txt` com placeholders `{{VARIAVEL}}`.
 
-### 4. Testes E2E (Playwright)
+### 4. 🚨 CRÍTICO: Como fazer Gemini Vision VER imagens/vídeos
+
+**PROBLEMA COMUM:** Passar base64 como texto no prompt faz o Gemini IGNORAR a imagem!
+
+#### ❌ ERRADO (IA fica cega):
+```javascript
+// NÃO faça isso - Gemini vê só texto, não a imagem!
+const dataUri = `data:image/png;base64,iVBORw0KGgo...`;
+const prompt = `Analise esta imagem: ${dataUri}`;
+await model.generateContent(prompt); // ❌ IA não vê a imagem!
+```
+
+#### ✅ CORRETO (IA vê a imagem):
+```javascript
+// Formato multimodal correto
+const dataUri = `data:image/png;base64,iVBORw0KGgo...`;
+
+// Extrair mimeType e data
+const match = dataUri.match(/^data:(.+?);base64,(.+)$/);
+const mimeType = match[1]; // "image/png"
+const base64Data = match[2]; // "iVBORw0KGgo..." (sem prefixo)
+
+// Passar como inlineData
+const parts = [
+  { text: "Analise esta imagem de Jiu-Jitsu" },
+  { 
+    inlineData: { 
+      mimeType: mimeType,
+      data: base64Data 
+    }
+  }
+];
+
+await model.generateContent(parts); // ✅ IA VÊ a imagem!
+```
+
+#### 📋 Checklist para análise de vídeo:
+
+1. ✅ Extrair frames do vídeo (ffmpeg)
+2. ✅ Converter frames para base64
+3. ✅ **Criar Data URI:** `data:image/png;base64,${base64}`
+4. ✅ **Separar mimeType e data** com regex
+5. ✅ **Passar como `inlineData`**, não como texto no prompt
+6. ✅ Log de confirmação: `console.log('📷 Imagem anexada (inlineData)')`
+
+#### 🔍 Como verificar se está funcionando:
+
+```javascript
+// Adicione este log após chamar a IA:
+console.log('📊 Tokens usados:', result.response.usageMetadata);
+// Se promptTokenCount for muito alto (>10000), pode estar passando base64 como texto
+// Se for normal (~1000-3000), está correto (inlineData)
+```
+
+#### 💡 Referência rápida:
+
+- **Sistema Monolítico:** `analyzeFrame()` em `geminiService.js` (já corrigido)
+- **Sistema Multi-Agentes:** `AgentBase.callAI()` detecta automaticamente Data URI
+- **Ambos convertem:** Data URI → `inlineData` antes de chamar Gemini
+
+### 5. Testes E2E (Playwright)
 
 - **Sempre em TypeScript** (`.ts`)
 - **Usar Page Object Model** em `frontend/e2e/pages/`
@@ -68,13 +128,13 @@ export class ExamplePage {
 }
 ```
 
-### 5. Testes Unitários (Jest)
+### 6. Testes Unitários (Jest)
 
 - Arquivos em `server/src/__tests__/*.test.js`
 - Mockar dependências externas
 - Testar casos de sucesso E erro
 
-### 6. Banco de Dados (Supabase)
+### 7. Banco de Dados (Supabase)
 
 - **Sempre usar models** para acesso ao banco
 - **Row Level Security (RLS)** habilitado em todas as tabelas
@@ -88,7 +148,7 @@ const athlete = await Athlete.getById(athleteId, userId);
 const { data } = await supabase.from('athletes').select('*');
 ```
 
-### 7. Sistema de Chat IA
+### 8. Sistema de Chat IA
 
 O chat permite refinar conteúdo existente (análises, perfis, estratégias) com IA:
 
@@ -104,7 +164,7 @@ O chat permite refinar conteúdo existente (análises, perfis, estratégias) com
 2. Adicionar em `CONTEXT_TYPES` no `chatController.js` com `fieldMapping`
 3. Criar componente `TipoChatPanel.jsx` no frontend
 
-### 8. Sistema de Versionamento
+### 9. Sistema de Versionamento
 
 Toda edição via chat cria uma versão automaticamente:
 
@@ -125,7 +185,7 @@ await api.post(`/chat/restore-version/strategy/${id}`, { versionId });
 
 **Modelos:** AnalysisVersion, ProfileVersion, StrategyVersion
 
-### 9. Terminologia de Estratégias
+### 10. Terminologia de Estratégias
 
 **IMPORTANTE:** O campo correto é `como_vencer`, não `tese_da_vitoria`:
 
@@ -148,7 +208,7 @@ const oldStrategy = {
 - Palavras-chave `["tese", "vencer", "vitória", "ganhar"]` → mapeia para `como_vencer`
 - Sempre priorizar `resumo_rapido.como_vencer` ao ler estratégias
 
-### 10. Monitoramento de Custos
+### 11. Monitoramento de Custos
 
 Toda chamada ao Gemini deve registrar uso:
 
@@ -171,6 +231,51 @@ const stats = await ApiUsage.getStats(userId);
 - `GET /usage/stats` - Estatísticas do usuário
 - `GET /usage/pricing` - Tabela de preços
 
+### 12. Deploy em Produção (Vercel)
+
+**Variáveis de ambiente obrigatórias:**
+
+```bash
+# Gemini Vision (obrigatório)
+GEMINI_API_KEY=AIzaSy...
+
+# Supabase (obrigatório)
+SUPABASE_URL=https://...
+SUPABASE_ANON_KEY=eyJh...
+SUPABASE_SERVICE_ROLE_KEY=eyJh...
+JWT_SECRET=...
+
+# Multi-Agentes (opcional - default: false)
+USE_MULTI_AGENTS=true
+OPENAI_API_KEY=sk-proj-...
+OPENAI_MODEL=gpt-4-turbo-preview
+```
+
+**Configurar no Vercel Dashboard:**
+1. Settings → Environment Variables
+2. Adicionar cada variável acima
+3. Marcar `OPENAI_API_KEY` como "Sensitive"
+4. Aplicar para: Production, Preview, Development
+5. Redeploy
+
+**⚠️ SEGURANÇA:**
+- **NUNCA** commite `.env` no repositório
+- `.gitignore` deve conter: `.env`, `.env.local`, `.env.*.local`
+- Rotacione API keys regularmente
+- Use keys diferentes para dev/prod
+
+**Verificar se funcionou:**
+```
+Vercel Dashboard → Deployments → [Seu deploy] → Functions → Logs
+```
+
+Procure por:
+```
+🤖 ========================================
+🤖 INICIANDO SISTEMA MULTI-AGENTES
+📷 [analyzeFrame] Imagem anexada ao prompt (inlineData)
+```
+
 ## Estrutura do Projeto
 
 ```
@@ -182,9 +287,20 @@ server/src/
 │   └── apiUsageLogger.js # Logger de uso da API
 ├── services/
 │   ├── geminiService.js  # Serviço principal de IA
+│   ├── agents/           # Sistema Multi-Agentes
+│   │   ├── AgentBase.js         # Classe abstrata com retry logic
+│   │   ├── TechnicalAgent.js    # Análise técnica especializada
+│   │   ├── TacticalAgent.js     # Análise tática especializada
+│   │   ├── RulesAgent.js        # Análise de regras IBJJF
+│   │   ├── Orchestrator.js      # Coordenador GPT-4/5
+│   │   └── index.js             # Exports
 │   └── prompts/
 │       ├── index.js      # Loader de prompts
-│       ├── video-analysis.txt
+│       ├── video-analysis.txt          # Prompt sistema monolítico
+│       ├── agent-technical.txt         # Prompt agente técnico
+│       ├── agent-tactical.txt          # Prompt agente tático
+│       ├── agent-rules.txt             # Prompt agente de regras
+│       ├── agent-orchestrator-video.txt # Prompt consolidação GPT
 │       ├── athlete-summary.txt
 │       ├── tactical-strategy.txt
 │       ├── chat-analysis.txt   # Chat para análises
@@ -383,6 +499,10 @@ test('deve fazer login', async ({ page }) => {
 - Usar `como_vencer` em vez de `tese_da_vitoria`
 - Todas operações de DB devem passar `userId` (RLS)
 - Chat retorna JSON estruturado: `{ field, newValue, reason }`
+- **🚨 CRÍTICO:** Imagens/vídeos devem ser passados como `inlineData`, NUNCA como texto no prompt
+  - ✅ Correto: `{ text: "..." }, { inlineData: { mimeType, data } }`
+  - ❌ Errado: `{ text: "Analise: data:image/png;base64,..." }`
+- Verificar logs: `📷 Imagem anexada (inlineData)` confirma formato correto
 
 ## Fluxo Completo: Chat → Edição → Versão
 
