@@ -79,6 +79,14 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
       }
 
       console.log(`   3️⃣ Enviando frames para análise com Gemini Vision...`);
+      
+      // Verificar se sistema multi-agentes está habilitado
+      const useAgents = process.env.USE_MULTI_AGENTS === 'true';
+      if (useAgents) {
+        console.log(`      🤖 Modo: Sistema Multi-Agentes (3 agentes + GPT orquestrador)`);
+      } else {
+        console.log(`      📊 Modo: Sistema Monolítico (Gemini único)`);
+      }
 
       // Contexto específico para este vídeo
       const frameContext = {
@@ -86,18 +94,26 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
         giColor: giColor,
         videoNumber: i + 1,
         totalVideos: videos.length,
+        belt: belt || 'Não especificada',
+        result: result || 'Não especificado'
       };
 
       // Analisar cada frame com Gemini
       for (let j = 0; j < frameDataArray.length; j++) {
         try {
           console.log(`      📸 Analisando frame ${j + 1}/${frameDataArray.length} do vídeo ${i + 1}...`);
-          // analyzeFrame aceita: (url, context, customModel)
+          // analyzeFrame aceita: (url, context, customModel, useAgents)
           // Como estamos passando base64, precisamos passá-lo como URL data URI
           const dataUri = `data:image/png;base64,${frameDataArray[j]}`;
-          const result = await analyzeFrame(dataUri, frameContext, model);
+          const result = await analyzeFrame(dataUri, frameContext, model, useAgents);
           allFrameAnalyses.push(result.analysis);
           usageRecords.push(result.usage);
+          
+          // Se multi-agentes, registrar informações adicionais
+          if (useAgents && result.metadata) {
+            console.log(`         ✓ Agentes: ${result.metadata.successfulAgents}/${result.metadata.agentCount}`);
+            console.log(`         ✓ Custo: $${result.totalUsage.estimatedCost.toFixed(4)}`);
+          }
         } catch (error) {
           console.error(`   ❌ Erro ao analisar frame ${j + 1}:`, error.message);
         }
@@ -133,6 +149,8 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
         totalTokens: acc.totalTokens + usage.totalTokens
       }), { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
       
+      const useAgents = process.env.USE_MULTI_AGENTS === 'true';
+      
       await ApiUsage.logUsage({
         userId: req.user.id,
         modelName: usageRecords[0].modelName,
@@ -144,7 +162,12 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
           videosCount: videos.length,
           framesAnalyzed: allFrameAnalyses.length,
           athleteName,
-          personType
+          personType,
+          analysisMode: useAgents ? 'multi_agents' : 'monolithic',
+          ...(useAgents && usageRecords[0].metadata ? {
+            orchestrator: usageRecords[0].metadata.orchestrator,
+            agentsUsed: usageRecords[0].metadata.agentsUsed
+          } : {})
         }
       });
     }

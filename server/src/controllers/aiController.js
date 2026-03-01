@@ -123,3 +123,114 @@ exports.consolidateProfile = async (req, res) => {
     handleError(res, 'consolidar perfil', error);
   }
 };
+
+/**
+ * POST /api/ai/debug/compare-analysis
+ * Endpoint de debug: compara análise monolítica vs multi-agentes
+ * ⚠️ TEMPORÁRIO: Para testes e validação do sistema multi-agentes
+ * @param {string} req.body.frameData - Base64 do frame ou URL
+ * @param {Object} req.body.context - Contexto da análise
+ */
+exports.compareAnalysis = async (req, res) => {
+  try {
+    const { frameData, context } = req.body;
+
+    if (!frameData) {
+      return res.status(400).json({
+        success: false,
+        error: 'frameData é obrigatório (base64 ou URL)'
+      });
+    }
+
+    console.log('[DEBUG] Iniciando comparação monolítico vs multi-agentes...');
+
+    const { analyzeFrame } = require('../services/geminiService');
+    const startTime = Date.now();
+
+    // Executar ambos sistemas em paralelo
+    const [monolithic, multiAgent] = await Promise.allSettled([
+      analyzeFrame(frameData, context || {}, null, false), // Sistema monolítico
+      analyzeFrame(frameData, context || {}, null, true)   // Sistema multi-agentes
+    ]);
+
+    const elapsedTime = Date.now() - startTime;
+
+    // Preparar resposta
+    const comparison = {
+      elapsedTime: `${(elapsedTime / 1000).toFixed(2)}s`,
+      monolithic: {
+        status: monolithic.status,
+        ...(monolithic.status === 'fulfilled' ? {
+          summary: monolithic.value.analysis?.summary || 'N/A',
+          charts: monolithic.value.analysis?.charts || [],
+          usage: monolithic.value.usage,
+          hasData: !!monolithic.value.analysis
+        } : {
+          error: monolithic.reason?.message || 'Falha desconhecida'
+        })
+      },
+      multiAgent: {
+        status: multiAgent.status,
+        ...(multiAgent.status === 'fulfilled' ? {
+          summary: multiAgent.value.analysis?.summary || 'N/A',
+          charts: multiAgent.value.analysis?.charts || [],
+          usage: multiAgent.value.usage,
+          metadata: multiAgent.value.metadata,
+          totalUsage: multiAgent.value.totalUsage,
+          hasData: !!multiAgent.value.analysis,
+          agentResults: multiAgent.value.agentResults?.map(r => ({
+            agentName: r.agentName,
+            confidence: r.confidence,
+            hasError: !!r.error
+          }))
+        } : {
+          error: multiAgent.reason?.message || 'Falha desconhecida'
+        })
+      }
+    };
+
+    // Comparação de métricas
+    if (monolithic.status === 'fulfilled' && multiAgent.status === 'fulfilled') {
+      comparison.metrics = {
+        tokensComparison: {
+          monolithic: monolithic.value.usage.totalTokens,
+          multiAgent: multiAgent.value.usage.totalTokens,
+          difference: multiAgent.value.usage.totalTokens - monolithic.value.usage.totalTokens,
+          percentageIncrease: (
+            ((multiAgent.value.usage.totalTokens - monolithic.value.usage.totalTokens) / 
+            monolithic.value.usage.totalTokens) * 100
+          ).toFixed(2) + '%'
+        },
+        costComparison: multiAgent.value.totalUsage ? {
+          monolithicEstimate: '$' + (
+            (monolithic.value.usage.promptTokens * 0.075 / 1_000_000) +
+            (monolithic.value.usage.completionTokens * 0.30 / 1_000_000)
+          ).toFixed(4),
+          multiAgentEstimate: '$' + multiAgent.value.totalUsage.estimatedCost.toFixed(4),
+          difference: '$' + (
+            multiAgent.value.totalUsage.estimatedCost - 
+            ((monolithic.value.usage.promptTokens * 0.075 / 1_000_000) +
+             (monolithic.value.usage.completionTokens * 0.30 / 1_000_000))
+          ).toFixed(4)
+        } : null,
+        summaryLengthComparison: {
+          monolithic: monolithic.value.analysis?.summary?.length || 0,
+          multiAgent: multiAgent.value.analysis?.summary?.length || 0
+        }
+      };
+    }
+
+    console.log('[DEBUG] Comparação concluída');
+    console.log(`[DEBUG] Monolítico: ${monolithic.status}`);
+    console.log(`[DEBUG] Multi-Agentes: ${multiAgent.status}`);
+
+    res.json({
+      success: true,
+      comparison
+    });
+
+  } catch (error) {
+    console.error('[DEBUG] Erro na comparação:', error);
+    handleError(res, 'comparar análises', error);
+  }
+};

@@ -208,18 +208,52 @@ function buildVideoAnalysisPrompt(url, context = {}) {
  * @param {string} url - URL do vídeo para análise
  * @param {Object} context - Contexto adicional (athleteName, giColor, videos)
  * @param {string|null} customModel - Modelo customizado (opcional)
+ * @param {boolean} useAgents - Se deve usar sistema multi-agentes (padrão: false)
  * @returns {Promise<Object>} Análise e metadados de uso
  */
-async function analyzeFrame(url, context = {}, customModel = null) {
+async function analyzeFrame(url, context = {}, customModel = null, useAgents = false) {
+  // Se multi-agentes está habilitado, delega para o Orchestrator
+  if (useAgents) {
+    return analyzeFrameWithAgents(url, context, customModel);
+  }
+
+  // Lógica original (monolítico) - CORRIGIDA para passar imagem corretamente
   const modelToUse = customModel ? getModel(customModel) : model;
   const modelName = customModel || DEFAULT_MODEL;
   
   assertModelAvailable(modelToUse);
 
-  const prompt = buildVideoAnalysisPrompt(url, context);
+  // Construir prompt SEM a URL (imagem vai separada)
+  const basePrompt = getPrompt('video-analysis', { VIDEO_URL: '[IMAGEM ANEXADA]' });
+  const contextText = buildVideoAnalysisContext(context);
+  const textPrompt = basePrompt + contextText;
+
+  // Preparar partes para o Gemini (texto + imagem)
+  const parts = [{ text: textPrompt }];
+
+  // Verificar se é Data URI (base64) e extrair a imagem
+  if (url.startsWith('data:')) {
+    const match = url.match(/^data:(.+?);base64,(.+)$/);
+    if (match) {
+      parts.push({
+        inlineData: {
+          mimeType: match[1], // Ex: "image/png"
+          data: match[2] // Base64 data (sem prefixo)
+        }
+      });
+      console.log('📷 [analyzeFrame] Imagem anexada ao prompt (inlineData)');
+    } else {
+      console.error('❌ [analyzeFrame] Data URI inválido - formato não reconhecido');
+      throw new Error('Data URI inválido');
+    }
+  } else {
+    // Se for URL normal, passa como texto (não suportado pelo Gemini diretamente)
+    console.warn('⚠️ [analyzeFrame] URL externa detectada - Gemini não pode acessar URLs');
+    // Mantém só o texto (vai alucinar, mas pelo menos não quebra)
+  }
 
   try {
-    const result = await modelToUse.generateContent(prompt);
+    const result = await modelToUse.generateContent(parts);
     const responseText = result.response.text();
     const analysis = extractJson(responseText);
     
@@ -237,6 +271,104 @@ async function analyzeFrame(url, context = {}, customModel = null) {
   } catch (error) {
     console.error("❌ Erro ao analisar frame:", error.message);
     throw parseGeminiError(error);
+  }
+}
+
+/**
+ * Analisa frame usando sistema multi-agentes
+ * @param {string} url - URL do vídeo (ou fileUri)
+ * @param {Object} context - Contexto da análise
+ * @param {string|null} customModel - Modelo Gemini customizado (opcional)
+ * @returns {Promise<Object>} Análise consolidada dos agentes
+ */
+async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
+  const { Orchestrator } = require('./agents');
+  // getBeltRulesText já está definido neste arquivo, uso direto
+  
+  try {
+    console.log('\n🤖 ========================================');
+    console.log('🤖 INICIANDO SISTEMA MULTI-AGENTES');
+    console.log('🤖 ========================================');
+    
+    // Preparar contexto enriquecido para os agentes
+    const enrichedContext = {
+      athleteName: context.athleteName || 'Atleta',
+      giColor: context.giColor || 'azul',
+      belt: context.belt || 'Não especificada',
+      result: context.result || 'Não especificado',
+      beltRules: context.belt ? getBeltRulesText(context.belt) : ''
+    };
+    
+    console.log('🤖 Contexto preparado:');
+    console.log('   - Atleta:', enrichedContext.athleteName);
+    console.log('   - Faixa:', enrichedContext.belt);
+    console.log('   - Cor kimono:', enrichedContext.giColor);
+
+    // Preparar frameData para os agentes
+    // O frameData será processado pelo AgentBase que detecta automaticamente
+    // se é Data URI (base64) ou File URI do Gemini
+    const frameData = {
+      fileUri: url // Data URI (base64) ou File URI
+    };
+    
+    console.log('🤖 Frame preparado:');
+    console.log('   - Tipo:', url.startsWith('data:') ? 'Base64 Data URI' : 'File URI');
+    console.log('   - Tamanho:', url.length, 'caracteres');
+
+    // Instanciar orchestrator
+    console.log('🤖 Instanciando Orchestrator...');
+    console.log('   - Modelo GPT:', process.env.OPENAI_MODEL || 'gpt-4-turbo-preview');
+    
+    const orchestrator = new Orchestrator(
+      genAI, // Cliente do Gemini
+      process.env.OPENAI_API_KEY,
+      process.env.OPENAI_MODEL || 'gpt-4-turbo-preview'
+    );
+    
+    console.log('✅ Orchestrator criado com sucesso');
+
+    // Executar orquestração
+    console.log('🤖 Executando orquestração dos agentes...');
+    const result = await orchestrator.orchestrateVideoAnalysis(frameData, enrichedContext);
+    
+    console.log('✅ Orquestração concluída com sucesso!');
+    console.log('   - Agentes executados:', result.metadata.successfulAgents + '/' + result.metadata.agentCount);
+    console.log('   - Custo estimado: $' + result.totalUsage.estimatedCost.toFixed(4));
+    console.log('🤖 ========================================\n');
+
+    // Retornar em formato compatível com o código existente
+    return {
+      analysis: {
+        charts: result.charts,
+        technical_stats: result.technical_stats,
+        summary: result.summary
+      },
+      usage: {
+        modelName: `multi-agents (${result.metadata.orchestrator})`,
+        promptTokens: result.totalUsage.gemini.promptTokens + result.totalUsage.gpt.prompt_tokens,
+        completionTokens: result.totalUsage.gemini.completionTokens + result.totalUsage.gpt.completion_tokens,
+        totalTokens: result.totalUsage.totalTokens
+      },
+      // Metadados adicionais do sistema multi-agentes
+      metadata: result.metadata,
+      totalUsage: result.totalUsage,
+      agentResults: result.agentResults // Para debug
+    };
+  } catch (error) {
+    console.error('\n❌ ========================================');
+    console.error('❌ ERRO NO SISTEMA MULTI-AGENTES');
+    console.error('❌ ========================================');
+    console.error('❌ Tipo:', error.constructor.name);
+    console.error('❌ Mensagem:', error.message);
+    if (error.stack) {
+      console.error('❌ Stack trace:');
+      console.error(error.stack.split('\n').slice(0, 5).join('\n'));
+    }
+    console.error('⚠️  FALLBACK: Usando sistema monolítico');
+    console.error('❌ ========================================\n');
+    
+    // Fallback: tenta análise tradicional
+    return analyzeFrame(url, context, customModel, false);
   }
 }
 
@@ -825,7 +957,8 @@ async function chat({ contextType, contextData, history = [], userMessage, custo
 
 module.exports = { 
   // Análise de vídeo
-  analyzeFrame, 
+  analyzeFrame,
+  analyzeFrameWithAgents, // Nova função multi-agentes
   
   // Consolidação
   consolidateAnalyses, 
@@ -844,5 +977,6 @@ module.exports = {
   getModel,
   formatTechnicalStats,
   formatBeltRulesForStrategy,
-  getBeltLevel
+  getBeltLevel,
+  getBeltRulesText // Necessário para o sistema multi-agentes
 };
