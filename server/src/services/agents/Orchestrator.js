@@ -16,9 +16,11 @@ class Orchestrator {
   /**
    * @param {Object} geminiClient - Cliente do Google Generative AI
    * @param {string} openaiApiKey - API key da OpenAI
-   * @param {string} geminiModel - Modelo do Gemini para agentes (padrão: gemini-1.5-pro)
+   * @param {string} geminiModel - Modelo do Gemini para agentes (padrão: do config)
    */
-  constructor(geminiClient, openaiApiKey, geminiModel = 'gemini-1.5-pro') {
+  constructor(geminiClient, openaiApiKey, geminiModel) {
+    const { DEFAULT_MODEL } = require('../../config/ai');
+    const modelToUse = geminiModel || DEFAULT_MODEL;
     if (!geminiClient) {
       throw new Error('geminiClient é obrigatório');
     }
@@ -32,7 +34,7 @@ class Orchestrator {
     }
 
     this.geminiClient = geminiClient;
-    this.geminiModelName = geminiModel;
+    this.geminiModelName = modelToUse;
     this.openaiClient = new OpenAI({ apiKey: openaiApiKey });
     this.gptModel = process.env.OPENAI_MODEL || 'gpt-4-turbo-preview'; // Fixo do .env
     this.timeout = GPT_TIMEOUT_MS;
@@ -44,7 +46,7 @@ class Orchestrator {
       new RulesAgent()
     ];
     
-    console.log(`[Orchestrator] Inicializado com GPT: ${this.gptModel}, Gemini: ${geminiModel}, Agentes: ${this.agents.length}`);
+    console.log(`[Orchestrator] Inicializado com GPT: ${this.gptModel}, Gemini: ${modelToUse}, Agentes: ${this.agents.length}`);
   }
 
   /**

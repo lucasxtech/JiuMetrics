@@ -3,12 +3,12 @@
  */
 
 module.exports = {
-  // Modelos disponíveis
+  // Modelos disponíveis (do mais recente ao mais antigo)
   DEFAULT_MODEL: 'gemini-2.0-flash',
   AVAILABLE_MODELS: [
-    'gemini-2.0-flash',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash'
+    'gemini-3-pro-preview',   // Mais recente e preciso
+    'gemini-2.5-pro',         // Equilíbrio velocidade/precisão
+    'gemini-2.0-flash'        // Padrão - rápido e eficiente
   ],
 
   // Limites de texto
