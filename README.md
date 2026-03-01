@@ -231,4 +231,4 @@ Lucas Menezes - [@lucasxtech](https://github.com/lucasxtech)
 
 ---
 
-**Desenvolvido com ❤️ para a comunidade de Jiu-Jitsu**
+**Desenvolvido com ❤️ para a Startdoing**
