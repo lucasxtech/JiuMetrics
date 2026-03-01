@@ -16,13 +16,24 @@ const config = require('./config');
 const app = express();
 const PORT = config.PORT;
 
-// Configuração CORS - Permitir GitHub Pages
+// Configuração CORS - Permitir desenvolvimento local, GitHub Pages e Vercel
 const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://lucasxtech.github.io'
-  ],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://lucasxtech.github.io'
+    ];
+    
+    // Permitir qualquer subdomínio .vercel.app
+    const isVercel = origin && origin.match(/^https:\/\/.*\.vercel\.app$/);
+    
+    if (!origin || allowedOrigins.includes(origin) || isVercel) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
