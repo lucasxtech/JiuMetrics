@@ -59,7 +59,7 @@ FORMATO DE SAÍDA (JSON ESTRITO):
 
 {
   "resumo_rapido": {
-    "como_vencer": "string com 1-2 frases sobre A TESE DA VITÓRIA",
+    "como_vencer": "string com 1-2 frases explicando COMO vencer esta luta (estratégia macro)",
     "tres_prioridades": [
       "Prioridade 1 - ação específica",
       "Prioridade 2 - ação específica", 

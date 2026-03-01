@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Calendar, MessageSquare, Sparkles, Zap, Shield, Target, Clock, CheckSquare, History, Edit3, Check, Save } from 'lucide-react';
 import StrategyChatPanel from '../chat/StrategyChatPanel';
 import Badge from '../common/Badge';
+import FormattedText from '../common/FormattedText';
 
 /**
  * Modal detalhado para visualizar a estratégia gerada com chat IA lateral
@@ -22,6 +23,10 @@ export default function StrategySummaryModal({
   const [editingSection, setEditingSection] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Estados para chat com sugestões pendentes
+  const [pendingEdit, setPendingEdit] = useState(null); // { messageId, field, oldValue, newValue, reason }
+  const [isApplyingEdit, setIsApplyingEdit] = useState(false);
   
   // Histórico de versões local (para estratégias temporárias)
   const [versions, setVersions] = useState([{
@@ -102,6 +107,67 @@ export default function StrategySummaryModal({
       console.error('Erro ao aplicar sugestão:', error);
       throw error;
     }
+  };
+
+  // Handler quando chat sugere uma edição (mostra o diff)
+  const handleSuggestEdit = (suggestion) => {
+    setPendingEdit(suggestion);
+  };
+
+  // Handler quando usuário aceita a sugestão
+  const handleAcceptEdit = async () => {
+    if (!pendingEdit) return;
+    
+    setIsApplyingEdit(true);
+    try {
+      const updatedData = { ...strategyData };
+      const { field, newValue } = pendingEdit;
+      
+      // Aplicar sugestão baseada no campo
+      if (field === 'como_vencer' || field === 'tese_da_vitoria') {
+        // Atualizar "Como Vencer" no resumo rápido
+        updatedData.resumo_rapido = {
+          ...updatedData.resumo_rapido,
+          como_vencer: newValue
+        };
+        // Também atualizar tese_da_vitoria como fallback
+        updatedData.tese_da_vitoria = newValue;
+      } else if (field === 'analise_de_matchup' || field === 'matchup') {
+        updatedData.analise_de_matchup = newValue;
+      } else if (field === 'plano_tatico_faseado' || field === 'plano_tatico') {
+        updatedData.plano_tatico_faseado = newValue;
+      } else if (field === 'cronologia_inteligente' || field === 'cronologia') {
+        updatedData.cronologia_inteligente = newValue;
+      } else if (field === 'checklist_tatico') {
+        updatedData.checklist_tatico = newValue;
+      } else {
+        // Fallback genérico
+        updatedData[field] = newValue;
+      }
+      
+      const newStrategyObj = { strategy: updatedData };
+      setCurrentStrategy(newStrategyObj);
+      
+      // Salvar versão no histórico
+      saveVersion(newStrategyObj, `Edição via Chat IA: ${pendingEdit.reason || 'atualização'}`);
+      
+      // Limpar sugestão pendente
+      setPendingEdit(null);
+      
+      // Notificar sucesso
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+      
+    } catch (error) {
+      console.error('❌ [StrategySummaryModal] Erro ao aplicar sugestão:', error);
+    } finally {
+      setIsApplyingEdit(false);
+    }
+  };
+
+  // Handler quando usuário rejeita a sugestão
+  const handleRejectEdit = () => {
+    setPendingEdit(null);
   };
 
   // Salvar uma nova versão no histórico
@@ -348,9 +414,10 @@ export default function StrategySummaryModal({
                     </div>
                   ) : (
                     <div className="flex items-start justify-between gap-4">
-                      <p className="text-white/95 leading-relaxed text-base flex-1">
-                        {strategyData.resumo_rapido.como_vencer}
-                      </p>
+                      <FormattedText 
+                        text={strategyData.resumo_rapido.como_vencer}
+                        className="text-white/95 leading-relaxed text-base flex-1"
+                      />
                       <button
                         onClick={() => startEditing('resumo_como_vencer', strategyData.resumo_rapido.como_vencer)}
                         className="flex-shrink-0 p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-all"
@@ -468,9 +535,10 @@ export default function StrategySummaryModal({
                   </div>
                 </div>
               ) : (
-                <p className="text-lg font-medium text-slate-800 leading-relaxed">
-                  {strategyData?.tese_da_vitoria || 'Aguardando estratégia...'}
-                </p>
+                <FormattedText 
+                  text={strategyData?.tese_da_vitoria || 'Aguardando estratégia...'} 
+                  className="text-lg font-medium text-slate-800 leading-relaxed"
+                />
               )}
             </div>
 
@@ -953,6 +1021,11 @@ export default function StrategySummaryModal({
                 athleteName={athleteName}
                 opponentName={opponentName}
                 onClose={() => setActivePanel(null)}
+                pendingEdit={pendingEdit}
+                onSuggestEdit={handleSuggestEdit}
+                onAcceptEdit={handleAcceptEdit}
+                onRejectEdit={handleRejectEdit}
+                isApplyingEdit={isApplyingEdit}
                 onStrategyUpdated={handleChatUpdate}
               />
             )}

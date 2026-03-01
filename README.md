@@ -88,14 +88,10 @@ cp .env.example .env
 ### 4. Configure o Supabase
 
 1. Acesse https://supabase.com e crie um projeto
-2. No **SQL Editor**, execute os scripts na ordem:
-   - `server/supabase-schema.sql` (tabelas principais)
-   - `server/supabase-api-usage-FINAL.sql` (rastreamento de custos API)
+2. No **SQL Editor**, execute os scripts da pasta `server/migrations/` na ordem
 3. Copie as credenciais em **Settings > API** para o `.env`
 
-📖 **Guias detalhados:** 
-- [SETUP_SUPABASE.md](./docs/setup/SETUP_SUPABASE.md) - Setup completo
-- [SETUP_API_USAGE.md](./docs/setup/SETUP_API_USAGE.md) - Sistema de rastreamento de custos
+📖 **Guia completo:** [docs/SETUP.md](./docs/SETUP.md)
 
 ## 🎯 Como Usar
 
@@ -119,26 +115,17 @@ Acesse: **http://localhost:5173**
 
 ## 📚 Documentação
 
-### 📖 Setup e Configuração
-- [docs/setup/SETUP_SUPABASE.md](docs/setup/SETUP_SUPABASE.md) - Guia completo de setup do Supabase
-- [docs/setup/SETUP_API_USAGE.md](docs/setup/SETUP_API_USAGE.md) - Sistema de rastreamento de custos da API Gemini
-- [docs/setup/GUIA_AUTENTICACAO.md](docs/setup/GUIA_AUTENTICACAO.md) - Configuração de autenticação
+A documentação completa está organizada em:
 
-### 🏗️ Arquitetura e API
-- [docs/API.md](docs/API.md) - Documentação da API REST
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Arquitetura do sistema
-- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Guia de desenvolvimento
-
-### 🚀 Deploy
-- [docs/deployment/DEPLOY.md](docs/deployment/DEPLOY.md) - Guia de deploy completo
-
-### 🛠️ Ferramentas e Recursos
-- [scripts/README.md](scripts/README.md) - Scripts de desenvolvimento
-- [server/migrations/README.md](server/migrations/README.md) - Migrations do Supabase
-- [server/tests/README.md](server/tests/README.md) - Testes de integração
-- [tools/README.md](tools/README.md) - Ferramentas de debug
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Guia de contribuição
-- [CODE_REVIEW.md](CODE_REVIEW.md) - Análise e melhorias do código
+| Arquivo | Descrição |
+|---------|-----------|
+| [SETUP.md](docs/SETUP.md) | 🚀 Guia completo de instalação e configuração |
+| [API.md](docs/API.md) | 📡 Documentação detalhada da API REST |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | 🏗️ Visão técnica da arquitetura |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | 💻 Guia de desenvolvimento |
+| [ESTRATEGIAS.md](docs/ESTRATEGIAS.md) | 🎯 Sistema de estratégias com IA |
+| [DEPLOY.md](docs/DEPLOY.md) | ☁️ Como fazer deploy em produção |
+| [CONTRIBUTING.md](docs/CONTRIBUTING.md) | 🤝 Guia de contribuição |
 
 ## 💰 Modelos Gemini Disponíveis
 

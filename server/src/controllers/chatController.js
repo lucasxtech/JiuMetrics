@@ -189,13 +189,6 @@ exports.applyEdit = async (req, res) => {
     const { sessionId, analysisId, editSuggestion, acceptedByUser } = req.body;
     const userId = req.userId;
 
-    console.log('🔧 Apply Edit Request:', {
-      sessionId,
-      analysisId,
-      editSuggestion: JSON.stringify(editSuggestion, null, 2),
-      acceptedByUser
-    });
-
     if (!analysisId || !editSuggestion) {
       return res.status(400).json({
         success: false,
@@ -212,22 +205,19 @@ exports.applyEdit = async (req, res) => {
       });
     }
 
-    console.log('📊 Análise atual:', {
-      id: analysis.id,
-      summaryLength: analysis.summary?.length,
-      chartsCount: analysis.charts?.length
-    });
-
     // Garantir versão original antes de editar
-    const newVersionNumber = await ensureOriginalVersion(analysisId, 'fight', analysis);
-    console.log('📚 Próxima versão:', newVersionNumber);
+    const newVersionNumber = await ensureOriginalVersion(analysisId, analysis, userId);
 
     // Preparar dados de atualização baseado na sugestão
     const updateData = {};
     const { field, newValue } = editSuggestion;
 
-    console.log('🎯 Campo a atualizar:', field);
-    console.log('📝 Novo valor:', typeof newValue === 'string' ? newValue.substring(0, 100) + '...' : JSON.stringify(newValue).substring(0, 100));
+    if (!newValue) {
+      return res.status(400).json({
+        success: false,
+        error: 'Sugestão de edição não contém novo valor'
+      });
+    }
 
     if (field === 'summary') {
       updateData.summary = newValue;
@@ -238,7 +228,6 @@ exports.applyEdit = async (req, res) => {
     }
 
     if (Object.keys(updateData).length === 0) {
-      console.log('⚠️ Nenhum dado válido para atualizar');
       return res.status(400).json({
         success: false,
         error: 'Campo inválido na sugestão'
@@ -246,18 +235,15 @@ exports.applyEdit = async (req, res) => {
     }
 
     // Atualizar análise
-    console.log('💾 Atualizando análise...');
     const updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
 
     // Criar nova versão
     await createAnalysisVersion({
       analysisId,
-      analysisType: 'fight',
       versionNumber: newVersionNumber,
       analysis: updatedAnalysis,
-      editedBy: acceptedByUser ? 'ai' : 'ai_suggestion',
       editReason: editSuggestion.reason || 'Sugestão da IA aplicada',
-      chatSessionId: sessionId || null
+      userId
     });
 
     // Atualizar contexto da sessão de chat (se houver)
@@ -303,7 +289,7 @@ exports.manualEdit = async (req, res) => {
     }
 
     // Garantir versão original antes de editar
-    const newVersionNumber = await ensureOriginalVersion(analysisId, 'fight', analysis);
+    const newVersionNumber = await ensureOriginalVersion(analysisId, analysis, userId);
 
     // Preparar dados de atualização
     const updateData = {};
@@ -321,11 +307,10 @@ exports.manualEdit = async (req, res) => {
     // Criar nova versão
     await createAnalysisVersion({
       analysisId,
-      analysisType: 'fight',
       versionNumber: newVersionNumber,
       analysis: updatedAnalysis,
-      editedBy: 'user',
-      editReason: reason || 'Edição manual do usuário'
+      editReason: reason || 'Edição manual do usuário',
+      userId
     });
 
     res.json({
@@ -385,8 +370,6 @@ exports.restoreVersion = async (req, res) => {
       });
     }
 
-    console.log('📦 Restaurando versão:', { versionNumber, content: version.content });
-
     // Restaurar conteúdo - version.content pode ser o conteúdo direto ou ter subcampos
     const content = version.content || {};
     const updateData = {};
@@ -401,8 +384,6 @@ exports.restoreVersion = async (req, res) => {
     if (Object.keys(updateData).length === 0 && typeof content === 'string') {
       updateData.summary = content;
     }
-
-    console.log('📝 Dados para update:', updateData);
 
     // Só fazer update se houver dados
     let updatedAnalysis;

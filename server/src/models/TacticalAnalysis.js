@@ -65,13 +65,6 @@ class TacticalAnalysis {
    * @returns {Promise<Object>} Análise criada
    */
   static async create(analysisData) {
-    console.log('🔵 TacticalAnalysis.create chamado com:', {
-      userId: analysisData.userId,
-      athleteId: analysisData.athleteId,
-      athleteName: analysisData.athleteName,
-      opponentName: analysisData.opponentName
-    });
-
     const { data, error } = await supabase
       .from('tactical_analyses')
       .insert([{
@@ -91,7 +84,6 @@ class TacticalAnalysis {
       throw error;
     }
 
-    console.log('🟢 TacticalAnalysis.create sucesso! ID:', data?.id);
     return data;
   }
 

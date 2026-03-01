@@ -34,7 +34,11 @@ class AnalysisVersion {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro no Supabase:', error);
+      throw error;
+    }
+    
     return this.parseFromDB(data);
   }
 

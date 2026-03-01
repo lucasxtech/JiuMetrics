@@ -576,8 +576,7 @@ O projeto possui documentação completa organizada hierarquicamente:
 - ✅ Botões de ação no header dos modais
 
 **Melhorias de Prompt (geminiService.js):**
-- ✅ Campo `resumo_rapido` com 3 prioridades
-- ✅ `tese_da_vitoria` expandida (3-4 frases)
+- ✅ Campo `resumo_rapido` com `como_vencer` e 3 prioridades
 - ✅ Campos `explicacao` e `por_que_funciona`
 - ✅ Cronologia renomeada: `primeiro_minuto`, `minutos_2_a_4`, `minutos_finais`
 - ✅ Checklist com `situacao`, `o_que_ele_faz`, `protocolo_de_emergencia`

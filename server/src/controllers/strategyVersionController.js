@@ -11,11 +11,7 @@ const strategyVersionController = {
       const { analysisId } = req.params;
       const userId = req.userId;
 
-      console.log(`📜 [Versions] Buscando versões para análise ${analysisId}`);
-
       const versions = await StrategyVersion.getByAnalysisId(analysisId, userId);
-
-      console.log(`✅ [Versions] ${versions.length} versões encontradas`);
 
       res.json({
         success: true,
@@ -52,11 +48,7 @@ const strategyVersionController = {
       const { analysisId, versionId } = req.params;
       const userId = req.userId;
 
-      console.log(`🔄 [Versions] Restaurando versão ${versionId} para análise ${analysisId}`);
-
       const result = await StrategyVersion.restore(versionId, analysisId, userId);
-
-      console.log(`✅ [Versions] Versão restaurada com sucesso - Nova versão ${result.version.versionNumber}`);
 
       res.json({
         success: true,
@@ -82,14 +74,18 @@ function getContentPreview(content, editedField) {
 
   // Mapear campos para chaves no objeto
   const fieldMap = {
-    'tese_da_vitoria': 'tese_da_vitoria',
+    'como_vencer': 'como_vencer',
+    'strategy': 'strategy',
+    'tese_da_vitoria': 'tese_da_vitoria', // Legado
     'plano_tatico_faseado': 'plano_tatico_faseado',
     'cronologia_inteligente': 'cronologia_inteligente',
     'analise_de_matchup': 'analise_de_matchup'
   };
 
   const fieldNames = {
-    'tese_da_vitoria': 'Tese da Vitória',
+    'como_vencer': 'Como Vencer Esta Luta',
+    'strategy': 'Como Vencer Esta Luta',
+    'tese_da_vitoria': 'Como Vencer Esta Luta', // Legado
     'plano_tatico_faseado': 'Plano Tático',
     'cronologia_inteligente': 'Cronologia',
     'analise_de_matchup': 'Análise de Matchup'
@@ -109,10 +105,10 @@ function getContentPreview(content, editedField) {
     }
   }
 
-  // Senão, mostrar preview da tese da vitória como resumo geral
-  const tese = content.tese_da_vitoria;
-  if (tese) {
-    const text = typeof tese === 'string' ? tese : JSON.stringify(tese);
+  // Senão, mostrar preview do "Como Vencer" como resumo geral
+  const comoVencer = content.resumo_rapido?.como_vencer || content.tese_da_vitoria;
+  if (comoVencer) {
+    const text = typeof comoVencer === 'string' ? comoVencer : JSON.stringify(comoVencer);
     return {
       field: 'Visão Geral',
       text: text.substring(0, 150) + (text.length > 150 ? '...' : '')

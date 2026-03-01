@@ -45,7 +45,6 @@ exports.compareAndStrategy = async (req, res) => {
     let savedAnalysis = null;
     if (userId) {
       try {
-        console.log('💾 Tentando salvar análise tática no histórico...');
         savedAnalysis = await TacticalAnalysis.create({
           userId,
           athleteId,
@@ -55,12 +54,10 @@ exports.compareAndStrategy = async (req, res) => {
           strategyData: result.strategy,
           metadata: result.metadata
         });
-        console.log('✅ Análise tática salva com sucesso! ID:', savedAnalysis.id);
 
         // Criar versão inicial
         try {
           await StrategyVersion.createInitial(savedAnalysis.id, userId, result.strategy);
-          console.log('📜 Versão inicial criada no histórico');
         } catch (versionError) {
           console.error('⚠️ Erro ao criar versão inicial:', versionError.message);
         }
@@ -70,8 +67,6 @@ exports.compareAndStrategy = async (req, res) => {
         console.error('Stack:', saveError.stack);
         // Não falhar a request se salvar no histórico falhar
       }
-    } else {
-      console.log('⚠️ userId não disponível, análise não será salva');
     }
     
     // Salvar uso da API (consolidação + estratégia)
@@ -134,8 +129,6 @@ exports.listAnalyses = async (req, res) => {
     const userId = req.userId;
     const { athleteId, opponentId, limit, offset } = req.query;
 
-    console.log('📋 listAnalyses chamado:', { userId, athleteId, opponentId, limit, offset });
-
     const analyses = await TacticalAnalysis.getAll(userId, {
       athleteId,
       opponentId,
@@ -144,8 +137,6 @@ exports.listAnalyses = async (req, res) => {
     });
 
     const total = await TacticalAnalysis.count(userId);
-
-    console.log('📊 Resultado:', { totalEncontradas: analyses.length, total });
 
     res.json({
       success: true,

@@ -241,6 +241,34 @@ export default function Analyses() {
     }
   };
 
+  // Função auxiliar para formatar texto em parágrafos para PDF
+  const formatTextToParagraphs = (text) => {
+    if (!text) return '';
+    
+    // Dividir em parágrafos (~200-300 caracteres cada)
+    const sentences = text.split(/(?<=\.)\s+/);
+    const paragraphs = [];
+    let currentParagraph = '';
+    
+    for (const sentence of sentences) {
+      if (currentParagraph && (currentParagraph.length + sentence.length) > 300) {
+        paragraphs.push(currentParagraph.trim());
+        currentParagraph = sentence;
+      } else {
+        currentParagraph += (currentParagraph ? ' ' : '') + sentence;
+      }
+    }
+    
+    if (currentParagraph.trim()) {
+      paragraphs.push(currentParagraph.trim());
+    }
+    
+    // Retornar HTML com parágrafos separados
+    return paragraphs.map(p => 
+      `<p style="color: #0f172a; font-size: 11px; line-height: 1.6; margin: 0 0 10px 0;">${p}</p>`
+    ).join('');
+  };
+
   const handleDownloadPDF = async () => {
     if (!selectedAnalysis) return;
 
@@ -248,18 +276,11 @@ export default function Analyses() {
     try {
       const strategyData = selectedAnalysis.strategy_data?.strategy || selectedAnalysis.strategy_data;
       
-      // DEBUG: Ver estrutura completa dos dados
-      console.log('📄 PDF - strategyData completo:', strategyData);
-      console.log('📋 PDF - checklist_tatico:', strategyData?.checklist_tatico);
-      console.log('🎯 PDF - plano_tatico_faseado:', strategyData?.plano_tatico_faseado);
-      console.log('⏱️ PDF - cronologia_inteligente:', strategyData?.cronologia_inteligente);
-      
       // Parsear plano_tatico_faseado se for string
       let planoTatico = strategyData?.plano_tatico_faseado;
       if (typeof planoTatico === 'string') {
         try {
           planoTatico = JSON.parse(planoTatico);
-          console.log('🔄 PDF - plano_tatico após parse:', planoTatico);
         } catch (e) {
           console.error('❌ Erro ao parsear plano_tatico:', e);
         }
@@ -270,7 +291,6 @@ export default function Analyses() {
       if (typeof checklistTatico === 'string') {
         try {
           checklistTatico = JSON.parse(checklistTatico);
-          console.log('🔄 PDF - checklist após parse:', checklistTatico);
         } catch (e) {
           console.error('❌ Erro ao parsear checklist:', e);
         }
@@ -281,7 +301,6 @@ export default function Analyses() {
       if (typeof cronologia === 'string') {
         try {
           cronologia = JSON.parse(cronologia);
-          console.log('🔄 PDF - cronologia após parse:', cronologia);
         } catch (e) {
           console.error('❌ Erro ao parsear cronologia:', e);
         }
@@ -290,85 +309,85 @@ export default function Analyses() {
       // Criar conteúdo formatado para PDF
       const content = `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px;">
-          <h1 style="color: #1f2937; margin-bottom: 10px; font-size: 24px;">
+          <h1 style="color: #1f2937; margin-bottom: 10px; font-size: 18px;">
             ${selectedAnalysis.athlete_name} vs ${selectedAnalysis.opponent_name}
           </h1>
-          <p style="color: #64748b; margin-bottom: 30px; font-size: 14px;">
+          <p style="color: #64748b; margin-bottom: 30px; font-size: 11px;">
             Criado em ${new Date(selectedAnalysis.created_at).toLocaleDateString('pt-BR')}
           </p>
           
           <!-- Como Vencer Esta Luta -->
           ${strategyData?.tese_da_vitoria ? `
-          <div style="background: #f1f5f9; border: 2px solid #cbd5e1; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+          <div style="background: #f1f5f9; border: 2px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 20px; page-break-inside: avoid;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-              <span style="font-size: 20px;">✓</span>
-              <h2 style="color: #475569; margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Como Vencer Esta Luta</h2>
+              <span style="font-size: 14px;">✓</span>
+              <h2 style="color: #475569; margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Como Vencer Esta Luta</h2>
             </div>
-            <p style="color: #0f172a; font-size: 16px; line-height: 1.6; margin: 0;">
-              ${strategyData.tese_da_vitoria}
-            </p>
+            <div style="color: #0f172a; line-height: 1.6;">
+              ${formatTextToParagraphs(strategyData.tese_da_vitoria)}
+            </div>
           </div>
           ` : ''}
           
           <!-- Análise de Matchup -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">Matchup & Assimetrias</h2>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px; page-break-inside: avoid;">
+            <h2 style="color: #334155; margin-bottom: 15px; font-size: 14px;">Matchup & Assimetrias</h2>
             
             ${strategyData?.analise_de_matchup?.vantagem_critica ? `
-            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 15px; margin-bottom: 15px;">
-              <p style="color: #065f46; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">✓ Vantagem Crítica</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${strategyData.analise_de_matchup.vantagem_critica}
-              </p>
+            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin-bottom: 15px;">
+              <p style="color: #065f46; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">✓ Vantagem Crítica</p>
+              <div style="color: #475569; font-size: 10px; line-height: 1.6;">
+                ${formatTextToParagraphs(strategyData.analise_de_matchup.vantagem_critica).replace(/font-size: 11px/g, 'font-size: 10px')}
+              </div>
             </div>
             ` : ''}
             
             ${strategyData?.analise_de_matchup?.neutralizacao ? `
-            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 15px;">
-              <p style="color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⚠ Neutralização</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.6;">
-                ${strategyData.analise_de_matchup.neutralizacao}
-              </p>
+            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px;">
+              <p style="color: #991b1b; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">⚠ Neutralização</p>
+              <div style="color: #475569; font-size: 10px; line-height: 1.6;">
+                ${formatTextToParagraphs(strategyData.analise_de_matchup.neutralizacao).replace(/font-size: 11px/g, 'font-size: 10px')}
+              </div>
             </div>
             ` : ''}
           </div>
           
           <!-- Plano Tático Faseado -->
           ${planoTatico ? `
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-            <h2 style="color: #334155; margin-bottom: 15px; font-size: 18px;">🎯 Plano Tático Faseado</h2>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+            <h2 style="color: #334155; margin-bottom: 15px; font-size: 14px;">🎯 Plano Tático Faseado</h2>
             
             ${planoTatico.em_pe_standup ? `
-            <div style="background: white; border-left: 3px solid #3b82f6; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
-              <p style="color: #3b82f6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">🥋 Em Pé (Standup)</p>
+            <div style="background: white; border-left: 3px solid #3b82f6; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+              <p style="color: #3b82f6; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">🥋 Em Pé (Standup)</p>
               ${Object.entries(planoTatico.em_pe_standup).map(([key, value]) => `
-                <div style="margin-bottom: 8px;">
-                  <p style="color: #1e40af; font-weight: bold; font-size: 12px; margin: 0 0 3px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
-                  <p style="color: #64748b; font-size: 12px; margin: 0;">${value}</p>
+                <div style="margin-bottom: 6px;">
+                  <p style="color: #1e40af; font-weight: bold; font-size: 10px; margin: 0 0 2px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
+                  <p style="color: #64748b; font-size: 9px; margin: 0; line-height: 1.4;">${value}</p>
                 </div>
               `).join('')}
             </div>
             ` : ''}
             
             ${planoTatico.jogo_de_passagem_top ? `
-            <div style="background: white; border-left: 3px solid #10b981; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
-              <p style="color: #10b981; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⬇️ Jogo de Passagem (Top)</p>
+            <div style="background: white; border-left: 3px solid #10b981; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+              <p style="color: #10b981; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">⬇️ Jogo de Passagem (Top)</p>
               ${Object.entries(planoTatico.jogo_de_passagem_top).map(([key, value]) => `
-                <div style="margin-bottom: 8px;">
-                  <p style="color: #059669; font-weight: bold; font-size: 12px; margin: 0 0 3px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
-                  <p style="color: #64748b; font-size: 12px; margin: 0;">${value}</p>
+                <div style="margin-bottom: 6px;">
+                  <p style="color: #059669; font-weight: bold; font-size: 10px; margin: 0 0 2px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
+                  <p style="color: #64748b; font-size: 9px; margin: 0; line-height: 1.4;">${value}</p>
                 </div>
               `).join('')}
             </div>
             ` : ''}
             
             ${planoTatico.jogo_de_guarda_bottom ? `
-            <div style="background: white; border-left: 3px solid #8b5cf6; padding: 12px; page-break-inside: avoid;">
-              <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">⬆️ Jogo de Guarda (Bottom)</p>
+            <div style="background: white; border-left: 3px solid #8b5cf6; padding: 10px; page-break-inside: avoid;">
+              <p style="color: #8b5cf6; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">⬆️ Jogo de Guarda (Bottom)</p>
               ${Object.entries(planoTatico.jogo_de_guarda_bottom).map(([key, value]) => `
-                <div style="margin-bottom: 8px;">
-                  <p style="color: #7c3aed; font-weight: bold; font-size: 12px; margin: 0 0 3px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
-                  <p style="color: #64748b; font-size: 12px; margin: 0;">${value}</p>
+                <div style="margin-bottom: 6px;">
+                  <p style="color: #7c3aed; font-weight: bold; font-size: 10px; margin: 0 0 2px 0; text-transform: capitalize;">${key.replace(/_/g, ' ')}</p>
+                  <p style="color: #64748b; font-size: 9px; margin: 0; line-height: 1.4;">${value}</p>
                 </div>
               `).join('')}
             </div>
@@ -378,35 +397,35 @@ export default function Analyses() {
           
           <!-- Checklist Tático -->
           ${checklistTatico ? `
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; page-break-inside: avoid;">
-            <h2 style="color: #334155; margin: 0 0 15px 0; font-size: 18px; font-weight: bold;">📋 Checklist Tático</h2>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px; page-break-inside: avoid;">
+            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 14px; font-weight: bold;">📋 Checklist Tático</h2>
             
             ${checklistTatico.fazer?.length > 0 ? `
-            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
-              <p style="color: #065f46; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">✓ Fazer</p>
+            <div style="background: white; border: 1px solid #86efac; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+              <p style="color: #065f46; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">✓ Fazer</p>
               ${checklistTatico.fazer.map(item => `
-                <div style="margin-bottom: 6px; padding-left: 10px; border-left: 2px solid #86efac;">
-                  <p style="color: #64748b; font-size: 11px; margin: 0;">• ${item}</p>
+                <div style="margin-bottom: 4px; padding-left: 8px; border-left: 2px solid #86efac;">
+                  <p style="color: #64748b; font-size: 9px; margin: 0; line-height: 1.4;">• ${item}</p>
                 </div>
               `).join('')}
             </div>
             ` : ''}
             
             ${checklistTatico.nao_fazer?.length > 0 ? `
-            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; margin-bottom: 15px; page-break-inside: avoid;">
-              <p style="color: #991b1b; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">❌ Não Fazer</p>
+            <div style="background: white; border: 1px solid #fca5a5; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+              <p style="color: #991b1b; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">❌ Não Fazer</p>
               ${checklistTatico.nao_fazer.map(item => `
-                <div style="margin-bottom: 6px; padding-left: 10px; border-left: 2px solid #fca5a5;">
-                  <p style="color: #64748b; font-size: 11px; margin: 0;">• ${item}</p>
+                <div style="margin-bottom: 4px; padding-left: 8px; border-left: 2px solid #fca5a5;">
+                  <p style="color: #64748b; font-size: 9px; margin: 0; line-height: 1.4;">• ${item}</p>
                 </div>
               `).join('')}
             </div>
             ` : ''}
             
             ${checklistTatico.se_estiver_perdendo ? `
-            <div style="background: white; border: 1px solid #fdba74; border-radius: 6px; padding: 12px; page-break-inside: avoid;">
-              <p style="color: #c2410c; font-weight: bold; margin: 0 0 8px 0; font-size: 13px;">🔥 Se Estiver Perdendo</p>
-              <p style="color: #64748b; font-size: 11px; margin: 0;">${checklistTatico.se_estiver_perdendo}</p>
+            <div style="background: white; border: 1px solid #fdba74; border-radius: 6px; padding: 10px; page-break-inside: avoid;">
+              <p style="color: #c2410c; font-weight: bold; margin: 0 0 6px 0; font-size: 11px;">🔥 Se Estiver Perdendo</p>
+              <p style="color: #64748b; font-size: 10px; margin: 0;">${checklistTatico.se_estiver_perdendo}</p>
             </div>
             ` : ''}
           </div>
@@ -414,14 +433,14 @@ export default function Analyses() {
           
           <!-- Cronologia Inteligente -->
           ${cronologia && Object.keys(cronologia).length > 0 ? `
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-top: 20px; page-break-inside: avoid;">
-            <h2 style="color: #334155; margin: 0 0 12px 0; font-size: 16px; font-weight: bold;">⏱️ Cronologia Inteligente</h2>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-top: 15px; page-break-inside: avoid;">
+            <h2 style="color: #334155; margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">⏱️ Cronologia Inteligente</h2>
             ${Object.entries(cronologia).map(([fase, conteudo], index) => `
-              <div style="background: white; border-left: 3px solid #f59e0b; padding: 10px 12px; margin-bottom: ${index === Object.keys(cronologia).length - 1 ? '0' : '10px'}; page-break-inside: avoid;">
-                <p style="color: #d97706; font-weight: bold; margin: 0 0 4px 0; font-size: 12px; text-transform: capitalize;">
+              <div style="background: white; border-left: 3px solid #f59e0b; padding: 8px 10px; margin-bottom: ${index === Object.keys(cronologia).length - 1 ? '0' : '8px'}; page-break-inside: avoid;">
+                <p style="color: #d97706; font-weight: bold; margin: 0 0 4px 0; font-size: 10px; text-transform: capitalize;">
                   ${fase.replace(/_/g, ' ')}
                 </p>
-                <p style="color: #475569; margin: 0; font-size: 12px; line-height: 1.4;">
+                <p style="color: #475569; margin: 0; font-size: 10px; line-height: 1.4;">
                   ${conteudo}
                 </p>
               </div>

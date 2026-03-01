@@ -74,6 +74,103 @@ export class ExamplePage {
 - Mockar dependências externas
 - Testar casos de sucesso E erro
 
+### 6. Banco de Dados (Supabase)
+
+- **Sempre usar models** para acesso ao banco
+- **Row Level Security (RLS)** habilitado em todas as tabelas
+- **user_id** obrigatório para operações (vem do middleware de autenticação)
+
+```javascript
+// ✅ CORRETO - Usar model
+const athlete = await Athlete.getById(athleteId, userId);
+
+// ❌ EVITAR - Query direta
+const { data } = await supabase.from('athletes').select('*');
+```
+
+### 7. Sistema de Chat IA
+
+O chat permite refinar conteúdo existente (análises, perfis, estratégias) com IA:
+
+**Fluxo:**
+1. Criar sessão: `POST /chat/session` com `contextType` e `contextId`
+2. Enviar mensagem: `POST /chat/send` ou endpoints específicos (`/chat/profile-send`, `/chat/strategy-send`)
+3. IA retorna sugestão: `{ field, newValue, reason }`
+4. Frontend exibe diff em `EditableText`
+5. Aceitar: `POST /chat/apply-edit` → Atualiza conteúdo + Cria versão
+
+**Adicionar novo tipo de chat:**
+1. Criar prompt em `server/src/services/prompts/chat-TIPO.txt`
+2. Adicionar em `CONTEXT_TYPES` no `chatController.js` com `fieldMapping`
+3. Criar componente `TipoChatPanel.jsx` no frontend
+
+### 8. Sistema de Versionamento
+
+Toda edição via chat cria uma versão automaticamente:
+
+```javascript
+// Backend - Salvar versão
+const version = await StrategyVersion.create({
+  strategy_id: strategyId,
+  content: JSON.stringify(content),  // Snapshot completo
+  created_by: userId
+});
+
+// Frontend - Listar versões
+const versions = await api.get(`/chat/versions/strategy/${id}`);
+
+// Restaurar versão
+await api.post(`/chat/restore-version/strategy/${id}`, { versionId });
+```
+
+**Modelos:** AnalysisVersion, ProfileVersion, StrategyVersion
+
+### 9. Terminologia de Estratégias
+
+**IMPORTANTE:** O campo correto é `como_vencer`, não `tese_da_vitoria`:
+
+```javascript
+// ✅ CORRETO
+const strategy = {
+  resumo_rapido: {
+    como_vencer: "Explicação de como vencer...",
+    tres_prioridades: [...]
+  }
+}
+
+// ❌ OBSOLETO (manter apenas como fallback)
+const oldStrategy = {
+  tese_da_vitoria: "..."  // Deprecated
+}
+```
+
+**No chat de estratégias:**
+- Palavras-chave `["tese", "vencer", "vitória", "ganhar"]` → mapeia para `como_vencer`
+- Sempre priorizar `resumo_rapido.como_vencer` ao ler estratégias
+
+### 10. Monitoramento de Custos
+
+Toda chamada ao Gemini deve registrar uso:
+
+```javascript
+// Após chamar Gemini
+const result = await model.generateContent(prompt);
+
+await logApiUsage({
+  userId: req.user.id,
+  endpoint: 'analyze-video',  // Identificador do endpoint
+  usage: result.usageMetadata  // { promptTokenCount, candidatesTokenCount, totalTokenCount }
+});
+
+// Consultar estatísticas
+const stats = await ApiUsage.getStats(userId);
+// { totalCalls, totalTokens, inputTokens, outputTokens, estimatedCost }
+```
+
+**Endpoints:**
+- `GET /usage/stats` - Estatísticas do usuário
+- `GET /usage/pricing` - Tabela de preços
+
 ## Estrutura do Projeto
 
 ```
@@ -84,17 +181,56 @@ server/src/
 │   ├── errorHandler.js   # Handler centralizado
 │   └── apiUsageLogger.js # Logger de uso da API
 ├── services/
+│   ├── geminiService.js  # Serviço principal de IA
 │   └── prompts/
 │       ├── index.js      # Loader de prompts
-│       └── *.txt         # Arquivos de prompt
+│       ├── video-analysis.txt
+│       ├── athlete-summary.txt
+│       ├── tactical-strategy.txt
+│       ├── chat-analysis.txt   # Chat para análises
+│       ├── chat-profile.txt    # Chat para perfis
+│       └── chat-strategy.txt   # Chat para estratégias
+├── models/
+│   ├── Athlete.js
+│   ├── Opponent.js
+│   ├── FightAnalysis.js
+│   ├── ChatSession.js          # Sessões de chat
+│   ├── AnalysisVersion.js      # Versionamento de análises
+│   ├── ProfileVersion.js       # Versionamento de perfis
+│   ├── StrategyVersion.js      # Versionamento de estratégias
+│   └── ApiUsage.js             # Rastreamento de custos
+├── controllers/
+│   ├── chatController.js       # Lógica de chat IA
+│   ├── strategyVersionController.js
+│   └── usageController.js      # Estatísticas de uso
+├── routes/
+│   ├── chat.js                 # Rotas de chat
+│   └── usage.js                # Rotas de monitoramento
 └── __tests__/            # Testes unitários
 
-frontend/
-├── src/utils/aiConfig.js # Config de IA do frontend
-└── e2e/
-    ├── fixtures.ts       # Fixtures compartilhados
-    ├── pages/*.ts        # Page Objects
-    └── specs/*.ts        # Testes
+frontend/src/
+├── components/
+│   ├── chat/
+│   │   ├── ProfileChatPanel.jsx    # Chat para perfis
+│   │   ├── StrategyChatPanel.jsx   # Chat para estratégias
+│   │   └── AiChatPanel.jsx         # Chat para análises
+│   ├── version/
+│   │   └── VersionHistoryPanel.jsx # Histórico de versões
+│   └── analysis/
+│       └── EditableText.jsx        # Diff viewer para edições
+├── services/
+│   ├── chatService.js       # API de chat
+│   └── usageService.js      # API de uso/custos
+└── utils/aiConfig.js        # Config de IA do frontend
+
+playwright/
+├── fixtures/
+│   ├── fixtures.ts          # Fixtures compartilhados
+│   └── TestDataBuilder.ts   # Builder de dados de teste
+├── pages/*.ts               # Page Objects
+└── tests/
+    ├── e2e/*.spec.ts        # Testes E2E
+    └── integration/*.spec.ts # Testes de integração
 ```
 
 ## Padrões de Código
@@ -133,13 +269,94 @@ async function analyzeVideo(req, res) {
     const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
     const result = await model.generateContent(prompt);
     
-    await logApiUsage({ userId: req.user.id, endpoint: 'video_analysis', usage: result.usageMetadata });
+    // ✅ SEMPRE registrar uso da API
+    await logApiUsage({ 
+      userId: req.user.id, 
+      endpoint: 'video_analysis', 
+      usage: result.usageMetadata 
+    });
     
     res.json({ success: true, data: result });
   } catch (error) {
     handleError(res, 'Analisar vídeo', error);
   }
 }
+```
+
+### Chat com IA (Refinar Estratégia)
+
+```javascript
+// Backend - chatController.js
+exports.sendStrategyMessage = async (req, res) => {
+  try {
+    const { sessionId, message, strategyData } = req.body;
+    
+    // Carregar prompt especializado para estratégias
+    const prompt = getPrompt('chat-strategy', {
+      ATHLETE_NAME: strategyData.athlete.name,
+      OPPONENT_NAME: strategyData.opponent.name,
+      CONTENT: JSON.stringify(strategyData.strategy),
+      USER_MESSAGE: message
+    });
+    
+    const model = genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+    const result = await model.generateContent(prompt);
+    
+    // Registrar uso
+    await logApiUsage({
+      userId: req.user.id,
+      endpoint: 'chat_strategy',
+      usage: result.usageMetadata
+    });
+    
+    // Parsear resposta da IA (deve retornar JSON)
+    const aiResponse = JSON.parse(result.response.text());
+    
+    res.json({ 
+      success: true, 
+      data: {
+        message: aiResponse.message,
+        pendingEdit: aiResponse.field ? {
+          field: aiResponse.field,
+          newValue: aiResponse.newValue,
+          reason: aiResponse.reason
+        } : null
+      }
+    });
+  } catch (error) {
+    handleError(res, 'Processar chat de estratégia', error);
+  }
+};
+```
+
+### Salvar Versão Automaticamente
+
+```javascript
+// Backend - Ao aplicar edição do chat
+exports.applyEdit = async (req, res) => {
+  try {
+    const { sessionId, editIndex, contextType, contextId } = req.body;
+    
+    // 1. Buscar conteúdo atual
+    const currentContent = await Strategy.getById(contextId, req.user.id);
+    
+    // 2. Aplicar edição
+    const updatedContent = { ...currentContent, ...editedFields };
+    await Strategy.update(contextId, updatedContent, req.user.id);
+    
+    // 3. ✅ SEMPRE criar versão após edição
+    await StrategyVersion.create({
+      strategy_id: contextId,
+      content: JSON.stringify(updatedContent),
+      created_by: req.user.id,
+      source: 'chat_ai'  // Identificar origem da mudança
+    });
+    
+    res.json({ success: true, data: updatedContent });
+  } catch (error) {
+    handleError(res, 'Aplicar edição', error);
+  }
+};
 ```
 
 ### Teste E2E
@@ -161,3 +378,29 @@ test('deve fazer login', async ({ page }) => {
 - `git stash -u` para incluir arquivos novos
 - Rodar testes antes de commitar
 - Prompts NUNCA inline, sempre em `.txt`
+- **SEMPRE** registrar uso da API Gemini com `logApiUsage()`
+- **SEMPRE** criar versão após edições via chat
+- Usar `como_vencer` em vez de `tese_da_vitoria`
+- Todas operações de DB devem passar `userId` (RLS)
+- Chat retorna JSON estruturado: `{ field, newValue, reason }`
+
+## Fluxo Completo: Chat → Edição → Versão
+
+```
+1. Frontend: POST /chat/send → IA analisa contexto
+2. Backend: Retorna { pendingEdit: { field, newValue, reason } }
+3. Frontend: Exibe diff em EditableText component
+4. Usuário aceita → POST /chat/apply-edit
+5. Backend: Atualiza conteúdo + Cria versão + Retorna sucesso
+6. Frontend: Atualiza UI + Mostra toast de confirmação
+```
+
+## Documentação Disponível
+
+- [docs/API.md](../docs/API.md) - Todos os endpoints (50+)
+- [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) - Arquitetura técnica
+- [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) - Guia de desenvolvimento
+- [docs/SETUP.md](../docs/SETUP.md) - Setup e configuração
+- [docs/DEPLOY.md](../docs/DEPLOY.md) - Deploy em produção
+- [docs/ESTRATEGIAS.md](../docs/ESTRATEGIAS.md) - Sistema de estratégias
+- [docs/CONTRIBUTING.md](../docs/CONTRIBUTING.md) - Como contribuir

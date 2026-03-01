@@ -30,9 +30,36 @@ Se o usuário pedir para alterar algo, responda normalmente E adicione um bloco 
 ---EDIT_SUGGESTION---
 {
   "field": "summary" | "charts" | "technical_stats",
-  "action": "update",
-  "data": { ... dados atualizados ... },
+  "newValue": ... texto ou objeto completo com o novo valor ...,
   "reason": "Breve explicação da mudança"
+}
+---END_SUGGESTION---
+
+EXEMPLOS:
+
+1. Para alterar o resumo:
+---EDIT_SUGGESTION---
+{
+  "field": "summary",
+  "newValue": "Novo texto completo do resumo aqui...",
+  "reason": "Adicionei mais detalhes sobre guardas"
+}
+---END_SUGGESTION---
+
+2. Para alterar gráficos:
+---EDIT_SUGGESTION---
+{
+  "field": "charts",
+  "newValue": [
+    {
+      "title": "Personalidade Geral",
+      "data": [
+        { "label": "Agressivo", "value": 70 },
+        { "label": "Calmo", "value": 30 }
+      ]
+    }
+  ],
+  "reason": "Ajustei percentuais baseado no feedback"
 }
 ---END_SUGGESTION---
 
@@ -41,3 +68,4 @@ IMPORTANTE:
 - Base suas respostas nos dados fornecidos
 - Se não souber algo, admita
 - Sugira edições apenas quando solicitado
+- O "newValue" deve conter o valor COMPLETO e PRONTO para substituir o campo

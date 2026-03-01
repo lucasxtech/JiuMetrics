@@ -19,8 +19,6 @@ export async function uploadVideo({ videos, personId = null, personType = null, 
   const formData = new FormData();
   const model = getSelectedModel();
   
-  console.log('🤖 Modelo selecionado:', model);
-  
   // Adicionar cada vídeo com sua cor de kimono
   videos.forEach((video, index) => {
     formData.append('videos', video.file);

@@ -9,7 +9,6 @@ const { extractTechnicalProfile } = require('../utils/profileUtils');
  */
 exports.getAllAnalyses = async (req, res) => {
   try {
-    console.log('📋 getAllAnalyses - userId:', req.userId);
     const analyses = await FightAnalysis.getAll();
     res.json({ success: true, data: analyses });
   } catch (error) {
@@ -39,30 +38,7 @@ exports.getAnalysisById = async (req, res) => {
  */
 exports.getAnalysesByPerson = async (req, res) => {
   try {
-    console.log('🔍 Buscando análises:', {
-      personId: req.params.personId,
-      userId: req.userId
-    });
-    
-    // TEMPORÁRIO: Buscar SEM filtro de userId para debug
-    console.log('⚠️ DEBUG: Buscando TODAS as análises (sem filtro de userId)');
-    const allAnalyses = await FightAnalysis.getByPersonId(req.params.personId, null);
-    console.log('📊 Total SEM filtro:', allAnalyses.length);
-    
-    // Buscar COM filtro de userId
     const analyses = await FightAnalysis.getByPersonId(req.params.personId, req.userId);
-    
-    console.log('✅ Análises encontradas COM filtro:', analyses.length);
-    
-    // Se não encontrou com filtro mas encontrou sem filtro, mostrar detalhes
-    if (analyses.length === 0 && allAnalyses.length > 0) {
-      console.log('⚠️ PROBLEMA: Análises existem mas não estão associadas ao userId');
-      console.log('📋 Análises sem filtro:', allAnalyses.map(a => ({
-        id: a.id,
-        userId: a.userId,
-        createdAt: a.createdAt
-      })));
-    }
     
     res.json({ success: true, data: analyses });
   } catch (error) {

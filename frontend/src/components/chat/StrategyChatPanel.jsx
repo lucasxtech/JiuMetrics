@@ -4,12 +4,28 @@ import { createStrategyChatSession, sendStrategyChatMessage } from '../../servic
 
 /**
  * Formata texto com markdown básico (negrito, itálico)
+ * Remove também blocos de código indesejados
  */
 const formatMarkdown = (text) => {
-  if (!text) return null;
+  // Se não tem texto, retorna mensagem padrão
+  if (!text || text.trim() === '') {
+    return <span className="text-slate-400 italic">Processando resposta...</span>;
+  }
+  
+  // Limpar blocos de código markdown e sugestões
+  let cleanText = text
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`{1,3}/g, '')
+    .replace(/---EDIT_SUGGESTION---[\s\S]*?---END_SUGGESTION---/g, '')
+    .trim();
+  
+  // Se após limpeza ficou vazio, mostrar mensagem
+  if (!cleanText) {
+    return <span className="text-slate-500">Sugestão de alteração preparada. Veja abaixo.</span>;
+  }
   
   const parts = [];
-  let remaining = text;
   let key = 0;
   
   // Regex para **negrito** e *itálico*
@@ -17,9 +33,9 @@ const formatMarkdown = (text) => {
   let lastIndex = 0;
   let match;
   
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = regex.exec(cleanText)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(<span key={key++}>{text.slice(lastIndex, match.index)}</span>);
+      parts.push(<span key={key++}>{cleanText.slice(lastIndex, match.index)}</span>);
     }
     
     if (match[2]) {
@@ -31,11 +47,11 @@ const formatMarkdown = (text) => {
     lastIndex = regex.lastIndex;
   }
   
-  if (lastIndex < text.length) {
-    parts.push(<span key={key++}>{text.slice(lastIndex)}</span>);
+  if (lastIndex < cleanText.length) {
+    parts.push(<span key={key++}>{cleanText.slice(lastIndex)}</span>);
   }
   
-  return parts.length > 0 ? parts : text;
+  return parts.length > 0 ? parts : <span>{cleanText}</span>;
 };
 
 /**
@@ -71,7 +87,7 @@ const ChatMessage = ({ message, pendingEdit, onAccept, onReject, isApplying }) =
             ? 'bg-slate-900 text-white rounded-br-md' 
             : 'bg-white border border-slate-200 text-slate-700 rounded-bl-md shadow-sm'
         }`}>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">{formatMarkdown(message.content)}</p>
+          <div className="text-sm whitespace-pre-wrap leading-relaxed">{formatMarkdown(message.content)}</div>
         </div>
         
         {/* Indicador de sugestão pendente - Mostra botões */}
@@ -244,11 +260,6 @@ Como posso ajudar?`
         const messageId = (Date.now() + 1).toString();
         const editSuggestion = response.data.editSuggestion;
         
-        console.log('📩 Resposta da IA recebida:', {
-          hasEditSuggestion: !!editSuggestion,
-          editSuggestion: editSuggestion
-        });
-        
         const aiMessage = {
           id: messageId,
           role: 'model',
@@ -256,7 +267,11 @@ Como posso ajudar?`
           editSuggestion: editSuggestion || null,
           suggestionApplied: false
         };
-        setMessages(prev => [...prev, aiMessage]);
+        
+        setMessages(prev => {
+          const newMessages = [...prev, aiMessage];
+          return newMessages;
+        });
         
         // Se tem sugestão de edição, envia para o componente pai
         // para mostrar o diff inline no AiStrategyBox
@@ -287,13 +302,6 @@ Como posso ajudar?`
           const oldValue = getOldValue(fieldName);
           const newValue = editSuggestion.newValue;
           
-          console.log('📤 Enviando sugestão para pai:', {
-            messageId,
-            field: fieldName,
-            oldValueType: typeof oldValue,
-            newValueType: typeof newValue
-          });
-          
           onSuggestEdit({
             messageId,
             field: fieldName,
@@ -304,7 +312,12 @@ Como posso ajudar?`
         }
       }
     } catch (err) {
-      console.error('Erro ao enviar mensagem:', err);
+      console.error('❌ [STRATEGY-CHAT] Erro ao enviar mensagem:', {
+        error: err,
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       setError('Erro ao processar mensagem. Tente novamente.');
     } finally {
       setIsLoading(false);

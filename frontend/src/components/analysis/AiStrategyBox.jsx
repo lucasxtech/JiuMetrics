@@ -12,8 +12,8 @@ import { formatObjectToText } from '../../utils/formatters';
 const EditableText = ({ value, pendingEdit, field, onAccept, onReject, isApplying, className = '' }) => {
   // Mapeamento bidirecional: campo do componente ↔ campos que a IA pode enviar
   const fieldMappings = {
-    'tese_da_vitoria': ['tese_da_vitoria', 'strategy', 'como_vencer'],
-    'strategy': ['strategy', 'tese_da_vitoria', 'como_vencer'],
+    'como_vencer': ['como_vencer', 'strategy', 'tese_da_vitoria'],
+    'strategy': ['strategy', 'como_vencer', 'tese_da_vitoria'],
     'plano_tatico_faseado': ['plano_tatico_faseado', 'plano_tatico'],
     'cronologia_inteligente': ['cronologia_inteligente', 'cronologia'],
     'analise_de_matchup': ['analise_de_matchup', 'matchup'],
@@ -170,8 +170,8 @@ export default function AiStrategyBox({
 
   const strategyData = strategy?.strategy || strategy;
 
-  // Verificar se há edição pendente para a estratégia (campo "strategy" ou "tese_da_vitoria")
-  const isEditingStrategy = pendingEdit?.field === 'strategy' || pendingEdit?.field === 'tese_da_vitoria';
+  // Verificar se há edição pendente para a estratégia (campo "strategy" ou "como_vencer")
+  const isEditingStrategy = pendingEdit?.field === 'strategy' || pendingEdit?.field === 'como_vencer';
 
   return (
     <div className="space-y-6">
@@ -908,15 +908,15 @@ export default function AiStrategyBox({
                           <div key={idx} className="bg-white/60 rounded-lg p-3 border border-red-100">
                             <div className="mb-2">
                               <span className="font-medium text-red-900 text-sm">Situação de risco:</span>
-                              <p className="text-slate-700 text-sm mt-1"><FormattedText text={item.situacao} /></p>
+                              <div className="text-slate-700 text-sm mt-1"><FormattedText text={item.situacao} /></div>
                             </div>
                             <div className="mb-2">
                               <span className="font-medium text-red-800 text-sm">O que ele faz:</span>
-                              <p className="text-slate-700 text-sm mt-1"><FormattedText text={item.o_que_ele_faz || item.tecnica_perigosa} /></p>
+                              <div className="text-slate-700 text-sm mt-1"><FormattedText text={item.o_que_ele_faz || item.tecnica_perigosa} /></div>
                             </div>
                             <div className="bg-red-100/50 rounded px-2 py-1.5">
                               <span className="font-medium text-red-800 text-sm">Como evitar:</span>
-                              <p className="text-red-700 text-sm mt-1 leading-relaxed"><FormattedText text={item.como_evitar} /></p>
+                              <div className="text-red-700 text-sm mt-1 leading-relaxed"><FormattedText text={item.como_evitar} /></div>
                             </div>
                           </div>
                         )) || <p className="text-sm text-slate-500 italic">Nenhuma armadilha identificada</p>}

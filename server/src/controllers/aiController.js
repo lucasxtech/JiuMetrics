@@ -72,37 +72,8 @@ exports.consolidateProfile = async (req, res) => {
       });
     }
 
-    console.log('🔄 Consolidando perfil:', { personId, personType, model });
-
-    // Buscar pessoa para validar que existe e pertence ao usuário
-    let person;
-    if (personType === 'athlete') {
-      person = await Athlete.getById(personId, userId);
-    } else if (personType === 'opponent') {
-      person = await Opponent.getById(personId, userId);
-    } else {
-      return res.status(400).json({
-        success: false,
-        error: 'personType deve ser "athlete" ou "opponent"'
-      });
-    }
-
-    if (!person) {
-      return res.status(404).json({
-        success: false,
-        error: `${personType === 'athlete' ? 'Atleta' : 'Adversário'} não encontrado`
-      });
-    }
-
     // Consolidar análises usando StrategyService (com gráficos e stats)
     const consolidation = await StrategyService.consolidateAnalyses(personId, userId, model);
-
-    console.log('✅ Consolidação concluída:', {
-      resumoLength: consolidation.resumo?.length,
-      analysesCount: consolidation.analysesCount,
-      chartsCount: consolidation.charts?.length,
-      model: consolidation.model
-    });
 
     // Salvar o resumo consolidado no perfil do atleta/adversário
     const updateData = {

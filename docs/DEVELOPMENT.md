@@ -410,6 +410,259 @@ console.log('[ATHLETES] Requisição GET recebida')
 
 ---
 
+## Trabalhando com Chat IA
+
+### Arquitetura do Chat
+
+O sistema de chat permite refinar conteúdo usando IA. Existem três tipos:
+
+1. **Analysis Chat** - Refinar análises táticas
+2. **Profile Chat** - Refinar perfis de atletas
+3. **Strategy Chat** - Refinar estratégias
+
+### Fluxo de Edição
+
+```javascript
+// 1. Usuário digita no chat
+Frontend → POST /chat/send
+  {
+    sessionId: "uuid",
+    message: "Refaça o checklist tático"  
+  }
+
+// 2. IA analisa e retorna sugestão
+Backend → {
+  message: "Vou refazer o checklist...",
+  pendingEdit: {
+    field: "checklist_tatico",
+    newValue: "...",
+    reason: "..."
+  }
+}
+
+// 3. Frontend recebe e mostra diff
+<EditableText 
+  pendingEdit={pendingEdit}
+  onAccept={handleAccept}
+  onReject={handleReject}
+/>
+
+// 4. Usuário aceita → Atualização + Nova versão
+POST /chat/apply-edit
+  { sessionId, editIndex: 0 }
+```
+
+### Adicionar Novo Tipo de Chat
+
+**1. Backend - Criar Prompt:**
+
+```javascript
+// server/src/services/prompts/chat-meutipo.txt
+Você é um assistente especializado em {{CONTEXTO}}.
+
+CONTEÚDO ATUAL:
+{{CONTENT}}
+
+CAMPO PARA EDITAR: {{FIELD}}
+REGRAS:
+- Responda SEMPRE em JSON
+- Use o formato exato: {"field": "nome_campo", "newValue": "...", "reason": "..."}
+```
+
+**2. Backend - Adicionar no chatController:**
+
+```javascript
+// server/src/controllers/chatController.js
+const CONTEXT_TYPES = {
+  analysis: {...},
+  profile: {...},
+  meutipo: {  // NOVO
+    tableName: 'minha_tabela',
+    promptFile: 'chat-meutipo',
+    fieldMapping: {
+      'campo1': ['palavra1', 'palavra2'],
+      'campo2': ['palavra3', 'palavra4']
+    }
+  }
+}
+```
+
+**3. Frontend - Criar Chat Panel:**
+
+```jsx
+// frontend/src/components/chat/MeuTipoChatPanel.jsx
+import { useChatSession } from '../../hooks/useChatSession'
+
+export default function MeuTipoChatPanel({ contentId, content }) {
+  const { sessionId, messages, pendingEdit, sendMessage, applyEdit } = 
+    useChatSession({ contextType: 'meutipo', contextId: contentId })
+  
+  return (
+    <div className="chat-container">
+      {/* Renderizar mensagens */}
+      {pendingEdit && <DiffViewer edit={pendingEdit} />}
+    </div>
+  )
+}
+```
+
+### Mapeamento de Campos
+
+Para a IA identificar corretamente qual campo editar:
+
+```javascript
+// Exemplo: Strategy Chat
+const FIELD_MAPPING = {
+  'como_vencer': ['tese', 'vencer', 'vitória', 'ganhar'],
+  'plano_tatico_faseado': ['plano', 'faseado', 'fases'],
+  'checklist_tatico': ['checklist', 'lista', 'não fazer']
+}
+
+// Usuário digita: "refaça o checklist"
+// IA identifica: campo = "checklist_tatico"
+```
+
+---
+
+## Sistema de Versionamento
+
+### Salvar Versão Automaticamente
+
+Cada edição via chat cria uma versão automaticamente:
+
+```javascript
+// Backend - strategyVersionController.js
+exports.saveVersion = async (req, res) => {
+  const { strategyId, content } = req.body
+  
+  const version = await StrategyVersion.create({
+    strategy_id: strategyId,
+    content: content,  // Snapshot completo
+    created_by: req.user.id
+  })
+  
+  res.json({ success: true, data: version })
+}
+```
+
+### Listar Histórico de Versões
+
+```javascript
+// Frontend
+const { data: versions } = await api.get(`/chat/versions/strategy/${id}`)
+
+versions.forEach(v => {
+  console.log(`${v.created_at}: por ${v.created_by}`)
+})
+```
+
+### Restaurar Versão Anterior
+
+```jsx
+// Frontend Component
+import VersionHistoryPanel from './VersionHistoryPanel'
+
+<VersionHistoryPanel
+  contentType="strategy"
+  contentId={strategyId}
+  onRestore={(versionId) => {
+    // Restaura e recarrega conteúdo
+    chatService.restoreVersion('strategy', strategyId, versionId)
+      .then(() => window.location.reload())
+  }}
+/>
+```
+
+### Modelos de Versão
+
+```javascript
+// Backend - models/
+AnalysisVersion   // Para análises táticas
+ProfileVersion    // Para perfis de atletas
+StrategyVersion   // Para estratégias
+```
+
+---
+
+## Monitoramento de Custos da API
+
+### Registrar Uso Automaticamente
+
+O sistema registra **automaticamente** cada chamada à API Gemini:
+
+```javascript
+// Backend - utils/apiUsageLogger.js
+const { logApiUsage } = require('../utils/apiUsageLogger')
+
+// Após chamar Gemini
+const result = await model.generateContent(prompt)
+
+await logApiUsage({
+  userId: req.user.id,
+  endpoint: 'analyze-video',
+  usage: result.usageMetadata  // { promptTokenCount, candidatesTokenCount, totalTokenCount }
+})
+```
+
+### Consultar Estatísticas
+
+```javascript
+// GET /usage/stats
+{
+  "totalCalls": 150,
+  "totalTokens": 45230,
+  "inputTokens": 30150,
+  "outputTokens": 15080,
+  "estimatedCost": 0.15  // USD
+}
+```
+
+### Exibir Custos no Frontend
+
+```jsx
+// frontend/src/pages/Usage.jsx
+import { useEffect, useState } from 'react'
+import api from '../services/api'
+
+export default function UsagePage() {
+  const [stats, setStats] = useState(null)
+  
+  useEffect(() => {
+    api.get('/usage/stats').then(r => setStats(r.data.data))
+  }, [])
+  
+  return (
+    <div>
+      <h2>Uso da API</h2>
+      <p>Total de chamadas: {stats?.totalCalls}</p>
+      <p>Custo estimado: ${stats?.estimatedCost}</p>
+    </div>
+  )
+}
+```
+
+### Alertas de Custo
+
+```javascript
+// Backend - middleware/costLimit.js
+const checkCostLimit = async (req, res, next) => {
+  const stats = await ApiUsage.getStats(req.user.id)
+  
+  if (stats.estimatedCost > 10) {  // $10 USD
+    return res.status(429).json({
+      error: 'Limite de custo atingido'
+    })
+  }
+  
+  next()
+}
+
+// Usar em rotas de IA
+router.post('/analyze-video', checkCostLimit, aiController.analyzeVideo)
+```
+
+---
+
 ## Commits e Versionamento
 
 ### Convenção de Commits
@@ -443,4 +696,5 @@ git commit -m "style: formata código com prettier"
 
 ---
 
-**Última atualização:** Janeiro 2024
+**Última atualização:** Janeiro 2025
+**Nota:** Para informações sobre deployment, veja [DEPLOY.md](DEPLOY.md)

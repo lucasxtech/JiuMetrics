@@ -318,7 +318,10 @@ Seguimos o padrão **Conventional Commits**:
 - `opponents` - Funcionalidades de adversários
 - `video` - Análise de vídeo
 - `strategy` - Geração de estratégias
-- `ai` - Integração com IA
+- `chat` - Sistema de chat IA
+- `ai` - Integração com IA (Gemini)
+- `versioning` - Sistema de versionamento
+- `usage` - Monitoramento de custos da API
 - `ui` - Interface do usuário
 - `api` - Backend API
 - `db` - Database

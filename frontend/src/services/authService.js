@@ -38,15 +38,11 @@ export const register = async ({ name, email, password }) => {
  */
 export const login = async ({ email, password, rememberMe = false }) => {
   try {
-    console.log('🔐 Tentando login...', { email, hasPassword: !!password });
-    
     const response = await api.post('/auth/login', {
       email,
       password,
       rememberMe
     });
-
-    console.log('✅ Resposta do servidor:', response.data);
 
     if (response.data.success && response.data.token) {
       // Salvar token e usuário
@@ -55,8 +51,6 @@ export const login = async ({ email, password, rememberMe = false }) => {
       
       // Configurar token no header padrão
       api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      
-      console.log('✅ Login bem-sucedido!');
     }
 
     return response.data;

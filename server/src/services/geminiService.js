@@ -659,20 +659,52 @@ function extractEditSuggestion(responseText) {
   const suggestionMatch = responseText.match(/---EDIT_SUGGESTION---([\s\S]*?)---END_SUGGESTION---/);
   
   if (!suggestionMatch) {
-    console.log('ℹ️ Nenhuma sugestão de edição encontrada na resposta');
+    // Tentar encontrar JSON solto no formato esperado
+    const jsonMatch = responseText.match(/\{[\s\S]*?"field"[\s\S]*?"newValue"[\s\S]*?"reason"[\s\S]*?\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.field && parsed.newValue) {
+          return parsed;
+        }
+      } catch (e) {
+        // Silently fail
+      }
+    }
     return null;
   }
 
   try {
-    const jsonStr = suggestionMatch[1].trim();
-    console.log('📋 JSON da sugestão extraído:', jsonStr.substring(0, 200) + '...');
+    let jsonStr = suggestionMatch[1].trim();
+    
+    // Remover marcadores de código markdown (```json ... ```)
+    jsonStr = jsonStr
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+    
     const parsed = JSON.parse(jsonStr);
-    console.log('✅ Sugestão parseada:', {
-      field: parsed.field,
-      reason: parsed.reason,
-      newValueType: typeof parsed.newValue,
-      newValueLength: typeof parsed.newValue === 'string' ? parsed.newValue.length : 'N/A'
-    });
+    
+    // Fallback: aceitar formatos antigos
+    if (!parsed.newValue) {
+      if (parsed.data) {
+        parsed.newValue = parsed.data;
+        delete parsed.data;
+      } else if (parsed.newSummary) {
+        parsed.newValue = parsed.newSummary;
+        delete parsed.newSummary;
+      }
+    }
+    
+    // Se newValue é um objeto com "content", extrair apenas o content
+    if (parsed.newValue && typeof parsed.newValue === 'object') {
+      if (parsed.newValue.content) {
+        parsed.newValue = parsed.newValue.content;
+      } else if (parsed.newValue.section && parsed.newValue.content) {
+        parsed.newValue = parsed.newValue.content;
+      }
+    }
+    
     return parsed;
   } catch (error) {
     console.error('❌ Erro ao parsear sugestão de edição:', error.message);
@@ -684,10 +716,37 @@ function extractEditSuggestion(responseText) {
 /**
  * Remove marcadores de sugestão do texto para exibição limpa
  * @param {string} text - Texto com possíveis marcadores
+ * @param {Object} editSuggestion - Sugestão extraída (para fallback)
  * @returns {string} Texto limpo
  */
-function cleanResponseText(text) {
-  return text.replace(/---EDIT_SUGGESTION---[\s\S]*?---END_SUGGESTION---/g, '').trim();
+function cleanResponseText(text, editSuggestion = null) {
+  if (!text) {
+    if (editSuggestion?.reason) {
+      return `Sugestão de alteração: ${editSuggestion.reason}`;
+    }
+    return 'Preparei uma sugestão de alteração para você revisar.';
+  }
+  
+  // Remove o bloco de sugestão
+  let cleaned = text.replace(/---EDIT_SUGGESTION---[\s\S]*?---END_SUGGESTION---/g, '').trim();
+  
+  // Remove também blocos de código JSON que podem ter sobrado
+  cleaned = cleaned
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .trim();
+  
+  // Se ficou vazio mas temos uma sugestão, usar o reason como mensagem
+  if (!cleaned && editSuggestion?.reason) {
+    cleaned = `Sugestão de alteração: ${editSuggestion.reason}`;
+  }
+  
+  // Se ainda está vazio, mensagem padrão
+  if (!cleaned) {
+    cleaned = 'Preparei uma sugestão de alteração para você revisar.';
+  }
+  
+  return cleaned;
 }
 
 /**
@@ -738,8 +797,8 @@ async function chat({ contextType, contextData, history = [], userMessage, custo
     // Extrair sugestão de edição (se houver)
     const editSuggestion = extractEditSuggestion(responseText);
     
-    // Limpar texto para exibição
-    const cleanMessage = cleanResponseText(responseText);
+    // Limpar texto para exibição (passa a sugestão para fallback)
+    const cleanMessage = cleanResponseText(responseText, editSuggestion);
 
     // Extrair metadata de uso
     const usageMetadata = result.response.usageMetadata || {};

@@ -20,8 +20,6 @@ class FightAnalysis {
    * Busca análises por tipo de pessoa (athlete ou opponent)
    */
   static async getByPersonId(personId, userId = null) {
-    console.log('🔎 FightAnalysis.getByPersonId:', { personId, userId });
-    
     let query = supabase
       .from('fight_analyses')
       .select('*')
@@ -29,7 +27,6 @@ class FightAnalysis {
     
     // Filtrar por user_id se fornecido
     if (userId) {
-      console.log('🔒 Filtrando por userId:', userId);
       query = query.eq('user_id', userId);
     }
     
@@ -38,16 +35,6 @@ class FightAnalysis {
     if (error) {
       console.error('❌ Erro ao buscar análises:', error);
       throw error;
-    }
-    
-    console.log('📊 Dados retornados do Supabase:', data?.length || 0, 'registros');
-    if (data && data.length > 0) {
-      console.log('🔍 Primeira análise:', {
-        id: data[0].id,
-        person_id: data[0].person_id,
-        user_id: data[0].user_id,
-        created_at: data[0].created_at
-      });
     }
     
     return parseAnalysesFromDB(data);

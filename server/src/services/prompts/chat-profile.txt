@@ -24,8 +24,7 @@ Quando sugerir mudanças no resumo, adicione:
 ---EDIT_SUGGESTION---
 {
   "field": "summary",
-  "action": "update",
-  "newSummary": "Novo texto completo do resumo...",
+  "newValue": "Novo texto completo do resumo...",
   "reason": "Breve explicação da mudança"
 }
 ---END_SUGGESTION---
@@ -34,3 +33,4 @@ IMPORTANTE:
 - Mantenha o tom técnico
 - Preserve informações importantes do original
 - Sugira edições apenas quando solicitado ou quando identificar melhorias claras
+- O "newValue" deve conter o texto COMPLETO do novo resumo

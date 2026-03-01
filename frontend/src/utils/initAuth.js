@@ -9,20 +9,13 @@ export const initializeAuth = () => {
   const token = localStorage.getItem('jiumetrics_token');
   const user = localStorage.getItem('jiumetrics_user');
   
-  console.log('🔐 Inicializando autenticação...', {
-    hasToken: !!token,
-    hasUser: !!user
-  });
-  
   if (token) {
     // Configurar token no header da API
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    console.log('✅ Token configurado nos headers da API');
     
     // Validar token fazendo uma requisição simples
     return validateToken();
   } else {
-    console.log('⚠️ Nenhum token encontrado');
     return Promise.resolve({ valid: false });
   }
 };
@@ -35,7 +28,6 @@ const validateToken = async () => {
     // Fazer uma requisição simples para validar o token
     // Você pode usar qualquer endpoint que retorne rapidamente
     await api.get('/auth/validate');
-    console.log('✅ Token válido');
     return { valid: true };
   } catch (error) {
     console.error('❌ Token inválido:', error.response?.status);

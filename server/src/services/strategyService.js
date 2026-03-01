@@ -759,13 +759,11 @@ OBRIGATÓRIO:
     
     // Atleta: usar resumo salvo ou consolidar
     if (athlete.technicalSummary) {
-      console.log(`📋 Usando resumo técnico salvo do atleta ${athlete.name}`);
       athleteResumo = athlete.technicalSummary;
       // Buscar stats consolidados
       const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, null);
       athleteStats = athleteConsolidation.technical_stats;
     } else {
-      console.log(`🔄 Consolidando análises do atleta ${athlete.name} (sem resumo salvo)`);
       const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, customModel);
       athleteResumo = athleteConsolidation.resumo;
       athleteStats = athleteConsolidation.technical_stats;
@@ -773,13 +771,11 @@ OBRIGATÓRIO:
     
     // Adversário: usar resumo salvo ou consolidar
     if (opponent.technicalSummary) {
-      console.log(`📋 Usando resumo técnico salvo do adversário ${opponent.name}`);
       opponentResumo = opponent.technicalSummary;
       // Buscar stats consolidados
       const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, null);
       opponentStats = opponentConsolidation.technical_stats;
     } else {
-      console.log(`🔄 Consolidando análises do adversário ${opponent.name} (sem resumo salvo)`);
       const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, customModel);
       opponentResumo = opponentConsolidation.resumo;
       opponentStats = opponentConsolidation.technical_stats;

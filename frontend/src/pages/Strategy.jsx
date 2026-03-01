@@ -115,8 +115,6 @@ export default function Strategy() {
       
       // Atualizar estado
       setStrategy({ strategy: updatedStrategy });
-      
-      console.log('✅ Estratégia atualizada via chat:', updatedStrategy);
     } catch (err) {
       console.error('Erro ao atualizar estratégia:', err);
       throw err;

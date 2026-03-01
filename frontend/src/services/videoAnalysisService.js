@@ -19,9 +19,7 @@ const getSelectedModel = () => {
  * @returns {Promise} Resposta da IA com análise
  */
 export async function analyzeVideoLink({ videos, athleteName, personId, personType, matchResult, belt }) {
-  console.log('Analisando vídeos:', videos, athleteName, personId, personType, matchResult, belt);
   const model = getSelectedModel();
-  console.log('🤖 Modelo selecionado:', model);
 
   try {
     const response = await api.post('/ai/analyze-link', {

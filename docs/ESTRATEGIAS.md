@@ -57,7 +57,6 @@ O sistema de estratégia utiliza o **Gemini AI** para analisar comparativamente 
         "PRIORIDADE 3 com explicação"
       ]
     },
-    "tese_da_vitoria": "Explicação completa em 3-4 frases da estratégia macro",
     "analise_de_matchup": {
       "vantagem_critica": "2-3 frases detalhando onde temos vantagem significativa",
       "risco_oculto": "Perigo que não é óbvio, com contexto de COMO e QUANDO",
@@ -125,9 +124,8 @@ Todos normalizados entre 10-100 com `Math.min/Math.max`.
 
 ### Seções da Análise IA (v2 - Expandida)
 
-1. **Resumo Rápido** (NOVO): Bloco destacado com "Como Vencer" e 3 prioridades
-2. **Tese da Vitória**: Estratégia macro em 3-4 frases explicativas
-3. **Análise de Matchup**: Vantagem crítica, Risco oculto, Fator chave
+1. **Resumo Rápido**: Bloco destacado com "Como Vencer Esta Luta" e 3 Prioridades
+2. **Análise de Matchup**: Vantagem crítica, Risco oculto, Fator chave
 4. **Plano Tático Faseado**: Em pé / Passagem / Guarda (com explicações detalhadas)
 5. **Cronologia Inteligente**: Primeiro minuto / Minutos 2-4 / Minutos finais
 6. **Checklist Tático**: Oportunidades / Armadilhas / Protocolo de emergência
@@ -214,7 +212,7 @@ A IA usa palavras-chave no pedido do usuário para identificar qual campo da est
 
 | Palavras no pedido | Campo retornado | Seção no UI |
 |--------------------|-----------------|-------------|
-| "tese", "vencer", "vitória", "ganhar" | `tese_da_vitoria` | Como Vencer Esta Luta |
+| "tese", "vencer", "vitória", "ganhar", "como vencer" | `como_vencer` ou `strategy` | Como Vencer Esta Luta |
 | "plano", "faseado", "fases", "etapas" | `plano_tatico_faseado` | Plano Tático Faseado |
 | "cronologia", "tempo", "timeline", "minutos" | `cronologia_inteligente` | Cronologia Inteligente |
 | "matchup", "versus", "comparação", "vantagens" | `analise_de_matchup` | Análise de Matchup |
@@ -235,7 +233,7 @@ O diff é exibido inline no campo correspondente usando o componente `EditableTe
 ```javascript
 // AiStrategyBox.jsx - fieldMappings
 const fieldMappings = {
-  'tese_da_vitoria': ['tese_da_vitoria', 'como_vencer', 'resumo'],
+  'como_vencer': ['como_vencer', 'strategy', 'tese_da_vitoria'],
   'plano_tatico_faseado': ['plano_tatico_faseado', 'plano_tatico'],
   'cronologia_inteligente': ['cronologia_inteligente', 'cronologia'],
   'analise_de_matchup': ['analise_de_matchup', 'matchup'],

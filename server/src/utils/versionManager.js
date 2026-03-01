@@ -10,56 +10,70 @@ const ProfileVersion = require('../models/ProfileVersion');
  * @param {string} analysisId - ID da análise
  * @param {Object} currentData - Dados atuais da análise
  * @param {string} userId - ID do usuário
+ * @returns {number} Número da próxima versão
  */
 async function ensureOriginalVersion(analysisId, currentData, userId) {
   try {
-    const existingVersions = await AnalysisVersion.getByAnalysisId(analysisId);
+    const existingVersions = await AnalysisVersion.getByAnalysisId(analysisId, 'fight');
     
     if (!existingVersions || existingVersions.length === 0) {
-      await AnalysisVersion.create({
-        analysis_id: analysisId,
-        version_number: 1,
-        charts: currentData.charts,
-        summary: currentData.summary,
-        technical_stats: currentData.technical_stats,
-        change_description: 'Versão original (análise de vídeo)',
-        created_by: userId
-      });
-      console.log('✅ Versão original da análise criada');
+      const versionData = {
+        analysisId,
+        analysisType: 'fight',
+        versionNumber: 1,
+        content: {
+          summary: currentData.summary,
+          charts: currentData.charts,
+          technical_stats: currentData.technical_stats
+        },
+        editedBy: 'user',
+        editReason: 'Versão original (análise de vídeo)',
+        isCurrent: false
+      };
+      
+      await AnalysisVersion.create(versionData);
+      return 2; // Próxima versão será 2
     }
+    
+    return (existingVersions.length || 0) + 1;
   } catch (error) {
-    console.warn('⚠️ Erro ao garantir versão original:', error.message);
+    console.error('❌ Erro ao garantir versão original:', error.message);
+    console.error('Stack:', error.stack);
+    throw error; // Propagar erro em vez de silenciar
   }
 }
 
 /**
  * Cria uma nova versão da análise
- * @param {string} analysisId - ID da análise
- * @param {Object} newData - Novos dados da análise
- * @param {string} changeDescription - Descrição da mudança
- * @param {string} userId - ID do usuário
+ * @param {Object} params - Parâmetros
+ * @param {string} params.analysisId - ID da análise
+ * @param {number} params.versionNumber - Número da versão
+ * @param {Object} params.analysis - Dados da análise
+ * @param {string} params.editReason - Razão da edição
+ * @param {string} params.userId - ID do usuário
  * @returns {Object|null} Versão criada ou null
  */
-async function createAnalysisVersion(analysisId, newData, changeDescription, userId) {
+async function createAnalysisVersion({ analysisId, versionNumber, analysis, editReason, userId }) {
   try {
-    const existingVersions = await AnalysisVersion.getByAnalysisId(analysisId);
-    const nextVersion = (existingVersions?.length || 0) + 1;
-    
     const version = await AnalysisVersion.create({
-      analysis_id: analysisId,
-      version_number: nextVersion,
-      charts: newData.charts,
-      summary: newData.summary,
-      technical_stats: newData.technical_stats,
-      change_description: changeDescription,
-      created_by: userId
+      analysisId,
+      analysisType: 'fight',
+      versionNumber,
+      content: {
+        summary: analysis.summary,
+        charts: analysis.charts,
+        technical_stats: analysis.technical_stats
+      },
+      editedBy: 'ai', // Edição aceita pela IA
+      editReason,
+      isCurrent: false
     });
     
-    console.log(`✅ Versão ${nextVersion} da análise criada`);
+    console.log(`✅ Versão ${versionNumber} da análise criada`);
     return version;
   } catch (error) {
-    console.warn('⚠️ Erro ao criar versão da análise:', error.message);
-    return null;
+    console.error('❌ Erro ao criar versão da análise:', error.message);
+    throw error; // Propagar erro
   }
 }
 

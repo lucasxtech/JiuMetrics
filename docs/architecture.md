@@ -233,15 +233,97 @@ O sistema de chat permite refinamento de conteúdo com IA em três contextos:
 
 | Campo | Palavras-chave no pedido |
 |-------|-------------------------|
-| `tese_da_vitoria` | tese, vencer, vitória, ganhar |
+| `como_vencer` (em resumo_rapido) | tese, vencer, vitória, ganhar, como vencer |
 | `plano_tatico_faseado` | plano, faseado, fases, etapas |
 | `cronologia_inteligente` | cronologia, tempo, timeline, minutos |
 | `analise_de_matchup` | matchup, versus, comparação, vantagens |
 | `checklist_tatico` | checklist, lista, não fazer, proibido |
 
+**Sistema de Versionamento:**
+
+O chat integra versionamento automático - cada edição aplicada cria uma nova versão:
+
+```
+1. Usuário pede alteração no chat
+                    ↓
+2. IA gera sugestão de edição
+                    ↓
+3. Usuário aceita → Conteúdo atualizado
+                    ↓
+4. Sistema cria registro de versão automaticamente
+   - Timestamp
+   - Snapshot completo do conteúdo
+   - Usuário que fez a mudança
+                    ↓
+5. Histórico fica disponível em VersionHistoryPanel
+   - Comparação visual (diff)
+   - Restauração com um clique
+```
+
+**Endpoints de Versionamento:**
+- `GET /chat/versions/:type/:id` - Lista histórico
+- `POST /chat/restore-version/:type/:id` - Restaura versão específica
+
+**Modelos:** AnalysisVersion, ProfileVersion, StrategyVersion
+
 ---
 
-### 4. Comparação
+### 4. Sistema de Cost Tracking
+
+O sistema registra e monitora o uso da API do Google Gemini para controle de custos:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    COST TRACKING SYSTEM                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Cada chamada à API Gemini gera um registro:                   │
+│  - Endpoint usado (/ai/analyze-video, /chat/send, etc)         │
+│  - Tokens de entrada (promptTokenCount)                        │
+│  - Tokens de saída (candidatesTokenCount)                      │
+│  - Tokens totais (totalTokenCount)                             │
+│  - Timestamp                                                    │
+│  - User ID                                                      │
+│                                                                 │
+│  ┌──────────────────────────┐                                  │
+│  │   ApiUsage Model         │                                  │
+│  │  (Supabase: api_usage)   │                                  │
+│  └──────────┬───────────────┘                                  │
+│             │                                                   │
+│             ▼                                                   │
+│  ┌──────────────────────────┐                                  │
+│  │ apiUsageLogger.js        │                                  │
+│  │  logApiUsage()           │                                  │
+│  └──────────┬───────────────┘                                  │
+│             │                                                   │
+│             ▼                                                   │
+│  ┌──────────────────────────┐                                  │
+│  │ usageController.js       │                                  │
+│  │  GET /usage/stats        │ ← Estatísticas de uso           │
+│  │  GET /usage/pricing      │ ← Cálculo de custos             │
+│  └──────────────────────────┘                                  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Tabela `api_usage`:**
+```sql
+CREATE TABLE api_usage (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id),
+  endpoint TEXT NOT NULL,
+  input_tokens INTEGER,
+  output_tokens INTEGER,
+  total_tokens INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Cálculo de Custos (Gemini 1.5 Pro):**
+- Input: $0,00125 / 1K tokens
+- Output: $0,005 / 1K tokens
+
+### 5. Comparação
 
 ```
 Frontend (Compare page)
@@ -271,8 +353,11 @@ Análise lado a lado
 ### Backend
 | Pacote | Versão | Uso |
 |--------|--------|-----|
-| express | latest | Framework web |
+| express | ^4.18.2 | Framework web |
+| @google/generative-ai | ^0.21.0 | Google Gemini API |
+| @supabase/supabase-js | ^2.39.0 | Database & Auth |
 | cors | latest | CORS middleware |
+| multer | ^1.4.5-lts.1 | Upload de arquivos |
 | uuid | latest | ID generation |
 | dotenv | latest | Variáveis de env |
 | nodemon | dev | Auto-reload |
@@ -290,29 +375,31 @@ Análise lado a lado
 ### Backend
 - **MVC Pattern**: Models, Controllers, Routes
 - **RESTful API**: Endpoints seguindo convenções REST
-- **Error Handling**: Tratamento centralizado de erros
-- **In-Memory DB**: Mock de banco (substituir com Supabase/Firebase)
+- **Error Handling**: Tratamento centralizado de erros com classes customizadas
+- **Supabase**: PostgreSQL com Row Level Security (RLS)
+- **AI Integration**: Google Gemini API com prompts especializados
+- **Cost Tracking**: Monitoramento automático de uso da API
 
 ---
 
 ## Escalabilidade Futura
 
 ### Curto Prazo
-- [ ] Integração com Supabase (PostgreSQL)
-- [ ] Autenticação JWT
-- [ ] Upload de vídeos (Cloudinary)
-- [ ] Formulários completos com validação
+- [ ] Upload de vídeos (Cloudinary/S3)
+- [ ] Análise automática de vídeos via Gemini 2.0
+- [ ] Sistema de notificações em tempo real
+- [ ] Testes E2E completos (Playwright)
 
 ### Médio Prazo
-- [ ] IA real com OpenAI/Claude API
-- [ ] Histórico de lutas
-- [ ] Sistema de ranking
-- [ ] Notificações em tempo real (WebSocket)
+- [ ] Histórico de lutas e estatísticas
+- [ ] Sistema de ranking de atletas
+- [ ] Exportação de relatórios (PDF)
+- [ ] WebSocket para updates em tempo real
 
 ### Longo Prazo
 - [ ] Mobile app (React Native)
-- [ ] Análise de vídeo automática
-- [ ] Machine Learning customizado
+- [ ] Análise de vídeo frame-by-frame
+- [ ] Machine Learning customizado para Jiu-Jitsu
 - [ ] Marketplace de estratégias
 
 ---
@@ -322,6 +409,8 @@ Análise lado a lado
 ### Frontend (.env)
 ```
 VITE_API_URL=http://localhost:5050/api
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-chave-anon
 ```
 
 ### Backend (.env)
@@ -329,6 +418,14 @@ VITE_API_URL=http://localhost:5050/api
 PORT=5050
 NODE_ENV=development
 CORS_ORIGIN=http://localhost:5173
+
+# Google Gemini AI
+GOOGLE_API_KEY=sua-api-key-do-google
+
+# Supabase
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
+SUPABASE_JWT_SECRET=seu-jwt-secret
 ```
 
 ---
@@ -406,6 +503,8 @@ refactor: descrição
 
 ---
 
-**Última atualização:** Janeiro 2026
+**Última atualização:** Janeiro 2025
 **Versão:** 2.0.0
 **Status:** ✅ Em produção
+**IA:** Google Gemini API
+**Database:** Supabase (PostgreSQL)
