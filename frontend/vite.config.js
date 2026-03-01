@@ -5,6 +5,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   // base: '/JiuMetrics/' é usado apenas para deploy no GitHub Pages
-  // Em desenvolvimento local, usamos '/'
-  base: process.env.NODE_ENV === 'production' ? '/JiuMetrics/' : '/',
+  // Para Vercel, usamos '/' (raiz do domínio)
+  base: process.env.VERCEL ? '/' : (process.env.NODE_ENV === 'production' ? '/JiuMetrics/' : '/'),
 })
