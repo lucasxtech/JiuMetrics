@@ -1,18 +1,40 @@
+import PropTypes from 'prop-types';
+
 /**
- * Componente Badge reutilizável para tags visuais
+ * Componente Badge reutilizável e moderno para tags visuais
+ * @param {Object} props
+ * @param {string} props.variant - Variante do badge (primary, success, warning, danger, info, neutral)
+ * @param {React.ReactNode} props.children - Conteúdo do badge
+ * @param {React.ReactNode} props.icon - Ícone opcional
+ * @param {string} props.className - Classes CSS adicionais
  */
-export default function Badge({ children, variant = 'default' }) {
-  const variants = {
-    default: 'bg-slate-100 text-slate-700',
-    success: 'bg-green-100 text-green-700',
-    danger: 'bg-red-100 text-red-700',
-    warning: 'bg-orange-100 text-orange-700',
-    info: 'bg-blue-100 text-blue-700',
-  };
+export default function Badge({ 
+  children, 
+  variant = 'neutral', 
+  icon,
+  className = '',
+  ...rest 
+}) {
+  const baseClass = 'badge-modern';
+  const variantClass = `badge-${variant}`;
+  
+  const classes = [
+    baseClass,
+    variantClass,
+    className,
+  ].filter(Boolean).join(' ');
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]}`}>
+    <span className={classes} {...rest}>
+      {icon && <span className="flex-shrink-0">{icon}</span>}
       {children}
     </span>
   );
 }
+
+Badge.propTypes = {
+  variant: PropTypes.oneOf(['primary', 'success', 'warning', 'danger', 'info', 'neutral']),
+  children: PropTypes.node.isRequired,
+  icon: PropTypes.node,
+  className: PropTypes.string,
+};
