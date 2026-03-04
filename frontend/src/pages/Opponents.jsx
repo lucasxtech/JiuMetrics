@@ -1,6 +1,7 @@
 // Página de Adversários - Similar a Athletes
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AthleteCard from '../components/common/AthleteCard';
 import AthleteForm from '../components/forms/AthleteForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -10,32 +11,22 @@ import { getAllOpponents } from '../services/opponentService';
 
 export default function Opponents() {
   const navigate = useNavigate();
-  const [opponents, setOpponents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  // Carregar adversários da API
-  useEffect(() => {
-    loadOpponents();
-  }, []);
-
-  async function loadOpponents() {
-    try {
-      setLoading(true);
-      setError(null);
+  // ✅ React Query: Cache automático de 5 minutos
+  const { data: opponents = [], isLoading: loading, error } = useQuery({
+    queryKey: ['opponents'],
+    queryFn: async () => {
       const response = await getAllOpponents();
-      setOpponents(response?.data || []);
-    } catch {
-      setError('Erro ao carregar adversários. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  }
+      return response?.data || [];
+    },
+  });
 
   const handleOpponentCreated = () => {
     setShowForm(false);
-    loadOpponents();
+    // ✅ Invalidar cache para recarregar lista atualizada
+    queryClient.invalidateQueries({ queryKey: ['opponents'] });
   };
 
   if (loading) {
@@ -73,8 +64,8 @@ export default function Opponents() {
       {/* Erro */}
       {error && (
         <ErrorMessage 
-          message={error} 
-          onDismiss={() => setError(null)}
+          message="Erro ao carregar adversários. Tente novamente." 
+          onDismiss={() => queryClient.invalidateQueries({ queryKey: ['opponents'] })}
         />
       )}
 

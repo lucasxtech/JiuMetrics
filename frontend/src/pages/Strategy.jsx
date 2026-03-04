@@ -1,5 +1,6 @@
 // Página de Estratégia - Análise com IA - Design Moderno
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getAllAthletes } from '../services/athleteService';
 import { getAllOpponents } from '../services/opponentService';
 import { compareAndGenerateStrategy } from '../services/strategyService';
@@ -10,52 +11,32 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import CustomSelect from '../components/common/CustomSelect';
 
 export default function Strategy() {
-  const [athletes, setAthletes] = useState([]);
-  const [opponents, setOpponents] = useState([]);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [selectedOpponent, setSelectedOpponent] = useState(null);
   const [strategy, setStrategy] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState(null);
   const [showChat, setShowChat] = useState(false);
 
-  // Carregar atletas e adversários ao montar
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setIsLoadingData(true);
-        setError(null);
-        
-        const [athletesData, opponentsData] = await Promise.all([
-          getAllAthletes(),
-          getAllOpponents()
-        ]);
+  // ✅ React Query: Carregar atletas com cache
+  const { data: athletes = [], isLoading: isLoadingAthletes } = useQuery({
+    queryKey: ['athletes'],
+    queryFn: async () => {
+      const response = await getAllAthletes();
+      return response?.data || [];
+    },
+  });
 
-        setAthletes(athletesData.data || []);
-        setOpponents(opponentsData.data || []);
-      } catch (err) {
-        console.error('❌ Erro ao carregar dados:', err);
-        
-        // Mensagem específica baseada no erro
-        let errorMessage = 'Erro ao carregar atletas e adversários';
-        
-        if (err.response?.status === 401) {
-          errorMessage = 'Sessão expirada. Você será redirecionado para o login.';
-        } else if (err.response?.status === 500) {
-          errorMessage = 'Erro no servidor. Tente novamente mais tarde.';
-        } else if (!navigator.onLine) {
-          errorMessage = 'Sem conexão com a internet.';
-        }
-        
-        setError(errorMessage);
-      } finally {
-        setIsLoadingData(false);
-      }
-    }
+  // ✅ React Query: Carregar adversários com cache
+  const { data: opponents = [], isLoading: isLoadingOpponents } = useQuery({
+    queryKey: ['opponents'],
+    queryFn: async () => {
+      const response = await getAllOpponents();
+      return response?.data || [];
+    },
+  });
 
-    loadData();
-  }, []);
+  const isLoadingData = isLoadingAthletes || isLoadingOpponents;
 
   const handleGenerateStrategy = async () => {
     if (!selectedAthlete || !selectedOpponent) {

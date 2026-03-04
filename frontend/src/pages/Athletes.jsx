@@ -1,6 +1,7 @@
 // Página de Atletas - Lista e gerenciamento
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AthleteCard from '../components/common/AthleteCard';
 import AthleteForm from '../components/forms/AthleteForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -10,32 +11,23 @@ import { getAllAthletes } from '../services/athleteService';
 
 export default function Athletes() {
   const navigate = useNavigate();
-  const [athletes, setAthletes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  // Carregar atletas da API
-  useEffect(() => {
-    loadAthletes();
-  }, []);
-
-  async function loadAthletes() {
-    try {
-      setLoading(true);
-      setError(null);
+  // ✅ React Query: Cache automático de 5 minutos
+  // Navegação repetida para esta página será instantânea!
+  const { data: athletes = [], isLoading: loading, error } = useQuery({
+    queryKey: ['athletes'],
+    queryFn: async () => {
       const response = await getAllAthletes();
-      setAthletes(response?.data || []);
-    } catch {
-      setError('Erro ao carregar atletas. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  }
+      return response?.data || [];
+    },
+  });
 
   const handleAthleteCreated = () => {
     setShowForm(false);
-    loadAthletes();
+    // ✅ Invalidar cache para recarregar lista atualizada
+    queryClient.invalidateQueries({ queryKey: ['athletes'] });
   };
 
   if (loading) {
@@ -73,8 +65,8 @@ export default function Athletes() {
       {/* Erro */}
       {error && (
         <ErrorMessage 
-          message={error} 
-          onDismiss={() => setError(null)}
+          message="Erro ao carregar atletas. Tente novamente." 
+          onDismiss={() => queryClient.invalidateQueries({ queryKey: ['athletes'] })}
         />
       )}
 

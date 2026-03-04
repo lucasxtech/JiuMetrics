@@ -1,5 +1,6 @@
 // Página de Histórico de Análises Táticas
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import html2pdf from 'html2pdf.js';
 import AnalysisCard from '../components/analysis/AnalysisCard';
 import AiStrategyBox from '../components/analysis/AiStrategyBox';
@@ -10,9 +11,7 @@ import { getAllAnalyses, deleteAnalysis, updateAnalysis } from '../services/anal
 import { extractStrategyContent, updateStrategyField, normalizeStrategyStructure } from '../utils/strategyUtils';
 
 export default function Analyses() {
-  const [analyses, setAnalyses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -21,36 +20,29 @@ export default function Analyses() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const contentRef = useRef(null);
   
   // Estado para edição pendente (diff inline)
   const [pendingEdit, setPendingEdit] = useState(null);
   const [isApplyingEdit, setIsApplyingEdit] = useState(false);
-  const [filters, setFilters] = useState({
+  const [filters] = useState({
     athleteId: null,
     opponentId: null,
     limit: 20,
     offset: 0
   });
 
-  useEffect(() => {
-    loadAnalyses();
-  }, [filters]);
-
-  const loadAnalyses = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // ✅ React Query: Carregar análises com cache
+  const { data: analyses = [], isLoading: loading, error } = useQuery({
+    queryKey: ['analyses', filters],
+    queryFn: async () => {
       const data = await getAllAnalyses(filters);
-      // Garantir que sempre seja um array
-      setAnalyses(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Erro ao carregar análises:', err);
-      setError('Falha ao carregar análises. Tente novamente.');
-      setAnalyses([]); // Garantir array vazio em caso de erro
-    } finally {
-      setLoading(false);
-    }
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  const loadAnalyses = () => {
+    // ✅ Recarregar invalidando o cache
+    queryClient.invalidateQueries({ queryKey: ['analyses'] });
   };
 
   const handleView = (analysis) => {
@@ -68,7 +60,8 @@ export default function Analyses() {
     
     try {
       await deleteAnalysis(analysisToDelete);
-      setAnalyses(prev => prev.filter(a => a.id !== analysisToDelete));
+      // ✅ Invalidar cache para recarregar lista atualizada
+      queryClient.invalidateQueries({ queryKey: ['analyses'] });
       setAnalysisToDelete(null);
     } catch (err) {
       console.error('Erro ao deletar análise:', err);
@@ -115,7 +108,7 @@ export default function Analyses() {
       switch (field) {
         case 'tese_da_vitoria':
         case 'como_vencer':
-        case 'strategy':
+        case 'strategy': {
           // Atualizar tese_da_vitoria e resumo_rapido.como_vencer
           const teseValue = typeof newValue === 'string' ? newValue : JSON.stringify(newValue);
           updatedStrategy = {
@@ -130,6 +123,7 @@ export default function Analyses() {
             }
           };
           break;
+        }
           
         case 'plano_tatico':
         case 'plano_tatico_faseado':
@@ -178,7 +172,7 @@ export default function Analyses() {
           };
       }
       
-    const result = await updateAnalysis(selectedAnalysis.id, { 
+    await updateAnalysis(selectedAnalysis.id, { 
       strategy_data: updatedStrategy,
       edited_field: field,
       edited_by: 'ai',
@@ -228,12 +222,8 @@ export default function Analyses() {
       // Atualizar estado local com os dados limpos
       setSelectedAnalysis(prev => ({ ...prev, strategy_data: updatedStrategy }));
       
-      // Atualizar também na lista de análises localmente
-      setAnalyses(prev => prev.map(a => 
-        a.id === selectedAnalysis.id 
-          ? { ...a, strategy_data: updatedStrategy }
-          : a
-      ));
+      // ✅ Invalidar cache para recarregar lista atualizada
+      queryClient.invalidateQueries({ queryKey: ['analyses'] });
     } catch (err) {
       console.error('Erro ao salvar edição manual:', err);
       alert('Erro ao salvar edição. Tente novamente.');
