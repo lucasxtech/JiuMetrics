@@ -22,6 +22,17 @@ const VideoAnalysis = lazy(() => import('./pages/VideoAnalysis'));
 const Analyses = lazy(() => import('./pages/Analyses'));
 const Settings = lazy(() => import('./pages/Settings'));
 
+// ✅ Preload agressivo das páginas mais usadas (após login)
+// Carrega em background sem bloquear navegação
+if (typeof window !== 'undefined') {
+  // Esperar um pouco após login para precarregar
+  setTimeout(() => {
+    import('./pages/Athletes');
+    import('./pages/Opponents');
+    import('./pages/Analyses');
+  }, 2000);
+}
+
 function AppContent() {
   const location = useLocation();
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';

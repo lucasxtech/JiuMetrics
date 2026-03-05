@@ -19,16 +19,13 @@ export default defineConfig({
         },
       },
     },
-    // Comprimir assets com terser
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Remove console.log em produção
-        drop_debugger: true,
-      },
-    },
+    // ✅ Usar esbuild (mais rápido e já incluído no Vite)
+    minify: 'esbuild',
     // Aumentar limite de warning de tamanho de chunk
     chunkSizeWarningLimit: 1000,
+    // ✅ Otimizações de compressão
+    target: 'esnext',
+    cssCodeSplit: true,
   },
   
   // ✅ Otimizações de dev server

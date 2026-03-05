@@ -1,14 +1,15 @@
 // Página de Histórico de Análises Táticas
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import html2pdf from 'html2pdf.js';
 import AnalysisCard from '../components/analysis/AnalysisCard';
 import AiStrategyBox from '../components/analysis/AiStrategyBox';
-import StrategyChatPanel from '../components/chat/StrategyChatPanel';
-import StrategyVersionHistoryPanel from '../components/analysis/StrategyVersionHistoryPanel';
 import ConfirmDeleteModal from '../components/common/ConfirmDeleteModal';
 import { getAllAnalyses, deleteAnalysis, updateAnalysis } from '../services/analysisService';
 import { extractStrategyContent, updateStrategyField, normalizeStrategyStructure } from '../utils/strategyUtils';
+
+// ✅ Lazy load de componentes pesados (só carregam quando usuário aciona)
+const StrategyChatPanel = lazy(() => import('../components/chat/StrategyChatPanel'));
+const StrategyVersionHistoryPanel = lazy(() => import('../components/analysis/StrategyVersionHistoryPanel'));
 
 export default function Analyses() {
   const queryClient = useQueryClient();
@@ -264,6 +265,9 @@ export default function Analyses() {
 
     setIsDownloading(true);
     try {
+      // ✅ Lazy import do html2pdf (só carrega quando usuário clica em download)
+      const html2pdf = (await import('html2pdf.js')).default;
+      
       const strategyData = selectedAnalysis.strategy_data?.strategy || selectedAnalysis.strategy_data;
       
       // Parsear plano_tatico_faseado se for string
@@ -773,37 +777,41 @@ export default function Analyses() {
             {/* Painel Lateral - Chat */}
             {showChat && (
               <div className="w-96 ml-4 flex-shrink-0 animate-fadeIn">
-                <StrategyChatPanel
-                  strategyData={selectedAnalysis.strategy_data}
-                  athleteName={selectedAnalysis.athlete_name}
-                  opponentName={selectedAnalysis.opponent_name}
-                  onClose={() => setShowChat(false)}
-                  pendingEdit={pendingEdit}
-                  onSuggestEdit={handleSuggestEdit}
-                  onAcceptEdit={handleAcceptEdit}
-                  onRejectEdit={handleRejectEdit}
-                  isApplyingEdit={isApplyingEdit}
-                  onStrategyUpdated={async (updatedStrategy) => {
-                    try {
-                      await updateAnalysis(selectedAnalysis.id, { strategy_data: updatedStrategy });
-                      setSelectedAnalysis(prev => ({ ...prev, strategy_data: updatedStrategy }));
-                      loadAnalyses();
-                    } catch (err) {
-                      console.error('Erro ao atualizar estratégia:', err);
-                    }
-                  }}
-                />
+                <Suspense fallback={<div className="text-center py-4"><div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div></div>}>
+                  <StrategyChatPanel
+                    strategyData={selectedAnalysis.strategy_data}
+                    athleteName={selectedAnalysis.athlete_name}
+                    opponentName={selectedAnalysis.opponent_name}
+                    onClose={() => setShowChat(false)}
+                    pendingEdit={pendingEdit}
+                    onSuggestEdit={handleSuggestEdit}
+                    onAcceptEdit={handleAcceptEdit}
+                    onRejectEdit={handleRejectEdit}
+                    isApplyingEdit={isApplyingEdit}
+                    onStrategyUpdated={async (updatedStrategy) => {
+                      try {
+                        await updateAnalysis(selectedAnalysis.id, { strategy_data: updatedStrategy });
+                        setSelectedAnalysis(prev => ({ ...prev, strategy_data: updatedStrategy }));
+                        loadAnalyses();
+                      } catch (err) {
+                        console.error('Erro ao atualizar estratégia:', err);
+                      }
+                    }}
+                  />
+                </Suspense>
               </div>
             )}
 
             {/* Painel Lateral - Histórico de Versões */}
             {showHistory && (
               <div className="w-96 ml-4 flex-shrink-0 animate-fadeIn">
-                <StrategyVersionHistoryPanel
-                  analysisId={selectedAnalysis.id}
-                  onVersionRestored={handleVersionRestored}
-                  onClose={() => setShowHistory(false)}
-                />
+                <Suspense fallback={<div className="text-center py-4"><div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div></div>}>
+                  <StrategyVersionHistoryPanel
+                    analysisId={selectedAnalysis.id}
+                    onVersionRestored={handleVersionRestored}
+                    onClose={() => setShowHistory(false)}
+                  />
+                </Suspense>
               </div>
             )}
           </div>
