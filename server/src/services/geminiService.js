@@ -295,7 +295,7 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
       athleteName: context.athleteName || 'Atleta',
       giColor: context.giColor || 'azul',
       belt: context.belt || 'Não especificada',
-      result: context.result || 'Não especificado',
+      result: context.matchResult || context.result || 'Não especificado',
       beltRules: context.belt ? getBeltRulesText(context.belt) : ''
     };
     
@@ -322,7 +322,7 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
     console.log('   - Modelo Gemini (agentes):', modelToUse);
     
     const orchestrator = new Orchestrator(
-      genAI, // Cliente do Gemini
+      ai, // Cliente do Gemini
       process.env.OPENAI_API_KEY,
       modelToUse // Gemini model para agentes
     );
@@ -685,6 +685,44 @@ Se sugerir leg lock, verifique se é permitido para a faixa.`;
   }
 }
 
+/**
+ * Gera estratégia tática usando sistema multi-agentes (Scout + Gameplan + Rules + GPT-4)
+ * @param {Object} athleteData  - { name, belt, resumo, technical_stats }
+ * @param {Object} opponentData - { name, belt, resumo, technical_stats }
+ * @returns {Promise<Object>} { strategy, usage, metadata }
+ */
+async function generateTacticalStrategyWithAgents(athleteData, opponentData) {
+  const { StrategyOrchestrator } = require('./agents/strategy');
+
+  // Pré-processa dados na camada de serviço (formatTechnicalStats e getBeltLevel disponíveis aqui)
+  const athleteLevel = getBeltLevel(athleteData.belt);
+  const opponentLevel = getBeltLevel(opponentData.belt);
+  const restrictiveBelt = athleteLevel <= opponentLevel ? athleteData.belt : opponentData.belt;
+
+  const enrichedAthlete = {
+    ...athleteData,
+    statsText: formatTechnicalStats(athleteData.technical_stats, athleteData.name),
+  };
+  const enrichedOpponent = {
+    ...opponentData,
+    statsText: formatTechnicalStats(opponentData.technical_stats, opponentData.name),
+  };
+
+  const orchestrator = new StrategyOrchestrator(ai, process.env.OPENAI_API_KEY);
+  const result = await orchestrator.orchestrate(enrichedAthlete, enrichedOpponent, restrictiveBelt);
+
+  return {
+    strategy: result.strategy,
+    usage: {
+      modelName: `multi-agents-strategy (${result.metadata.orchestrator})`,
+      promptTokens: result.totalUsage.gemini.promptTokens + (result.totalUsage.gpt.prompt_tokens || 0),
+      completionTokens: result.totalUsage.gemini.completionTokens + (result.totalUsage.gpt.completion_tokens || 0),
+      totalTokens: result.totalUsage.totalTokens,
+    },
+    metadata: result.metadata,
+  };
+}
+
 // ====================================
 // RESUMO DE ATLETA
 // ====================================
@@ -918,6 +956,13 @@ async function chat({ contextType, contextData, history = [], userMessage, custo
     }))
   ];
 
+  // Para estratégia, reinjetar o mapeamento de campos ao final do histórico.
+  // Sem isso, após 2-3 trocas o modelo perde o contexto do mapeamento e
+  // tende a reutilizar o último field sugerido (viés de recência).
+  const messageToSend = contextType === 'strategy'
+    ? `${userMessage}\n\n[LEMBRETE INTERNO — NÃO EXIBIR AO USUÁRIO: Use os campos corretos conforme o pedido: "como vencer"/"tese"/"resumo" → como_vencer | "matchup"/"análise"/"assimetria" → analise_de_matchup | "plano"/"fases"/"faseado"/"tático"/"cronograma" → plano_tatico_faseado | "cronologia"/"linha do tempo"/"sequência de tempo" → cronologia_inteligente | "checklist"/"lista"/"pontos" → checklist_tatico. Identifique o campo pelo PEDIDO ATUAL, não pelo histórico recente.]`
+    : userMessage;
+
   try {
     // Iniciar chat com histórico
     const chatSession = modelToUse.startChat({
@@ -925,7 +970,7 @@ async function chat({ contextType, contextData, history = [], userMessage, custo
     });
 
     // Enviar nova mensagem
-    const result = await chatSession.sendMessage(userMessage);
+    const result = await chatSession.sendMessage(messageToSend);
     const responseText = result.response.text();
 
     // Extrair sugestão de edição (se houver)
@@ -967,7 +1012,8 @@ module.exports = {
   consolidateSummariesWithAI,
   
   // Estratégia e resumo
-  generateTacticalStrategy, 
+  generateTacticalStrategy,
+  generateTacticalStrategyWithAgents,
   generateAthleteSummary,
   
   // Chat

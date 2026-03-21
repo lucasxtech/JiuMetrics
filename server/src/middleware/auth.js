@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+
 /**
  * Middleware de autenticação JWT
  * Verifica se o token é válido e adiciona userId ao req
@@ -30,7 +32,7 @@ const authMiddleware = (req, res, next) => {
       return res.status(401).json({ error: 'Token mal formatado' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {
         return res.status(401).json({ error: 'Token inválido ou expirado' });
       }

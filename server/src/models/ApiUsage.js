@@ -9,6 +9,14 @@ const DEFAULT_MODEL = 'gemini-2.0-flash';
  * Fonte: https://ai.google.dev/pricing
  * @constant {Object}
  */
+// Limite para faixa de preço do gemini-3-pro-preview / 3.1-pro-preview
+const TIER_THRESHOLD = 200000;
+
+/**
+ * Preços do Google Gemini (USD por 1 milhão de tokens)
+ * Fonte: https://ai.google.dev/pricing
+ * Modelos com tiered pricing usam { tiers: [{threshold, input, output}] }
+ */
 const PRICING = {
   'gemini-2.0-flash': {
     input: 0.075,   // $0.075 por 1M tokens
@@ -18,9 +26,18 @@ const PRICING = {
     input: 1.25,    // $1.25 por 1M tokens
     output: 5.00    // $5.00 por 1M tokens
   },
+  // Gemini 3 Pro Preview e 3.1 Pro Preview — mesmo preço, faixas por contexto
   'gemini-3-pro-preview': {
-    input: 0,       // Grátis durante preview
-    output: 0
+    tiers: [
+      { threshold: TIER_THRESHOLD, input: 2.00, output: 12.00 },  // até 200K tokens
+      { threshold: Infinity,       input: 4.00, output: 18.00 }   // acima de 200K tokens
+    ]
+  },
+  'gemini-3.1-pro-preview': {
+    tiers: [
+      { threshold: TIER_THRESHOLD, input: 2.00, output: 12.00 },
+      { threshold: Infinity,       input: 4.00, output: 18.00 }
+    ]
   }
 };
 
@@ -35,11 +52,19 @@ function calculateCost(modelName, promptTokens, completionTokens) {
   if (!modelName || promptTokens < 0 || completionTokens < 0) {
     return 0;
   }
-  
+
   const pricing = PRICING[modelName] || PRICING[DEFAULT_MODEL];
-  const inputCost = (promptTokens / TOKENS_PER_MILLION) * pricing.input;
+
+  // Precificação em faixas (tiered) — usa a faixa baseada no total de tokens do prompt
+  if (pricing.tiers) {
+    const tier = pricing.tiers.find(t => promptTokens <= t.threshold);
+    const inputCost  = (promptTokens      / TOKENS_PER_MILLION) * tier.input;
+    const outputCost = (completionTokens  / TOKENS_PER_MILLION) * tier.output;
+    return inputCost + outputCost;
+  }
+
+  const inputCost  = (promptTokens     / TOKENS_PER_MILLION) * pricing.input;
   const outputCost = (completionTokens / TOKENS_PER_MILLION) * pricing.output;
-  
   return inputCost + outputCost;
 }
 
@@ -155,7 +180,14 @@ function aggregateStats(usageRecords) {
   };
 
   usageRecords.forEach(record => {
-    stats.totalCost += parseFloat(record.estimated_cost_usd || 0);
+    // Recalcula o custo com o preço atual (corrige registros históricos com $0)
+    const recordCost = calculateCost(
+      record.model_name,
+      record.prompt_tokens || 0,
+      record.completion_tokens || 0
+    );
+
+    stats.totalCost += recordCost;
     stats.totalTokens += record.total_tokens || 0;
 
     // Por modelo
@@ -166,8 +198,8 @@ function aggregateStats(usageRecords) {
         count: 0
       };
     }
-    stats.byModel[record.model_name].tokens += record.total_tokens;
-    stats.byModel[record.model_name].cost += parseFloat(record.estimated_cost_usd);
+    stats.byModel[record.model_name].tokens += record.total_tokens || 0;
+    stats.byModel[record.model_name].cost += recordCost;
     stats.byModel[record.model_name].count += 1;
 
     // Por operação
@@ -178,16 +210,25 @@ function aggregateStats(usageRecords) {
         count: 0
       };
     }
-    stats.byOperation[record.operation_type].tokens += record.total_tokens;
-    stats.byOperation[record.operation_type].cost += parseFloat(record.estimated_cost_usd);
+    stats.byOperation[record.operation_type].tokens += record.total_tokens || 0;
+    stats.byOperation[record.operation_type].cost += recordCost;
     stats.byOperation[record.operation_type].count += 1;
   });
 
   return stats;
 }
 
+// Alias para compatibilidade com logApiUsage (que passa endpoint em vez de operationType)
+async function create({ userId, endpoint, model: modelName, promptTokens, completionTokens, totalTokens, ...rest }) {
+  const operationType = endpoint
+    ? endpoint.replace(/^\/api\//, '').replace(/\//g, '_')
+    : 'unknown';
+  return logUsage({ userId, modelName, operationType, promptTokens, completionTokens, metadata: rest });
+}
+
 module.exports = {
   logUsage,
+  create,
   getUsageStats,
   aggregateStats,
   calculateCost,

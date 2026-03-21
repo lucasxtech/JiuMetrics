@@ -132,11 +132,62 @@ Todos normalizados entre 10-100 com `Math.min/Math.max`.
 
 ---
 
-## 🤖 Sistema de Chat IA para Estratégias (NOVO)
+## 🤖 Multi-Agentes de Estratégia
+
+Quando `USE_MULTI_AGENTS=true`, a geração de estratégia usa um pipeline de 3 agentes Gemini em paralelo + GPT-4 consolidando o resultado, em vez de um único prompt monolítico.
+
+| Agente | Foco | Entrada |
+|--------|------|---------|
+| **ScoutAgent** | Analisa APENAS o adversário | resumo + stats do adversário |
+| **GameplanAgent** | Cataloga APENAS o arsenal do atleta | resumo + stats do atleta |
+| **StrategyRulesAgent** | Valida regras IBJJF pela faixa mais restritiva | faixas dos dois |
+| **StrategyOrchestrator** | Consolida os 3 outputs no JSON final | outputs dos 3 agentes |
+
+O JSON resultante é **idêntico** ao do sistema monolítico — o frontend não precisa de nenhuma mudança.
+
+Para detalhes completos, veja [MULTI_AGENTS.md](./MULTI_AGENTS.md).
+
+---
+
+## 📑 Resumo Técnico e Auto-geração
+
+O resumo técnico (`technicalSummary`) é usado pela estratégia como base de contexto de cada lutador. Ele é gerado consolidando todas as análises de vídeo via IA.
+
+### Fluxo automático
+
+O resumo é **regenerado automaticamente** — o usuário não precisa clicar "Gerar com IA" manualmente:
+
+```
+Análise de vídeo salva
+    └→ (background) refreshTechnicalSummary()
+        → Consolida todas as análises do atleta/adversário via Gemini
+        → Salva technicalSummary atualizado no perfil
+
+Análise de vídeo deletada
+    ├── Ainda restam análises → regenera technicalSummary
+    └── Sem análises restantes → limpa technicalSummary (null)
+```
+
+### Geração manual
+
+O botão **"Gerar com IA"** no card do atleta/adversário ainda está disponível para forçar regeneração quando necessário (ex: após editar o perfil manualmente).
+
+### Uso na estratégia
+
+```
+strategyService.generateStrategy()
+    ↓
+Se technicalSummary salvo existe → usa diretamente (mais rápido, sem custo extra)
+Se não existe → consolida na hora via consolidateAnalyses()
+```
+
+---
+
+## 🤖 Sistema de Chat IA para Estratégias
 
 ### Visão Geral
 
-O sistema agora inclui um **Chat IA lateral** para refinar estratégias em tempo real, seguindo o padrão do `ProfileSummaryModal`.
+O sistema inclui um **Chat IA lateral** para refinar estratégias em tempo real.
 
 ### Componentes
 

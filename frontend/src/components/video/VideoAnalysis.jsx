@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { analyzeVideoLink, isValidVideoUrl } from '../../services/videoAnalysisService';
+import { isValidVideoUrl } from '../../services/videoAnalysisService';
+import { useAnalysisProgress } from '../../contexts/AnalysisProgressContext';
 import { getAllAthletes } from '../../services/athleteService';
 import { getAllOpponents } from '../../services/opponentService';
 import { createAthlete } from '../../services/athleteService';
@@ -12,25 +13,21 @@ export default function VideoAnalysisComponent() {
   const [videos, setVideos] = useState([
     { id: 1, url: '', giColor: 'preto' }
   ]);
-  const [analysis, setAnalysis] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [athleteName, setAthleteName] = useState('');
-  const [matchResult, setMatchResult] = useState(''); // Novo estado para resultado da luta
-  
+  const [matchResult, setMatchResult] = useState('');
+
   // Novos estados para vincular análise
   const [personType, setPersonType] = useState('athlete'); // 'athlete' ou 'opponent'
   const [personId, setPersonId] = useState('');
   const [athletes, setAthletes] = useState([]);
   const [opponents, setOpponents] = useState([]);
   const [loadingPeople, setLoadingPeople] = useState(true);
-  
-  // Estados para feedback de progresso detalhado
-  const [processingStage, setProcessingStage] = useState('');
-  const [processingProgress, setProcessingProgress] = useState(0);
 
   // Estado para modal de cadastro rápido
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+
+  const { isLoading, analysis, processingStage, processingProgress, analysisError, startAnalysis } = useAnalysisProgress();
 
   const giColorOptions = [
     { value: 'preto', label: 'Preto' },
@@ -139,66 +136,15 @@ export default function VideoAnalysisComponent() {
       return;
     }
 
-    setIsLoading(true);
     setError(null);
-    setAnalysis(null);
-    setProcessingStage('Iniciando análise...');
-    setProcessingProgress(10);
-
-    try {
-      // Simular progresso enquanto aguarda resposta
-      const progressInterval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev >= 90) return 90;
-          return prev + 2;
-        });
-      }, 1000);
-
-      setProcessingStage('📥 Baixando vídeo...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProcessingProgress(20);
-      
-      setProcessingStage('⬆️  Enviando para Gemini...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProcessingProgress(30);
-      
-      setProcessingStage('⏳ Processando vídeo (pode levar 2-5 minutos)...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProcessingProgress(40);
-      
-      setProcessingStage('🤖 Gemini analisando o vídeo completo...');
-      
-      const result = await analyzeVideoLink({
-        videos: validVideos.map(v => ({ url: v.url, giColor: v.giColor })),
-        athleteName: athleteName.trim(),
-        personId,
-        personType,
-        matchResult: matchResult || undefined, // Adiciona resultado da luta se fornecido
-        belt: selectedPerson?.belt || undefined // Adiciona faixa do atleta
-      });
-      
-      clearInterval(progressInterval);
-      setProcessingProgress(100);
-      setProcessingStage('✅ Análise concluída!');
-      
-      if (result.data) {
-        setAnalysis(result);
-      } else {
-        setError('Nenhum dado retornado da análise');
-      }
-    } catch (err) {
-      const errorMsg =
-        err.response?.data?.error || err.response?.data?.details || err.message || 'Erro ao analisar os vídeos. Tente novamente.';
-      setError(errorMsg);
-      setProcessingStage('');
-      setProcessingProgress(0);
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => {
-        setProcessingStage('');
-        setProcessingProgress(0);
-      }, 2000);
-    }
+    startAnalysis({
+      videos: validVideos.map(v => ({ url: v.url, giColor: v.giColor })),
+      athleteName: athleteName.trim(),
+      personId,
+      personType,
+      matchResult: matchResult || undefined,
+      belt: selectedPerson?.belt || undefined,
+    });
   };
 
   return (
@@ -348,9 +294,9 @@ export default function VideoAnalysisComponent() {
             </div>
 
             {/* Erro */}
-            {error && (
+            {(error || analysisError) && (
               <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {error}
+                {error || analysisError}
               </div>
             )}
 
@@ -477,10 +423,6 @@ export default function VideoAnalysisComponent() {
                         <p className="text-3xl font-bold text-slate-900">{analysis.data.technical_stats.guard_passes.quantidade}</p>
                         <p className="text-xs text-slate-500 mt-1">Passagens</p>
                       </div>
-                      <div className="pt-2 border-t border-slate-100">
-                        <p className="text-xl font-bold text-orange-600">{analysis.data.technical_stats.guard_passes.tempo_medio_segundos}s</p>
-                        <p className="text-xs text-slate-500">Tempo médio</p>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -496,10 +438,6 @@ export default function VideoAnalysisComponent() {
                       <div>
                         <p className="text-3xl font-bold text-slate-900">{analysis.data.technical_stats.back_takes.quantidade}</p>
                         <p className="text-xs text-slate-500 mt-1">Pegadas</p>
-                      </div>
-                      <div className="pt-2 border-t border-slate-100">
-                        <p className="text-xl font-bold text-purple-600">{analysis.data.technical_stats.back_takes.tempo_medio_segundos}s</p>
-                        <p className="text-xs text-slate-500">Controle médio</p>
                       </div>
                       {analysis.data.technical_stats.back_takes.tentou_finalizar && (
                         <div className="pt-2">

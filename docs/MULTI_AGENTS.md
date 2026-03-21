@@ -2,11 +2,101 @@
 
 ## 📋 Visão Geral
 
-O Sistema Multi-Agentes é uma arquitetura avançada de análise que utiliza **3 agentes especializados** (Gemini Vision) coordenados por um **orquestrador inteligente** (GPT-4/GPT-5) para produzir análises mais precisas e detalhadas de vídeos de Jiu-Jitsu.
+O sistema possui **dois pipelines multi-agentes** independentes, ambos ativados pela mesma flag `USE_MULTI_AGENTS=true`:
+
+| Pipeline | Entrada | Agentes | Orquestrador |
+|----------|---------|---------|--------------|
+| **Análise de Vídeo** | Frames de vídeo (imagens) | Técnico, Tático, Regras IBJJF | GPT-4 |
+| **Geração de Estratégia** | Resumos textuais de atleta e adversário | Scout, Gameplan, StrategyRules | GPT-4 |
+
+---
+
+## 🥋 Pipeline 2: Multi-Agentes de Estratégia (NOVO)
+
+### Visão Geral
+
+Ao gerar uma estratégia tática, 3 agentes Gemini rodam em **paralelo** — cada um com foco exclusivo — e o GPT-4 consolida o resultado final no formato JSON da estratégia.
+
+### Arquitetura
+
+```
+                    ┌─────────────────────────┐
+                    │   ORQUESTRADOR GPT-4    │
+                    │  (síntese da estratégia)│
+                    └──────────┬──────────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+   ┌────▼─────┐         ┌─────▼──────┐        ┌─────▼──────┐
+   │  Scout   │         │  Gameplan  │        │  Strategy  │
+   │  Agent   │         │   Agent    │        │ RulesAgent │
+   │ (Gemini) │         │  (Gemini)  │        │  (Gemini)  │
+   └──────────┘         └────────────┘        └────────────┘
+  Analisa APENAS       Cataloga APENAS        Valida regras
+  o adversário         o arsenal do atleta    IBJJF por faixa
+```
+
+### Agentes
+
+#### 1. **ScoutAgent** — Adversário
+Analisa exclusivamente o adversário: guarda preferida, entradas em pé, ataques, vulnerabilidades e padrão comportamental (observável, não inferência psicológica).
+
+**Output:** `preferred_guard`, `standup_entry`, `signature_attacks`, `dangerous_finishes`, `vulnerabilities`, `behavioral_pattern`, `counter_attacks`, `scout_summary`
+
+#### 2. **GameplanAgent** — Atleta
+Cataloga exclusivamente o arsenal do atleta: melhores armas, guarda ideal, passagens, finalizações de alta taxa, sequências de poder e lacunas a evitar.
+
+**Output:** `best_weapons`, `optimal_guard`, `optimal_passing`, `high_pct_finishes`, `power_sequence`, `phase_strengths`, `gaps_to_avoid`, `gameplan_summary`
+
+#### 3. **StrategyRulesAgent** — Regras IBJJF
+Valida o que é permitido/proibido considerando a faixa mais restritiva dos dois competidores. Usa `BELT_RULES` de `config/ai.js`.
+
+**Output:** `allowed_leg_locks`, `forbidden_techniques`, `scoring_opportunities`, `dq_risks`, `belt_warnings`, `rules_summary`
+
+#### 4. **StrategyOrchestrator** — GPT-4
+Recebe os 3 outputs e gera o JSON final da estratégia no mesmo formato do sistema monolítico (`resumo_rapido`, `analise_de_matchup`, `plano_tatico_faseado`, `cronologia_inteligente`, `checklist_tatico`).
+
+### Arquivos
+
+```
+server/src/services/agents/strategy/
+├── StrategyAgentBase.js      # Classe base text-only (sem imagens)
+├── ScoutAgent.js             # Análise do adversário
+├── GameplanAgent.js          # Arsenal do atleta
+├── StrategyRulesAgent.js     # Validação IBJJF
+├── StrategyOrchestrator.js   # Orquestração + GPT-4
+└── index.js                  # Exports
+
+server/src/services/prompts/
+├── strategy-scout.txt        # Prompt do Scout
+├── strategy-gameplan.txt     # Prompt do Gameplan
+├── strategy-rules.txt        # Prompt de Regras
+└── strategy-orchestrator.txt # Prompt de consolidação GPT-4
+```
+
+### Ponto de entrada
+
+```javascript
+// geminiService.js
+const result = await geminiService.generateTacticalStrategyWithAgents(athleteData, opponentData);
+// result.strategy → mesmo formato de generateTacticalStrategy()
+```
+
+Ativado automaticamente via `strategyService.js` quando `STRATEGY_AGENT_CONFIG.ENABLED === true` (lê `USE_MULTI_AGENTS`).
+
+### Custo estimado
+
+- **3 Agentes Gemini** (texto): ~5.000 tokens → ~$0.001
+- **Orquestrador GPT-4**: ~8.000 tokens → ~$0.05
+- **Total por estratégia**: ~$0.05
+
+---
+
+## 🎥 Pipeline 1: Multi-Agentes de Vídeo (ORIGINAL)
+
+O Sistema Multi-Agentes de vídeo utiliza **3 agentes especializados** (Gemini Vision) coordenados por um **orquestrador inteligente** (GPT-4) para produzir análises mais precisas de frames de vídeo.
 
 ### Por que Multi-Agentes?
-
-**Problema com sistema monolítico:**
 - Análise única tenta cobrir todos os aspectos ao mesmo tempo
 - Maior propensão a "alucinações" (inventar dados)
 - Dificuldade em focar em detalhes específicos

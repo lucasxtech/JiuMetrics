@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getAllAthletes } from '../services/athleteService';
 import { getAllOpponents } from '../services/opponentService';
-import { compareAndGenerateStrategy } from '../services/strategyService';
+import { useStrategy } from '../contexts/StrategyContext';
 import AiStrategyBox from '../components/analysis/AiStrategyBox';
 import StrategySummaryModal from '../components/analysis/StrategySummaryModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -11,12 +11,17 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import CustomSelect from '../components/common/CustomSelect';
 
 export default function Strategy() {
-  const [selectedAthlete, setSelectedAthlete] = useState(null);
-  const [selectedOpponent, setSelectedOpponent] = useState(null);
-  const [strategy, setStrategy] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [showChat, setShowChat] = useState(false);
+
+  const {
+    selectedAthlete, setSelectedAthlete,
+    selectedOpponent, setSelectedOpponent,
+    strategy,
+    isLoading,
+    strategyError,
+    generateStrategy,
+    updateStrategy,
+  } = useStrategy();
 
   // ✅ React Query: Carregar atletas com cache
   const { data: athletes = [], isLoading: isLoadingAthletes } = useQuery({
@@ -38,68 +43,13 @@ export default function Strategy() {
 
   const isLoadingData = isLoadingAthletes || isLoadingOpponents;
 
-  const handleGenerateStrategy = async () => {
+  const handleGenerateStrategy = () => {
     if (!selectedAthlete || !selectedOpponent) {
       alert('Selecione um atleta e um adversário');
       return;
     }
-
-    setIsLoading(true);
-    setStrategy(null);
-    setError(null);
     setShowChat(false);
-
-    try {
-      const response = await compareAndGenerateStrategy(
-        selectedAthlete.id,
-        selectedOpponent.id
-      );
-
-      setStrategy(response.data);
-    } catch (err) {
-      console.error('❌ Erro ao gerar estratégia:', err);
-      setError(err.message || 'Erro ao gerar estratégia. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handler para atualização de estratégia via chat
-  const handleStrategyUpdated = async (suggestion) => {
-    if (!suggestion) return;
-    
-    try {
-      const currentStrategyData = strategy?.strategy || strategy;
-      let updatedStrategy = { ...currentStrategyData };
-      
-      // Aplicar sugestão baseada na seção
-      if (suggestion.section === 'tese_da_vitoria') {
-        updatedStrategy.tese_da_vitoria = suggestion.newValue;
-      } else if (suggestion.section === 'analise_de_matchup') {
-        updatedStrategy.analise_de_matchup = {
-          ...updatedStrategy.analise_de_matchup,
-          ...suggestion.newValue
-        };
-      } else if (suggestion.section === 'plano_tatico_faseado') {
-        updatedStrategy.plano_tatico_faseado = {
-          ...updatedStrategy.plano_tatico_faseado,
-          ...suggestion.newValue
-        };
-      } else if (suggestion.section === 'pontos_criticos') {
-        updatedStrategy.pontos_criticos = suggestion.newValue;
-      } else if (suggestion.section === 'dicas_especificas') {
-        updatedStrategy.dicas_especificas = suggestion.newValue;
-      } else {
-        // Fallback: tentar aplicar no campo indicado
-        updatedStrategy[suggestion.section || suggestion.field] = suggestion.newValue;
-      }
-      
-      // Atualizar estado
-      setStrategy({ strategy: updatedStrategy });
-    } catch (err) {
-      console.error('Erro ao atualizar estratégia:', err);
-      throw err;
-    }
+    generateStrategy(selectedAthlete, selectedOpponent);
   };
 
   if (isLoadingData) {
@@ -123,7 +73,7 @@ export default function Strategy() {
         </div>
       </section>
 
-      {error && <ErrorMessage message={error} />}
+      {strategyError && <ErrorMessage message={strategyError} />}
 
       <section>
         <div className="section-header">
@@ -294,7 +244,7 @@ export default function Strategy() {
           athleteName={selectedAthlete?.name || 'Atleta'}
           opponentName={selectedOpponent?.name || 'Adversário'}
           onClose={() => setShowChat(false)}
-          onStrategyUpdated={handleStrategyUpdated}
+          onStrategyUpdated={updateStrategy}
         />
       )}
     </div>

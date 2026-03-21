@@ -6,8 +6,8 @@ export const DEFAULT_AI_MODEL = 'gemini-2.0-flash';
 
 export const AVAILABLE_MODELS = [
   {
-    id: 'gemini-3-pro-preview',
-    name: 'Gemini 3 Pro (Preview)',
+    id: 'gemini-3.1-pro-preview',
+    name: 'Gemini 3.1 Pro (Preview)',
     description: 'Máxima precisão para análises avançadas',
     maxTokens: 32768
   },

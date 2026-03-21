@@ -2,14 +2,37 @@
 const FightAnalysis = require('../models/FightAnalysis');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
+const StrategyService = require('../services/strategyService');
 const { extractTechnicalProfile } = require('../utils/profileUtils');
+
+/**
+ * Regenera o resumo técnico de um atleta/adversário em background.
+ * Chamado após criar ou deletar análises — sem bloquear a resposta HTTP.
+ */
+async function refreshTechnicalSummary(personId, personType, userId) {
+  try {
+    const consolidation = await StrategyService.consolidateAnalyses(personId, userId, null);
+    const updateData = {
+      technicalSummary: consolidation.resumo,
+      technicalSummaryUpdatedAt: new Date().toISOString()
+    };
+    if (personType === 'athlete') {
+      await Athlete.update(personId, updateData, userId);
+    } else {
+      await Opponent.update(personId, updateData, userId);
+    }
+    console.log(`✅ [auto] Resumo técnico atualizado — ${personType} ${personId}`);
+  } catch (err) {
+    console.error(`❌ [auto] Falha ao atualizar resumo técnico — ${personType} ${personId}:`, err.message);
+  }
+}
 
 /**
  * GET /api/fight-analysis - Lista todas as análises
  */
 exports.getAllAnalyses = async (req, res) => {
   try {
-    const analyses = await FightAnalysis.getAll();
+    const analyses = await FightAnalysis.getAll(req.userId);
     res.json({ success: true, data: analyses });
   } catch (error) {
     console.error('Erro ao buscar análises:', error);
@@ -102,6 +125,9 @@ exports.createAnalysis = async (req, res) => {
       message: 'Análise criada e perfil técnico atualizado',
       data: analysis,
     });
+
+    // Fire-and-forget: regenera o resumo técnico em background após salvar a análise
+    refreshTechnicalSummary(personId, personType, req.userId);
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -117,6 +143,22 @@ exports.deleteAnalysis = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }
     res.json({ success: true, message: 'Análise deletada', data: deleted });
+
+    // Fire-and-forget: regenera ou limpa o resumo técnico após deletar
+    const { personId, personType } = deleted;
+    if (personId && personType) {
+      const remaining = await FightAnalysis.getByPersonId(personId, req.userId);
+      if (remaining.length === 0) {
+        // Sem análises restantes — limpa o resumo
+        const clearData = { technicalSummary: null, technicalSummaryUpdatedAt: new Date().toISOString() };
+        const updateFn = personType === 'athlete'
+          ? Athlete.update(personId, clearData, req.userId)
+          : Opponent.update(personId, clearData, req.userId);
+        updateFn.catch(err => console.error(`❌ [auto] Falha ao limpar resumo — ${personType} ${personId}:`, err.message));
+      } else {
+        refreshTechnicalSummary(personId, personType, req.userId);
+      }
+    }
   } catch (error) {
     console.error('Erro ao deletar análise:', error);
     res.status(500).json({ success: false, error: error.message });

@@ -6,10 +6,13 @@ class FightAnalysis {
   /**
    * Busca todas as análises
    */
-  static async getAll() {
+  static async getAll(userId) {
+    if (!userId) throw new Error('userId obrigatório');
+
     const { data, error } = await supabase
       .from('fight_analyses')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -51,6 +54,24 @@ class FightAnalysis {
       .single();
     
     if (error) throw error;
+    return parseAnalysisFromDB(data);
+  }
+
+  /**
+   * Busca análise por ID garantindo que pertence ao usuário
+   */
+  static async getByIdAndUser(id, userId) {
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
     return parseAnalysisFromDB(data);
   }
 

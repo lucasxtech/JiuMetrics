@@ -53,6 +53,7 @@ function parseAnalysisFromDB(dbAnalysis) {
     isEdited: dbAnalysis.is_edited || false,
     originalSummary: dbAnalysis.original_summary,
     originalCharts: dbAnalysis.original_charts,
+    userId: dbAnalysis.user_id,
     createdAt: dbAnalysis.created_at,
     updatedAt: dbAnalysis.updated_at,
   };

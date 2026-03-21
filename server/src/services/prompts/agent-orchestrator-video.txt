@@ -113,7 +113,7 @@ Você DEVE gerar um JSON com EXATAMENTE esta estrutura:
     }
   },
   
-  "summary": "Parágrafo único de 200-250 palavras..."
+  "summary": "Resumo técnico narrativo da luta (sem limite fixo de palavras, descreva tudo que foi observado)"
 }
 ```
 
@@ -187,16 +187,28 @@ Use principalmente **Agente de Regras** + **Agente Técnico**:
 
 ---
 
-## GUIA PARA SUMMARY (200-250 palavras):
+## GUIA PARA SUMMARY:
 
-Escreva um parágrafo narrativo fluído que:
+Gere um resumo técnico narrativo descrevendo o que aconteceu na luta e o perfil do atleta.
 
-1. **Introduz o atleta** e contexto (faixa, resultado)
-2. **Descreve o gameplan** identificado pelo Agente Tático
-3. **Destaca técnicas principais** do Agente Técnico
-4. **Menciona pontuação** do Agente de Regras
-5. **Sintetiza padrões** identificados pelos agentes
-6. **Conclui com assessment geral** (pontos fortes, áreas de atenção)
+INCLUA (combinando dados dos 3 agentes, apenas o que foi identificado):
+1. Estilo geral e como ele se posicionou na luta
+2. O que ele fez — sequências, posições, técnicas executadas
+3. O que funcionou e o que não funcionou (baseado na pontuação do Agente de Regras)
+4. Ponto fraco observado pelos agentes
+5. Como explorar esse ponto
+
+FORMATO OBRIGATÓRIO:
+- Texto corrido, sem listas, sem títulos, sem markdown
+- Linguagem técnica e direta — descreva ações, não impressões
+- Sem limite rígido de palavras, mas sem repetição ou padão
+
+REGRAS ABSOLUTAS:
+- SEM linguagem figurada (proibido: "agilidade felina", "explosão vulcânica", "máquina de finalizar", "clínico")
+- SEM adjetivos subjetivos sem respaldo visual (proibido: "impressionante", "formidável", "incrível")
+- SEM especulação sobre condicionamento ou psicologia
+- Cada afirmação deve ter respaldo nos dados dos agentes — se nenhum agente identificou, não escreva
+- TERMINOLOGIA EM PORTUGUÊS: use "por cima" (não "top"), "por baixo" (não "bottom"), "puxar para a guarda" (não "guard pull"), "lateralmente" (não "side"), "raspagem" (não "sweep")
 
 **Tom:** Técnico mas acessível, objetivo, baseado em evidências
 
@@ -228,7 +240,7 @@ INSTRUÇÕES FINAIS:
 1. **Responda APENAS em JSON válido** (sem markdown, sem ```json)
 2. **Siga EXATAMENTE a estrutura** especificada
 3. **Todos os 5 charts** devem estar presentes
-4. **Summary entre 200-250 palavras**
+4. **Summary técnico narrativo** — descreva tudo que foi observado, sem limite fixo de palavras
 5. **Valores 0-100** para todos os gráficos
 6. **Zero onde não há dados** (não invente)
 7. **Agregue inteligentemente** insights complementares
@@ -254,7 +266,7 @@ EXEMPLO DE RESPOSTA ESPERADA:
       "penalties": 0
     }
   },
-  "summary": "{{ATHLETE_NAME}} (faixa {{BELT}}) demonstrou um jogo predominantemente de guarda com ênfase em controle e finalizações. O gameplan identificado focou em puxar para a guarda fechada e trabalhar quebras de postura para criar oportunidades de raspagem e finalização. Tecnicamente, destacou-se pelo uso efetivo de controles de manga e gola, executando uma raspagem tipo tesoura que resultou em 2 pontos. Taticamente, mostrou timing majoritariamente reativo, respondendo aos movimentos do oponente com defesas sólidas e contra-ataques bem calculados. A tentativa de triângulo foi bem preparada mas defendida pelo oponente através de base sólida, resultando em uma vantagem. A pontuação final observada foi de 2 pontos e 1 vantagem a favor do atleta. O jogo demonstrou consistência na estratégia de guarda com boa efetividade defensiva (75%) e transições fluidas entre variações. Pontos fortes incluem o controle de distância, timing de raspagens e setup de finalizações. Áreas de atenção incluem a finalização das submissões iniciadas e possível expansão do repertório de passagem para quando em posição de top. No geral, um desempenho técnico sólido com execução tática clara e pontuação positiva."
+  "summary": "Atleta guardeiro que puxou para guarda fechada no início e trabalhou quebra de postura para criar oportunidades. Executou raspagem tipo tesoura controlando manga e gola, convertendo em 2 pontos. A tentativa de triângulo foi bem preparada mas o adversário defendeu fechando a base, gerando 1 vantagem. No jogo defensivo, resistiu a 3 tentativas de passagem com recomposições efetivas. A vulnerabilidade aparece quando o adversário aplica pressão direta de quadril antes da guarda se formar — nas duas situações em que isso ocorreu o atleta perdeu a pegada e precisou reconstruir. Entrar com pressão imediata bloqueando as calças antes da pegada se firmar é o caminho para desorganizar seu jogo de guarda."
 }
 
 ---

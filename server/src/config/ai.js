@@ -6,7 +6,8 @@ module.exports = {
   // Modelos disponíveis (do mais recente ao mais antigo)
   DEFAULT_MODEL: 'gemini-2.0-flash',
   AVAILABLE_MODELS: [
-    'gemini-3-pro-preview',   // Mais recente e preciso
+    'gemini-3.1-pro-preview', // Mais recente e preciso ($2/$12 por 1M até 200K tokens)
+    'gemini-3-pro-preview',   // Versão anterior do 3 Pro
     'gemini-2.5-pro',         // Equilíbrio velocidade/precisão
     'gemini-2.0-flash'        // Padrão - rápido e eficiente
   ],
@@ -146,6 +147,19 @@ module.exports = {
       INITIAL_DELAY: 1000, // ms
       MAX_DELAY: 10000, // ms (10 segundos)
       BACKOFF_MULTIPLIER: 2 // Exponential backoff
+    }
+  },
+
+  // Multi-agentes para geração de estratégia tática
+  // Ativado pela mesma flag USE_MULTI_AGENTS=true
+  STRATEGY_AGENT_CONFIG: {
+    ENABLED: process.env.USE_MULTI_AGENTS === 'true',
+    AGENTS: ['scout', 'gameplan', 'rules'],
+    PARALLEL_EXECUTION: true,
+    GEMINI_CONFIG: {
+      TEMPERATURE: 0.3,
+      TOP_P: 0.8,
+      TOP_K: 40
     }
   },
 

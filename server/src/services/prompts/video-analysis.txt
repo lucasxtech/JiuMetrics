@@ -71,23 +71,29 @@ Para o campo 'technical_stats':
 
 RESUMO ESTRATÉGICO (CAMPO 'summary')
 
-Gere um parágrafo técnico corrido (200-250 palavras) descrevendo o perfil completo do atleta.
+Gere um resumo técnico narrativo descrevendo o que aconteceu na luta e o perfil do atleta.
 
-INCLUA:
-1. Perfil físico e estilo geral (ágil/forte, guardeiro/passador, agressivo/técnico)
-2. Sequências de ataque preferidas (ex: puxa guarda DLR > raspa > finaliza arm lock)
-3. Pontos fortes recorrentes (posições dominantes, técnicas efetivas)
-4. Fraquezas técnicas identificadas (gaps defensivos, erros repetidos)
-5. Como adversários podem explorá-lo (baseado nas fraquezas observadas)
+INCLUA (apenas o que foi observado, na ordem que faz sentido):
+1. Estilo geral e como ele se posicionou na luta
+2. O que ele fez — sequências de ataque, posições que buscou, técnicas usadas
+3. O que funcionou e o que não funcionou
+4. Ponto fraco ou vulnerável identificado
+5. Como explorar esse ponto
 
 FORMATO OBRIGATÓRIO:
-- Texto corrido em parágrafo único
-- SEM markdown (sem negrito, sem código, sem listas)
-- SEM estruturas como "Perfil: ...", "Pontos fortes: ..." (apenas texto narrativo)
-- Linguagem técnica, direta e baseada em dados observados
+- Texto corrido, sem listas, sem títulos, sem markdown
+- Linguagem técnica e direta — descreva ações, não impressões
+- Sem limite rígido de palavras, mas sem repetição ou padão
+
+REGRAS ABSOLUTAS:
+- SEM linguagem figurada (proibido: "agilidade felina", "explosão vulcânica", "máquina de finalizar", "clínico")
+- SEM adjetivos subjetivos sem respaldo visual (proibido: "impressionante", "formidável", "incrivel")
+- SEM especulação sobre condicionamento ou psicologia (proibido: "parece cansado", "estava nervoso")
+- Cada afirmação deve ser verificável pelo vídeo — se não viu, não escreva
+- TERMINOLOGIA EM PORTUGUÊS: use "por cima" (não "top"), "por baixo" (não "bottom"), "puxar para a guarda" (não "guard pull"), "lateralmente" (não "side"), "raspagem" (não "sweep")
 
 EXEMPLO CORRETO:
-"O atleta possui perfil ágil e bem condicionado, utilizando principalmente velocidade, mobilidade de quadril e movimentações laterais, em vez de pressão constante. Não é um passador de amasso, mas tem força para manter posições dominantes quando estabiliza. Seu jogo começa em pé, forçando o adversário a puxar para a guarda, com passagens móveis como toreada e knee slide, buscando rapidamente a montada para atacar finalizações de alto percentual, especialmente o arm lock. Sua principal fragilidade está na transição da passagem para a montada, que pode ser instável. Já conseguiu alcançar a posição, mas perdeu o controle devido a reposições explosivas, mostrando falhas na estabilização. O plano de jogo contra ele deve focar em anular suas passagens, evitando guardas abertas passivas. Guardas que controlem a distância e quebrem a postura dificultam sua mobilidade e favorecem raspagens, enquanto a disputa de quedas, com entradas de single ou double leg, o coloca em um cenário menos confortável."
+"Atleta guardeiro que abriu a guarda De la Riva no início da luta e buscou raspagens com gancho. A sequência mais usada foi: puxa para DLR, planta gancho na perna de trás, inverte o quadril e raspa por baixo, chegando ao top. A partir do top, passou predominantemente com toreada e buscou as costas em pelo menos duas oportunidades, finalizando arm lock na segunda pegada. O adversidade teve dificuldade em resolver o gancho de DLR, o que gerou todas as raspagens do jogo. A vulnerabilidade aparente está no momento em que ele levanta para a toreada, expondo brevemente as pernas — essa janela pode ser usada para atacar chave de pé ou single leg no contra-ataque."
 
 ---
 

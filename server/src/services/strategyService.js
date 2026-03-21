@@ -796,12 +796,11 @@ OBRIGATÓRIO:
       technical_stats: opponentStats
     };
 
-    // Gerar estratégia usando geminiService
-    const strategyResult = await geminiService.generateTacticalStrategy(
-      athleteData,
-      opponentData,
-      customModel
-    );
+    // Gerar estratégia — monolítico ou multi-agentes conforme flag USE_MULTI_AGENTS
+    const { STRATEGY_AGENT_CONFIG } = require('../config/ai');
+    const strategyResult = STRATEGY_AGENT_CONFIG.ENABLED
+      ? await geminiService.generateTacticalStrategyWithAgents(athleteData, opponentData)
+      : await geminiService.generateTacticalStrategy(athleteData, opponentData, customModel);
 
     return {
       strategy: strategyResult.strategy,

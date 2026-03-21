@@ -44,7 +44,7 @@ Se o usuário pedir para alterar a estratégia, identifique QUAL SEÇÃO ele que
 MAPEAMENTO DE PEDIDOS → CAMPOS:
 - "como vencer", "tese", "resumo", "principal" → use field: "como_vencer"
 - "matchup", "análise", "comparação", "versus" → use field: "analise_de_matchup"
-- "plano", "fases", "cronograma", "táticas" → use field: "plano_tatico_faseado"  
+- "plano", "fases", "faseado", "tático", "tatico", "cronograma", "táticas" → use field: "plano_tatico_faseado"  
 - "cronologia", "linha do tempo", "sequência" → use field: "cronologia_inteligente"
 - "checklist", "lista", "pontos", "lembrar" → use field: "checklist_tatico"
 

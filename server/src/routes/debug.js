@@ -1,13 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateUser } = require('../middleware/auth');
+const authMiddleware = require('../middleware/auth');
 
 /**
  * GET /api/debug/env-check
- * Endpoint temporário para verificar variáveis de ambiente em produção
- * SEM AUTENTICAÇÃO (remover depois de testar)
+ * Endpoint para verificar variáveis de ambiente em produção (requer autenticação)
  */
-router.get('/env-check', (req, res) => {
+router.get('/env-check', authMiddleware, (req, res) => {
   res.json({
     USE_MULTI_AGENTS: process.env.USE_MULTI_AGENTS,
     USE_MULTI_AGENTS_TYPE: typeof process.env.USE_MULTI_AGENTS,

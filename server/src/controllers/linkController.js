@@ -25,7 +25,6 @@ function extractYouTubeId(url) {
 exports.analyzeLink = async (req, res) => {
   try {
     const { videos, athleteName, personId, personType, model, matchResult, belt } = req.body || {};
-    const accessToken = req.headers.authorization?.replace('Bearer ', '');
     
     if (!videos || !Array.isArray(videos) || videos.length === 0) {
       return res.status(400).json({ 
@@ -139,7 +138,7 @@ exports.analyzeLink = async (req, res) => {
     }
     
     // Salvar uso da API
-    if (req.user?.id && usageRecords.length > 0) {
+    if (req.userId && usageRecords.length > 0) {
       const totalUsage = usageRecords.reduce((acc, usage) => ({
         promptTokens: acc.promptTokens + usage.promptTokens,
         completionTokens: acc.completionTokens + usage.completionTokens,
@@ -147,12 +146,11 @@ exports.analyzeLink = async (req, res) => {
       }), { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
       
       await ApiUsage.logUsage({
-        userId: req.user.id,
+        userId: req.userId,
         modelName: usageRecords[0].modelName,
         operationType: 'video_analysis',
         promptTokens: totalUsage.promptTokens,
         completionTokens: totalUsage.completionTokens,
-        accessToken,
         metadata: {
           videosCount: videoData.length,
           athleteName,

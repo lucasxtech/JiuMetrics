@@ -1,182 +1,208 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { getAllAthletes } from '../services/athleteService';
+import { getAllOpponents } from '../services/opponentService';
+import { getAllAnalyses } from '../services/fightAnalysisService';
+import { getUsageStats } from '../services/usageService';
 
-// Componentes de ícones SVG reutilizáveis
-const CheckIcon = () => (
-  <svg className="h-5 w-5 shrink-0 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-  </svg>
-);
+function formatCost(value) {
+  if (!value || value === 0) return '$0.00';
+  if (value >= 0.01) return `$${value.toFixed(2)}`;
+  if (value >= 0.0001) return `$${value.toFixed(4)}`;
+  return `$${value.toFixed(6)}`;
+}
 
-const ChevronRightIcon = () => (
-  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-  </svg>
-);
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
 
-const PlusIcon = () => (
-  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-);
-
-const VideoIcon = () => (
-  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-  </svg>
-);
-
-// Classes reutilizáveis
-const BUTTON_PRIMARY = "inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3 px-6 text-sm font-medium text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg focus:ring-2 focus:ring-slate-900 focus:ring-offset-2";
-const BUTTON_SECONDARY = "inline-flex items-center justify-center gap-2 rounded-xl border-2 border-slate-300 bg-white py-3 px-6 text-sm font-medium text-slate-900 shadow-sm transition-all hover:border-slate-400 hover:shadow-md focus:ring-2 focus:ring-slate-300 focus:ring-offset-2";
-
-const features = [
-  {
-    icon: '🥋',
-    title: 'Gerenciamento de Atletas',
-    description: 'Cadastre seus atletas, adicione vídeos de lutas e gere análises técnicas detalhadas com IA.',
-    highlights: ['Perfis completos', 'Análise de vídeo com IA', 'Histórico de evolução'],
-    to: '/athletes',
-    cta: 'Acessar Atletas'
-  },
-  {
-    icon: '🎯',
-    title: 'Análise de Adversários',
-    description: 'Monitore adversários, identifique padrões técnicos e descubra pontos fracos para explorar.',
-    highlights: ['Perfil técnico detalhado', 'Estatísticas de luta', 'Pontos vulneráveis'],
-    to: '/opponents',
-    cta: 'Ver Adversários'
-  },
-  {
-    icon: '🤖',
-    title: 'Estratégia com IA',
-    description: 'Gere planos de luta personalizados usando inteligência artificial baseada nos perfis técnicos.',
-    highlights: ['Estratégias personalizadas', 'Plano por fases', 'Checklist tático'],
-    to: '/strategy',
-    cta: 'Criar Estratégia'
-  }
-];
-
-const capabilities = [
-  {
-    title: 'Inteligência Artificial',
-    description: 'Análise de vídeos e geração de estratégias usando Gemini AI da Google',
-    icon: '🧠'
-  },
-  {
-    title: 'Análise Técnica',
-    description: 'Perfis detalhados com 5 atributos principais e estatísticas de luta',
-    icon: '📈'
-  },
-  {
-    title: 'Visualização de Dados',
-    description: 'Gráficos interativos para análise comparativa e evolução temporal',
-    icon: '📊'
-  }
-];
+function StatCard({ icon, label, value, to, loading }) {
+  const content = (
+    <div className="panel flex items-center gap-4">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-2xl">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm text-slate-500">{label}</p>
+        {loading ? (
+          <div className="mt-1 h-7 w-12 animate-pulse rounded bg-slate-200" />
+        ) : (
+          <p className="text-2xl font-bold text-slate-900">{value}</p>
+        )}
+      </div>
+    </div>
+  );
+  return to ? <Link to={to} className="block transition-transform hover:-translate-y-0.5">{content}</Link> : content;
+}
 
 export default function Overview() {
+  const [stats, setStats] = useState({ athletes: 0, opponents: 0, analyses: 0, cost: 0 });
+  const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAll() {
+      try {
+        const [athletesRes, opponentsRes, analysesRes, usageRes] = await Promise.allSettled([
+          getAllAthletes(),
+          getAllOpponents(),
+          getAllAnalyses(),
+          getUsageStats('month'),
+        ]);
+
+        const athletes = athletesRes.status === 'fulfilled' ? (athletesRes.value?.data || []) : [];
+        const opponents = opponentsRes.status === 'fulfilled' ? (opponentsRes.value?.data || []) : [];
+        const analyses = analysesRes.status === 'fulfilled' ? (analysesRes.value?.data || []) : [];
+        const cost = usageRes.status === 'fulfilled' ? (usageRes.value?.stats?.totalCost || 0) : 0;
+
+        // Mapa id → nome para lookup rápido
+        const nameMap = {};
+        athletes.forEach(a => { nameMap[a.id] = { name: a.name, type: 'athlete' }; });
+        opponents.forEach(o => { nameMap[o.id] = { name: o.name, type: 'opponent' }; });
+
+        setStats({
+          athletes: athletes.length,
+          opponents: opponents.length,
+          analyses: analyses.length,
+          cost,
+        });
+
+        // 5 análises mais recentes, enriquecidas com nome da pessoa
+        const sorted = [...analyses].sort((a, b) =>
+          new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0)
+        );
+        const enriched = sorted.slice(0, 5).map(a => ({
+          ...a,
+          personName: nameMap[a.personId]?.name || null,
+        }));
+        setRecentAnalyses(enriched);
+      } catch (err) {
+        console.error('Erro ao carregar dashboard:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAll();
+  }, []);
+
   return (
     <div className="dashboard-wrapper animate-fadeIn">
-      {/* Hero Section */}
+
+      {/* Header */}
       <section className="panel panel--hero">
         <div>
-          <p className="eyebrow">Bem-vindo</p>
+          <p className="eyebrow">Dashboard</p>
           <h1 className="hero-title">JiuMetrics</h1>
           <p className="hero-description">
-            Plataforma completa de análise tática para Jiu-Jitsu. 
-            Gerencie atletas, estude adversários e desenvolva estratégias vencedoras com inteligência artificial.
+            Visão geral do seu sistema de análise tática.
           </p>
         </div>
-        <div className="hero-meta">
-          <p>Sistema profissional de scouting e preparação técnica para academias e competidores.</p>
-        </div>
       </section>
 
-      {/* Capacidades da Plataforma */}
+      {/* Métricas */}
       <section>
         <div className="section-header">
-          <p className="section-header__eyebrow">Tecnologia</p>
-          <h2 className="section-header__title">O que a plataforma oferece</h2>
+          <p className="section-header__eyebrow">Resumo</p>
+          <h2 className="section-header__title">Estado atual</h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {capabilities.map((capability) => (
-            <article key={capability.title} className="panel">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-2xl">
-                  {capability.icon}
-                </div>
-                <div>
-                  <h3 className="mb-2 font-semibold text-slate-900">{capability.title}</h3>
-                  <p className="text-sm text-slate-600">{capability.description}</p>
-                </div>
-              </div>
-            </article>
-          ))}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard icon="🥋" label="Atletas" value={stats.athletes} to="/athletes" loading={loading} />
+          <StatCard icon="🎯" label="Adversários" value={stats.opponents} to="/opponents" loading={loading} />
+          <StatCard icon="🎥" label="Análises" value={stats.analyses} to="/analyses" loading={loading} />
+          <StatCard icon="💰" label="Custo do mês" value={formatCost(stats.cost)} to="/settings" loading={loading} />
         </div>
       </section>
 
-      {/* Módulos Principais */}
-      <section>
-        <div className="section-header">
-          <p className="section-header__eyebrow">Módulos</p>
-          <h2 className="section-header__title">Funcionalidades principais</h2>
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {features.map((feature) => (
-            <article key={feature.title} className="panel">
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-3xl">
-                    {feature.icon}
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-slate-900">{feature.title}</h3>
-                  </div>
-                </div>
-              </div>
-              
-              <p className="mb-4 text-slate-600">{feature.description}</p>
-              
-              <ul className="mb-6 space-y-2">
-                {feature.highlights.map((highlight) => (
-                  <li key={highlight} className="flex items-center gap-2 text-sm text-slate-700">
-                    <CheckIcon />
-                    {highlight}
-                  </li>
-                ))}
-              </ul>
-              
-              <Link
-                to={feature.to}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 text-sm font-medium text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg"
-              >
-                {feature.cta}
-                <ChevronRightIcon />
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
+      {/* Ações rápidas + Recentes */}
+      <section className="grid gap-6 lg:grid-cols-2">
 
-      {/* Call to Action */}
-      <section className="panel bg-linear-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <h2 className="mb-3 text-2xl font-bold text-slate-900">Pronto para começar?</h2>
-          <p className="mb-6 text-slate-600">
-            Escolha um dos módulos acima para iniciar sua análise tática ou comece cadastrando seu primeiro atleta.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link to="/athletes" className={BUTTON_PRIMARY}>
-              <PlusIcon />
-              Novo Atleta
+        {/* Ações rápidas */}
+        <article className="panel">
+          <h3 className="mb-4 font-semibold text-slate-900">Ações rápidas</h3>
+          <div className="flex flex-col gap-3">
+            <Link
+              to="/athletes"
+              className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50"
+            >
+              <span className="text-xl">🥋</span>
+              <span>Cadastrar novo atleta</span>
             </Link>
-            <Link to="/analyze-video" className={BUTTON_SECONDARY}>
-              <VideoIcon />
-              Analisar Vídeo
+            <Link
+              to="/opponents"
+              className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50"
+            >
+              <span className="text-xl">🎯</span>
+              <span>Cadastrar adversário</span>
+            </Link>
+            <Link
+              to="/analyze-video"
+              className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition-all hover:border-slate-400 hover:bg-slate-50"
+            >
+              <span className="text-xl">🎥</span>
+              <span>Analisar vídeo de luta</span>
+            </Link>
+            <Link
+              to="/strategy"
+              className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 transition-all hover:border-indigo-400 hover:bg-indigo-100"
+            >
+              <span className="text-xl">🤖</span>
+              <span>Gerar estratégia com IA</span>
             </Link>
           </div>
-        </div>
+        </article>
+
+        {/* Análises recentes */}
+        <article className="panel">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900">Análises recentes</h3>
+            <Link to="/analyses" className="text-xs text-slate-500 hover:text-slate-700">
+              Ver todas →
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100" />
+              ))}
+            </div>
+          ) : recentAnalyses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400">
+              <span className="mb-2 text-3xl">🎥</span>
+              <p className="text-sm">Nenhuma análise ainda.</p>
+              <Link to="/analyze-video" className="mt-2 text-xs text-indigo-600 hover:underline">
+                Analisar primeiro vídeo
+              </Link>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {recentAnalyses.map((analysis) => (
+                <li key={analysis.id} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">
+                      {analysis.personType === 'athlete' ? '🥋' : '🎯'}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-slate-800 leading-tight">
+                        {analysis.personName || (analysis.personType === 'athlete' ? 'Atleta' : 'Adversário')}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {analysis.personType === 'athlete' ? 'Atleta' : 'Adversário'}{analysis.framesAnalyzed ? ` · ${analysis.framesAnalyzed} frames` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    {formatDate(analysis.createdAt || analysis.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+
       </section>
     </div>
   );
 }
+
