@@ -3,8 +3,9 @@ const express = require('express');
 const router = express.Router();
 const fightAnalysisController = require('../controllers/fightAnalysisController');
 const authMiddleware = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
-// Aplicar middleware de autenticação em todas as rotas
+router.use(generalLimiter);
 router.use(authMiddleware);
 
 // ⚠️ DEBUG TEMPORÁRIO - Buscar análises SEM filtro de usuário

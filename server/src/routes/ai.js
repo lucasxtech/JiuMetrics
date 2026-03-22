@@ -2,10 +2,11 @@
 const express = require('express');
 const aiController = require('../controllers/aiController');
 const authMiddleware = require('../middleware/auth');
+const { heavyLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
-// Aplicar middleware de autenticação em todas as rotas
+router.use(heavyLimiter);
 router.use(authMiddleware);
 
 // POST /api/ai/strategy - Gerar estratégia (removido)

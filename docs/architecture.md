@@ -5,130 +5,178 @@
 ```
 projeto analise atletas/
 │
-├── README.md                    # Documentação principal
-├── CODE_REVIEW.md               # Análise e melhorias do código
-├── CONTRIBUTING.md              # Guia de contribuição
-├── Makefile                     # Comandos de desenvolvimento
-├── package.json                 # Configuração raiz
+├── README.md
+├── Makefile
+├── package.json
 │
-├── frontend/                    # Aplicação React Vite
-│   ├── public/                  # Arquivos estáticos
+├── frontend/                    # Aplicação React + Vite
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── common/
-│   │   │   │   ├── Header.jsx              # Navegação principal
-│   │   │   │   ├── AthleteCard.jsx         # Card de atleta
-│   │   │   │   ├── LoadingSpinner.jsx      # Spinner de loading
-│   │   │   │   ├── ErrorMessage.jsx        # Mensagem de erro
-│   │   │   │   ├── Badge.jsx               # Tag/badge reutilizável
-│   │   │   │   └── FormattedText.jsx       # Texto com markdown
+│   │   │   │   ├── Header.jsx
+│   │   │   │   ├── AthleteCard.jsx
+│   │   │   │   ├── LoadingSpinner.jsx
+│   │   │   │   ├── ErrorMessage.jsx
+│   │   │   │   ├── Badge.jsx
+│   │   │   │   └── FormattedText.jsx
 │   │   │   ├── analysis/
-│   │   │   │   ├── AiStrategyBox.jsx       # Estratégia IA com edição
-│   │   │   │   ├── StrategySummaryModal.jsx # Modal de estratégia
-│   │   │   │   ├── AnalysisCard.jsx        # Card de análise
-│   │   │   │   └── AnalysisDetailModal.jsx # Modal detalhes
+│   │   │   │   ├── AiStrategyBox.jsx       # Estratégia IA com diff/edição
+│   │   │   │   ├── StrategySummaryModal.jsx
+│   │   │   │   ├── AnalysisCard.jsx        # Preview de análise
+│   │   │   │   └── AnalysisDetailModal.jsx
 │   │   │   ├── chat/
+│   │   │   │   ├── AiChatPanel.jsx         # Chat para análises
 │   │   │   │   ├── ProfileChatPanel.jsx    # Chat para perfis
 │   │   │   │   └── StrategyChatPanel.jsx   # Chat para estratégias
-│   │   │   ├── forms/
-│   │   │   │   └── AthleteForm.jsx         # Formulário de atleta
-│   │   │   ├── charts/
-│   │   │   │   ├── StatsRadarChart.jsx     # Gráfico radar
-│   │   │   │   ├── StatsLineChart.jsx      # Gráfico de linha
-│   │   │   │   ├── StatsBarChart.jsx       # Gráfico de barras
-│   │   │   │   └── PieChartSection.jsx     # Gráfico de pizza
+│   │   │   ├── version/
+│   │   │   │   └── VersionHistoryPanel.jsx # Histórico de versões
 │   │   │   ├── video/
-│   │   │   │   ├── VideoAnalysis.jsx       # Análise de vídeo
-│   │   │   │   └── VideoAnalysisCard.jsx   # Card de vídeo
-│   │   │   └── routing/
-│   │   │       └── ProtectedRoute.jsx      # Rota protegida
+│   │   │   │   ├── VideoAnalysis.jsx       # Consome AnalysisProgressContext
+│   │   │   │   └── VideoAnalysisCard.jsx
+│   │   │   ├── forms/
+│   │   │   │   └── AthleteForm.jsx
+│   │   │   └── charts/
+│   │   │       ├── StatsRadarChart.jsx
+│   │   │       ├── StatsLineChart.jsx
+│   │   │       └── PieChartSection.jsx
+│   │   │
+│   │   ├── contexts/                       # Estado global (React Context)
+│   │   │   ├── AnalysisProgressContext.jsx # Estado da análise de vídeo em curso
+│   │   │   └── StrategyContext.jsx         # Estado da estratégia gerada
 │   │   │
 │   │   ├── pages/
-│   │   │   ├── Overview.jsx                # Dashboard principal
-│   │   │   ├── Athletes.jsx                # Listagem de atletas
-│   │   │   ├── AthleteDetail.jsx           # Detalhe do atleta
-│   │   │   ├── Opponents.jsx               # Listagem de adversários
-│   │   │   ├── Analyses.jsx                # Histórico de análises
-│   │   │   ├── Strategy.jsx                # Estratégia com IA
-│   │   │   ├── VideoAnalysis.jsx           # Análise de vídeos
-│   │   │   ├── Settings.jsx                # Configurações
-│   │   │   ├── ModernLogin.jsx             # Tela de login
-│   │   │   └── Register.jsx                # Tela de cadastro
+│   │   │   ├── Overview.jsx
+│   │   │   ├── Athletes.jsx
+│   │   │   ├── AthleteDetail.jsx           # Resumo técnico + "Gerar com IA"
+│   │   │   ├── Opponents.jsx
+│   │   │   ├── Analyses.jsx
+│   │   │   ├── Strategy.jsx                # Consome StrategyContext
+│   │   │   ├── Settings.jsx                # Monitoramento de custos da API
+│   │   │   ├── ModernLogin.jsx
+│   │   │   └── Register.jsx
 │   │   │
 │   │   ├── services/
-│   │   │   ├── api.js                      # Configuração Axios
-│   │   │   ├── athleteService.js           # CRUD de atletas
-│   │   │   ├── opponentService.js          # CRUD de adversários
-│   │   │   ├── analysisService.js          # Análises táticas
-│   │   │   ├── chatService.js              # Chat IA
-│   │   │   ├── strategyService.js          # Estratégias
-│   │   │   ├── aiService.js                # Serviço de IA
-│   │   │   └── authService.js              # Autenticação
-│   │   │
-│   │   ├── hooks/                          # Custom hooks
+│   │   │   ├── api.js
+│   │   │   ├── athleteService.js
+│   │   │   ├── opponentService.js
+│   │   │   ├── analysisService.js
+│   │   │   ├── chatService.js
+│   │   │   ├── strategyService.js
+│   │   │   ├── aiService.js
+│   │   │   ├── usageService.js             # Estatísticas de custo da API
+│   │   │   └── authService.js
 │   │   │
 │   │   ├── utils/
-│   │   │   ├── strategyUtils.js            # Manipulação de estratégias
-│   │   │   └── formatters.js               # Formatação de texto
+│   │   │   ├── strategyUtils.js
+│   │   │   └── formatters.js
 │   │   │
-│   │   ├── App.jsx                         # Router principal
-│   │   ├── index.css                       # Estilos globais (Tailwind)
-│   │   └── main.jsx                        # Entry point
+│   │   ├── App.jsx                         # Wrapped com providers de contexto
+│   │   ├── index.css
+│   │   └── main.jsx
 │   │
-│   ├── .env                    # Variáveis de ambiente
-│   ├── tailwind.config.js      # Configuração Tailwind 4
-│   ├── vite.config.js          # Configuração Vite
-│   └── package.json            # Dependências do frontend
+│   ├── tailwind.config.js
+│   ├── vite.config.js
+│   └── package.json
 │
-├── server/                     # Backend Express
+├── server/                      # Backend Express
 │   ├── src/
+│   │   ├── config/
+│   │   │   └── ai.js                       # Constantes: DEFAULT_MODEL, AGENT_CONFIG,
+│   │   │                                   #   STRATEGY_AGENT_CONFIG, BELT_RULES
+│   │   │
 │   │   ├── controllers/
-│   │   │   ├── athleteController.js        # Lógica de atletas
-│   │   │   ├── opponentController.js       # Lógica de adversários
-│   │   │   ├── strategyController.js       # Lógica de estratégias
-│   │   │   ├── chatController.js           # Lógica de chat IA
-│   │   │   └── aiController.js             # Lógica de IA
+│   │   │   ├── athleteController.js
+│   │   │   ├── opponentController.js
+│   │   │   ├── fightAnalysisController.js  # Auto-regenera technicalSummary pós criar/deletar
+│   │   │   ├── strategyController.js
+│   │   │   ├── strategyVersionController.js
+│   │   │   ├── chatController.js
+│   │   │   ├── aiController.js             # consolidate-profile, athlete-summary
+│   │   │   └── usageController.js          # Estatísticas e preços da API
 │   │   │
 │   │   ├── models/
-│   │   │   ├── Athlete.js                  # Modelo de atleta
-│   │   │   ├── Opponent.js                 # Modelo de adversário
-│   │   │   └── TacticalAnalysis.js         # Modelo de análises
+│   │   │   ├── Athlete.js
+│   │   │   ├── Opponent.js
+│   │   │   ├── FightAnalysis.js
+│   │   │   ├── ChatSession.js
+│   │   │   ├── AnalysisVersion.js
+│   │   │   ├── ProfileVersion.js
+│   │   │   ├── StrategyVersion.js
+│   │   │   └── ApiUsage.js                 # Registro e cálculo de custos
 │   │   │
 │   │   ├── routes/
-│   │   │   ├── athletes.js                 # Rotas de atletas
-│   │   │   ├── opponents.js                # Rotas de adversários
-│   │   │   ├── strategy.js                 # Rotas de estratégias
-│   │   │   ├── chat.js                     # Rotas de chat
-│   │   │   └── ai.js                       # Rotas de IA
+│   │   │   ├── athletes.js
+│   │   │   ├── opponents.js
+│   │   │   ├── fightAnalysis.js
+│   │   │   ├── strategy.js
+│   │   │   ├── chatRoutes.js
+│   │   │   ├── ai.js
+│   │   │   └── usage.js
 │   │   │
 │   │   ├── services/
-│   │   │   └── geminiService.js            # Integração Google Gemini
+│   │   │   ├── geminiService.js            # Gemini + chat + multi-agentes
+│   │   │   ├── strategyService.js          # Consolida análises + gera estratégia
+│   │   │   ├── agents/                     # Sistema multi-agentes
+│   │   │   │   ├── AgentBase.js            # Base com Vision (vídeo)
+│   │   │   │   ├── TechnicalAgent.js
+│   │   │   │   ├── TacticalAgent.js
+│   │   │   │   ├── RulesAgent.js
+│   │   │   │   ├── Orchestrator.js         # Orquestrador de vídeo (GPT-4)
+│   │   │   │   ├── index.js
+│   │   │   │   └── strategy/               # Multi-agentes de estratégia
+│   │   │   │       ├── StrategyAgentBase.js # Base text-only
+│   │   │   │       ├── ScoutAgent.js       # Analisa adversário
+│   │   │   │       ├── GameplanAgent.js    # Cataloga arsenal do atleta
+│   │   │   │       ├── StrategyRulesAgent.js # Valida regras IBJJF
+│   │   │   │       ├── StrategyOrchestrator.js # GPT-4 consolida estratégia
+│   │   │   │       └── index.js
+│   │   │   └── prompts/                    # Todos os prompts em .txt
+│   │   │       ├── video-analysis.txt
+│   │   │       ├── agent-technical.txt
+│   │   │       ├── agent-tactical.txt
+│   │   │       ├── agent-rules.txt
+│   │   │       ├── agent-orchestrator-video.txt
+│   │   │       ├── athlete-summary.txt
+│   │   │       ├── tactical-strategy.txt
+│   │   │       ├── strategy-scout.txt
+│   │   │       ├── strategy-gameplan.txt
+│   │   │       ├── strategy-rules.txt
+│   │   │       ├── strategy-orchestrator.txt
+│   │   │       ├── chat-analysis.txt
+│   │   │       ├── chat-profile.txt
+│   │   │       └── chat-strategy.txt
 │   │   │
-│   │   └── middleware/                     # Auth & validações
+│   │   ├── middleware/
+│   │   │   └── auth.js
+│   │   │
+│   │   └── utils/
+│   │       ├── errors.js
+│   │       ├── errorHandler.js
+│   │       ├── apiUsageLogger.js
+│   │       ├── versionManager.js
+│   │       └── dbParsers.js
 │   │
-│   ├── migrations/             # SQLs do Supabase (001-016)
-│   ├── tests/                  # Testes de integração
-│   ├── index.js                # Servidor principal
-│   ├── config.js               # Configurações
-│   └── package.json            # Dependências do backend
+│   ├── migrations/              # SQLs Supabase (001-016)
+│   ├── index.js
+│   └── package.json
 │
-├── scripts/                    # Scripts de desenvolvimento
-│   ├── dev.sh                  # Comandos dev
-│   ├── start.sh                # Iniciar app
-│   └── startup-info.sh         # Documentação interativa
+├── playwright/                  # Testes E2E (TypeScript)
+│   ├── pages/                   # Page Object Model
+│   ├── fixtures/
+│   └── tests/
 │
-├── tools/                      # Ferramentas de debug
-│   ├── api-requests.http       # Requests HTTP
-│   └── TEST_TOKEN.js           # Teste de autenticação
+├── scripts/
+│   ├── dev.sh
+│   └── start.sh
 │
-└── docs/                       # Documentação
-    ├── API.md                  # Documentação da API
-    ├── architecture.md         # Este arquivo
-    ├── DEVELOPMENT.md          # Guia de desenvolvimento
-    ├── quick-start.md          # Início rápido
-    ├── setup/                  # Guias de configuração
-    ├── deployment/             # Guias de deploy
-    └── guides/                 # Guias de uso
+└── docs/
+    ├── API.md
+    ├── ARCHITECTURE.md
+    ├── MULTI_AGENTS.md
+    ├── ESTRATEGIAS.md
+    ├── DEVELOPMENT.md
+    ├── SETUP.md
+    └── DEPLOY.md
 ```
 
 ---
@@ -156,19 +204,48 @@ Frontend atualiza lista
 ### 2. Geração de Estratégia
 
 ```
-Frontend (Strategy page)
+Frontend (Strategy.jsx — consome StrategyContext)
     ↓
-User seleciona atleta e adversário
+Usuário seleciona atleta + adversário → generateStrategy()
     ↓
-aiService.analyzeStrategy()
+POST /api/strategy/compare
     ↓
-POST /api/ai/strategy {athlete, opponent}
+strategyController → strategyService.generateStrategy()
     ↓
-aiController.generateStrategy()
+Busca análises do atleta e adversário no banco
     ↓
-generateMockStrategy() (lógica de IA)
+Usa technicalSummary salvo (ou consolida na hora via IA)
     ↓
-AiStrategyBox renderiza resultado
+Se USE_MULTI_AGENTS=true:
+  └→ generateTacticalStrategyWithAgents()
+       ├── ScoutAgent (adversário)    ─┐
+       ├── GameplanAgent (atleta)      ├─ paralelo
+       └── StrategyRulesAgent (IBJJF) ─┘
+           ↓
+       StrategyOrchestrator (GPT-4) consolida JSON final
+Se USE_MULTI_AGENTS=false:
+  └→ generateTacticalStrategy() — prompt único Gemini
+    ↓
+AiStrategyBox renderiza resultado com chat + versões
+```
+
+### 2a. Resumo Técnico (Auto-geração)
+
+```
+Usuário envia vídeo → análise salva
+    ↓ (fire-and-forget, não bloqueia resposta)
+fightAnalysisController.createAnalysis()
+    └→ refreshTechnicalSummary(personId, personType, userId)
+        ↓
+        strategyService.consolidateAnalyses() — consolida todas as análises via IA
+        ↓
+        Athlete/Opponent.update({ technicalSummary, technicalSummaryUpdatedAt })
+
+Usuário deleta análise:
+    ↓
+fightAnalysisController.deleteAnalysis()
+    ├── Se restam análises → refreshTechnicalSummary() (regenera)
+    └── Se 0 análises → limpa technicalSummary (seta null)
 ```
 
 ### 3. Sistema de Chat IA

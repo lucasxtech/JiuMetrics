@@ -79,15 +79,16 @@ async function createAnalysisVersion({ analysisId, versionNumber, analysis, edit
 
 /**
  * Salva uma versão do perfil (atleta ou adversário)
- * @param {string} personId - ID da pessoa
- * @param {string} personType - Tipo ('athlete' ou 'opponent')
- * @param {string} previousSummary - Resumo anterior
- * @param {string} newSummary - Novo resumo
- * @param {string} changeDescription - Descrição da mudança
- * @param {string} userId - ID do usuário
+ * @param {Object} params
+ * @param {string} params.personId - ID da pessoa
+ * @param {string} params.personType - Tipo ('athlete' ou 'opponent')
+ * @param {string} params.userId - ID do usuário
+ * @param {string} params.currentSummary - Resumo atual (será salvo como versão)
+ * @param {string} params.editedBy - Quem editou ('user' ou 'ai')
+ * @param {string} params.editReason - Motivo da edição
  * @returns {Object|null} Versão criada ou null
  */
-async function saveProfileVersion(personId, personType, previousSummary, newSummary, changeDescription, userId) {
+async function saveProfileVersion({ personId, personType, userId, currentSummary, editedBy = 'user', editReason = 'Edição manual' }) {
   try {
     const existingVersions = await ProfileVersion.getByPersonId(personId, personType);
     
@@ -97,20 +98,22 @@ async function saveProfileVersion(personId, personType, previousSummary, newSumm
         person_id: personId,
         person_type: personType,
         version_number: 1,
-        summary: previousSummary,
+        summary: currentSummary,
         change_description: 'Versão original',
         created_by: userId
       });
+      console.log('✅ Versão original do perfil criada');
+      return null; // Não há versão nova a criar, só salvou a original
     }
     
-    const nextVersion = (existingVersions?.length || 0) + 2;
+    const nextVersion = existingVersions.length + 1;
     
     const version = await ProfileVersion.create({
       person_id: personId,
       person_type: personType,
       version_number: nextVersion,
-      summary: newSummary,
-      change_description: changeDescription,
+      summary: currentSummary,
+      change_description: editReason,
       created_by: userId
     });
     

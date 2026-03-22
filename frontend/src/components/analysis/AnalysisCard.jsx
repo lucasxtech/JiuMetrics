@@ -12,12 +12,14 @@ export default function AnalysisCard({ analysis, onView, onDelete }) {
   // Extrair conteúdo da estratégia (funciona independente de wrappers aninhados)
   const strategyContent = extractStrategyContent(analysis.strategy_data);
   
-  // Extrair texto da tese (pode ser string ou objeto)
+  // Extrair texto de preview: prioriza como_vencer (formato novo), fallback tese_da_vitoria (legado)
   const getTeseText = () => {
+    const comoVencer = strategyContent?.resumo_rapido?.como_vencer;
+    if (comoVencer && typeof comoVencer === 'string') return comoVencer;
+
     const tese = strategyContent?.tese_da_vitoria;
     if (!tese) return null;
     if (typeof tese === 'string') return tese;
-    // Se for objeto, tentar extrair primeiro valor ou concatenar
     if (typeof tese === 'object') {
       const values = Object.values(tese).filter(v => typeof v === 'string');
       return values.length > 0 ? values[0] : null;

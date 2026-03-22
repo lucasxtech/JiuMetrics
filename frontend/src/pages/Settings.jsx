@@ -4,6 +4,24 @@ import { logout, getCurrentUser } from '../services/authService';
 import api from '../services/api';
 import styles from './Settings.module.css';
 
+// Formata custo em USD com precisão adaptativa: $0.00 para zero/centavos, mais casas quando necessário
+function formatCost(value) {
+  if (value === 0) return '$0.00';
+  if (value >= 0.01) return `$${value.toFixed(2)}`;
+  if (value >= 0.0001) return `$${value.toFixed(4)}`;
+  return `$${value.toFixed(6)}`;
+}
+
+const OPERATION_LABELS = {
+  video_analysis:    '🎥 Análise de Vídeo',
+  strategy:          '🎯 Estratégia',
+  summary:           '📝 Resumo',
+  consolidate_profile: '🗂️ Resumo do Perfil',
+  chat_analysis:     '💬 Chat de Análise',
+  chat_profile:      '💬 Chat de Perfil',
+  chat_strategy:     '💬 Chat de Estratégia',
+};
+
 export default function Settings() {
   const navigate = useNavigate();
   const currentUser = useMemo(() => getCurrentUser(), []);
@@ -18,7 +36,7 @@ export default function Settings() {
   const aiModels = [
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Rápido e eficiente para análises básicas' },
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Equilíbrio entre velocidade e precisão' },
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Preview)', description: 'Máxima precisão para análises avançadas' }
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', description: 'Máxima precisão para análises avançadas' }
   ];
 
   useEffect(() => {
@@ -152,7 +170,7 @@ export default function Settings() {
               <div className={styles.statIcon}>💰</div>
               <div className={styles.statContent}>
                 <span className={styles.statLabel}>Custo Total</span>
-                <span className={styles.statValue}>${usageStats.totalCost.toFixed(6)}</span>
+                <span className={styles.statValue}>{formatCost(usageStats.totalCost)}</span>
               </div>
             </div>
 
@@ -184,7 +202,7 @@ export default function Settings() {
                     <div className={styles.breakdownStats}>
                       <span>{item.count}x</span>
                       <span>{item.tokens.toLocaleString()} tokens</span>
-                      <span className={styles.breakdownCost}>${item.cost.toFixed(6)}</span>
+                      <span className={styles.breakdownCost}>{formatCost(item.cost)}</span>
                     </div>
                   </div>
                 ))}
@@ -198,13 +216,11 @@ export default function Settings() {
                 {usageStats.byOperation.map(item => (
                   <div key={item.operation} className={styles.breakdownItem}>
                     <span className={styles.breakdownLabel}>
-                      {item.operation === 'video_analysis' && '🎥 Análise de Vídeo'}
-                      {item.operation === 'strategy' && '🎯 Estratégia'}
-                      {item.operation === 'summary' && '📝 Resumo'}
+                      {OPERATION_LABELS[item.operation] || item.operation}
                     </span>
                     <div className={styles.breakdownStats}>
                       <span>{item.count}x</span>
-                      <span className={styles.breakdownCost}>${item.cost.toFixed(6)}</span>
+                      <span className={styles.breakdownCost}>{formatCost(item.cost)}</span>
                     </div>
                   </div>
                 ))}

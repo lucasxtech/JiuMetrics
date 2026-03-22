@@ -16,6 +16,10 @@ const config = require('./config');
 const app = express();
 const PORT = config.PORT;
 
+// Confiar no proxy reverso (Vercel/Render) para obter IP real do cliente
+// Necessário para que o rate limiter use o IP correto via X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Configuração CORS - Permitir desenvolvimento local, GitHub Pages e Vercel
 const corsOptions = {
   origin: function (origin, callback) {
@@ -41,7 +45,7 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '500mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 // Log de requisições (apenas em desenvolvimento)

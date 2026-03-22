@@ -193,7 +193,7 @@ export default function StrategyChatPanel({
     { icon: '🔄', text: 'Adicione planos alternativos' },
   ];
 
-  // Criar sessão ao montar
+  // Criar sessão ao montar (sem dependências que mudam — não recriar ao aceitar edições)
   useEffect(() => {
     const initSession = async () => {
       try {
@@ -223,7 +223,7 @@ Como posso ajudar?`
     };
     
     initSession();
-  }, [strategyData, athleteName, opponentName]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto scroll
   useEffect(() => {
@@ -332,7 +332,7 @@ Como posso ajudar?`
           ? { ...msg, suggestionApplied: true }
           : msg
       ));
-      onAcceptEdit();
+      onAcceptEdit?.();
     }
   };
 
@@ -344,7 +344,7 @@ Como posso ajudar?`
           ? { ...msg, suggestionRejected: true }
           : msg
       ));
-      onRejectEdit();
+      onRejectEdit?.();
     }
   };
 

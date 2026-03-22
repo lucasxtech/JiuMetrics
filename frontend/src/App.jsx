@@ -6,6 +6,8 @@ import ProtectedRoute from './components/routing/ProtectedRoute';
 import Header from './components/common/Header';
 import PageLoader from './components/common/PageLoader';
 import initializeAuth from './utils/initAuth';
+import { AnalysisProgressProvider } from './contexts/AnalysisProgressContext';
+import { StrategyProvider } from './contexts/StrategyContext';
 
 // ✅ Páginas de autenticação: Carregamento NORMAL (precisam ser rápidas)
 import ModernLogin from './pages/ModernLogin';
@@ -78,7 +80,11 @@ export default function App() {
   
   return (
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppContent />
+      <AnalysisProgressProvider>
+        <StrategyProvider>
+          <AppContent />
+        </StrategyProvider>
+      </AnalysisProgressProvider>
     </BrowserRouter>
   );
 }

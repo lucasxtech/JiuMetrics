@@ -22,8 +22,7 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     }
 
     const videos = req.files;
-    const { personId, personType, athleteName, model } = req.body;
-    const accessToken = req.headers.authorization?.replace('Bearer ', '');
+    const { personId, personType, athleteName, model, belt, matchResult } = req.body;
     
     // Log do modelo selecionado
     if (model) {
@@ -80,13 +79,9 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
 
       console.log(`   3️⃣ Enviando frames para análise com Gemini Vision...`);
       
-      // Verificar se sistema multi-agentes está habilitado
-      const useAgents = process.env.USE_MULTI_AGENTS === 'true';
-      if (useAgents) {
-        console.log(`      🤖 Modo: Sistema Multi-Agentes (3 agentes + GPT orquestrador)`);
-      } else {
-        console.log(`      📊 Modo: Sistema Monolítico (Gemini único)`);
-      }
+      // Sistema Multi-Agentes sempre ativo
+      const useAgents = true;
+      console.log(`      🤖 Modo: Sistema Multi-Agentes (3 agentes + GPT orquestrador)`);
 
       // Contexto específico para este vídeo
       const frameContext = {
@@ -95,7 +90,7 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
         videoNumber: i + 1,
         totalVideos: videos.length,
         belt: belt || 'Não especificada',
-        result: result || 'Não especificado'
+        matchResult: matchResult || 'Não especificado'
       };
 
       // Analisar cada frame com Gemini
@@ -142,29 +137,26 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
     const consolidatedAnalysis = consolidateAnalyses(allFrameAnalyses);
     
     // Salvar uso da API
-    if (req.user?.id && usageRecords.length > 0) {
+    if (req.userId && usageRecords.length > 0) {
       const totalUsage = usageRecords.reduce((acc, usage) => ({
         promptTokens: acc.promptTokens + usage.promptTokens,
         completionTokens: acc.completionTokens + usage.completionTokens,
         totalTokens: acc.totalTokens + usage.totalTokens
       }), { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
       
-      const useAgents = process.env.USE_MULTI_AGENTS === 'true';
-      
       await ApiUsage.logUsage({
-        userId: req.user.id,
+        userId: req.userId,
         modelName: usageRecords[0].modelName,
         operationType: 'video_analysis',
         promptTokens: totalUsage.promptTokens,
         completionTokens: totalUsage.completionTokens,
-        accessToken,
         metadata: {
           videosCount: videos.length,
           framesAnalyzed: allFrameAnalyses.length,
           athleteName,
           personType,
-          analysisMode: useAgents ? 'multi_agents' : 'monolithic',
-          ...(useAgents && usageRecords[0].metadata ? {
+          analysisMode: 'multi_agents',
+          ...(usageRecords[0].metadata ? {
             orchestrator: usageRecords[0].metadata.orchestrator,
             agentsUsed: usageRecords[0].metadata.agentsUsed
           } : {})

@@ -9,7 +9,7 @@ const { chat } = require('../services/geminiService');
 
 // Utilitários centralizados
 const { handleError } = require('../utils/errorHandler');
-const { logApiUsage } = require('../utils/apiUsageLogger');
+const { logApiUsageWithType } = require('../utils/apiUsageLogger');
 const { ensureOriginalVersion, createAnalysisVersion, saveProfileVersion } = require('../utils/versionManager');
 
 /**
@@ -42,7 +42,7 @@ exports.createSession = async (req, res) => {
     } else {
       return res.status(400).json({
         success: false,
-        error: 'contextType inválido. Use "analysis" ou "strategy"'
+        error: 'contextType inválido. Use "analysis"'
       });
     }
 
@@ -113,9 +113,9 @@ exports.sendMessage = async (req, res) => {
     });
 
     // Registrar uso da API
-    await logApiUsage({
+    await logApiUsageWithType({
       userId,
-      endpoint: '/api/chat/send',
+      operationType: 'chat_analysis',
       usage: aiResponse.usage
     });
 
@@ -196,8 +196,8 @@ exports.applyEdit = async (req, res) => {
       });
     }
 
-    // Buscar análise atual
-    const analysis = await FightAnalysis.getById(analysisId);
+    // Buscar análise atual (com userId para garantir ownership)
+    const analysis = await FightAnalysis.getByIdAndUser(analysisId, userId);
     if (!analysis) {
       return res.status(404).json({
         success: false,
@@ -535,9 +535,9 @@ exports.sendProfileMessage = async (req, res) => {
     });
 
     // Registrar uso da API
-    await logApiUsage({
+    await logApiUsageWithType({
       userId,
-      endpoint: '/api/chat/profile-send',
+      operationType: 'chat_profile',
       usage: aiResponse.usage
     });
 
@@ -751,7 +751,7 @@ exports.sendStrategyMessage = async (req, res) => {
     }
 
     // Buscar sessão
-    const session = await ChatSession.getById(sessionId);
+    const session = await ChatSession.getById(sessionId, userId);
     if (!session) {
       return res.status(404).json({
         success: false,
@@ -782,9 +782,9 @@ exports.sendStrategyMessage = async (req, res) => {
     });
 
     // Registrar uso da API
-    await logApiUsage({
+    await logApiUsageWithType({
       userId,
-      endpoint: '/api/chat/strategy-send',
+      operationType: 'chat_strategy',
       usage: aiResponse.usage
     });
 

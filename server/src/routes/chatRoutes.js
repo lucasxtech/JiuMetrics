@@ -3,15 +3,10 @@ const express = require('express');
 const router = express.Router();
 const chatController = require('../controllers/chatController');
 const authMiddleware = require('../middleware/auth');
-const rateLimit = require('express-rate-limit');
+const { chatLimiter } = require('../middleware/rateLimiter');
 
-// Limitador de taxa para rotas de chat
-const chatLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // máximo de 100 requisições por IP por janela
-});
-
-// Todas as rotas requerem autenticação
+// Rate limiting antes da autenticação
+router.use(chatLimiter);
 router.use(authMiddleware);
 
 // Aplica rate limiting a todas as rotas de chat

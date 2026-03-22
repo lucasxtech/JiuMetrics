@@ -4,8 +4,9 @@ const router = express.Router();
 const strategyController = require('../controllers/strategyController');
 const strategyVersionController = require('../controllers/strategyVersionController');
 const authMiddleware = require('../middleware/auth');
+const { heavyLimiter } = require('../middleware/rateLimiter');
 
-// Aplicar middleware de autenticação em todas as rotas
+router.use(heavyLimiter);
 router.use(authMiddleware);
 
 // Comparar atleta vs adversário e gerar estratégia
