@@ -2,10 +2,11 @@
 const express = require('express');
 const opponentController = require('../controllers/opponentController');
 const authMiddleware = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
-// Aplicar middleware de autenticação em todas as rotas
+router.use(generalLimiter);
 router.use(authMiddleware);
 
 // GET /api/opponents - Listar todos

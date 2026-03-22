@@ -16,6 +16,10 @@ const config = require('./config');
 const app = express();
 const PORT = config.PORT;
 
+// Confiar no proxy reverso (Vercel/Render) para obter IP real do cliente
+// Necessário para que o rate limiter use o IP correto via X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Configuração CORS - Permitir desenvolvimento local, GitHub Pages e Vercel
 const corsOptions = {
   origin: function (origin, callback) {

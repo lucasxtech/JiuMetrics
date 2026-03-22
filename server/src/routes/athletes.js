@@ -2,10 +2,11 @@
 const express = require('express');
 const athleteController = require('../controllers/athleteController');
 const authMiddleware = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
-// Aplicar middleware de autenticação em todas as rotas
+router.use(generalLimiter);
 router.use(authMiddleware);
 
 // GET /api/athletes - Listar todos

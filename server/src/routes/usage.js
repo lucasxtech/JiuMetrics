@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const usageController = require('../controllers/usageController');
 const authMiddleware = require('../middleware/auth');
+const { generalLimiter } = require('../middleware/rateLimiter');
 
-// Todas as rotas de usage requerem autenticação
+router.use(generalLimiter);
 router.use(authMiddleware);
 
 /**
