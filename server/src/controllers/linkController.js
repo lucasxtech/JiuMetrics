@@ -1,6 +1,9 @@
 const { analyzeFrame, consolidateAnalyses, consolidateSummariesWithAI } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
+const StrategyService = require('../services/strategyService');
+const Athlete = require('../models/Athlete');
+const Opponent = require('../models/Opponent');
 
 function extractYouTubeId(url) {
   try {
@@ -174,6 +177,24 @@ exports.analyzeLink = async (req, res) => {
           userId: req.userId, // ⚠️ CRÍTICO: Adicionar userId
         });
         console.log(`✅ Análise salva com sucesso para ${personType} ${personId}`);
+
+        // Gera o resumo técnico consolidado de forma síncrona
+        // (o usuário já esperou a análise — segundos extras não fazem diferença)
+        try {
+          const consolidation = await StrategyService.consolidateAnalyses(personId, req.userId, null);
+          const updateData = {
+            technicalSummary: consolidation.resumo,
+            technicalSummaryUpdatedAt: new Date().toISOString()
+          };
+          if (personType === 'athlete') {
+            await Athlete.update(personId, updateData, req.userId);
+          } else {
+            await Opponent.update(personId, updateData, req.userId);
+          }
+          console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
+        } catch (summaryErr) {
+          console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, summaryErr.message);
+        }
       } catch (saveError) {
         console.error('❌ Erro ao salvar análise:', saveError);
         // Não retornar erro, apenas logar

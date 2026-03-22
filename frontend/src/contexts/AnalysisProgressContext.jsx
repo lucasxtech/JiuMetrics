@@ -6,6 +6,7 @@ const AnalysisProgressContext = createContext(null);
 export function AnalysisProgressProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [lastSavedPersonId, setLastSavedPersonId] = useState(null);
   const [processingStage, setProcessingStage] = useState('');
   const [processingProgress, setProcessingProgress] = useState(0);
   const [analysisError, setAnalysisError] = useState(null);
@@ -46,6 +47,7 @@ export function AnalysisProgressProvider({ children }) {
 
       if (result.data) {
         setAnalysis(result);
+        if (personId) setLastSavedPersonId(personId);
       } else {
         setAnalysisError('Nenhum dado retornado da análise');
       }
@@ -69,6 +71,7 @@ export function AnalysisProgressProvider({ children }) {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setIsLoading(false);
     setAnalysis(null);
+    setLastSavedPersonId(null);
     setProcessingStage('');
     setProcessingProgress(0);
     setAnalysisError(null);
@@ -78,6 +81,7 @@ export function AnalysisProgressProvider({ children }) {
     <AnalysisProgressContext.Provider value={{
       isLoading,
       analysis,
+      lastSavedPersonId,
       processingStage,
       processingProgress,
       analysisError,

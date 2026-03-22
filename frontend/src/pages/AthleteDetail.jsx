@@ -1,5 +1,5 @@
 // Página de Detalhe do Atleta
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AthleteForm from '../components/forms/AthleteForm';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -14,6 +14,7 @@ import { getOpponentById, deleteOpponent, updateOpponent } from '../services/opp
 import { getAnalysesByPerson, deleteAnalysis } from '../services/fightAnalysisService';
 import { consolidateProfile } from '../services/aiService';
 import { saveProfileSummary } from '../services/chatService';
+import { useAnalysisProgress } from '../contexts/AnalysisProgressContext';
 
 export default function AthleteDetail({ isOpponent = false }) {
   const { id } = useParams();
@@ -34,6 +35,8 @@ export default function AthleteDetail({ isOpponent = false }) {
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [savingBelt, setSavingBelt] = useState(false);
+
+  const { lastSavedPersonId } = useAnalysisProgress();
 
   // Estado para controlar dropdown de faixa
   const [beltDropdownOpen, setBeltDropdownOpen] = useState(false);
@@ -72,44 +75,53 @@ export default function AthleteDetail({ isOpponent = false }) {
     }
   };
 
-  useEffect(() => {
-    async function fetchAthlete() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = isOpponent 
-          ? await getOpponentById(id)
-          : await getAthleteById(id);
-        setAthlete(response?.data ?? null);
-        
-        // Se já tem technicalSummary salvo, carregar automaticamente
-        if (response?.data?.technicalSummary) {
-          setAiSummary(response.data.technicalSummary);
-        }
-        
-        // Buscar análises do atleta
-        try {
-          const analysesResponse = await getAnalysesByPerson(id);
-          setAnalyses(analysesResponse?.data ?? []);
-        } catch (analysisErr) {
-          console.error('❌ Erro ao carregar análises:', analysisErr);
-          console.error('❌ Detalhes do erro:', analysisErr.response?.data);
-          setAnalyses([]);
-        }
-      } catch (err) {
-        console.error('❌ Erro ao carregar atleta:', err);
-        setError('Não foi possível carregar o atleta.');
-      } finally {
-        setLoading(false);
-      }
-    }
+  const fetchAthlete = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
+      const response = isOpponent
+        ? await getOpponentById(id)
+        : await getAthleteById(id);
+      setAthlete(response?.data ?? null);
+
+      // Se já tem technicalSummary salvo, carregar automaticamente
+      if (response?.data?.technicalSummary) {
+        setAiSummary(response.data.technicalSummary);
+      } else {
+        setAiSummary('');
+      }
+
+      // Buscar análises do atleta
+      try {
+        const analysesResponse = await getAnalysesByPerson(id);
+        setAnalyses(analysesResponse?.data ?? []);
+      } catch (analysisErr) {
+        console.error('❌ Erro ao carregar análises:', analysisErr);
+        setAnalyses([]);
+      }
+    } catch (err) {
+      console.error('❌ Erro ao carregar atleta:', err);
+      setError('Não foi possível carregar o atleta.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, isOpponent]);
+
+  useEffect(() => {
     if (id) {
       fetchAthlete();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, fetchAthlete]);
+
+  // Quando uma nova análise de vídeo for concluída para este atleta/adversário,
+  // recarrega os dados (o resumo já foi gerado sincronamente no servidor)
+  useEffect(() => {
+    if (lastSavedPersonId && lastSavedPersonId === id) {
+      const timer = setTimeout(() => fetchAthlete(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastSavedPersonId, id, fetchAthlete]);
 
   // Função para gerar resumo consolidado com IA (e salvar no perfil)
   const handleGenerateSummary = async () => {
@@ -207,11 +219,14 @@ export default function AthleteDetail({ isOpponent = false }) {
 
   const confirmDeleteAnalysis = async () => {
     if (!analysisToDelete) return;
-    
+
     try {
       await deleteAnalysis(analysisToDelete);
-      setAnalyses(analyses.filter(a => a.id !== analysisToDelete));
+      setAnalyses(prev => prev.filter(a => a.id !== analysisToDelete));
       setAnalysisToDelete(null);
+
+      // Aguarda o backend regenerar o resumo em background, depois recarrega
+      setTimeout(() => fetchAthlete(), 3000);
     } catch (err) {
       console.error('Erro ao deletar análise:', err);
       setError('Erro ao deletar análise. Tente novamente.');
@@ -472,35 +487,18 @@ export default function AthleteDetail({ isOpponent = false }) {
                 </svg>
               </div>
               <div className="flex-1">
-                <div className="space-y-6">
-                  {(() => {
-                    // Usar technicalSummary salvo, ou fallback para análise mais recente
-                    const summaryText = athlete?.technicalSummary || analyses[0]?.summary || '';
-                    // Dividir o texto em frases
-                    const sentences = summaryText.split(/(?<=[.!?])\s+/);
-                    const paragraphs = [];
-                    
-                    // Agrupar frases em parágrafos de 2-3 frases
-                    for (let i = 0; i < sentences.length; i += 3) {
-                      paragraphs.push(sentences.slice(i, i + 3).join(' '));
-                    }
-                    
-                    return paragraphs.map((paragraph, index) => (
-                      <p key={index} className="text-slate-700 leading-relaxed text-[15px]">
-                        {paragraph}
-                      </p>
-                    ));
-                  })()}
-                </div>
+                <p className="text-slate-700 leading-relaxed text-[15px] whitespace-pre-wrap">
+                  {athlete?.technicalSummary || analyses[0]?.summary || ''}
+                </p>
                 <div className="mt-5 pt-4 border-t border-slate-200 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Última atualização: {athlete?.technicalSummaryUpdatedAt 
-                      ? new Date(athlete.technicalSummaryUpdatedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+                      ? new Date(athlete.technicalSummaryUpdatedAt).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                       : analyses[0]?.created_at 
-                        ? new Date(analyses[0].created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+                        ? new Date(analyses[0].created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : 'N/A'
                     }
                   </div>

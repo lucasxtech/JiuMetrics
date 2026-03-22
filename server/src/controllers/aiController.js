@@ -102,7 +102,7 @@ exports.consolidateProfile = async (req, res) => {
       metadata: {
         personId,
         personType,
-        personName: person.name,
+        personName: updatedPerson?.name || null,
         analysesCount: consolidation.analysesCount
       }
     });

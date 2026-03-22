@@ -7,6 +7,9 @@ const { generateQuickChartUrl } = require('../utils/chartUtils');
 const { extractTechnicalProfile } = require('../utils/profileUtils');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
+const StrategyService = require('../services/strategyService');
+const Athlete = require('../models/Athlete');
+const Opponent = require('../models/Opponent');
 
 /**
  * POST /api/video/upload - Processa múltiplos vídeos enviados
@@ -198,6 +201,24 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
         });
         
         console.log(`✅ Análise salva com sucesso para ${personType} ${personId}`);
+
+        // Gera o resumo técnico sincronamente antes de responder,
+        // assim o frontend sempre encontra o resumo atualizado ao navegar para o atleta
+        try {
+          const consolidation = await StrategyService.consolidateAnalyses(personId, req.userId, null);
+          const updateData = {
+            technicalSummary: consolidation.resumo,
+            technicalSummaryUpdatedAt: new Date().toISOString()
+          };
+          if (personType === 'athlete') {
+            await Athlete.update(personId, updateData, req.userId);
+          } else {
+            await Opponent.update(personId, updateData, req.userId);
+          }
+          console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
+        } catch (summaryErr) {
+          console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, summaryErr.message);
+        }
       } catch (saveError) {
         console.error('❌ Erro ao salvar análise:', saveError.message);
       }
