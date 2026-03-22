@@ -21,9 +21,9 @@ async function refreshTechnicalSummary(personId, personType, userId) {
     } else {
       await Opponent.update(personId, updateData, userId);
     }
-    console.log(`✅ [auto] Resumo técnico atualizado — ${personType} ${personId}`);
+    console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
   } catch (err) {
-    console.error(`❌ [auto] Falha ao atualizar resumo técnico — ${personType} ${personId}:`, err.message);
+    console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, err.message);
   }
 }
 

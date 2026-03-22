@@ -1,12 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const rateLimit = require('express-rate-limit');
+
+const envCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * GET /api/debug/env-check
  * Endpoint para verificar variáveis de ambiente em produção (requer autenticação)
  */
-router.get('/env-check', authMiddleware, (req, res) => {
+router.get('/env-check', authMiddleware, envCheckLimiter, (req, res) => {
   res.json({
     USE_MULTI_AGENTS: process.env.USE_MULTI_AGENTS,
     USE_MULTI_AGENTS_TYPE: typeof process.env.USE_MULTI_AGENTS,
