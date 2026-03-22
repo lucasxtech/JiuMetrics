@@ -14,7 +14,7 @@ const envCheckLimiter = rateLimit({
  * GET /api/debug/env-check
  * Endpoint para verificar variáveis de ambiente em produção (requer autenticação)
  */
-router.get('/env-check', authMiddleware, envCheckLimiter, (req, res) => {
+router.get('/env-check', envCheckLimiter, authMiddleware, (req, res) => {
   res.json({
     USE_MULTI_AGENTS: process.env.USE_MULTI_AGENTS,
     USE_MULTI_AGENTS_TYPE: typeof process.env.USE_MULTI_AGENTS,
