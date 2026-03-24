@@ -74,6 +74,15 @@ export default function Header() {
               <span aria-hidden="true">🤖</span>
               IA
             </PrefetchLink>
+            <a
+              href="/guia-usuario.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Ajuda — Guia do Usuário"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold tracking-tight transition-all duration-200 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.32)] border border-white/20 hover:border-white/40"
+            >
+              ?
+            </a>
             <PrefetchLink
               to="/settings"
               prefetchComponent={SettingsPage}
@@ -131,6 +140,14 @@ export default function Header() {
               <span aria-hidden="true">🤖</span>
               IA
             </PrefetchLink>
+            <a
+              href="/guia-usuario.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm font-bold text-white/75 transition-colors hover:text-white hover:bg-white/10 border border-white/20"
+            >
+              ? Ajuda
+            </a>
             <PrefetchLink
               to="/settings"
               prefetchComponent={SettingsPage}

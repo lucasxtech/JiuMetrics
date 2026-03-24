@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JiuMetrics — Guia do Usuário</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d0f;
+      --surface: #16181d;
+      --surface2: #1e2028;
+      --border: #2a2d38;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --gold: #d4a843;
+      --text: #e8eaf0;
+      --muted: #7a7f94;
+      --success: #3ecf8e;
+      --danger: #f26262;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* ─── SIDEBAR NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0;
+      width: 240px;
+      height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0;
+      z-index: 100;
+      overflow-y: auto;
+    }
+
+    .nav-logo {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .nav-logo .logo-text {
+      font-size: 1.3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-logo .logo-sub {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: all 0.15s;
+      border-left: 3px solid transparent;
+    }
+
+    nav a:hover, nav a.active {
+      color: var(--text);
+      background: var(--surface2);
+      border-left-color: var(--accent);
+    }
+
+    nav a .icon { font-size: 1rem; width: 18px; text-align: center; }
+
+    .nav-section {
+      padding: 16px 24px 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    /* ─── MAIN CONTENT ─── */
+    main {
+      margin-left: 240px;
+      min-height: 100vh;
+    }
+
+    section {
+      min-height: 100vh;
+      padding: 80px 60px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* ─── HERO ─── */
+    #hero {
+      background: radial-gradient(ellipse at 60% 40%, rgba(79,142,247,0.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 20% 70%, rgba(124,92,191,0.1) 0%, transparent 50%),
+                  var(--bg);
+      min-height: 100vh;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(79,142,247,0.15);
+      border: 1px solid rgba(79,142,247,0.3);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    #hero h1 {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      max-width: 700px;
+    }
+
+    #hero h1 .gradient {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    #hero .subtitle {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 560px;
+      margin-top: 16px;
+    }
+
+    .hero-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 48px;
+    }
+
+    .hero-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      flex: 1 1 160px;
+      max-width: 200px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .hero-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .hero-card .hc-icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .hero-card .hc-title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+    .hero-card .hc-desc { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* ─── SECTION HEADERS ─── */
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .section-intro {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 600px;
+      margin-bottom: 40px;
+    }
+
+    /* ─── STEPS ─── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      max-width: 800px;
+    }
+
+    .step {
+      display: flex;
+      gap: 24px;
+      position: relative;
+    }
+
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 52px;
+      width: 2px;
+      height: calc(100% - 12px);
+      background: var(--border);
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+      z-index: 1;
+      margin-top: 2px;
+    }
+
+    .step-body {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      flex: 1;
+      margin-bottom: 16px;
+    }
+
+    .step-body h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step-body p {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .step-body .tip {
+      margin-top: 12px;
+      background: rgba(79,142,247,0.08);
+      border-left: 3px solid var(--accent);
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    .step-tag {
+      display: inline-block;
+      background: rgba(62,207,142,0.12);
+      color: var(--success);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ─── FEATURE GRID ─── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      max-width: 960px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(79,142,247,0.15), 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .feature-card .fc-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .feature-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ─── STRATEGY SECTION ─── */
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      max-width: 960px;
+    }
+
+    .strategy-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    .strategy-item .si-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent2);
+      margin-bottom: 4px;
+    }
+
+    .strategy-item .si-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .strategy-item p {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* ─── CHAT FLOW ─── */
+    .chat-flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      max-width: 860px;
+    }
+
+    .cf-step {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      flex: 1 1 160px;
+      text-align: center;
+    }
+
+    .cf-step .cf-icon { font-size: 1.5rem; margin-bottom: 6px; }
+    .cf-step .cf-title { font-size: 0.8rem; font-weight: 700; }
+    .cf-step .cf-desc { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+    .cf-arrow {
+      font-size: 1.2rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    /* ─── NAV TABLE ─── */
+    .nav-table {
+      width: 100%;
+      max-width: 700px;
+      border-collapse: collapse;
+    }
+
+    .nav-table th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-table td {
+      padding: 12px 16px;
+      font-size: 0.875rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-table tr:hover td { background: var(--surface2); }
+
+    .nav-table .menu-name {
+      display: inline-block;
+      background: rgba(79,142,247,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(79,142,247,0.25);
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ─── FAQ ─── */
+    .faq-list { max-width: 720px; }
+
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 16px 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    summary::after {
+      content: '﹢';
+      font-size: 1.2rem;
+      color: var(--muted);
+      flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+
+    details[open] summary::after {
+      content: '–';
+    }
+
+    details[open] summary {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .faq-answer {
+      padding: 16px 20px;
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ─── TIPS ─── */
+    .tips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      max-width: 860px;
+    }
+
+    .tip-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .tip-card .tip-icon {
+      font-size: 1.4rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .tip-card h4 { font-size: 0.875rem; font-weight: 700; margin-bottom: 4px; }
+    .tip-card p { font-size: 0.8rem; color: var(--muted); }
+
+    /* ─── FOOTER ─── */
+    #fim {
+      min-height: auto;
+      padding: 60px 60px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    #fim .fim-logo {
+      font-size: 1.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    #fim p { color: var(--muted); font-size: 0.875rem; }
+
+    /* ─── SCROLL PROGRESS ─── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 240px;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      z-index: 200;
+      transition: width 0.1s;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { display: none; }
+      main { margin-left: 0; }
+      section { padding: 60px 24px; }
+      #fim { padding: 40px 24px; }
+      #progress-bar { left: 0; }
+      .cf-arrow { display: none; }
+    }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar" style="width:0%"></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="nav-logo">
+    <div class="logo-text">JiuMetrics</div>
+    <div class="logo-sub">Guia do Usuário</div>
+  </div>
+
+  <div class="nav-section">Início</div>
+  <a href="#hero" class="active"><span class="icon">🏠</span> Visão Geral</a>
+
+  <div class="nav-section">Começando</div>
+  <a href="#primeiros-passos"><span class="icon">🔑</span> Primeiros Passos</a>
+  <a href="#caminho-feliz"><span class="icon">🗺️</span> Caminho Completo</a>
+
+  <div class="nav-section">Funcionalidades</div>
+  <a href="#video"><span class="icon">🤖</span> Análise IA</a>
+  <a href="#estrategia"><span class="icon">⚔️</span> Estratégia</a>
+  <a href="#chat"><span class="icon">💬</span> Chat com IA</a>
+
+  <div class="nav-section">Referência</div>
+  <a href="#navegacao"><span class="icon">🧭</span> Navegação</a>
+  <a href="#faq"><span class="icon">❓</span> FAQ</a>
+  <a href="#dicas"><span class="icon">💡</span> Dicas</a>
+</nav>
+
+<main>
+
+  <!-- ═══ HERO ═══ -->
+  <section id="hero">
+    <div class="hero-badge">🥋 Exclusivo para atletas da academia</div>
+    <h1>Análise tática de<br><span class="gradient">Jiu-Jitsu com IA</span></h1>
+    <p class="subtitle">
+      O JiuMetrics usa Inteligência Artificial para analisar seus vídeos de luta, montar perfis técnicos e gerar estratégias personalizadas para cada adversário.
+    </p>
+
+    <div class="hero-cards">
+      <div class="hero-card">
+        <div class="hc-icon">🤖</div>
+        <div class="hc-title">Analise vídeos</div>
+        <div class="hc-desc">Link do YouTube + IA</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-icon">👤</div>
+        <div class="hc-title">Perfis técnicos</div>
+        <div class="hc-desc">Atletas e adversários</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-icon">⚔️</div>
+        <div class="hc-title">Estratégias</div>
+        <div class="hc-desc">Matchup tático com IA</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-icon">💬</div>
+        <div class="hc-title">Chat de IA</div>
+        <div class="hc-desc">Refine e questione</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-icon">📊</div>
+        <div class="hc-title">Histórico</div>
+        <div class="hc-desc">Evolução ao longo do tempo</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PRIMEIROS PASSOS ═══ -->
+  <section id="primeiros-passos">
+    <div class="section-label">Começando</div>
+    <h2>Primeiros Passos</h2>
+    <p class="section-intro">Criar sua conta e fazer login leva menos de dois minutos.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-tag">Uma vez só</div>
+          <h3>Crie sua conta</h3>
+          <p>Acesse a plataforma e clique em <strong>Criar conta</strong>. Preencha nome, e-mail e senha.</p>
+          <div class="tip">🔒 Seus dados são privados — cada atleta vê <strong>somente as suas</strong> informações.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Faça login</h3>
+          <p>Entre com e-mail e senha. Marque <strong>"Lembrar de mim"</strong> para não precisar digitar toda vez.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Explore o Dashboard</h3>
+          <p>A <strong>Visão Geral</strong> mostra um resumo de tudo: atletas, análises recentes e custo mensal de IA.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CAMINHO FELIZ ═══ -->
+  <section id="caminho-feliz">
+    <div class="section-label">Fluxo Principal</div>
+    <h2>Caminho Completo</h2>
+    <p class="section-intro">Siga estes 6 passos na ordem certa para aproveitar tudo que a plataforma oferece.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>📋 Cadastre você como atleta</h3>
+          <p>Vá em <strong>Atletas → Novo Atleta</strong>. Preencha nome, faixa e observações sobre seu estilo de jogo. Quanto mais detalhe, melhor a IA entenderá seu perfil.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>🥷 Cadastre o adversário</h3>
+          <p>Vá em <strong>Adversários → Novo Adversário</strong>. Adicione o máximo de informações que você souber sobre ele — estilo, faixa, pontos fortes.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>🤖 IA — Envie um vídeo de luta</h3>
+          <p>Acesse <strong>IA</strong>, cole o link do YouTube da luta e selecione para qual atleta/adversário o vídeo pertence. A IA vai analisar automaticamente.</p>
+          <div class="tip">💡 <strong>Quanto mais contexto, melhor o resultado!</strong> Informe na descrição quem ganhou a luta, qual era a cor do kimono de cada atleta e o peso da categoria — isso ajuda a IA a identificar corretamente os atletas e gerar uma análise muito mais precisa.</div>
+          <div class="tip" style="margin-top:8px">⏳ A análise pode levar alguns minutos. Você pode navegar pela plataforma enquanto isso.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>👁️ Veja o perfil técnico</h3>
+          <p>Abra o perfil do atleta ou adversário. Clique em <strong>"Gerar Resumo"</strong> para a IA consolidar todas as análises em um perfil técnico completo com gráficos de atributos.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>⚔️ Gere a Estratégia</h3>
+          <p>Vá em <strong>Estratégia</strong>, selecione o atleta e o adversário e clique em <strong>"Gerar Estratégia"</strong>. A IA entrega um plano tático completo: como vencer, prioridades, plano por fase e cronologia minuto a minuto.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h3>💬 Refine com o Chat de IA</h3>
+          <p>Ainda na estratégia (ou em qualquer análise), abra o <strong>painel de chat</strong>. Faça perguntas específicas ou peça ajustes. A IA sugere mudanças que você aceita ou rejeita — tudo fica salvo com histórico de versões.</p>
+          <div class="tip">💡 Exemplo: <em>"Como devo me posicionar se ele jogar na guarda spider?"</em></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ANÁLISE DE VÍDEO ═══ -->
+  <section id="video">
+    <div class="section-label">Funcionalidade</div>
+    <h2>🤖 IA — Análise de Vídeo</h2>
+    <p class="section-intro">Cole um link do YouTube e receba uma análise técnica, tática e de regras gerada por IA.</p>
+
+    <div class="feature-grid">
+      <div class="feature-card" style="border-color: rgba(79,142,247,0.4); background: rgba(79,142,247,0.06)">
+        <div class="fc-icon">▶️</div>
+        <h3>Link do YouTube</h3>
+        <p>Cole a URL de qualquer vídeo público do YouTube. A plataforma processa automaticamente.</p>
+      </div>
+      <div class="feature-card" style="border-color: rgba(212,168,67,0.4); background: rgba(212,168,67,0.06)">
+        <div class="fc-icon">🎯</div>
+        <h3>Dê contexto à IA</h3>
+        <p><strong style="color: var(--gold)">Quanto mais detalhe, mais precisa a análise.</strong> Informe quem ganhou, a cor do kimono de cada atleta e a categoria de peso — a IA usa essas informações para identificar os atletas corretamente no vídeo.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔬</div>
+        <h3>Análise Técnica</h3>
+        <p>A IA identifica técnicas, posições, finalizações e padrões de movimento ao longo da luta.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🧠</div>
+        <h3>Análise Tática</h3>
+        <p>Pontos fortes, fraquezas, tomadas de decisão e comportamento sob pressão.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">📜</div>
+        <h3>Regras IBJJF</h3>
+        <p>A análise aponta situações relevantes de pontuação, vantagens e penalidades.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">📈</div>
+        <h3>Histórico Salvo</h3>
+        <p>Cada análise fica no perfil do atleta. Você pode comparar a evolução ao longo do tempo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ESTRATÉGIA ═══ -->
+  <section id="estrategia">
+    <div class="section-label">Funcionalidade</div>
+    <h2>Estratégia de Combate</h2>
+    <p class="section-intro">A IA compara os perfis do atleta e do adversário e entrega um plano tático completo.</p>
+
+    <div class="strategy-grid">
+      <div class="strategy-item">
+        <div class="si-label">Resumo</div>
+        <div class="si-title">Como Vencer</div>
+        <p>A abordagem principal recomendada pela IA para vencer o matchup.</p>
+      </div>
+      <div class="strategy-item">
+        <div class="si-label">Foco</div>
+        <div class="si-title">3 Prioridades Táticas</div>
+        <p>As três ações mais importantes para executar durante a luta.</p>
+      </div>
+      <div class="strategy-item">
+        <div class="si-label">Análise</div>
+        <div class="si-title">Matchup Detalhado</div>
+        <p>Vantagem crítica, risco oculto e o fator decisivo do confronto.</p>
+      </div>
+      <div class="strategy-item">
+        <div class="si-label">Plano</div>
+        <div class="si-title">Fases da Luta</div>
+        <p>Estratégias específicas para o combate em pé, passagem de guarda e jogo de guarda.</p>
+      </div>
+      <div class="strategy-item">
+        <div class="si-label">Tempo</div>
+        <div class="si-title">Cronologia Minuto a Minuto</div>
+        <p>O que fazer no 1º minuto, no meio da luta e na reta final.</p>
+      </div>
+      <div class="strategy-item">
+        <div class="si-label">Lista</div>
+        <div class="si-title">Checklist Tático</div>
+        <p>Oportunidades de pontuação e as armadilhas que o adversário costuma usar.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CHAT DE IA ═══ -->
+  <section id="chat">
+    <div class="section-label">Funcionalidade</div>
+    <h2>Chat com IA</h2>
+    <p class="section-intro">Converse com a IA para refinar qualquer análise, perfil ou estratégia gerada.</p>
+
+    <div class="chat-flow">
+      <div class="cf-step">
+        <div class="cf-icon">💬</div>
+        <div class="cf-title">Você pergunta</div>
+        <div class="cf-desc">"Reescreva o plano de passagem de guarda"</div>
+      </div>
+      <div class="cf-arrow">→</div>
+      <div class="cf-step">
+        <div class="cf-icon">🤖</div>
+        <div class="cf-title">IA sugere</div>
+        <div class="cf-desc">Propõe uma alteração específica</div>
+      </div>
+      <div class="cf-arrow">→</div>
+      <div class="cf-step">
+        <div class="cf-icon">👁️</div>
+        <div class="cf-title">Você revisa</div>
+        <div class="cf-desc">Vê o antes e depois lado a lado</div>
+      </div>
+      <div class="cf-arrow">→</div>
+      <div class="cf-step">
+        <div class="cf-icon">✅</div>
+        <div class="cf-title">Aceita ou rejeita</div>
+        <div class="cf-desc">Versão salva automaticamente</div>
+      </div>
+      <div class="cf-arrow">→</div>
+      <div class="cf-step">
+        <div class="cf-icon">🕐</div>
+        <div class="cf-title">Histórico</div>
+        <div class="cf-desc">Restaure qualquer versão anterior</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 32px; max-width: 660px; padding: 20px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;">
+      <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Exemplos de perguntas úteis</div>
+      <ul style="list-style: none; display: flex; flex-direction: column; gap: 8px;">
+        <li style="font-size: 0.875rem; padding: 8px 12px; background: var(--surface2); border-radius: 8px; color: var(--muted);">💬 "Como devo agir se ele jogar na guarda de ombro?"</li>
+        <li style="font-size: 0.875rem; padding: 8px 12px; background: var(--surface2); border-radius: 8px; color: var(--muted);">💬 "Quais são os principais riscos desse matchup?"</li>
+        <li style="font-size: 0.875rem; padding: 8px 12px; background: var(--surface2); border-radius: 8px; color: var(--muted);">💬 "Reescreva o plano de passagem de guarda focando no leg drag"</li>
+        <li style="font-size: 0.875rem; padding: 8px 12px; background: var(--surface2); border-radius: 8px; color: var(--muted);">💬 "Adicione mais detalhes sobre o jogo em pé do adversário"</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ═══ NAVEGAÇÃO ═══ -->
+  <section id="navegacao">
+    <div class="section-label">Referência</div>
+    <h2>Mapa da Plataforma</h2>
+    <p class="section-intro">Onde encontrar cada funcionalidade no menu lateral.</p>
+
+    <table class="nav-table">
+      <thead>
+        <tr>
+          <th>O que quero fazer</th>
+          <th>Onde acessar</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Ver resumo geral e análises recentes</td>
+          <td><span class="menu-name">Visão Geral</span></td>
+        </tr>
+        <tr>
+          <td>Criar ou ver perfis de atletas</td>
+          <td><span class="menu-name">Atletas</span></td>
+        </tr>
+        <tr>
+          <td>Criar ou ver perfis de adversários</td>
+          <td><span class="menu-name">Adversários</span></td>
+        </tr>
+        <tr>
+          <td>Enviar vídeo para análise</td>
+          <td><span class="menu-name">IA</span></td>
+        </tr>
+        <tr>
+          <td>Ver histórico completo de análises</td>
+          <td><span class="menu-name">Análises</span></td>
+        </tr>
+        <tr>
+          <td>Gerar estratégia atleta vs adversário</td>
+          <td><span class="menu-name">Estratégia</span></td>
+        </tr>
+        <tr>
+          <td>Ver consumo de IA e configurações</td>
+          <td><span class="menu-name">Configurações</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ═══ FAQ ═══ -->
+  <section id="faq">
+    <div class="section-label">Referência</div>
+    <h2>Perguntas Frequentes</h2>
+    <p class="section-intro">Dúvidas comuns de quem está começando a usar a plataforma.</p>
+
+    <div class="faq-list">
+      <details>
+        <summary>Posso enviar mais de um vídeo por atleta?</summary>
+        <div class="faq-answer">Sim! Você pode enviar quantos vídeos quiser. Cada análise fica salva no perfil e o resumo técnico considera todas elas juntas, mostrando a evolução ao longo do tempo.</div>
+      </details>
+
+      <details>
+        <summary>O que acontece se eu enviar um vídeo de má qualidade?</summary>
+        <div class="faq-answer">A IA faz o melhor possível com o que recebe. Vídeos mais nítidos, bem enquadrados e com boa iluminação geram análises mais precisas. Gravações de câmera fixa cobrindo toda a área de combate funcionam muito bem.</div>
+      </details>
+
+      <details>
+        <summary>Posso editar manualmente uma análise ou estratégia?</summary>
+        <div class="faq-answer">Sim. Use o chat de IA para sugerir alterações ou edite diretamente os campos de texto. Toda edição gera automaticamente uma versão salva, que pode ser restaurada a qualquer momento.</div>
+      </details>
+
+      <details>
+        <summary>Outros atletas podem ver minhas informações?</summary>
+        <div class="faq-answer">Não. A plataforma usa isolamento por usuário — cada conta enxerga apenas os dados que ela mesma cadastrou. Seus perfis, análises e estratégias são completamente privados.</div>
+      </details>
+
+      <details>
+        <summary>A IA aceita qualquer link do YouTube?</summary>
+        <div class="faq-answer">Sim, qualquer vídeo público do YouTube funciona. Atualmente a plataforma só aceita links do YouTube — não é possível fazer upload de arquivos de vídeo diretamente. O progresso aparece no canto da tela e você pode navegar pela plataforma normalmente enquanto aguarda.</div>
+      </details>
+
+      <details>
+        <summary>Por que devo informar a cor do kimono e quem ganhou?</summary>
+        <div class="faq-answer">A IA analisa os frames do vídeo e precisa saber quem é quem. Informar a <strong>cor do kimono de cada atleta</strong>, <strong>quem ganhou</strong> e a <strong>categoria de peso</strong> ajuda a IA a atribuir corretamente as ações técnicas a cada lutador, tornando a análise muito mais precisa e útil.</div>
+      </details>
+
+      <details>
+        <summary>Preciso cadastrar o adversário antes de gerar a estratégia?</summary>
+        <div class="faq-answer">Sim. Você precisa ter um perfil de atleta e um de adversário cadastrados. Quanto mais informações e análises de vídeo ambos tiverem, mais precisa e detalhada será a estratégia gerada.</div>
+      </details>
+
+      <details>
+        <summary>A plataforma funciona no celular?</summary>
+        <div class="faq-answer">Sim! A interface é responsiva e funciona bem no celular. Você pode consultar a estratégia no aquecimento antes de uma luta, por exemplo.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ═══ DICAS ═══ -->
+  <section id="dicas">
+    <div class="section-label">Boas Práticas</div>
+    <h2>Dicas para Melhores Resultados</h2>
+    <p class="section-intro">Pequenos hábitos que fazem grande diferença na qualidade das análises.</p>
+
+    <div class="tips-grid">
+      <div class="tip-card">
+        <div class="tip-icon">🎯</div>
+        <div>
+          <h4>Vídeos focados na luta</h4>
+          <p>Evite vídeos com longos intervalos de pausa. Quanto mais tempo de combate real, melhor a análise.</p>
+        </div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">📝</div>
+        <div>
+          <h4>Preencha as observações</h4>
+          <p>Ao cadastrar atletas e adversários, descreva o estilo de jogo. A IA usa essas informações na estratégia.</p>
+        </div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">🔄</div>
+        <div>
+          <h4>Atualize após competições</h4>
+          <p>Envie os vídeos de cada campeonato para manter o histórico atualizado e a evolução bem documentada.</p>
+        </div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">💬</div>
+        <div>
+          <h4>Seja específico no chat</h4>
+          <p>Perguntas detalhadas geram respostas mais úteis. "Fale sobre guarda" é menos eficaz que "Como devo passar a guarda aranha dele?"</p>
+        </div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">📱</div>
+        <div>
+          <h4>Consulte antes de lutar</h4>
+          <p>Acesse a estratégia no celular durante o aquecimento para revisar as prioridades táticas de forma rápida.</p>
+        </div>
+      </div>
+      <div class="tip-card">
+        <div class="tip-icon">🕐</div>
+        <div>
+          <h4>Use o histórico de versões</h4>
+          <p>Se uma edição não ficou boa, basta restaurar a versão anterior. Nada é perdido permanentemente.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer id="fim">
+    <div class="fim-logo">JiuMetrics</div>
+    <p>Plataforma exclusiva para atletas da nossa academia.</p>
+    <p style="margin-top: 4px; font-size: 0.75rem;">Dúvidas? Fale com o professor.</p>
+  </footer>
+
+</main>
+
+<script>
+  // Progress bar
+  const bar = document.getElementById('progress-bar');
+  window.addEventListener('scroll', () => {
+    const total = document.body.scrollHeight - window.innerHeight;
+    const pct = total > 0 ? (window.scrollY / total) * 100 : 0;
+    bar.style.width = pct + '%';
+  });
+
+  // Active nav link on scroll
+  const sections = document.querySelectorAll('section[id], footer[id]');
+  const links = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
