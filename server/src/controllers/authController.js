@@ -4,7 +4,14 @@ const User = require('../models/User');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 const JWT_EXPIRES_IN = '7d';
 const JWT_EXPIRES_IN_REMEMBER = '30d';
-const ALLOWED_EMAILS = ['lucas.menezes@clint.digital', 'contateste@teste.com'];
+const ALLOWED_EMAILS = ['lucas.menezes@clint.digital',
+   'contateste@teste.com',
+  'esterbp30@gmail.com',
+'Kauagomestrator@gmail.com',
+'Bruandalpra13@gmail.com',
+'Isaacbaitsdarosa@gmail.com',
+'bernardobernert@gmail.com'
+];
 
 const ERROR_MESSAGES = {
   REQUIRED_FIELDS: 'Todos os campos são obrigatórios',
