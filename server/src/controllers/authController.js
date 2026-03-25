@@ -10,7 +10,8 @@ const ALLOWED_EMAILS = ['lucas.menezes@clint.digital',
 'Kauagomestrator@gmail.com',
 'Bruandalpra13@gmail.com',
 'Isaacbaitsdarosa@gmail.com',
-'bernardobernert@gmail.com'
+'bernardobernert@gmail.com',
+'lucianobernert@gmail.com'
 ];
 
 const ERROR_MESSAGES = {
