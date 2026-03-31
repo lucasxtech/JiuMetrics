@@ -25,7 +25,7 @@ class Orchestrator {
       throw new Error('geminiClient é obrigatório');
     }
     if (!openaiApiKey) {
-      throw new Error('openaiApiKey é obrigatória');
+      throw new Error('OPENAI_API_KEY não configurada. Configure a variável de ambiente e faça redeploy.');
     }
     
     // Validação básica do formato da API key

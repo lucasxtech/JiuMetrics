@@ -223,15 +223,16 @@ async function analyzeFrame(url, context = {}, customModel = null, useAgents = f
   
   assertModelAvailable(modelToUse);
 
-  // Construir prompt SEM a URL (imagem vai separada)
-  const basePrompt = getPrompt('video-analysis', { VIDEO_URL: '[IMAGEM ANEXADA]' });
+  // Construir prompt — para YouTube, passa a URL no contexto; para base64, marca como imagem anexada
+  const isYouTube = url.includes('youtube.com/') || url.includes('youtu.be/');
+  const basePrompt = getPrompt('video-analysis', { VIDEO_URL: isYouTube ? url : '[MÍDIA ANEXADA]' });
   const contextText = buildVideoAnalysisContext(context);
   const textPrompt = basePrompt + contextText;
 
   // Preparar partes para o Gemini (texto + imagem)
   const parts = [{ text: textPrompt }];
 
-  // Verificar se é Data URI (base64) e extrair a imagem
+  // Verificar se é Data URI (base64) ou URL do YouTube
   if (url.startsWith('data:')) {
     const match = url.match(/^data:(.+?);base64,(.+)$/);
     if (match) {
@@ -246,10 +247,18 @@ async function analyzeFrame(url, context = {}, customModel = null, useAgents = f
       console.error('❌ [analyzeFrame] Data URI inválido - formato não reconhecido');
       throw new Error('Data URI inválido');
     }
+  } else if (url.includes('youtube.com/') || url.includes('youtu.be/')) {
+    // Gemini 1.5+ suporta YouTube URLs nativamente via fileData
+    parts.push({
+      fileData: {
+        mimeType: 'video/mp4',
+        fileUri: url
+      }
+    });
+    console.log('🎬 [analyzeFrame] YouTube URL anexada ao prompt (fileData):', url);
   } else {
-    // Se for URL normal, passa como texto (não suportado pelo Gemini diretamente)
-    console.warn('⚠️ [analyzeFrame] URL externa detectada - Gemini não pode acessar URLs');
-    // Mantém só o texto (vai alucinar, mas pelo menos não quebra)
+    console.warn('⚠️ [analyzeFrame] Tipo de URL não suportado:', url.substring(0, 60));
+    throw new Error('Tipo de URL não suportado. Use YouTube ou faça upload do vídeo.');
   }
 
   try {
@@ -366,11 +375,8 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
       console.error('❌ Stack trace:');
       console.error(error.stack.split('\n').slice(0, 5).join('\n'));
     }
-    console.error('⚠️  FALLBACK: Usando sistema monolítico');
     console.error('❌ ========================================\n');
-    
-    // Fallback: tenta análise tradicional
-    return analyzeFrame(url, context, customModel, false);
+    throw error;
   }
 }
 

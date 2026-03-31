@@ -88,6 +88,7 @@ exports.analyzeLink = async (req, res) => {
     console.log(`🔬 Analisando ${videoData.length} vídeo(s) individualmente...`);
     const analyses = [];
     const usageRecords = [];
+    let lastError = null;
     
     for (let i = 0; i < videoData.length; i++) {
       const video = videoData[i];
@@ -100,13 +101,14 @@ exports.analyzeLink = async (req, res) => {
           videos: [video], // Passa apenas este vídeo para o prompt
           matchResult: matchResult?.trim(), // Adiciona resultado da luta
           belt: belt?.trim() // Adiciona faixa do atleta
-        }, model); // Passa o modelo selecionado
+        }, model, true); // Sistema multi-agentes sempre ativo
         
         analyses.push(result.analysis);
         usageRecords.push(result.usage);
         console.log(`✅ Vídeo ${i + 1} analisado com sucesso`);
       } catch (error) {
         console.error(`❌ Erro ao analisar vídeo ${i + 1}:`, error.message);
+        lastError = error;
         // Continua com os próximos vídeos mesmo se um falhar
       }
     }
@@ -114,7 +116,7 @@ exports.analyzeLink = async (req, res) => {
     if (analyses.length === 0) {
       return res.status(500).json({ 
         success: false, 
-        error: 'Nenhum vídeo foi analisado com sucesso' 
+        error: lastError?.message || 'Nenhum vídeo foi analisado com sucesso'
       });
     }
     
