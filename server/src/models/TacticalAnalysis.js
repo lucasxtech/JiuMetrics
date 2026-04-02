@@ -8,7 +8,7 @@ class TacticalAnalysis {
    * @param {Object} options - Opções de filtro e paginação
    * @returns {Promise<Array>} Lista de análises
    */
-  static async getAll(userId, options = {}) {
+  static async getAll(userIdOrIds, options = {}) {
     const { 
       athleteId, 
       opponentId, 
@@ -16,10 +16,13 @@ class TacticalAnalysis {
       offset = 0 
     } = options;
 
+    const ids = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
+    if (ids.length === 0) return [];
+
     let query = supabase
       .from('tactical_analyses')
       .select('*')
-      .eq('user_id', userId)
+      .in('user_id', ids)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -43,12 +46,13 @@ class TacticalAnalysis {
    * @param {string} userId - ID do usuário (para verificação de segurança)
    * @returns {Promise<Object>} Análise tática
    */
-  static async getById(id, userId) {
+  static async getById(id, userIdOrIds) {
+    const ids = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
     const { data, error } = await supabase
       .from('tactical_analyses')
       .select('*')
       .eq('id', id)
-      .eq('user_id', userId)
+      .in('user_id', ids)
       .single();
 
     if (error) {
@@ -93,12 +97,13 @@ class TacticalAnalysis {
    * @param {string} userId - ID do usuário (para verificação de segurança)
    * @returns {Promise<boolean>} Sucesso
    */
-  static async delete(id, userId) {
+  static async delete(id, userIdOrIds) {
+    const ids = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
     const { error } = await supabase
       .from('tactical_analyses')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId);
+      .in('user_id', ids);
 
     if (error) throw error;
     return true;
@@ -111,7 +116,8 @@ class TacticalAnalysis {
    * @param {Object} updateData - Dados a atualizar
    * @returns {Promise<Object>} Análise atualizada
    */
-  static async update(id, userId, updateData) {
+  static async update(id, userIdOrIds, updateData) {
+    const ids = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
     const { data, error } = await supabase
       .from('tactical_analyses')
       .update({
@@ -119,7 +125,7 @@ class TacticalAnalysis {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('user_id', userId)
+      .in('user_id', ids)
       .select();
 
     if (error) {
@@ -138,11 +144,13 @@ class TacticalAnalysis {
    * @param {string} userId - ID do usuário
    * @returns {Promise<number>} Total de análises
    */
-  static async count(userId) {
+  static async count(userIdOrIds) {
+    const ids = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
+    if (ids.length === 0) return 0;
     const { count, error } = await supabase
       .from('tactical_analyses')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
+      .in('user_id', ids);
 
     if (error) throw error;
     return count || 0;
@@ -154,11 +162,13 @@ class TacticalAnalysis {
    * @param {number} limit - Quantidade de análises
    * @returns {Promise<Array>} Análises recentes
    */
-  static async getRecent(userId, limit = 10) {
+  static async getRecent(userIdOrIds, limit = 10) {
+    const ids = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
+    if (ids.length === 0) return [];
     const { data, error } = await supabase
       .from('tactical_analyses')
       .select('id, athlete_name, opponent_name, created_at')
-      .eq('user_id', userId)
+      .in('user_id', ids)
       .order('created_at', { ascending: false })
       .limit(limit);
 

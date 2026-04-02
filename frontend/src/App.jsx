@@ -8,13 +8,13 @@ import PageLoader from './components/common/PageLoader';
 import initializeAuth from './utils/initAuth';
 import { AnalysisProgressProvider } from './contexts/AnalysisProgressContext';
 import { StrategyProvider } from './contexts/StrategyContext';
+import { AuthProvider } from './contexts/AuthContext';
 
 // ✅ Páginas de autenticação: Carregamento NORMAL (precisam ser rápidas)
 import ModernLogin from './pages/ModernLogin';
 import Register from './pages/Register';
 
 // ✅ Páginas protegidas: LAZY LOADING (só carrega quando acessar)
-// Isso reduz o bundle inicial em ~70% e acelera o primeiro carregamento
 const Overview = lazy(() => import('./pages/Overview'));
 const Athletes = lazy(() => import('./pages/Athletes'));
 const AthleteDetail = lazy(() => import('./pages/AthleteDetail'));
@@ -23,6 +23,7 @@ const Strategy = lazy(() => import('./pages/Strategy'));
 const VideoAnalysis = lazy(() => import('./pages/VideoAnalysis'));
 const Analyses = lazy(() => import('./pages/Analyses'));
 const Settings = lazy(() => import('./pages/Settings'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 
 // ✅ Preload agressivo das páginas mais usadas (após login)
 // Carrega em background sem bloquear navegação
@@ -63,6 +64,7 @@ function AppContent() {
               <Route path="/analyze-video" element={<ProtectedRoute><VideoAnalysis /></ProtectedRoute>} />
               <Route path="/analyses" element={<ProtectedRoute><Analyses /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
               <Route path="*" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
             </Routes>
           </Suspense>
@@ -80,11 +82,13 @@ export default function App() {
   
   return (
     <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AnalysisProgressProvider>
-        <StrategyProvider>
-          <AppContent />
-        </StrategyProvider>
-      </AnalysisProgressProvider>
+      <AuthProvider>
+        <AnalysisProgressProvider>
+          <StrategyProvider>
+            <AppContent />
+          </StrategyProvider>
+        </AnalysisProgressProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

@@ -20,6 +20,8 @@ function parseAthleteFromDB(dbAthlete) {
     technicalSummary: dbAthlete.technical_summary || null,
     technicalSummaryUpdatedAt: dbAthlete.technical_summary_updated_at || null,
     analysesCount: dbAthlete.analyses_count || 0,
+    creatorName: dbAthlete.creator_name || null,
+    userId: dbAthlete.user_id,
     createdAt: dbAthlete.created_at,
     updatedAt: dbAthlete.updated_at,
   };
@@ -54,6 +56,7 @@ function parseAnalysisFromDB(dbAnalysis) {
     originalSummary: dbAnalysis.original_summary,
     originalCharts: dbAnalysis.original_charts,
     userId: dbAnalysis.user_id,
+    creatorName: dbAnalysis.creator_name || null,
     createdAt: dbAnalysis.created_at,
     updatedAt: dbAnalysis.updated_at,
   };

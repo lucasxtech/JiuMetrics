@@ -1,4 +1,6 @@
 // Card para exibir informações de atleta/adversário - Design Moderno
+import CreatorBadge from './CreatorBadge';
+
 export default function AthleteCard({ 
   name, 
   belt, 
@@ -7,6 +9,7 @@ export default function AthleteCard({
   style, 
   technicalProfile,
   analysesCount = 0,
+  creatorName = null,
   onClick,
   type = 'athlete' // 'athlete' ou 'opponent'
 }) {
@@ -58,6 +61,7 @@ export default function AthleteCard({
                 {name}
               </h3>
             </div>
+            {creatorName && <CreatorBadge creatorName={creatorName} />}
             <span
               className={`badge-modern ${beltStyles[belt] || 'bg-slate-50 text-slate-700'} border-2 text-xs px-3 py-1`}
               aria-label={`Faixa ${belt}`}

@@ -4,28 +4,24 @@ const User = require('../models/User');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 const JWT_EXPIRES_IN = '7d';
 const JWT_EXPIRES_IN_REMEMBER = '30d';
-const ALLOWED_EMAILS = ['lucas.menezes@clint.digital',
-   'contateste@teste.com',
-  'esterbp30@gmail.com',
-'Kauagomestrator@gmail.com',
-'Bruandalpra13@gmail.com',
-'Isaacbaitsdarosa@gmail.com',
-'bernardobernert@gmail.com',
-'lucianobernert@gmail.com'
-];
+
+// Registro público desabilitado — admin cria usuários via /api/admin/users
+// Para habilitar registro público (ex.: setup inicial), defina ALLOW_PUBLIC_REGISTER=true no .env
+const ALLOW_PUBLIC_REGISTER = process.env.ALLOW_PUBLIC_REGISTER === 'true';
 
 const ERROR_MESSAGES = {
   REQUIRED_FIELDS: 'Todos os campos são obrigatórios',
   INVALID_EMAIL: 'Email inválido',
   SHORT_PASSWORD: 'Senha deve ter no mínimo 6 caracteres',
   EMAIL_EXISTS: 'Email já cadastrado',
-  UNAUTHORIZED_EMAIL: 'Este email não tem permissão para acessar o sistema',
+  REGISTRATION_DISABLED: 'O registro público está desabilitado. Contate o administrador.',
   INVALID_CREDENTIALS: 'Email ou senha incorretos',
+  INACTIVE_USER: 'Sua conta está desativada. Contate o administrador.',
 };
 
-const generateToken = (userId, rememberMe = false) => {
+const generateToken = (userId, role = 'user', rememberMe = false) => {
   return jwt.sign(
-    { userId },
+    { userId, role },
     JWT_SECRET,
     { expiresIn: rememberMe ? JWT_EXPIRES_IN_REMEMBER : JWT_EXPIRES_IN }
   );
@@ -47,11 +43,8 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: ERROR_MESSAGES.INVALID_EMAIL });
     }
 
-    const isEmailAllowed = ALLOWED_EMAILS.some(
-      allowedEmail => allowedEmail.toLowerCase() === email.toLowerCase()
-    );
-    if (!isEmailAllowed) {
-      return res.status(403).json({ error: ERROR_MESSAGES.UNAUTHORIZED_EMAIL });
+    if (!ALLOW_PUBLIC_REGISTER) {
+      return res.status(403).json({ error: ERROR_MESSAGES.REGISTRATION_DISABLED });
     }
 
     const existingUser = await User.findByEmail(email);
@@ -60,7 +53,7 @@ exports.register = async (req, res) => {
     }
 
     const user = await User.create({ name, email, password });
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role || 'user');
     await User.updateLastLogin(user.id);
 
     res.status(201).json({
@@ -68,7 +61,8 @@ exports.register = async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role || 'user'
       },
       token
     });
@@ -88,20 +82,17 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    const isEmailAllowed = ALLOWED_EMAILS.some(
-      allowedEmail => allowedEmail.toLowerCase() === email.toLowerCase()
-    );
-    if (!isEmailAllowed) {
-      console.log('❌ Unauthorized email:', email, 'Allowed:', ALLOWED_EMAILS);
-      return res.status(403).json({ error: ERROR_MESSAGES.UNAUTHORIZED_EMAIL });
-    }
-
     const user = await User.findByEmail(email);
     console.log('👤 User found:', !!user);
     
     if (!user) {
       console.log('❌ User not found in database');
       return res.status(401).json({ error: ERROR_MESSAGES.INVALID_CREDENTIALS });
+    }
+
+    if (user.is_active === false) {
+      console.log('❌ Inactive user:', email);
+      return res.status(403).json({ error: ERROR_MESSAGES.INACTIVE_USER });
     }
 
     console.log('🔑 Verifying password...');
@@ -113,16 +104,17 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: ERROR_MESSAGES.INVALID_CREDENTIALS });
     }
 
-    const token = generateToken(user.id, rememberMe);
+    const token = generateToken(user.id, user.role || 'user', rememberMe);
     await User.updateLastLogin(user.id);
 
-    console.log('✅ Login successful for:', email);
+    console.log('✅ Login successful for:', email, '| role:', user.role);
     res.json({
       success: true,
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role || 'user'
       },
       token
     });

@@ -18,6 +18,7 @@ router.get('/validate', authMiddleware, (req, res) => {
   res.json({ 
     success: true, 
     userId: req.userId,
+    role: req.user.role,
     message: 'Token válido' 
   });
 });

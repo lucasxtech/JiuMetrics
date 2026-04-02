@@ -1,5 +1,7 @@
+const { getScopeIds } = require('../utils/tenantScope');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
+const User = require('../models/User');
 const StrategyService = require('../services/strategyService');
 const TacticalAnalysis = require('../models/TacticalAnalysis');
 const ApiUsage = require('../models/ApiUsage');
@@ -25,10 +27,11 @@ exports.compareAndStrategy = async (req, res) => {
       });
     }
 
-    // Buscar dados básicos
+    // Buscar dados básicos (escopo do grupo)
+    const allowedUserIds = await getScopeIds(req, User);
     const [athlete, opponent] = await Promise.all([
-      Athlete.getById(athleteId, userId),
-      Opponent.getById(opponentId, userId)
+      Athlete.getById(athleteId, allowedUserIds),
+      Opponent.getById(opponentId, allowedUserIds)
     ]);
 
     if (!athlete) {
@@ -38,8 +41,8 @@ exports.compareAndStrategy = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Adversário não encontrado' });
     }
 
-    // Gerar estratégia usando consolidação de todas as análises
-    const result = await StrategyService.generateStrategy(athleteId, opponentId, userId, model);
+    // Gerar estratégia usando consolidação de todas as análises do grupo
+    const result = await StrategyService.generateStrategy(athleteId, opponentId, allowedUserIds, model);
     
     // Salvar análise tática no histórico
     let savedAnalysis = null;
@@ -129,14 +132,15 @@ exports.listAnalyses = async (req, res) => {
     const userId = req.userId;
     const { athleteId, opponentId, limit, offset } = req.query;
 
-    const analyses = await TacticalAnalysis.getAll(userId, {
+    const allowedUserIds = await getScopeIds(req, User);
+    const analyses = await TacticalAnalysis.getAll(allowedUserIds, {
       athleteId,
       opponentId,
       limit: limit ? parseInt(limit) : undefined,
       offset: offset ? parseInt(offset) : undefined
     });
 
-    const total = await TacticalAnalysis.count(userId);
+    const total = await TacticalAnalysis.count(allowedUserIds);
 
     res.json({
       success: true,
@@ -163,7 +167,8 @@ exports.getAnalysis = async (req, res) => {
     const { id } = req.params;
     const userId = req.userId;
 
-    const analysis = await TacticalAnalysis.getById(id, userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const analysis = await TacticalAnalysis.getById(id, allowedUserIds);
 
     if (!analysis) {
       return res.status(404).json({
@@ -195,7 +200,8 @@ exports.deleteAnalysis = async (req, res) => {
     const { id } = req.params;
     const userId = req.userId;
 
-    await TacticalAnalysis.delete(id, userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    await TacticalAnalysis.delete(id, allowedUserIds);
 
     res.json({
       success: true,
@@ -228,8 +234,9 @@ exports.updateAnalysis = async (req, res) => {
       });
     }
 
-    // Verificar se a análise existe e pertence ao usuário
-    const analysis = await TacticalAnalysis.getById(id, userId);
+    // Verificar se a análise existe e pertence ao grupo
+    const allowedUserIds = await getScopeIds(req, User);
+    const analysis = await TacticalAnalysis.getById(id, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({
         success: false,
@@ -237,8 +244,8 @@ exports.updateAnalysis = async (req, res) => {
       });
     }
     
-    // Atualizar
-    const updated = await TacticalAnalysis.update(id, userId, { strategy_data });
+    // Atualizar (usar owner real da análise)
+    const updated = await TacticalAnalysis.update(id, analysis.user_id, { strategy_data });
 
     // Criar versão do histórico (não falhar se der erro)
     try {

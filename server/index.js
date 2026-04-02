@@ -11,6 +11,7 @@ const strategyRoutes = require('./src/routes/strategy');
 const usageRoutes = require('./src/routes/usage');
 const chatRoutes = require('./src/routes/chatRoutes');
 const debugRoutes = require('./src/routes/debug');
+const adminRoutes = require('./src/routes/admin');
 const config = require('./config');
 
 const app = express();
@@ -67,6 +68,7 @@ app.use('/api/strategy', strategyRoutes);
 app.use('/api/usage', usageRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

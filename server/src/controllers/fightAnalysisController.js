@@ -1,25 +1,37 @@
+const { getScopeIds } = require('../utils/tenantScope');
 // Controlador para Análises de Lutas
 const FightAnalysis = require('../models/FightAnalysis');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
+const User = require('../models/User');
 const StrategyService = require('../services/strategyService');
 const { extractTechnicalProfile } = require('../utils/profileUtils');
 
 /**
  * Regenera o resumo técnico de um atleta/adversário em background.
- * Chamado após criar ou deletar análises — sem bloquear a resposta HTTP.
  */
 async function refreshTechnicalSummary(personId, personType, userId) {
   try {
-    const consolidation = await StrategyService.consolidateAnalyses(personId, userId, null);
+    const allowedUserIds = await User.getGroupUserIds(userId);
+    // Fetch the record to get the actual owner (cross-member group support)
+    const person = personType === 'athlete'
+      ? await Athlete.getById(personId, allowedUserIds)
+      : await Opponent.getById(personId, allowedUserIds);
+
+    if (!person) {
+      console.warn('⚠️ [auto] Pessoa não encontrada para refreshTechnicalSummary —', personType, personId);
+      return;
+    }
+
+    const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, null);
     const updateData = {
       technicalSummary: consolidation.resumo,
       technicalSummaryUpdatedAt: new Date().toISOString()
     };
     if (personType === 'athlete') {
-      await Athlete.update(personId, updateData, userId);
+      await Athlete.update(personId, updateData, person.userId);
     } else {
-      await Opponent.update(personId, updateData, userId);
+      await Opponent.update(personId, updateData, person.userId);
     }
     console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
   } catch (err) {
@@ -32,7 +44,8 @@ async function refreshTechnicalSummary(personId, personType, userId) {
  */
 exports.getAllAnalyses = async (req, res) => {
   try {
-    const analyses = await FightAnalysis.getAll(req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const analyses = await FightAnalysis.getAll(allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
     console.error('Erro ao buscar análises:', error);
@@ -45,7 +58,8 @@ exports.getAllAnalyses = async (req, res) => {
  */
 exports.getAnalysisById = async (req, res) => {
   try {
-    const analysis = await FightAnalysis.getById(req.params.id);
+    const allowedUserIds = await getScopeIds(req, User);
+    const analysis = await FightAnalysis.getByIdAndUser(req.params.id, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }
@@ -61,8 +75,8 @@ exports.getAnalysisById = async (req, res) => {
  */
 exports.getAnalysesByPerson = async (req, res) => {
   try {
-    const analyses = await FightAnalysis.getByPersonId(req.params.personId, req.userId);
-    
+    const allowedUserIds = await getScopeIds(req, User);
+    const analyses = await FightAnalysis.getByPersonId(req.params.personId, allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
     console.error('❌ Erro ao buscar análises da pessoa:', error);
@@ -84,14 +98,15 @@ exports.createAnalysis = async (req, res) => {
       });
     }
 
-    // Validar se pessoa existe
+    // Validar se pessoa existe (dentro do grupo do usuário)
+    const allowedUserIds = await getScopeIds(req, User);
     if (personType === 'athlete') {
-      const athlete = await Athlete.getById(personId);
+      const athlete = await Athlete.getById(personId, allowedUserIds);
       if (!athlete) {
         return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
       }
     } else if (personType === 'opponent') {
-      const opponent = await Opponent.getById(personId);
+      const opponent = await Opponent.getById(personId, allowedUserIds);
       if (!opponent) {
         return res.status(404).json({ success: false, error: 'Adversário não encontrado' });
       }
@@ -138,6 +153,12 @@ exports.createAnalysis = async (req, res) => {
  */
 exports.deleteAnalysis = async (req, res) => {
   try {
+    const allowedUserIds = await getScopeIds(req, User);
+    const existing = await FightAnalysis.getByIdAndUser(req.params.id, allowedUserIds);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Análise não encontrada' });
+    }
+
     const deleted = await FightAnalysis.delete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
@@ -147,14 +168,20 @@ exports.deleteAnalysis = async (req, res) => {
     // Fire-and-forget: regenera ou limpa o resumo técnico após deletar
     const { personId, personType } = deleted;
     if (personId && personType) {
-      const remaining = await FightAnalysis.getByPersonId(personId, req.userId);
+      // Reutiliza allowedUserIds já obtido — evita 2 queries extras ao banco
+      const remaining = await FightAnalysis.getByPersonId(personId, allowedUserIds);
       if (remaining.length === 0) {
-        // Sem análises restantes — limpa o resumo
-        const clearData = { technicalSummary: null, technicalSummaryUpdatedAt: new Date().toISOString() };
-        const updateFn = personType === 'athlete'
-          ? Athlete.update(personId, clearData, req.userId)
-          : Opponent.update(personId, clearData, req.userId);
-        updateFn.catch(err => console.error(`❌ [auto] Falha ao limpar resumo — ${personType} ${personId}:`, err.message));
+        // Sem análises restantes — limpa o resumo (usa owner real do registro)
+        const person = personType === 'athlete'
+          ? await Athlete.getById(personId, allowedUserIds)
+          : await Opponent.getById(personId, allowedUserIds);
+        if (person) {
+          const clearData = { technicalSummary: null, technicalSummaryUpdatedAt: new Date().toISOString() };
+          const updateFn = personType === 'athlete'
+            ? Athlete.update(personId, clearData, person.userId)
+            : Opponent.update(personId, clearData, person.userId);
+          updateFn.catch(err => console.error(`❌ [auto] Falha ao limpar resumo — ${personType} ${personId}:`, err.message));
+        }
       } else {
         refreshTechnicalSummary(personId, personType, req.userId);
       }

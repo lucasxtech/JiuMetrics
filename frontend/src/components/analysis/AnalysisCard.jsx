@@ -2,6 +2,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { extractStrategyContent } from '../../utils/strategyUtils';
+import CreatorBadge from '../common/CreatorBadge';
 
 export default function AnalysisCard({ analysis, onView, onDelete }) {
   const formattedDate = formatDistanceToNow(new Date(analysis.created_at), {
@@ -53,6 +54,7 @@ export default function AnalysisCard({ analysis, onView, onDelete }) {
                 <span className="text-sm text-slate-600 font-medium">{analysis.opponent_name}</span>
               </div>
             </div>
+            {analysis.creatorName && <CreatorBadge creatorName={analysis.creatorName} />}
           </div>
 
           {/* Data */}

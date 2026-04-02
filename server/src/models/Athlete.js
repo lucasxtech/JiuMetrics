@@ -4,58 +4,70 @@ const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers'
 
 class Athlete {
   /**
-   * Busca todos os atletas de um usuário (com contagem de análises)
+   * Busca todos os atletas dentro do grupo permitido
+   * @param {string[]} allowedUserIds - IDs do grupo (tenant)
    */
-  static async getAll(userId) {
-    // Buscar atletas
+  static async getAll(allowedUserIds) {
     const { data: athletes, error } = await supabase
       .from('athletes')
       .select('*')
-      .eq('user_id', userId)
+      .in('user_id', allowedUserIds)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
-    
-    // Buscar contagem de análises por atleta
+    if (athletes.length === 0) return [];
+
+    // Buscar nomes dos criadores
+    const creatorMap = {};
+    if (allowedUserIds.length > 1) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', allowedUserIds);
+      if (usersData) usersData.forEach(u => { creatorMap[u.id] = u.name; });
+    }
+
     const { data: analysesCounts, error: countError } = await supabase
       .from('fight_analyses')
       .select('person_id')
-      .eq('user_id', userId)
       .in('person_id', athletes.map(a => a.id));
-    
-    // Contar análises por person_id
+
     const countsMap = {};
     if (analysesCounts && !countError) {
       analysesCounts.forEach(a => {
         countsMap[a.person_id] = (countsMap[a.person_id] || 0) + 1;
       });
     }
-    
-    // Adicionar contagem a cada atleta
+
     const athletesWithCount = athletes.map(athlete => ({
       ...athlete,
+      creator_name: creatorMap[athlete.user_id] || null,
       analyses_count: countsMap[athlete.id] || 0
     }));
-    
+
     return parseAthletesFromDB(athletesWithCount);
   }
 
   /**
-   * Busca um atleta por ID e user_id
+   * Busca um atleta por ID dentro do grupo permitido
+   * @param {string} id
+   * @param {string|string[]} userIdOrAllowed - userId único OU array de allowedUserIds
    */
-  static async getById(id, userId) {
+  static async getById(id, userIdOrAllowed) {
+    const ids = Array.isArray(userIdOrAllowed) ? userIdOrAllowed : [userIdOrAllowed];
     const { data, error } = await supabase
       .from('athletes')
       .select('*')
       .eq('id', id)
-      .eq('user_id', userId)
+      .in('user_id', ids)
       .single();
     
     if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
+      if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return data ? parseAthleteFromDB(data) : null;
+    if (!data) return null;
+    return parseAthleteFromDB({ ...data, creator_name: null });
   }
 
   /**
