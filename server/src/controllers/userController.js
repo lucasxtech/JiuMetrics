@@ -49,7 +49,9 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres.' });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // Validação de email com regex segura (sem risco de ReDoS)
+    // Usa \S+ no lugar de [^\s@]+ aninhado para evitar backtracking polinomial
+    if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) {
       return res.status(400).json({ error: 'Email inválido.' });
     }
 
