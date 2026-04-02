@@ -1,9 +1,11 @@
+const { getScopeIds } = require('../utils/tenantScope');
 const { analyzeFrame, consolidateAnalyses, consolidateSummariesWithAI } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
+const User = require('../models/User');
 
 function extractYouTubeId(url) {
   try {
@@ -183,15 +185,18 @@ exports.analyzeLink = async (req, res) => {
         // Gera o resumo técnico consolidado de forma síncrona
         // (o usuário já esperou a análise — segundos extras não fazem diferença)
         try {
-          const consolidation = await StrategyService.consolidateAnalyses(personId, req.userId, null);
+          const allowedUserIds = await getScopeIds(req, User);
+          const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, null);
           const updateData = {
             technicalSummary: consolidation.resumo,
             technicalSummaryUpdatedAt: new Date().toISOString()
           };
           if (personType === 'athlete') {
-            await Athlete.update(personId, updateData, req.userId);
+            const person = await Athlete.getById(personId, allowedUserIds);
+            if (person) await Athlete.update(personId, updateData, person.userId);
           } else {
-            await Opponent.update(personId, updateData, req.userId);
+            const person = await Opponent.getById(personId, allowedUserIds);
+            if (person) await Opponent.update(personId, updateData, person.userId);
           }
           console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
         } catch (summaryErr) {

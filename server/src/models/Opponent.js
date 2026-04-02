@@ -4,58 +4,70 @@ const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers'
 
 class Opponent {
   /**
-   * Busca todos os adversários de um usuário (com contagem de análises)
+   * Busca todos os adversários dentro do grupo permitido
+   * @param {string[]} allowedUserIds - IDs do grupo (tenant)
    */
-  static async getAll(userId) {
-    // Buscar adversários
+  static async getAll(allowedUserIds) {
     const { data: opponents, error } = await supabase
       .from('opponents')
       .select('*')
-      .eq('user_id', userId)
+      .in('user_id', allowedUserIds)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
-    
-    // Buscar contagem de análises por adversário
+    if (opponents.length === 0) return [];
+
+    // Buscar nomes dos criadores
+    const creatorMap = {};
+    if (allowedUserIds.length > 1) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', allowedUserIds);
+      if (usersData) usersData.forEach(u => { creatorMap[u.id] = u.name; });
+    }
+
     const { data: analysesCounts, error: countError } = await supabase
       .from('fight_analyses')
       .select('person_id')
-      .eq('user_id', userId)
       .in('person_id', opponents.map(o => o.id));
-    
-    // Contar análises por person_id
+
     const countsMap = {};
     if (analysesCounts && !countError) {
       analysesCounts.forEach(a => {
         countsMap[a.person_id] = (countsMap[a.person_id] || 0) + 1;
       });
     }
-    
-    // Adicionar contagem a cada adversário
+
     const opponentsWithCount = opponents.map(opponent => ({
       ...opponent,
+      creator_name: creatorMap[opponent.user_id] || null,
       analyses_count: countsMap[opponent.id] || 0
     }));
-    
+
     return parseAthletesFromDB(opponentsWithCount);
   }
 
   /**
-   * Busca um adversário por ID e user_id
+   * Busca um adversário por ID dentro do grupo permitido
+   * @param {string} id
+   * @param {string|string[]} userIdOrAllowed - userId único OU array de allowedUserIds
    */
-  static async getById(id, userId) {
+  static async getById(id, userIdOrAllowed) {
+    const ids = Array.isArray(userIdOrAllowed) ? userIdOrAllowed : [userIdOrAllowed];
     const { data, error } = await supabase
       .from('opponents')
       .select('*')
       .eq('id', id)
-      .eq('user_id', userId)
+      .in('user_id', ids)
       .single();
     
     if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
+      if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return data ? parseAthleteFromDB(data) : null;
+    if (!data) return null;
+    return parseAthleteFromDB({ ...data, creator_name: null });
   }
 
   /**

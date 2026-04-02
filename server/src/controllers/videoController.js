@@ -1,3 +1,4 @@
+const { getScopeIds } = require('../utils/tenantScope');
 const path = require('path');
 const fs = require('fs');
 const { extractFrames } = require('../services/ffmpegService');
@@ -10,6 +11,7 @@ const ApiUsage = require('../models/ApiUsage');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
+const User = require('../models/User');
 
 /**
  * POST /api/video/upload - Processa múltiplos vídeos enviados
@@ -205,15 +207,18 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
         // Gera o resumo técnico sincronamente antes de responder,
         // assim o frontend sempre encontra o resumo atualizado ao navegar para o atleta
         try {
-          const consolidation = await StrategyService.consolidateAnalyses(personId, req.userId, null);
+          const allowedUserIds = await getScopeIds(req, User);
+          const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, null);
           const updateData = {
             technicalSummary: consolidation.resumo,
             technicalSummaryUpdatedAt: new Date().toISOString()
           };
           if (personType === 'athlete') {
-            await Athlete.update(personId, updateData, req.userId);
+            const person = await Athlete.getById(personId, allowedUserIds);
+            if (person) await Athlete.update(personId, updateData, person.userId);
           } else {
-            await Opponent.update(personId, updateData, req.userId);
+            const person = await Opponent.getById(personId, allowedUserIds);
+            if (person) await Opponent.update(personId, updateData, person.userId);
           }
           console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
         } catch (summaryErr) {

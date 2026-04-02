@@ -101,6 +101,14 @@ export const getCurrentUser = () => {
 };
 
 /**
+ * Retorna true se o usuário autenticado é administrador
+ */
+export const isAdmin = () => {
+  const user = getCurrentUser();
+  return user?.role === 'admin';
+};
+
+/**
  * Inicializa o token no API se já estiver logado
  */
 export const initializeAuth = () => {

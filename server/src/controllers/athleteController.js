@@ -1,13 +1,16 @@
 // Controlador de Atletas
 const Athlete = require('../models/Athlete');
+const User = require('../models/User');
 const { handleError } = require('../utils/errorHandler');
+const { getScopeIds } = require('../utils/tenantScope');
 
 /**
  * GET /api/athletes - Retorna todos os atletas
  */
 exports.getAll = async (req, res) => {
   try {
-    const athletes = await Athlete.getAll(req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const athletes = await Athlete.getAll(allowedUserIds);
     res.json({
       success: true,
       data: athletes,
@@ -24,7 +27,8 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const athlete = await Athlete.getById(id, req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const athlete = await Athlete.getById(id, allowedUserIds);
 
     if (!athlete) {
       return res.status(404).json({
@@ -84,7 +88,8 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const athlete = await Athlete.getById(id, req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const athlete = await Athlete.getById(id, allowedUserIds);
 
     if (!athlete) {
       return res.status(404).json({
@@ -93,7 +98,7 @@ exports.update = async (req, res) => {
       });
     }
 
-    const updatedAthlete = await Athlete.update(id, req.body, req.userId);
+    const updatedAthlete = await Athlete.update(id, req.body, athlete.userId);
 
     res.json({
       success: true,
@@ -111,7 +116,8 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const athlete = await Athlete.getById(id, req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const athlete = await Athlete.getById(id, allowedUserIds);
 
     if (!athlete) {
       return res.status(404).json({
@@ -120,7 +126,7 @@ exports.delete = async (req, res) => {
       });
     }
 
-    const deletedAthlete = await Athlete.delete(id, req.userId);
+    const deletedAthlete = await Athlete.delete(id, athlete.userId);
 
     res.json({
       success: true,

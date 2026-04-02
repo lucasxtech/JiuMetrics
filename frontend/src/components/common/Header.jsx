@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import PrefetchLink from './PrefetchLink';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ✅ Importar componentes lazy para prefetch
 const OverviewPage = () => import('../../pages/Overview');
@@ -15,6 +16,7 @@ const SettingsPage = () => import('../../pages/Settings');
 export default function Header() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, isAdmin } = useAuth();
   
   const isActive = (path) => location.pathname === path;
 
@@ -98,6 +100,36 @@ export default function Header() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </PrefetchLink>
+
+            {/* User info pill + admin link */}
+            <div className="flex items-center gap-2 pl-1 border-l border-white/10">
+              {isAdmin && (
+                <PrefetchLink
+                  to="/admin/users"
+                  className={`inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-bold tracking-wide transition-all duration-200 ${
+                    isActive('/admin/users')
+                      ? 'bg-amber-400 text-amber-900'
+                      : 'bg-amber-400/20 text-amber-300 hover:bg-amber-400/30'
+                  }`}
+                  title="Gerenciar Usuários"
+                >
+                  ADMIN
+                </PrefetchLink>
+              )}
+              {user && (
+                <PrefetchLink
+                  to="/settings"
+                  prefetchComponent={SettingsPage}
+                  className="flex items-center gap-2 h-8 rounded-lg px-2 text-white/70 hover:text-white hover:bg-white/10 transition-all"
+                  title={user.email}
+                >
+                  <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-white">
+                    {user.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-medium max-w-20 truncate hidden xl:block">{user.name}</span>
+                </PrefetchLink>
+              )}
+            </div>
           </div>
 
           {/* Menu Mobile (Hambúrguer) */}
@@ -163,6 +195,18 @@ export default function Header() {
               </svg>
               Configurações
             </PrefetchLink>
+            {isAdmin && (
+              <PrefetchLink
+                to="/admin/users"
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm font-bold transition-colors ${
+                  isActive('/admin/users')
+                    ? 'bg-amber-400 text-amber-900'
+                    : 'text-amber-300 hover:text-amber-100 hover:bg-amber-400/20'
+                }`}
+              >
+                👑 Gerenciar Usuários
+              </PrefetchLink>
+            )}
           </div>
         )}
       </div>

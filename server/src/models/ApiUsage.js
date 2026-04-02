@@ -122,16 +122,15 @@ async function logUsage({ userId, modelName, operationType, promptTokens, comple
  * @param {string|null} endDate - Data final (ISO string)
  * @returns {Promise<Array|null>} Registros de uso ou null em caso de erro
  */
-async function getUsageStats(userId, startDate = null, endDate = null) {
+async function getUsageStats(userIdOrIds, startDate = null, endDate = null) {
   try {
-    if (!userId) {
-      return [];
-    }
+    const ids = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
+    if (!ids.length) return [];
 
     let query = supabase
       .from('api_usage')
       .select('*')
-      .eq('user_id', userId);
+      .in('user_id', ids);
 
     if (startDate) {
       query = query.gte('created_at', startDate);

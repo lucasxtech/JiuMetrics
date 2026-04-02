@@ -4,42 +4,61 @@ const { parseAnalysisFromDB, parseAnalysesFromDB } = require('../utils/dbParsers
 
 class FightAnalysis {
   /**
-   * Busca todas as análises
+   * Busca todas as análises dentro do grupo permitido
+   * @param {string[]} allowedUserIds
    */
-  static async getAll(userId) {
-    if (!userId) throw new Error('userId obrigatório');
+  static async getAll(allowedUserIds) {
+    if (!allowedUserIds || allowedUserIds.length === 0) throw new Error('allowedUserIds obrigatório');
 
     const { data, error } = await supabase
       .from('fight_analyses')
       .select('*')
-      .eq('user_id', userId)
+      .in('user_id', allowedUserIds)
       .order('created_at', { ascending: false });
-    
+
     if (error) throw error;
-    return parseAnalysesFromDB(data);
+
+    // Buscar nomes dos criadores (só quando há mais de um usuário no grupo)
+    const creatorMap = {};
+    if (allowedUserIds.length > 1) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', allowedUserIds);
+      if (usersData) usersData.forEach(u => { creatorMap[u.id] = u.name; });
+    }
+
+    const analysesWithCreator = (data || []).map(a => ({
+      ...a,
+      creator_name: creatorMap[a.user_id] || null,
+    }));
+
+    return parseAnalysesFromDB(analysesWithCreator);
   }
 
   /**
-   * Busca análises por tipo de pessoa (athlete ou opponent)
+   * Busca análises por pessoa dentro do grupo permitido
+   * @param {string} personId
+   * @param {string|string[]|null} userIdOrAllowed - userId, array de IDs, ou null (sem filtro)
    */
-  static async getByPersonId(personId, userId = null) {
+  static async getByPersonId(personId, userIdOrAllowed = null) {
     let query = supabase
       .from('fight_analyses')
       .select('*')
       .eq('person_id', personId);
-    
-    // Filtrar por user_id se fornecido
-    if (userId) {
-      query = query.eq('user_id', userId);
+
+    if (userIdOrAllowed) {
+      const ids = Array.isArray(userIdOrAllowed) ? userIdOrAllowed : [userIdOrAllowed];
+      query = query.in('user_id', ids);
     }
-    
+
     const { data, error } = await query.order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('❌ Erro ao buscar análises:', error);
       throw error;
     }
-    
+
     return parseAnalysesFromDB(data);
   }
 
@@ -58,21 +77,21 @@ class FightAnalysis {
   }
 
   /**
-   * Busca análise por ID garantindo que pertence ao usuário
+   * Busca análise por ID garantindo que pertence ao usuário (ou é admin)
    */
-  static async getByIdAndUser(id, userId) {
+  static async getByIdAndUser(id, allowedUserIds) {
     const { data, error } = await supabase
       .from('fight_analyses')
       .select('*')
       .eq('id', id)
-      .eq('user_id', userId)
+      .in('user_id', allowedUserIds)
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return parseAnalysisFromDB(data);
+    return parseAnalysisFromDB({ ...data, creator_name: null });
   }
 
   /**

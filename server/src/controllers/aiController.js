@@ -1,7 +1,9 @@
+const { getScopeIds } = require('../utils/tenantScope');
 const { generateAthleteSummary } = require('../services/geminiService');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
+const User = require('../models/User');
 const { handleError } = require('../utils/errorHandler');
 const { logApiUsageWithType } = require('../utils/apiUsageLogger');
 
@@ -73,7 +75,8 @@ exports.consolidateProfile = async (req, res) => {
     }
 
     // Consolidar análises usando StrategyService (com gráficos e stats)
-    const consolidation = await StrategyService.consolidateAnalyses(personId, userId, model);
+    const allowedUserIds = await getScopeIds(req, User);
+    const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, model);
 
     // Salvar o resumo consolidado no perfil do atleta/adversário
     const updateData = {
@@ -83,9 +86,13 @@ exports.consolidateProfile = async (req, res) => {
 
     let updatedPerson;
     if (personType === 'athlete') {
-      updatedPerson = await Athlete.update(personId, updateData, userId);
+      const person = await Athlete.getById(personId, allowedUserIds);
+      if (!person) return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
+      updatedPerson = await Athlete.update(personId, updateData, person.userId);
     } else {
-      updatedPerson = await Opponent.update(personId, updateData, userId);
+      const person = await Opponent.getById(personId, allowedUserIds);
+      if (!person) return res.status(404).json({ success: false, error: 'Adversário não encontrado' });
+      updatedPerson = await Opponent.update(personId, updateData, person.userId);
     }
 
     console.log('💾 Perfil atualizado com resumo consolidado');

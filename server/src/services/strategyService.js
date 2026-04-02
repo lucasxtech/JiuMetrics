@@ -725,14 +725,14 @@ OBRIGATÓRIO:
    * OTIMIZADO: Usa technical_summary salvo no banco quando disponível
    * @param {string} athleteId - ID do atleta
    * @param {string} opponentId - ID do adversário
-   * @param {string|null} userId - ID do usuário (para validação)
+   * @param {string|string[]|null} allowedUserIds - ID(s) do usuário/grupo (para validação e escopo)
    * @param {string|null} customModel - Modelo Gemini customizado (opcional)
    * @returns {Promise<Object>} Estratégia tática gerada pela IA
    */
-  static async generateStrategy(athleteId, opponentId, userId = null, customModel = null) {
+  static async generateStrategy(athleteId, opponentId, allowedUserIds = null, customModel = null) {
     // Buscar dados básicos
-    const athlete = await Athlete.getById(athleteId, userId);
-    const opponent = await Opponent.getById(opponentId, userId);
+    const athlete = await Athlete.getById(athleteId, allowedUserIds);
+    const opponent = await Opponent.getById(opponentId, allowedUserIds);
 
     if (!athlete || !opponent) {
       throw new Error('Atleta ou adversário não encontrado');
@@ -740,8 +740,8 @@ OBRIGATÓRIO:
 
     // Contar análises para validação
     const [athleteAnalysesCount, opponentAnalysesCount] = await Promise.all([
-      this.getAnalysesCount(athleteId, userId),
-      this.getAnalysesCount(opponentId, userId)
+      this.getAnalysesCount(athleteId, allowedUserIds),
+      this.getAnalysesCount(opponentId, allowedUserIds)
     ]);
 
     // Validar que há análises suficientes
@@ -761,10 +761,10 @@ OBRIGATÓRIO:
     if (athlete.technicalSummary) {
       athleteResumo = athlete.technicalSummary;
       // Buscar stats consolidados
-      const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, null);
+      const athleteConsolidation = await this.consolidateAnalyses(athleteId, allowedUserIds, null);
       athleteStats = athleteConsolidation.technical_stats;
     } else {
-      const athleteConsolidation = await this.consolidateAnalyses(athleteId, userId, customModel);
+      const athleteConsolidation = await this.consolidateAnalyses(athleteId, allowedUserIds, customModel);
       athleteResumo = athleteConsolidation.resumo;
       athleteStats = athleteConsolidation.technical_stats;
     }
@@ -773,10 +773,10 @@ OBRIGATÓRIO:
     if (opponent.technicalSummary) {
       opponentResumo = opponent.technicalSummary;
       // Buscar stats consolidados
-      const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, null);
+      const opponentConsolidation = await this.consolidateAnalyses(opponentId, allowedUserIds, null);
       opponentStats = opponentConsolidation.technical_stats;
     } else {
-      const opponentConsolidation = await this.consolidateAnalyses(opponentId, userId, customModel);
+      const opponentConsolidation = await this.consolidateAnalyses(opponentId, allowedUserIds, customModel);
       opponentResumo = opponentConsolidation.resumo;
       opponentStats = opponentConsolidation.technical_stats;
     }

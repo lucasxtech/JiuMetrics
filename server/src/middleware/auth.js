@@ -37,6 +37,9 @@ const authMiddleware = (req, res, next) => {
         return res.status(401).json({ error: 'Token inválido ou expirado' });
       }
 
+      // Expor req.user com id e role para novos controllers
+      req.user = { id: decoded.userId, role: decoded.role || 'user' };
+      // Manter req.userId como alias para retrocompatibilidade
       req.userId = decoded.userId;
       return next();
     });

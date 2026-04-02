@@ -1,13 +1,16 @@
 // Controlador de Adversários
 const Opponent = require('../models/Opponent');
+const User = require('../models/User');
 const { handleError } = require('../utils/errorHandler');
+const { getScopeIds } = require('../utils/tenantScope');
 
 /**
  * GET /api/opponents - Retorna todos os adversários
  */
 exports.getAll = async (req, res) => {
   try {
-    const opponents = await Opponent.getAll(req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const opponents = await Opponent.getAll(allowedUserIds);
     res.json({
       success: true,
       data: opponents,
@@ -24,7 +27,8 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const opponent = await Opponent.getById(id, req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const opponent = await Opponent.getById(id, allowedUserIds);
 
     if (!opponent) {
       return res.status(404).json({
@@ -84,7 +88,8 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const opponent = await Opponent.getById(id, req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const opponent = await Opponent.getById(id, allowedUserIds);
 
     if (!opponent) {
       return res.status(404).json({
@@ -93,7 +98,7 @@ exports.update = async (req, res) => {
       });
     }
 
-    const updatedOpponent = await Opponent.update(id, req.body, req.userId);
+    const updatedOpponent = await Opponent.update(id, req.body, opponent.userId);
 
     res.json({
       success: true,
@@ -111,7 +116,8 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const opponent = await Opponent.getById(id, req.userId);
+    const allowedUserIds = await getScopeIds(req, User);
+    const opponent = await Opponent.getById(id, allowedUserIds);
 
     if (!opponent) {
       return res.status(404).json({
@@ -120,7 +126,7 @@ exports.delete = async (req, res) => {
       });
     }
 
-    const deletedOpponent = await Opponent.delete(id, req.userId);
+    const deletedOpponent = await Opponent.delete(id, opponent.userId);
 
     res.json({
       success: true,
