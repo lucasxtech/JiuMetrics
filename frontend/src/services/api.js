@@ -39,13 +39,16 @@ api.interceptors.response.use(
       data: error.response?.data
     });
     
-    // Se receber 401, limpar token inválido e redirecionar para login
+    // Se receber 401, limpar token inválido e forçar logout via evento
     if (error.response?.status === 401) {
       console.warn('⚠️ Token inválido ou expirado - limpando autenticação');
       localStorage.removeItem('jiumetrics_token');
       localStorage.removeItem('jiumetrics_user');
       delete api.defaults.headers.common['Authorization'];
-      
+
+      // Notificar AuthContext sem depender de import circular
+      window.dispatchEvent(new CustomEvent('auth:logout'));
+
       // Redirecionar para login se não estiver já lá
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';

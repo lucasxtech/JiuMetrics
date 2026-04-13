@@ -19,9 +19,9 @@ const ERROR_MESSAGES = {
   INACTIVE_USER: 'Sua conta está desativada. Contate o administrador.',
 };
 
-const generateToken = (userId, role = 'user', rememberMe = false) => {
+const generateToken = (userId, role = 'user', rememberMe = false, tokenVersion = 1) => {
   return jwt.sign(
-    { userId, role },
+    { userId, role, tokenVersion },
     JWT_SECRET,
     { expiresIn: rememberMe ? JWT_EXPIRES_IN_REMEMBER : JWT_EXPIRES_IN }
   );
@@ -39,7 +39,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: ERROR_MESSAGES.SHORT_PASSWORD });
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) {
       return res.status(400).json({ error: ERROR_MESSAGES.INVALID_EMAIL });
     }
 
@@ -53,7 +53,7 @@ exports.register = async (req, res) => {
     }
 
     const user = await User.create({ name, email, password });
-    const token = generateToken(user.id, user.role || 'user');
+    const token = generateToken(user.id, user.role || 'user', false, user.token_version || 1);
     await User.updateLastLogin(user.id);
 
     res.status(201).json({
@@ -104,7 +104,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: ERROR_MESSAGES.INVALID_CREDENTIALS });
     }
 
-    const token = generateToken(user.id, user.role || 'user', rememberMe);
+    const token = generateToken(user.id, user.role || 'user', rememberMe, user.token_version || 1);
     await User.updateLastLogin(user.id);
 
     console.log('✅ Login successful for:', email, '| role:', user.role);

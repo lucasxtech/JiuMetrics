@@ -1,20 +1,29 @@
 const User = require('../models/User');
 const { handleError } = require('../utils/errorHandler');
+const { evictAuthCache } = require('../middleware/auth');
+const { supabase } = require('../config/supabase');
 
 /**
  * Garante que o usuário alvo pertence ao mesmo tenant do solicitante.
+ * Usa uma única query para buscar os dois tenant_ids de forma eficiente.
  * Retorna o usuário alvo ou lança erro 403/404.
  */
 async function assertSameTenant(targetId, requesterId, res) {
-  const [requesterTenant, targetTenant] = await Promise.all([
-    User.getTenantId(requesterId),
-    User.getTenantId(targetId).catch(() => null),
-  ]);
-  if (!targetTenant) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, tenant_id')
+    .in('id', [targetId, requesterId]);
+
+  if (error) throw error;
+
+  const requester = data?.find(u => u.id === requesterId);
+  const target = data?.find(u => u.id === targetId);
+
+  if (!target) {
     res.status(404).json({ error: 'Usuário não encontrado.' });
     return false;
   }
-  if (requesterTenant !== targetTenant) {
+  if (!requester || requester.tenant_id !== target.tenant_id) {
     res.status(403).json({ error: 'Acesso negado.' });
     return false;
   }
@@ -132,7 +141,9 @@ exports.deactivateUser = async (req, res) => {
 
     if (!await assertSameTenant(id, req.user.id, res)) return;
 
-    await User.deactivate(id);
+    await User.deactivate(id); // já chama invalidateTokens internamente
+    evictAuthCache(id);
+    console.log(`🔐 [AUDIT] Admin ${req.user.id} desativou usuário ${id}`);
     res.json({ success: true, message: 'Usuário desativado.' });
   } catch (error) {
     handleError(res, 'Desativar usuário', error);
@@ -149,6 +160,8 @@ exports.reactivateUser = async (req, res) => {
     if (!await assertSameTenant(id, req.user.id, res)) return;
 
     await User.reactivate(id);
+    evictAuthCache(id);
+    console.log(`🔐 [AUDIT] Admin ${req.user.id} reativou usuário ${id}`);
     res.json({ success: true, message: 'Usuário reativado.' });
   } catch (error) {
     handleError(res, 'Reativar usuário', error);
@@ -176,6 +189,10 @@ exports.changeRole = async (req, res) => {
     if (!await assertSameTenant(id, req.user.id, res)) return;
 
     const updated = await User.update(id, { role });
+    // Invalidar tokens e cache — força re-login imediato após mudança de role
+    await User.invalidateTokens(id);
+    evictAuthCache(id);
+    console.log(`🔐 [AUDIT] Admin ${req.user.id} alterou role do usuário ${id} para '${role}'`);
     res.json({
       success: true,
       data: {

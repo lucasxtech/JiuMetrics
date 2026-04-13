@@ -1,17 +1,22 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { isAdmin } from '../../services/authService';
+import { useAuth } from '../../contexts/AuthContext';
+import PageLoader from '../common/PageLoader';
 
 export default function ProtectedRoute({ children, requireAdmin = false }) {
-  const token = localStorage.getItem('jiumetrics_token');
+  const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
-  
-  if (!token) {
+
+  // Aguardar hidratação do contexto para evitar flash de redirect
+  if (loading) return <PageLoader />;
+
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && !isAdmin()) {
+  if (requireAdmin && !isAdmin) {
     return <Navigate to="/" replace />;
   }
-  
+
   return children;
 }
+

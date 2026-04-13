@@ -18,6 +18,16 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // Ouvir evento de logout forçado por token inválido (ex: 401 no interceptor da API)
+  useEffect(() => {
+    const handleForcedLogout = () => {
+      setUser(null);
+      queryClient.clear();
+    };
+    window.addEventListener('auth:logout', handleForcedLogout);
+    return () => window.removeEventListener('auth:logout', handleForcedLogout);
+  }, []);
+
   // Called after a successful login — clear stale cache from previous user, then set new user
   const setUserFromLoginResponse = useCallback((userData) => {
     queryClient.clear();

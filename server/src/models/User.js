@@ -26,7 +26,7 @@ class User {
             // tenant_id será definido após o insert (self-reference)
           }
         ])
-        .select('id, name, email, role, is_active, created_at')
+        .select('id, name, email, role, is_active, token_version, created_at')
         .single();
 
       if (error) {
@@ -160,9 +160,8 @@ class User {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, password_hash, role, is_active, last_login, created_at')
+        .select('id, name, email, password_hash, role, is_active, token_version, last_login, created_at')
         .eq('email', email.toLowerCase().trim())
-        .eq('is_active', true)
         .single();
 
       if (error) {
@@ -281,17 +280,14 @@ class User {
   }
 
   /**
-   * Deleta um usuário
-   * @param {string} userId - ID do usuário
-   * @returns {Promise<boolean>} True se deletado com sucesso
-   */
-  /**
-   * Desativa um usuário (soft delete — nunca apaga dados)
+   * Desativa um usuário (soft delete — nunca apaga dados).
+   * Incrementa token_version para invalidar sessões ativas imediatamente.
    * @param {string} userId - ID do usuário a desativar
    * @returns {Promise<boolean>}
    */
   static async deactivate(userId) {
     try {
+      await User.invalidateTokens(userId);
       const { error } = await supabase
         .from('users')
         .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -305,7 +301,7 @@ class User {
   }
 
   /**
-   * Reativa um usuário desativado
+   * Reativa um usuário desativado.
    * @param {string} userId
    */
   static async reactivate(userId) {
@@ -318,6 +314,59 @@ class User {
       if (error) throw error;
       return true;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Retorna dados de autenticação do usuário (role, is_active, token_version).
+   * Usado pelo middleware para validar sessões sem confiar apenas no JWT.
+   * @param {string} userId
+   * @returns {Promise<{role: string, is_active: boolean, token_version: number}>}
+   */
+  static async getAuthInfo(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('role, is_active, token_version')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Erro no User.getAuthInfo:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Incrementa token_version, invalidando todos os JWTs emitidos anteriormente.
+   * Chame após mudança de role ou desativação de usuário.
+   * @param {string} userId
+   */
+  static async invalidateTokens(userId) {
+    try {
+      // Buscar versão atual e incrementar (Supabase JS não tem .raw() para SQL expressions)
+      const { data: current, error: fetchError } = await supabase
+        .from('users')
+        .select('token_version')
+        .eq('id', userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error } = await supabase
+        .from('users')
+        .update({
+          token_version: (current?.token_version || 1) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('❌ Erro no User.invalidateTokens:', error);
       throw error;
     }
   }
