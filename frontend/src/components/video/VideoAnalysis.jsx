@@ -226,8 +226,9 @@ export default function VideoAnalysisComponent() {
                 ]}
                 placeholder="Selecione o resultado..."
               />
-              <p className="mt-1.5 text-xs text-slate-500">
-                💡 Informar o resultado ajuda a IA a identificar se o estilo foi eficaz ou se houve erros críticos
+              <p className="mt-1.5 text-xs text-slate-500 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Informar o resultado ajuda a IA a identificar se o estilo foi eficaz ou se houve erros críticos
               </p>
             </div>
 
@@ -300,24 +301,29 @@ export default function VideoAnalysisComponent() {
               </div>
             )}
 
-            {/* Botão principal - alinhado à direita em desktop */}
-            <div className="flex justify-end">
+            {/* Botão principal */}
+            <div className="flex justify-center pt-2">
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full sm:w-auto rounded-md px-4 py-2 text-sm font-medium transition ${
+                className={`inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-semibold transition-all ${
                   isLoading
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                    : 'bg-slate-900 text-white hover:bg-slate-800 cursor-pointer'
+                    : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer'
                 }`}
               >
                 {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
                     Analisando...
-                  </span>
+                  </>
                 ) : (
-                  `Analisar ${videos.length > 1 ? `${videos.length} vídeos` : 'vídeo'}`
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Analisar {videos.length > 1 ? `${videos.length} vídeos` : 'vídeo'}
+                  </>
                 )}
               </button>
             </div>
@@ -334,7 +340,10 @@ export default function VideoAnalysisComponent() {
           {/* Resumo Técnico - Cards Organizados */}
           {analysis.data?.summary && (
             <div className="mb-8">
-              <h3 className="text-base font-bold text-slate-900 mb-4">📋 Resumo Técnico</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                Resumo Técnico
+              </h3>
               <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                 <div className="text-sm text-slate-700 leading-relaxed space-y-3">
                   {analysis.data.summary.split(/\n\n|\. (?=[A-Z])/).filter(p => p.trim()).map((paragraph, idx) => (
@@ -348,7 +357,10 @@ export default function VideoAnalysisComponent() {
           {/* KPI Dashboard - Estatísticas */}
           {analysis.data?.technical_stats && (
             <div className="mb-8">
-              <h3 className="text-base font-bold text-slate-900 mb-4">📊 Dashboard de Performance</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                Dashboard de Performance
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
                 {/* Finalizações KPI */}
@@ -356,7 +368,7 @@ export default function VideoAnalysisComponent() {
                   <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold tracking-wide text-slate-500 uppercase">Finalizações</span>
-                      <span className="text-xl">🎯</span>
+                      <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     </div>
                     <div className="space-y-2">
                       <div>
@@ -396,7 +408,7 @@ export default function VideoAnalysisComponent() {
                   <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold tracking-wide text-slate-500 uppercase">Raspagens</span>
-                      <span className="text-xl">🔄</span>
+                      <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     </div>
                     <div className="space-y-2">
                       <div>
@@ -432,7 +444,7 @@ export default function VideoAnalysisComponent() {
                   <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold tracking-wide text-slate-500 uppercase">Costas</span>
-                      <span className="text-xl">🎯</span>
+                      <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
                     </div>
                     <div className="space-y-2">
                       <div>
@@ -462,7 +474,10 @@ export default function VideoAnalysisComponent() {
 
           {analysis.data?.chartUrls?.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-lg font-bold text-slate-900 mb-6">📈 Gráficos em Alta Resolução</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                Gráficos em Alta Resolução
+              </h3>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {analysis.data.chartUrls.map((chart, idx) => (
                   <a
@@ -472,7 +487,7 @@ export default function VideoAnalysisComponent() {
                     rel="noopener noreferrer"
                     className="bg-white rounded-2xl border border-slate-200 px-6 py-4 text-center font-semibold text-slate-700 shadow-sm hover:shadow-md hover:border-slate-300 transition-all"
                   >
-                    📊 {chart.title}
+                    {chart.title}
                   </a>
                 ))}
               </div>
@@ -510,7 +525,14 @@ export default function VideoAnalysisComponent() {
             <div className="relative mb-12">
               <div className="h-24 w-24 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl">{processingProgress < 40 ? '📥' : processingProgress < 90 ? '🤖' : '✨'}</span>
+                <span className="text-3xl">
+                  {processingProgress < 40
+                    ? <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    : processingProgress < 90
+                    ? <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                    : <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  }
+                </span>
               </div>
             </div>
             
@@ -538,7 +560,12 @@ export default function VideoAnalysisComponent() {
               </div>
               <div className={`rounded-xl border-2 p-5 transition-all ${processingProgress >= 70 ? 'border-green-400 bg-green-50' : 'border-slate-200 bg-white'}`}>
                 <p className="text-sm font-bold text-slate-700 mb-2">3. Análise IA</p>
-                <p className="text-3xl">{processingProgress >= 70 ? '✓' : '🤖'}</p>
+                <p className="text-3xl">
+                  {processingProgress >= 70
+                    ? <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    : <svg className="w-7 h-7 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                  }
+                </p>
               </div>
               <div className={`rounded-xl border-2 p-5 transition-all ${processingProgress >= 100 ? 'border-green-400 bg-green-50' : 'border-slate-200 bg-white'}`}>
                 <p className="text-sm font-bold text-slate-700 mb-2">4. Conclusão</p>
@@ -550,7 +577,7 @@ export default function VideoAnalysisComponent() {
           {/* Dica */}
           <div className="w-full max-w-2xl rounded-xl border-2 border-amber-200 bg-amber-50 px-6 py-4">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">💡</span>
+              <svg className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               <div className="text-left">
                 <p className="text-sm font-bold text-amber-900 mb-1">Dica</p>
                 <p className="text-sm text-amber-800 leading-relaxed">

@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const { supabase, supabaseAdmin } = require('../config/supabase');
 const bcrypt = require('bcrypt');
 
 class User {
@@ -367,6 +367,65 @@ class User {
       if (error) throw error;
     } catch (error) {
       console.error('❌ Erro no User.invalidateTokens:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Transfere todos os dados de um usuário para outro antes de excluí-lo.
+   * Tabelas afetadas: athletes, opponents, fight_analyses, tactical_analyses.
+   * Chat sessions e api_usage NÃO são transferidos (descartados com o usuário).
+   * @param {string} fromUserId
+   * @param {string} toUserId
+   */
+  static async transferData(fromUserId, toUserId) {
+    const tables = ['athletes', 'opponents', 'fight_analyses', 'tactical_analyses'];
+    for (const table of tables) {
+      const { error } = await supabaseAdmin
+        .from(table)
+        .update({ user_id: toUserId })
+        .eq('user_id', fromUserId);
+      if (error) {
+        console.error(`❌ Erro ao transferir ${table}:`, error);
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Exclui todos os dados de um usuário (athletes, opponents, fight_analyses, tactical_analyses).
+   * Chamado quando o admin opta por não transferir os dados antes de excluir o usuário.
+   * @param {string} userId
+   */
+  static async deleteAllData(userId) {
+    const tables = ['fight_analyses', 'tactical_analyses', 'athletes', 'opponents'];
+    for (const table of tables) {
+      const { error } = await supabaseAdmin
+        .from(table)
+        .delete()
+        .eq('user_id', userId);
+      if (error) {
+        console.error(`❌ Erro ao excluir dados de ${table}:`, error);
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Remove permanentemente um usuário do sistema (hard delete).
+   * @param {string} userId
+   */
+  static async hardDelete(userId) {
+    try {
+      await User.invalidateTokens(userId);
+      const { error } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
       throw error;
     }
   }

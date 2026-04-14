@@ -7,4 +7,5 @@ export const adminService = {
   changeRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
   deactivateUser: (id) => api.delete(`/admin/users/${id}`),
   reactivateUser: (id) => api.post(`/admin/users/${id}/reactivate`),
+  deleteUser: (id, transferToUserId) => api.delete(`/admin/users/${id}/permanent`, { data: transferToUserId ? { transferToUserId } : {} }),
 };

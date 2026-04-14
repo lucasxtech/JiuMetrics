@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AthleteCard from '../components/common/AthleteCard';
 import AthleteForm from '../components/forms/AthleteForm';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import AthleteCardSkeleton from '../components/common/AthleteCardSkeleton';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Modal from '../components/common/Modal';
 import { getAllAthletes } from '../services/athleteService';
@@ -29,14 +29,6 @@ export default function Athletes() {
     // ✅ Invalidar cache para recarregar lista atualizada
     queryClient.invalidateQueries({ queryKey: ['athletes'] });
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner />
-      </div>
-    );
-  }
 
   return (
     <div className="dashboard-wrapper animate-fadeIn">
@@ -81,17 +73,19 @@ export default function Athletes() {
         <AthleteForm onSuccess={handleAthleteCreated} />
       </Modal>
 
-      {athletes.length > 0 && (
+      {(loading || athletes.length > 0) && (
         <section className="panel !py-8 !px-6 md:!px-8">
           <div className="panel__head mb-8">
             <div>
               <p className="eyebrow">Lista</p>
-              <h2 className="panel__title">Todos os atletas ({athletes.length})</h2>
+              <h2 className="panel__title">{loading ? 'Carregando atletas...' : `Todos os atletas (${athletes.length})`}</h2>
             </div>
             <span className="panel__meta">Selecione um atleta para abrir a visão detalhada.</span>
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8 xl:grid-cols-3 xl:gap-10">
-            {athletes.map((athlete) => (
+            {loading
+              ? Array.from({ length: 6 }).map((_, i) => <AthleteCardSkeleton key={i} />)
+              : athletes.map((athlete) => (
               <AthleteCard
                 key={athlete.id}
                 {...athlete}
@@ -105,10 +99,12 @@ export default function Athletes() {
       )}
 
       {/* Empty State */}
-      {athletes.length === 0 && !error && (
+      {athletes.length === 0 && !loading && !error && (
         <section className="panel text-center">
           <div className="mx-auto max-w-md space-y-6">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-4xl">🥋</div>
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            </div>
             <div>
               <h3 className="panel__title mb-2">Nenhum atleta cadastrado</h3>
               <p className="text-slate-600">Cadastre o primeiro atleta para liberar análises detalhadas e comparações.</p>

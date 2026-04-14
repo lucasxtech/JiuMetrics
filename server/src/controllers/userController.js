@@ -207,3 +207,40 @@ exports.changeRole = async (req, res) => {
     handleError(res, 'Alterar perfil do usuário', error);
   }
 };
+
+/**
+ * Remove permanentemente um usuário (hard delete).
+ * Body: { transferToUserId?: string } — se fornecido, transfere dados antes de excluir.
+ * Admin não pode excluir a si mesmo.
+ */
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { transferToUserId } = req.body;
+
+    if (id === req.user.id) {
+      return res.status(400).json({ error: 'Você não pode excluir sua própria conta.' });
+    }
+
+    if (!await assertSameTenant(id, req.user.id, res)) return;
+
+    if (transferToUserId) {
+      if (transferToUserId === id) {
+        return res.status(400).json({ error: 'Não é possível transferir dados para o próprio usuário.' });
+      }
+      if (!await assertSameTenant(transferToUserId, req.user.id, res)) return;
+      await User.transferData(id, transferToUserId);
+      console.log(`🔐 [AUDIT] Admin ${req.user.id} transferiu dados do usuário ${id} para ${transferToUserId}`);
+    } else {
+      await User.deleteAllData(id);
+      console.log(`🔐 [AUDIT] Admin ${req.user.id} excluiu todos os dados do usuário ${id}`);
+    }
+
+    await User.hardDelete(id);
+    evictAuthCache(id);
+    console.log(`🔐 [AUDIT] Admin ${req.user.id} EXCLUIU permanentemente o usuário ${id}`);
+    res.json({ success: true, message: 'Usuário excluído permanentemente.' });
+  } catch (error) {
+    handleError(res, 'Excluir usuário', error);
+  }
+};

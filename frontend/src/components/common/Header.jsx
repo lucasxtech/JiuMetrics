@@ -1,6 +1,6 @@
 // Header/Navegação da aplicação - Design Moderno
-import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PrefetchLink from './PrefetchLink';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -15,198 +15,204 @@ const SettingsPage = () => import('../../pages/Settings');
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, isAdmin } = useAuth();
-  
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+  const { user, isAdmin, logout } = useAuth();
+
   const isActive = (path) => location.pathname === path;
 
   const navLinks = [
     { label: 'Overview', to: '/', prefetch: OverviewPage },
-    { label: 'Atletas', to: '/athletes', prefetch: AthletesPage },
-    { label: 'Adversários', to: '/opponents', prefetch: OpponentsPage },
     { label: 'Estratégia', to: '/strategy', prefetch: StrategyPage },
     { label: 'Análises', to: '/analyses', prefetch: AnalysesPage },
+    { label: 'Atletas', to: '/athletes', prefetch: AthletesPage },
+    { label: 'Adversários', to: '/opponents', prefetch: OpponentsPage },
   ];
 
   // Fechar menu mobile quando mudar de rota
   useEffect(() => {
-    if (mobileOpen) {
-      setMobileOpen(false);
-    }
+    if (mobileOpen) setMobileOpen(false);
+    if (userMenuOpen) setUserMenuOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    function handleClick(e) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [userMenuOpen]);
+
+  const handleLogout = () => {
+    setUserMenuOpen(false);
+    logout();
+    navigate('/login');
+  };
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0c1524]/90 backdrop-blur-xl shadow-lg">
-      <div className="mx-auto w-full max-w-[1500px] px-4">
-        <div className="flex justify-between items-center h-[76px]">
+    <header className="sticky top-0 z-50 w-full bg-[#0c1524] border-b border-white/[0.07]">
+      <div className="mx-auto w-full max-w-[1500px] px-6">
+        <div className="flex items-center h-[72px] gap-10">
+
           {/* Logo */}
-          <PrefetchLink to="/" prefetchComponent={OverviewPage} className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-slate-200 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-              <span className="text-slate-700 font-black text-lg">JJ</span>
+          <PrefetchLink to="/" prefetchComponent={OverviewPage} className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center shrink-0 group-hover:border-white/20 transition-colors">
+              <span className="text-white text-xs font-black tracking-tight">JJ</span>
             </div>
-            <span className="hidden md:block text-xl font-bold text-white">Análise Tática</span>
+            <span className="text-sm font-semibold text-white hidden sm:block">JiuMetrics</span>
           </PrefetchLink>
 
-          {/* Menu Desktop */}
-          <div className="hidden md:flex items-center gap-3 xl:gap-4 py-4">
-            {navLinks.map((link) => (
+          {/* Nav */}
+          <nav className="hidden md:flex items-center gap-1.5 flex-1">
+            {/* Overview primeiro */}
+            <PrefetchLink
+              to="/"
+              prefetchComponent={OverviewPage}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/') ? 'text-white bg-white/10' : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Overview
+            </PrefetchLink>
+            {/* IA segundo */}
+            <PrefetchLink
+              to="/analyze-video"
+              prefetchComponent={VideoAnalysisPage}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/analyze-video')
+                  ? 'text-white bg-white/10'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              IA
+            </PrefetchLink>
+            {/* Restante: Estratégia, Análises, Atletas, Adversários */}
+            {[
+              { label: 'Estratégia', to: '/strategy', prefetch: StrategyPage },
+              { label: 'Análises', to: '/analyses', prefetch: AnalysesPage },
+              { label: 'Atletas', to: '/athletes', prefetch: AthletesPage },
+              { label: 'Adversários', to: '/opponents', prefetch: OpponentsPage },
+            ].map((link) => (
               <PrefetchLink
                 key={link.to}
                 to={link.to}
                 prefetchComponent={link.prefetch}
-                className={`inline-flex h-12 w-auto min-w-[120px] items-center justify-center rounded-xl px-6 text-sm font-medium tracking-tight transition-all duration-200 ${
-                  isActive(link.to)
-                    ? 'bg-white text-slate-900 shadow-[0_8px_24px_rgba(15,23,42,0.25)] ring-1 ring-white/80'
-                    : 'text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.32)]'
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive(link.to) ? 'text-white bg-white/10' : 'text-white/50 hover:text-white hover:bg-white/5'
                 }`}
               >
                 {link.label}
               </PrefetchLink>
             ))}
-            <PrefetchLink
-              to="/analyze-video"
-              prefetchComponent={VideoAnalysisPage}
-              className={`inline-flex h-12 w-auto min-w-[120px] items-center justify-center gap-2 rounded-xl px-6 text-sm font-medium tracking-tight transition-all duration-200 ${
-                isActive('/analyze-video')
-                  ? 'bg-white text-slate-900 shadow-[0_8px_24px_rgba(15,23,42,0.25)] ring-1 ring-white/80'
-                  : 'text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.32)]'
-              }`}
-            >
-              <span aria-hidden="true">🤖</span>
-              IA
-            </PrefetchLink>
+          </nav>
+
+          {/* Direita */}
+          <div className="hidden md:flex items-center gap-2 ml-auto">
             <a
               href="/guia-usuario.html"
               target="_blank"
               rel="noopener noreferrer"
-              title="Ajuda — Guia do Usuário"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold tracking-tight transition-all duration-200 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.32)] border border-white/20 hover:border-white/40"
+              title="Ajuda"
+              className="w-7 h-7 flex items-center justify-center rounded-md text-white/30 hover:text-white/70 transition-colors"
             >
-              ?
-            </a>
-            <PrefetchLink
-              to="/settings"
-              prefetchComponent={SettingsPage}
-              className={`inline-flex h-12 w-12 items-center justify-center rounded-xl text-sm font-medium tracking-tight transition-all duration-200 ${
-                isActive('/settings')
-                  ? 'bg-white text-slate-900 shadow-[0_8px_24px_rgba(15,23,42,0.25)] ring-1 ring-white/80'
-                  : 'text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_12px_30px_rgba(15,23,42,0.32)]'
-              }`}
-              title="Configurações"
-            >
-              <svg width="1.25rem" height="1.25rem" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </PrefetchLink>
+            </a>
 
-            {/* User info pill + admin link */}
-            <div className="flex items-center gap-2 pl-1 border-l border-white/10">
-              {isAdmin && (
-                <PrefetchLink
-                  to="/admin/users"
-                  className={`inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-bold tracking-wide transition-all duration-200 ${
-                    isActive('/admin/users')
-                      ? 'bg-amber-400 text-amber-900'
-                      : 'bg-amber-400/20 text-amber-300 hover:bg-amber-400/30'
-                  }`}
-                  title="Gerenciar Usuários"
+            <div className="w-px h-4 bg-white/[0.1]" />
+
+            {user && (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(o => !o)}
+                  className="flex items-center gap-2 px-2 h-8 rounded-md hover:bg-white/5 transition-colors group"
                 >
-                  ADMIN
-                </PrefetchLink>
-              )}
-              {user && (
-                <PrefetchLink
-                  to="/settings"
-                  prefetchComponent={SettingsPage}
-                  className="flex items-center gap-2 h-8 rounded-lg px-2 text-white/70 hover:text-white hover:bg-white/10 transition-all"
-                  title={user.email}
-                >
-                  <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-white">
+                  <div className="w-6 h-6 rounded-full bg-slate-700 border border-white/10 flex items-center justify-center text-[11px] font-bold text-white/80 shrink-0">
                     {user.name?.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs font-medium max-w-20 truncate hidden xl:block">{user.name}</span>
-                </PrefetchLink>
-              )}
-            </div>
+                  <span className="text-sm text-white/60 group-hover:text-white/80 transition-colors hidden xl:block">{user.name}</span>
+                  <svg className={`w-3 h-3 text-white/25 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-10 z-50 w-52 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{user.name}</p>
+                      <p className="text-xs text-slate-400 truncate mt-0.5">{user.email}</p>
+                    </div>
+                    <div className="py-1">
+                      <PrefetchLink to="/settings" prefetchComponent={SettingsPage} onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                        <svg className="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Configurações
+                      </PrefetchLink>
+                      {isAdmin && (
+                        <PrefetchLink to="/admin/users" onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 transition-colors">
+                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          Gerenciar Usuários
+                        </PrefetchLink>
+                      )}
+                    </div>
+                    <div className="border-t border-slate-100 py-1">
+                      <button onClick={handleLogout}
+                        className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Sair
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Menu Mobile (Hambúrguer) */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setMobileOpen((prev) => !prev)}
-              aria-expanded={mobileOpen}
-              aria-label="Abrir menu"
-              className="text-white/80 p-2 rounded-lg transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Mobile */}
+          <div className="md:hidden ml-auto">
+            <button onClick={() => setMobileOpen(p => !p)} className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white rounded-md hover:bg-white/5 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
           </div>
         </div>
 
-        {/* Menu Mobile Expandido */}
         {mobileOpen && (
-          <div className="md:hidden mt-3 flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 p-3 shadow-xl">
+          <div className="md:hidden pb-3 flex flex-col gap-0.5 border-t border-white/[0.07] pt-2">
             {navLinks.map((link) => (
-              <PrefetchLink
-                key={`mobile-${link.to}`}
-                to={link.to}
-                prefetchComponent={link.prefetch}
-                className={`rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isActive(link.to)
-                    ? 'bg-white text-slate-900 shadow'
-                    : 'text-white/75 hover:text-white hover:bg-white/10'
-                }`}
-              >
+              <PrefetchLink key={`m-${link.to}`} to={link.to} prefetchComponent={link.prefetch}
+                className={`px-3 py-2 rounded-md text-sm transition-colors ${isActive(link.to) ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/5'}`}>
                 {link.label}
               </PrefetchLink>
             ))}
-            <PrefetchLink
-              to="/analyze-video"
-              prefetchComponent={VideoAnalysisPage}
-              className="inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:text-white hover:bg-white/10"
-            >
-              <span aria-hidden="true">🤖</span>
+            <PrefetchLink to="/analyze-video" prefetchComponent={VideoAnalysisPage}
+              className={`px-3 py-2 rounded-md text-sm transition-colors ${isActive('/analyze-video') ? 'bg-white/10 text-white font-medium' : 'text-white/55 hover:text-white hover:bg-white/5'}`}>
               IA
             </PrefetchLink>
-            <a
-              href="/guia-usuario.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm font-bold text-white/75 transition-colors hover:text-white hover:bg-white/10 border border-white/20"
-            >
-              ? Ajuda
-            </a>
-            <PrefetchLink
-              to="/settings"
-              prefetchComponent={SettingsPage}
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive('/settings')
-                  ? 'bg-white text-slate-900 shadow'
-                  : 'text-white/75 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <svg width="1rem" height="1rem" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Configurações
-            </PrefetchLink>
-            {isAdmin && (
-              <PrefetchLink
-                to="/admin/users"
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-2.5 text-sm font-bold transition-colors ${
-                  isActive('/admin/users')
-                    ? 'bg-amber-400 text-amber-900'
-                    : 'text-amber-300 hover:text-amber-100 hover:bg-amber-400/20'
-                }`}
-              >
-                👑 Gerenciar Usuários
-              </PrefetchLink>
-            )}
+            <div className="my-1 h-px bg-white/[0.07]" />
+            <a href="/guia-usuario.html" target="_blank" rel="noopener noreferrer" className="px-3 py-2 rounded-md text-sm text-white/55 hover:text-white hover:bg-white/5 transition-colors">Ajuda</a>
+            <PrefetchLink to="/settings" prefetchComponent={SettingsPage} className="px-3 py-2 rounded-md text-sm text-white/55 hover:text-white hover:bg-white/5 transition-colors">Configurações</PrefetchLink>
+            {isAdmin && <PrefetchLink to="/admin/users" className="px-3 py-2 rounded-md text-sm text-amber-400 hover:bg-amber-400/10 transition-colors">Gerenciar Usuários</PrefetchLink>}
           </div>
         )}
       </div>

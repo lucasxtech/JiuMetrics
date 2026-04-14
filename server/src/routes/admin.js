@@ -25,6 +25,7 @@ router.post('/users', userController.createUser);
 router.patch('/users/:id', userController.updateUser);
 router.patch('/users/:id/role', userController.changeRole);
 router.delete('/users/:id', userController.deactivateUser);
+router.delete('/users/:id/permanent', userController.deleteUser);
 router.post('/users/:id/reactivate', userController.reactivateUser);
 
 module.exports = router;

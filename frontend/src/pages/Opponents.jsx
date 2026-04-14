@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AthleteCard from '../components/common/AthleteCard';
 import AthleteForm from '../components/forms/AthleteForm';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+import AthleteCardSkeleton from '../components/common/AthleteCardSkeleton';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Modal from '../components/common/Modal';
 import { getAllOpponents } from '../services/opponentService';
@@ -28,14 +28,6 @@ export default function Opponents() {
     // ✅ Invalidar cache para recarregar lista atualizada
     queryClient.invalidateQueries({ queryKey: ['opponents'] });
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner />
-      </div>
-    );
-  }
 
   return (
     <div className="dashboard-wrapper animate-fadeIn">
@@ -80,17 +72,19 @@ export default function Opponents() {
         <AthleteForm onSuccess={handleOpponentCreated} isOpponent />
       </Modal>
 
-      {opponents.length > 0 && (
+      {(loading || opponents.length > 0) && (
         <section className="panel !py-8 !px-6 md:!px-8">
           <div className="panel__head mb-8">
             <div>
               <p className="eyebrow">Lista</p>
-              <h2 className="panel__title">Todos os adversários ({opponents.length})</h2>
+              <h2 className="panel__title">{loading ? 'Carregando adversários...' : `Todos os adversários (${opponents.length})`}</h2>
             </div>
             <span className="panel__meta">Abra um adversário para iniciar análises detalhadas e vídeos associados.</span>
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8 xl:grid-cols-3 xl:gap-10">
-            {opponents.map((opponent) => (
+            {loading
+              ? Array.from({ length: 6 }).map((_, i) => <AthleteCardSkeleton key={i} />)
+              : opponents.map((opponent) => (
               <AthleteCard
                 key={opponent.id}
                 {...opponent}
@@ -104,7 +98,7 @@ export default function Opponents() {
       )}
 
       {/* Empty State */}
-      {opponents.length === 0 && !error && (
+      {opponents.length === 0 && !loading && !error && (
         <section className="panel text-center">
           <div className="mx-auto max-w-md space-y-6">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-4xl">🤼</div>

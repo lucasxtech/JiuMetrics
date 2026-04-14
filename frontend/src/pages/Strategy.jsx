@@ -6,7 +6,7 @@ import { getAllOpponents } from '../services/opponentService';
 import { useStrategy } from '../contexts/StrategyContext';
 import AiStrategyBox from '../components/analysis/AiStrategyBox';
 import StrategySummaryModal from '../components/analysis/StrategySummaryModal';
-import LoadingSpinner from '../components/common/LoadingSpinner';
+
 import ErrorMessage from '../components/common/ErrorMessage';
 import CustomSelect from '../components/common/CustomSelect';
 
@@ -51,14 +51,6 @@ export default function Strategy() {
     setShowChat(false);
     generateStrategy(selectedAthlete, selectedOpponent);
   };
-
-  if (isLoadingData) {
-    return (
-      <div className="dashboard-wrapper">
-        <LoadingSpinner message="Carregando atletas e adversários..." />
-      </div>
-    );
-  }
 
   return (
     <div className="dashboard-wrapper animate-fadeIn">
@@ -197,6 +189,16 @@ export default function Strategy() {
             </svg>
             {isLoading ? 'Gerando estratégia...' : 'Gerar estratégia de luta'}
           </button>
+          {(!selectedAthlete || !selectedOpponent) && !isLoading && (
+            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              {!selectedAthlete && !selectedOpponent
+                ? 'Selecione um atleta e um adversário para continuar'
+                : !selectedAthlete
+                ? 'Selecione um atleta para continuar'
+                : 'Selecione um adversário para continuar'}
+            </p>
+          )}
         </div>
       </section>
 
