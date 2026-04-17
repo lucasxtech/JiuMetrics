@@ -37,7 +37,21 @@ class TacticalAnalysis {
     const { data, error } = await query;
 
     if (error) throw error;
-    return data || [];
+
+    // Buscar nomes dos criadores (só quando há mais de um usuário no grupo)
+    const creatorMap = {};
+    if (ids.length > 1) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', ids);
+      if (usersData) usersData.forEach(u => { creatorMap[u.id] = u.name; });
+    }
+
+    return (data || []).map(a => ({
+      ...a,
+      creatorName: creatorMap[a.user_id] || null,
+    }));
   }
 
   /**
