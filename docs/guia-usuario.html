@@ -578,6 +578,9 @@
   <a href="#estrategia"><span class="icon">⚔️</span> Estratégia</a>
   <a href="#chat"><span class="icon">💬</span> Chat com IA</a>
 
+  <div class="nav-section">Administração</div>
+  <a href="#usuarios"><span class="icon">👥</span> Usuários</a>
+
   <div class="nav-section">Referência</div>
   <a href="#navegacao"><span class="icon">🧭</span> Navegação</a>
   <a href="#faq"><span class="icon">❓</span> FAQ</a>
@@ -847,6 +850,59 @@
     </div>
   </section>
 
+  <!-- ═══ GERENCIAMENTO DE USUÁRIOS ═══ -->
+  <section id="usuarios">
+    <div class="section-label">Exclusivo para Admins</div>
+    <h2>👥 Gerenciamento de Usuários</h2>
+    <p class="section-intro">Como administrador, você controla quem acessa a plataforma e o que cada pessoa pode visualizar. O menu <strong style="color: var(--gold)">Gerenciar Usuários</strong> aparece em destaque dourado no topo da tela — ele só é visível para contas com perfil Admin.</p>
+
+    <div class="feature-grid" style="margin-bottom: 40px">
+      <div class="feature-card" style="border-color: rgba(212,168,67,0.4); background: rgba(212,168,67,0.06)">
+        <div class="fc-icon">➕</div>
+        <h3>Adicionar Usuário</h3>
+        <p>Clique em <strong>"Novo Usuário"</strong>, preencha nome, e-mail e senha. O acesso é imediato — sem necessidade de convite por e-mail.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔄</div>
+        <h3>Promover / Rebaixar</h3>
+        <p>Clique no menu <strong>⋯</strong> do usuário para promovê-lo a Admin ou rebaixá-lo para Usuário. O perfil é alterado na hora e ele é desconectado imediatamente.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🔒</div>
+        <h3>Desativar / Reativar</h3>
+        <p>Desativar bloqueia o acesso sem apagar nenhum dado. Reativar restaura tudo. Use quando um atleta sair temporariamente da academia.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon">🗑️</div>
+        <h3>Excluir Permanentemente</h3>
+        <p>Remove o usuário do sistema. Antes de excluir, você pode <strong>transferir os dados</strong> (atletas, análises, estratégias) para outro usuário — nada se perde sem querer.</p>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top: 48px">Como funciona a visualização</div>
+    <h2 style="font-size: 1.4rem; margin-bottom: 8px">O que cada perfil enxerga</h2>
+    <p class="section-intro">A visibilidade dos dados depende do perfil de cada conta.</p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; max-width: 860px">
+      <div style="flex: 1 1 360px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px">
+        <div style="font-size: 1.8rem; margin-bottom: 10px">👤</div>
+        <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px">Usuário Comum</h3>
+        <p style="font-size: 0.85rem; color: var(--muted); line-height: 1.6">Cada usuário vê <strong style="color: var(--text)">somente os dados que ele mesmo cadastrou</strong> — seus atletas, adversários, análises e estratégias são completamente privados. Outros usuários não têm acesso a essas informações.</p>
+        <div style="margin-top: 14px; background: rgba(62,207,142,0.08); border-left: 3px solid var(--success); padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 0.8rem; color: var(--text)">
+          ✅ Ideal para atletas individuais que querem privacidade total.
+        </div>
+      </div>
+      <div style="flex: 1 1 360px; background: var(--surface); border: 1px solid rgba(212,168,67,0.4); border-radius: 14px; padding: 24px; background: rgba(212,168,67,0.04)">
+        <div style="font-size: 1.8rem; margin-bottom: 10px">👑</div>
+        <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 8px">Administrador</h3>
+        <p style="font-size: 0.85rem; color: var(--muted); line-height: 1.6">O Admin tem uma <strong style="color: var(--text)">visão consolidada de toda a equipe</strong>. Ele enxerga os atletas, adversários, análises e estratégias de todos os usuários do grupo — ideal para professores e coordenadores que acompanham vários alunos de uma vez.</p>
+        <div style="margin-top: 14px; background: rgba(212,168,67,0.1); border-left: 3px solid var(--gold); padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 0.8rem; color: var(--text)">
+          ⭐ Ideal para professores que gerenciam a preparação de toda a equipe.
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ═══ NAVEGAÇÃO ═══ -->
   <section id="navegacao">
     <div class="section-label">Referência</div>
@@ -888,6 +944,10 @@
         <tr>
           <td>Ver consumo de IA e configurações</td>
           <td><span class="menu-name">Configurações</span></td>
+        </tr>
+        <tr>
+          <td>Adicionar e gerenciar usuários <em style="color: var(--gold); font-size: 0.8rem">(só admins)</em></td>
+          <td><span class="menu-name" style="background: rgba(212,168,67,0.12); color: var(--gold); border-color: rgba(212,168,67,0.3)">Gerenciar Usuários</span></td>
         </tr>
       </tbody>
     </table>
@@ -933,6 +993,21 @@
       <details>
         <summary>A plataforma funciona no celular?</summary>
         <div class="faq-answer">Sim! A interface é responsiva e funciona bem no celular. Você pode consultar a estratégia no aquecimento antes de uma luta, por exemplo.</div>
+      </details>
+
+      <details>
+        <summary>Como adiciono outros atletas/professores da academia?</summary>
+        <div class="faq-answer">Apenas contas com perfil <strong>Admin</strong> podem criar novos usuários. Acesse <strong>Gerenciar Usuários</strong> (destaque dourado no menu superior), clique em <strong>"Novo Usuário"</strong> e preencha nome, e-mail e senha. O acesso é imediato.</div>
+      </details>
+
+      <details>
+        <summary>Um usuário consegue ver os dados dos outros?</summary>
+        <div class="faq-answer">Não. Usuários comuns veem <strong>somente os próprios dados</strong> — seus atletas, adversários e análises são completamente privados. Apenas o <strong>Admin</strong> tem visão consolidada e pode enxergar os dados de todos os membros do grupo.</div>
+      </details>
+
+      <details>
+        <summary>O que acontece se eu desativar um usuário?</summary>
+        <div class="faq-answer">O usuário perde o acesso imediatamente, mas todos os dados (atletas, análises, estratégias) são preservados. Você pode reativar a conta a qualquer momento pelo menu <strong>Gerenciar Usuários</strong>.</div>
       </details>
     </div>
   </section>
