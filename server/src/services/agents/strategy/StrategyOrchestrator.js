@@ -29,7 +29,7 @@ class StrategyOrchestrator {
 
     this.geminiClient = geminiClient;
     this.openaiClient = new OpenAI({ apiKey: openaiApiKey });
-    this.gptModel = process.env.OPENAI_MODEL || 'gpt-4-turbo-preview';
+    this.gptModel = process.env.OPENAI_MODEL || 'gpt-4.1';
     this._lastGptUsage = null;
 
     this.agents = [

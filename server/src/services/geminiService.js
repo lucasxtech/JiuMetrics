@@ -10,6 +10,8 @@ const { extractJson } = require("../utils/chartUtils");
 const { getPrompt, fillPrompt } = require("./prompts");
 const { DEFAULT_MODEL, MAX_SUMMARY_WORDS } = require("../config/ai");
 const { GeminiApiKeyMissingError, parseGeminiError } = require("../utils/errors");
+const { downloadYouTubeVideo } = require("./videoDownloader");
+const { uploadVideoToGemini, deleteFileFromGemini } = require("./fileApiService");
 
 // ====================================
 // CONFIGURAÇÃO
@@ -232,36 +234,46 @@ async function analyzeFrame(url, context = {}, customModel = null, useAgents = f
   // Preparar partes para o Gemini (texto + imagem)
   const parts = [{ text: textPrompt }];
 
-  // Verificar se é Data URI (base64) ou URL do YouTube
-  if (url.startsWith('data:')) {
-    const match = url.match(/^data:(.+?);base64,(.+)$/);
-    if (match) {
-      parts.push({
-        inlineData: {
-          mimeType: match[1], // Ex: "image/png"
-          data: match[2] // Base64 data (sem prefixo)
-        }
-      });
-      console.log('📷 [analyzeFrame] Imagem anexada ao prompt (inlineData)');
-    } else {
-      console.error('❌ [analyzeFrame] Data URI inválido - formato não reconhecido');
-      throw new Error('Data URI inválido');
-    }
-  } else if (url.includes('youtube.com/') || url.includes('youtu.be/')) {
-    // Gemini 1.5+ suporta YouTube URLs nativamente via fileData
-    parts.push({
-      fileData: {
-        mimeType: 'video/mp4',
-        fileUri: url
-      }
-    });
-    console.log('🎬 [analyzeFrame] YouTube URL anexada ao prompt (fileData):', url);
-  } else {
-    console.warn('⚠️ [analyzeFrame] Tipo de URL não suportado:', url.substring(0, 60));
-    throw new Error('Tipo de URL não suportado. Use YouTube ou faça upload do vídeo.');
-  }
+  // Variáveis para cleanup de arquivos temporários
+  let videoCleanup = null;
+  let geminiFileName = null;
 
   try {
+    // Verificar se é Data URI (base64) ou URL do YouTube
+    if (url.startsWith('data:')) {
+      const match = url.match(/^data:(.+?);base64,(.+)$/);
+      if (match) {
+        parts.push({
+          inlineData: {
+            mimeType: match[1],
+            data: match[2]
+          }
+        });
+        console.log('📷 [analyzeFrame] Imagem anexada ao prompt (inlineData)');
+      } else {
+        console.error('❌ [analyzeFrame] Data URI inválido - formato não reconhecido');
+        throw new Error('Data URI inválido');
+      }
+    } else if (url.includes('youtube.com/') || url.includes('youtu.be/')) {
+      // Download do YouTube + Upload via Gemini File API
+      const downloaded = await downloadYouTubeVideo(url);
+      videoCleanup = downloaded.cleanup;
+
+      const uploaded = await uploadVideoToGemini(downloaded.filePath);
+      geminiFileName = uploaded.name;
+
+      parts.push({
+        fileData: {
+          mimeType: uploaded.mimeType,
+          fileUri: uploaded.uri
+        }
+      });
+      console.log('🎬 [analyzeFrame] Vídeo enviado via File API:', uploaded.uri);
+    } else {
+      console.warn('⚠️ [analyzeFrame] Tipo de URL não suportado:', url.substring(0, 60));
+      throw new Error('Tipo de URL não suportado. Use YouTube ou faça upload do vídeo.');
+    }
+
     const result = await modelToUse.generateContent(parts);
     const responseText = result.response.text();
     const analysis = extractJson(responseText);
@@ -280,6 +292,10 @@ async function analyzeFrame(url, context = {}, customModel = null, useAgents = f
   } catch (error) {
     console.error("❌ Erro ao analisar frame:", error.message);
     throw parseGeminiError(error);
+  } finally {
+    // Cleanup: remover arquivo local e da File API
+    if (videoCleanup) videoCleanup();
+    if (geminiFileName) deleteFileFromGemini(geminiFileName);
   }
 }
 
@@ -293,6 +309,10 @@ async function analyzeFrame(url, context = {}, customModel = null, useAgents = f
 async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
   const { Orchestrator } = require('./agents');
   // getBeltRulesText já está definido neste arquivo, uso direto
+
+  // Variáveis para cleanup (devem estar fora do try para serem acessíveis no finally)
+  let videoCleanup = null;
+  let geminiFileName = null;
   
   try {
     console.log('\n🤖 ========================================');
@@ -314,20 +334,35 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
     console.log('   - Cor kimono:', enrichedContext.giColor);
 
     // Preparar frameData para os agentes
-    // O frameData será processado pelo AgentBase que detecta automaticamente
-    // se é Data URI (base64) ou File URI do Gemini
-    const frameData = {
-      fileUri: url // Data URI (base64) ou File URI
-    };
-    
-    console.log('🤖 Frame preparado:');
-    console.log('   - Tipo:', url.startsWith('data:') ? 'Base64 Data URI' : 'File URI');
-    console.log('   - Tamanho:', url.length, 'caracteres');
+    // Se for YouTube URL, faz download + upload via File API
+    let frameData;
+
+    const isYouTube = url.includes('youtube.com/') || url.includes('youtu.be/');
+
+    if (isYouTube) {
+      console.log('🤖 YouTube detectado — baixando e enviando via File API...');
+      const downloaded = await downloadYouTubeVideo(url);
+      videoCleanup = downloaded.cleanup;
+
+      const uploaded = await uploadVideoToGemini(downloaded.filePath);
+      geminiFileName = uploaded.name;
+
+      frameData = {
+        fileUri: uploaded.uri,
+        mimeType: uploaded.mimeType
+      };
+      console.log('🤖 Frame preparado via File API:', uploaded.uri);
+    } else {
+      frameData = { fileUri: url };
+      console.log('🤖 Frame preparado:');
+      console.log('   - Tipo:', url.startsWith('data:') ? 'Base64 Data URI' : 'File URI');
+      console.log('   - Tamanho:', url.length, 'caracteres');
+    }
 
     // Instanciar orchestrator
     const modelToUse = customModel || DEFAULT_MODEL;
     console.log('🤖 Instanciando Orchestrator...');
-    console.log('   - Modelo GPT (fixo):', process.env.OPENAI_MODEL || 'gpt-4-turbo-preview');
+    console.log('   - Modelo GPT (fixo):', process.env.OPENAI_MODEL || 'gpt-4.1');
     console.log('   - Modelo Gemini (agentes):', modelToUse);
     
     const orchestrator = new Orchestrator(
@@ -377,6 +412,10 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
     }
     console.error('❌ ========================================\n');
     throw error;
+  } finally {
+    // Cleanup: remover arquivo local e da File API
+    if (videoCleanup) videoCleanup();
+    if (geminiFileName) deleteFileFromGemini(geminiFileName);
   }
 }
 
@@ -476,6 +515,20 @@ function consolidateAnalyses(frameAnalyses) {
       
       if (avgValue > 0) {
         chart.data.push({ label, value: avgValue });
+      }
+    }
+
+    // Normalizar para somar 100% (pie chart)
+    const total = chart.data.reduce((sum, item) => sum + item.value, 0);
+    if (total > 0 && total !== 100) {
+      chart.data = chart.data.map(item => ({
+        label: item.label,
+        value: Math.round((item.value / total) * 100)
+      }));
+      // Ajustar arredondamento
+      const currentSum = chart.data.reduce((sum, item) => sum + item.value, 0);
+      if (chart.data.length > 0 && currentSum !== 100) {
+        chart.data[0].value += (100 - currentSum);
       }
     }
   });

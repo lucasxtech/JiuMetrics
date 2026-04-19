@@ -48,52 +48,59 @@ FORMATO DE SAÍDA EXIGIDO (SISTEMA LEGADO):
 
 Você DEVE gerar um JSON com EXATAMENTE esta estrutura:
 
+🚨 REGRAS CRÍTICAS PARA OS CHARTS:
+
+1. **INCLUA APENAS O QUE FOI OBSERVADO**: Só adicione um label se o atleta efetivamente executou ou demonstrou aquela característica no vídeo. NÃO invente valores para completar o gráfico.
+2. **OMITA labels não observados**: Se o atleta NÃO jogou guarda, NÃO inclua o chart "Jogo de Guarda". Se NÃO tentou finalizações, NÃO inclua "Tentativas de Finalização".
+3. **OMITA charts completamente vazios**: Se nenhum label de um chart foi observado, não inclua esse chart no array.
+4. **Valores refletem intensidade relativa**: Entre os labels OBSERVADOS, distribua os valores de 1-100 proporcionalmente à intensidade com que cada característica foi observada.
+
 ```json
 {
   "charts": [
     {
       "id": "personality",
       "title": "Personalidade Geral",
-      "labels": ["agressivo", "explosivo", "estratégico", "defensivo", "controlador"],
+      "labels": ["APENAS labels observados, ex: estratégico, controlador"],
       "datasets": [{
         "label": "Estilo",
-        "data": [0-100, 0-100, 0-100, 0-100, 0-100]
+        "data": [valor-relativo, valor-relativo]
       }]
     },
     {
       "id": "initialBehavior",
       "title": "Comportamento Inicial",
-      "labels": ["troca de queda", "puxa pra guarda", "busca top", "luta em pé"],
+      "labels": ["APENAS o comportamento inicial observado"],
       "datasets": [{
         "label": "Preferência",
-        "data": [0-100, 0-100, 0-100, 0-100]
+        "data": [valor-relativo]
       }]
     },
     {
       "id": "guardGame",
       "title": "Jogo de Guarda",
-      "labels": ["laço", "guarda fechada", "de la riva", "x-guard", "borboleta", "aranha", "guarda aberta"],
+      "labels": ["APENAS guardas que o atleta efetivamente usou"],
       "datasets": [{
         "label": "Uso",
-        "data": [0-100, 0-100, 0-100, 0-100, 0-100, 0-100, 0-100]
+        "data": [valor-relativo]
       }]
     },
     {
       "id": "passingGame",
       "title": "Jogo de Passagem",
-      "labels": ["toreada", "over/under", "pressão de quadril", "knee slice", "leg drag", "stack pass"],
+      "labels": ["APENAS passagens que o atleta efetivamente tentou/executou"],
       "datasets": [{
         "label": "Uso",
-        "data": [0-100, 0-100, 0-100, 0-100, 0-100, 0-100]
+        "data": [valor-relativo]
       }]
     },
     {
       "id": "submissions",
       "title": "Tentativas de Finalização",
-      "labels": ["arm lock", "triângulo", "estrangulamentos", "kimura", "omoplata", "leg attacks"],
+      "labels": ["APENAS finalizações que o atleta efetivamente tentou"],
       "datasets": [{
         "label": "Frequência",
-        "data": [0-100, 0-100, 0-100, 0-100, 0-100, 0-100]
+        "data": [valor-relativo]
       }]
     }
   ],

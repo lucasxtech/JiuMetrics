@@ -10,6 +10,18 @@ CONTEXTO DA LUTA:
 
 ---
 
+🎯 FOCO OBRIGATÓRIO:
+
+⚠️ INSTRUÇÕES CRÍTICAS SOBRE KIMONO:
+- Você deve analisar EXCLUSIVAMENTE o atleta que usa kimono **{{GI_COLOR}}**
+- O oponente usa um kimono de COR DIFERENTE — IGNORE completamente as ações dele
+- Quando o atleta de kimono {{GI_COLOR}} estiver por BAIXO → analise seu jogo de guarda
+- Quando o atleta de kimono {{GI_COLOR}} estiver por CIMA → analise seu jogo de passagem
+- NÃO misture as ações dos dois atletas na mesma análise
+- Se tiver dúvida sobre qual atleta está executando uma técnica, verifique a cor do kimono
+
+---
+
 🚨 PROTOCOLO ANTI-ESPECULAÇÃO:
 
 **O QUE VOCÊ PODE ANALISAR:**

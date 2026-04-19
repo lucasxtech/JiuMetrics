@@ -89,24 +89,15 @@ class AgentBase {
             } else {
               throw new Error('Data URI inválido: formato não reconhecido');
             }
-          } else if (frameData.fileUri.includes('youtube.com/') || frameData.fileUri.includes('youtu.be/')) {
-            // É URL do YouTube — Gemini 1.5+ suporta nativamente
-            parts.push({
-              fileData: {
-                fileUri: frameData.fileUri,
-                mimeType: 'video/mp4'
-              }
-            });
-            console.log(`[${this.name}] ✅ Usando fileData YouTube (video/mp4)`);
           } else {
-            // É File URI do Gemini File API
+            // É File URI do Gemini File API (vídeos chegam já uploadados)
             parts.push({
               fileData: {
                 fileUri: frameData.fileUri,
-                mimeType: frameData.mimeType || 'image/jpeg'
+                mimeType: frameData.mimeType || 'video/mp4'
               }
             });
-            console.log(`[${this.name}] ✅ Usando fileUri (File API)`);
+            console.log(`[${this.name}] ✅ Usando fileData (File API): ${frameData.fileUri.substring(0, 60)}...`);
           }
         } else if (frameData.inlineData) {
           parts.push({

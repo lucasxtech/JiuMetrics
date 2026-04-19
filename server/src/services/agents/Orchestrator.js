@@ -36,7 +36,7 @@ class Orchestrator {
     this.geminiClient = geminiClient;
     this.geminiModelName = modelToUse;
     this.openaiClient = new OpenAI({ apiKey: openaiApiKey });
-    this.gptModel = process.env.OPENAI_MODEL || 'gpt-4-turbo-preview'; // Fixo do .env
+    this.gptModel = process.env.OPENAI_MODEL || 'gpt-4.1';
     this.timeout = GPT_TIMEOUT_MS;
     
     // Instancia os 3 agentes especializados
@@ -162,14 +162,58 @@ class Orchestrator {
         ],
         temperature: 0.2, // Determinístico
         response_format: { type: 'json_object' },
-        timeout: this.timeout // Timeout de 30 segundos
+      }, {
+        timeout: this.timeout // Timeout de 30 segundos (opção do SDK, não do body)
       });
 
       const content = response.choices[0].message.content;
       const result = JSON.parse(content);
 
+      // Normalizar charts do formato Chart.js para o formato do frontend (pie chart)
+      // GPT retorna: { labels: [...], datasets: [{ data: [...] }] } com scores 0-100
+      // Frontend espera: { title, data: [{ label, value }] } com valores somando 100%
+      const normalizedCharts = (result.charts || []).map(chart => {
+        let items = [];
+
+        // Extrair items no formato { label, value }
+        if (Array.isArray(chart.labels) && Array.isArray(chart.datasets) && chart.datasets[0]?.data) {
+          // Formato Chart.js → converter
+          items = chart.labels.map((label, i) => ({
+            label,
+            value: chart.datasets[0].data[i] || 0
+          }));
+        } else if (Array.isArray(chart.data) && chart.data.length > 0) {
+          // Já no formato {label, value}
+          items = chart.data.map(item => ({
+            label: item.label || item.name,
+            value: item.value || item.score || 0
+          }));
+        }
+
+        // Filtrar itens com valor > 0 e normalizar para somar 100%
+        const nonZeroItems = items.filter(item => item.value > 0);
+        const total = nonZeroItems.reduce((sum, item) => sum + item.value, 0);
+
+        const normalizedItems = total > 0
+          ? nonZeroItems.map(item => ({
+              label: item.label,
+              value: Math.round((item.value / total) * 100)
+            }))
+          : nonZeroItems;
+
+        // Ajustar arredondamento para garantir soma = 100
+        if (normalizedItems.length > 0) {
+          const currentSum = normalizedItems.reduce((sum, item) => sum + item.value, 0);
+          if (currentSum !== 100 && currentSum > 0) {
+            normalizedItems[0].value += (100 - currentSum);
+          }
+        }
+
+        return { title: chart.title, data: normalizedItems };
+      }).filter(chart => chart.data.length > 0); // Remover charts sem dados observados
+
       return {
-        charts: result.charts || [],
+        charts: normalizedCharts,
         technical_stats: result.technical_stats || {},
         summary: result.summary || 'Análise não disponível.',
         gptUsage: response.usage // { prompt_tokens, completion_tokens, total_tokens }

@@ -13,6 +13,17 @@ REGRAS ESPECÍFICAS DA FAIXA:
 
 ---
 
+🎯 FOCO OBRIGATÓRIO:
+
+⚠️ INSTRUÇÕES CRÍTICAS SOBRE KIMONO:
+- Você deve analisar EXCLUSIVAMENTE o atleta que usa kimono **{{GI_COLOR}}**
+- O oponente usa um kimono de COR DIFERENTE — IGNORE completamente as ações dele
+- Pontos, vantagens e penalidades: registre SOMENTE os do atleta de kimono {{GI_COLOR}}
+- NÃO misture as ações dos dois atletas na mesma análise
+- Se tiver dúvida sobre qual atleta executou uma técnica, verifique a cor do kimono
+
+---
+
 🚨 PROTOCOLO DE ARBITRAGEM PRECISA:
 
 **PRINCÍPIOS:**

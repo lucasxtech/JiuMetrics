@@ -12,6 +12,13 @@ module.exports = {
     'gemini-2.0-flash'        // Padrão - rápido e eficiente
   ],
 
+  // Configuração de download de vídeo (YouTube → File API)
+  VIDEO_DOWNLOAD: {
+    MAX_HEIGHT: 720,           // Qualidade máxima (720p suficiente para análise)
+    MAX_FILE_SIZE_MB: 200,     // Tamanho máximo do vídeo em MB
+    DOWNLOAD_TIMEOUT_MS: 120000, // Timeout do download (2 min)
+  },
+
   // Limites de texto
   MAX_SUMMARY_WORDS: 250,
   DEBUG_RESPONSE_CHARS: { first: 500, last: 300 },
@@ -98,7 +105,7 @@ module.exports = {
   // Configuração do Sistema Multi-Agentes
   ORCHESTRATOR_CONFIG: {
     PROVIDER: 'openai', // 'openai' para GPT-4/GPT-5
-    MODEL: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview', // ou 'gpt-5' quando disponível
+    MODEL: process.env.OPENAI_MODEL || 'gpt-4.1',
     TEMPERATURE: 0.2, // Determinístico para análises
     MAX_TOKENS: 4000,
     RESPONSE_FORMAT: { type: 'json_object' } // Força resposta em JSON
