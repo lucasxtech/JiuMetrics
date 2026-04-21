@@ -20,13 +20,18 @@ Sempre use as classes de erro customizadas:
 const { GeminiApiError, NotFoundError, ValidationError } = require('../utils/errors');
 const { handleError } = require('../utils/errorHandler');
 
-// Em controllers, usar:
+// Em controllers, usar SEMPRE:
 try {
   // código
 } catch (error) {
   handleError(res, 'Descrição da operação', error);
 }
 ```
+
+**Regras de resposta de erro:**
+- **SEMPRE** incluir `success: false` em respostas de erro
+- **NUNCA** usar `res.status(500).json({ error: error.message })` diretamente — usar `handleError()`
+- `handleError` retorna: `{ success: false, error: "Erro ao [operação]", details: error.message }`
 
 ### 3. Sistema de Prompts
 
@@ -489,6 +494,73 @@ test('deve fazer login', async ({ page }) => {
 });
 ```
 
+### 13. Segurança e Variáveis de Ambiente
+
+**NUNCA** use fallbacks hardcoded para secrets:
+
+```javascript
+// ❌ ERRADO — secret inseguro se .env não carregou
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
+
+// ✅ CORRETO — server crasha na inicialização se não configurado
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET é obrigatório. Configure a variável de ambiente.');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
+```
+
+**Endpoints de debug/admin:**
+- **SEMPRE** proteger com `authMiddleware` + `adminMiddleware`
+- **NUNCA** expor prefixos de API keys, nomes de variáveis de ambiente, ou detalhes internos
+- Em produção, `debugInfo` nunca deve ser retornado ao cliente
+
+### 14. Frontend — Configuração de IA
+
+**Modelo de IA selecionado:**
+- A chave no localStorage é `'ai_model'` (NÃO `'selectedAiModel'`)
+- **SEMPRE** importar `getSelectedModel` de `utils/aiConfig.js`
+- **NUNCA** criar cópias locais da função `getSelectedModel` em services
+
+```javascript
+// ❌ ERRADO — cópia local que pode divergir
+const getSelectedModel = () => localStorage.getItem('ai_model') || 'gemini-2.0-flash';
+
+// ✅ CORRETO — importar da fonte centralizada
+import { getSelectedModel } from '../utils/aiConfig';
+```
+
+### 15. Padrões de Código Backend
+
+**Validação de entrada em controllers:**
+- Validar `personType` contra `['athlete', 'opponent']` antes de usar
+- Validar IDs e dados obrigatórios no início do controller
+
+**Promises fire-and-forget:**
+- **SEMPRE** adicionar `.catch()` para operações em background
+```javascript
+// ❌ ERRADO — erro silencioso causa unhandled rejection
+refreshTechnicalSummary(personId, personType, userId);
+
+// ✅ CORRETO — erro é logado sem bloquear resposta
+refreshTechnicalSummary(personId, personType, userId).catch(err =>
+  console.error('❌ [auto] Falha no refreshTechnicalSummary:', err.message)
+);
+```
+
+**Queries paralelas em models:**
+- Quando há queries independentes (ex: buscar criadores + contar análises), usar `Promise.all()`
+```javascript
+const [creatorMap, countsMap] = await Promise.all([
+  fetchCreatorNames(userIds),
+  fetchAnalysesCounts(entityIds)
+]);
+```
+
+**Parser naming em `dbParsers.js`:**
+- Athlete usa `parseAthleteFromDB` / `parseAthletesFromDB`
+- Opponent usa `parseOpponentFromDB` / `parseOpponentsFromDB` (aliases)
+- São a mesma função, mas o nome deve refletir o contexto de uso
+
 ## Lembretes
 
 - `git stash -u` para incluir arquivos novos
@@ -496,9 +568,16 @@ test('deve fazer login', async ({ page }) => {
 - Prompts NUNCA inline, sempre em `.txt`
 - **SEMPRE** registrar uso da API Gemini com `logApiUsage()`
 - **SEMPRE** criar versão após edições via chat
+- **SEMPRE** usar `handleError()` em catch de controllers — nunca `res.status(500).json({error})` direto
+- **SEMPRE** incluir `success: false` em respostas de erro
+- **SEMPRE** adicionar `.catch()` em promises fire-and-forget
 - Usar `como_vencer` em vez de `tese_da_vitoria`
 - Todas operações de DB devem passar `userId` (RLS)
 - Chat retorna JSON estruturado: `{ field, newValue, reason }`
+- `getSelectedModel()` — importar de `utils/aiConfig.js`, nunca duplicar
+- localStorage de modelo IA: chave é `'ai_model'`, não `'selectedAiModel'`
+- Secrets (`JWT_SECRET`, API keys): sem fallbacks hardcoded, throw se ausente
+- Endpoints admin: sempre `authMiddleware` + `adminMiddleware`
 - **🚨 CRÍTICO:** Imagens/vídeos devem ser passados como `inlineData`, NUNCA como texto no prompt
   - ✅ Correto: `{ text: "..." }, { inlineData: { mimeType, data } }`
   - ❌ Errado: `{ text: "Analise: data:image/png;base64,..." }`

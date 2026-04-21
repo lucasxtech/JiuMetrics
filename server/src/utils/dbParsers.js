@@ -70,6 +70,9 @@ function parseAnalysesFromDB(dbAnalyses) {
 module.exports = {
   parseAthleteFromDB,
   parseAthletesFromDB,
+  // Aliases para Opponent (mesma estrutura DB)
+  parseOpponentFromDB: parseAthleteFromDB,
+  parseOpponentsFromDB: parseAthletesFromDB,
   parseAnalysisFromDB,
   parseAnalysesFromDB,
 };
