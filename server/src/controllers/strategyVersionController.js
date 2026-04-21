@@ -33,6 +33,7 @@ const strategyVersionController = {
     } catch (error) {
       console.error('❌ [Versions] Erro ao buscar versões:', error);
       res.status(500).json({ 
+        success: false,
         error: 'Erro ao buscar versões',
         details: error.message 
       });
@@ -59,6 +60,7 @@ const strategyVersionController = {
     } catch (error) {
       console.error('❌ [Versions] Erro ao restaurar versão:', error);
       res.status(500).json({ 
+        success: false,
         error: 'Erro ao restaurar versão',
         details: error.message 
       });

@@ -17,27 +17,35 @@ class Athlete {
     if (error) throw error;
     if (athletes.length === 0) return [];
 
-    // Buscar nomes dos criadores
-    const creatorMap = {};
-    if (allowedUserIds.length > 1) {
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('id, name')
-        .in('id', allowedUserIds);
-      if (usersData) usersData.forEach(u => { creatorMap[u.id] = u.name; });
-    }
-
-    const { data: analysesCounts, error: countError } = await supabase
-      .from('fight_analyses')
-      .select('person_id')
-      .in('person_id', athletes.map(a => a.id));
-
-    const countsMap = {};
-    if (analysesCounts && !countError) {
-      analysesCounts.forEach(a => {
-        countsMap[a.person_id] = (countsMap[a.person_id] || 0) + 1;
-      });
-    }
+    // Paralelizar queries de criadores e contagens
+    const [creatorMap, countsMap] = await Promise.all([
+      // Buscar nomes dos criadores
+      (async () => {
+        const map = {};
+        if (allowedUserIds.length > 1) {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, name')
+            .in('id', allowedUserIds);
+          if (usersData) usersData.forEach(u => { map[u.id] = u.name; });
+        }
+        return map;
+      })(),
+      // Buscar contagens de análises
+      (async () => {
+        const map = {};
+        const { data: analysesCounts, error: countError } = await supabase
+          .from('fight_analyses')
+          .select('person_id')
+          .in('person_id', athletes.map(a => a.id));
+        if (analysesCounts && !countError) {
+          analysesCounts.forEach(a => {
+            map[a.person_id] = (map[a.person_id] || 0) + 1;
+          });
+        }
+        return map;
+      })()
+    ]);
 
     const athletesWithCount = athletes.map(athlete => ({
       ...athlete,

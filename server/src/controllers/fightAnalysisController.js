@@ -6,6 +6,7 @@ const Opponent = require('../models/Opponent');
 const User = require('../models/User');
 const StrategyService = require('../services/strategyService');
 const { extractTechnicalProfile } = require('../utils/profileUtils');
+const { handleError } = require('../utils/errorHandler');
 
 /**
  * Regenera o resumo técnico de um atleta/adversário em background.
@@ -48,8 +49,7 @@ exports.getAllAnalyses = async (req, res) => {
     const analyses = await FightAnalysis.getAll(allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
-    console.error('Erro ao buscar análises:', error);
-    res.status(500).json({ success: false, error: error.message });
+    handleError(res, 'buscar análises', error);
   }
 };
 
@@ -65,8 +65,7 @@ exports.getAnalysisById = async (req, res) => {
     }
     res.json({ success: true, data: analysis });
   } catch (error) {
-    console.error('Erro ao buscar análise:', error);
-    res.status(500).json({ success: false, error: error.message });
+    handleError(res, 'buscar análise', error);
   }
 };
 
@@ -79,8 +78,7 @@ exports.getAnalysesByPerson = async (req, res) => {
     const analyses = await FightAnalysis.getByPersonId(req.params.personId, allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
-    console.error('❌ Erro ao buscar análises da pessoa:', error);
-    res.status(500).json({ success: false, error: error.message });
+    handleError(res, 'buscar análises da pessoa', error);
   }
 };
 
@@ -95,6 +93,14 @@ exports.createAnalysis = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'personId e personType são obrigatórios',
+      });
+    }
+
+    const VALID_PERSON_TYPES = ['athlete', 'opponent'];
+    if (!VALID_PERSON_TYPES.includes(personType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'personType deve ser "athlete" ou "opponent"',
       });
     }
 
@@ -142,9 +148,11 @@ exports.createAnalysis = async (req, res) => {
     });
 
     // Fire-and-forget: regenera o resumo técnico em background após salvar a análise
-    refreshTechnicalSummary(personId, personType, req.userId);
+    refreshTechnicalSummary(personId, personType, req.userId).catch(err =>
+      console.error('❌ [auto] Falha no refreshTechnicalSummary:', err.message)
+    );
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    handleError(res, 'criar análise', error);
   }
 };
 
@@ -187,8 +195,7 @@ exports.deleteAnalysis = async (req, res) => {
       }
     }
   } catch (error) {
-    console.error('Erro ao deletar análise:', error);
-    res.status(500).json({ success: false, error: error.message });
+    handleError(res, 'deletar análise', error);
   }
 };
 

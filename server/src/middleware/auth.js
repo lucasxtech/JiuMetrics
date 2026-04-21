@@ -1,7 +1,10 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET é obrigatório. Configure a variável de ambiente.');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Cache em memória para evitar consulta ao banco em cada request.
 // Chave: userId → { role, is_active, token_version, expiresAt }

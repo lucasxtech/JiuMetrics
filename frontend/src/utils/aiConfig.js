@@ -30,7 +30,7 @@ export const AVAILABLE_MODELS = [
  * @returns {string} ID do modelo selecionado
  */
 export function getSelectedModel() {
-  return localStorage.getItem('selectedAiModel') || DEFAULT_AI_MODEL;
+  return localStorage.getItem('ai_model') || DEFAULT_AI_MODEL;
 }
 
 /**
@@ -38,7 +38,7 @@ export function getSelectedModel() {
  * @param {string} modelId - ID do modelo
  */
 export function setSelectedModel(modelId) {
-  localStorage.setItem('selectedAiModel', modelId);
+  localStorage.setItem('ai_model', modelId);
 }
 
 /**
