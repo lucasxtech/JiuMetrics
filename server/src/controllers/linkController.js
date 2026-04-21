@@ -116,10 +116,18 @@ exports.analyzeLink = async (req, res) => {
     }
     
     if (analyses.length === 0) {
-      return res.status(500).json({ 
+      const statusCode = lastError?.statusCode || 500;
+      const response = { 
         success: false, 
         error: lastError?.message || 'Nenhum vídeo foi analisado com sucesso'
-      });
+      };
+
+      // Incluir debug info apenas em ambiente de desenvolvimento
+      if (lastError?.debugInfo && process.env.NODE_ENV !== 'production') {
+        response.debugInfo = lastError.debugInfo;
+      }
+
+      return res.status(statusCode).json(response);
     }
     
     console.log(`\n📊 Consolidando ${analyses.length} análise(s)...`);

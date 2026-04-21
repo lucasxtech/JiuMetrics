@@ -99,12 +99,60 @@ class GeminiProcessingError extends AppError {
   }
 }
 
+// ====================================
+// ERROS DE DOWNLOAD DE VÍDEO
+// ====================================
+
+/**
+ * Erro de download de vídeo com mensagens separadas para usuário e debug
+ */
+class VideoDownloadError extends AppError {
+  /**
+   * @param {string} userMessage - Mensagem amigável para o usuário
+   * @param {object} debugInfo - Informações técnicas para debug
+   * @param {string} debugInfo.method - Método usado (yt-dlp, ytdl-core, ambos)
+   * @param {string} debugInfo.url - URL do vídeo
+   * @param {string} debugInfo.technicalError - Mensagem técnica do erro
+   * @param {string} [debugInfo.phase] - Fase onde falhou (download, validation, upload)
+   * @param {number} [statusCode=502] - HTTP status code
+   */
+  constructor(userMessage, debugInfo = {}, statusCode = 502) {
+    super(userMessage, statusCode);
+    this.debugInfo = {
+      method: debugInfo.method || 'desconhecido',
+      url: debugInfo.url ? debugInfo.url.substring(0, 80) : 'N/A',
+      technicalError: debugInfo.technicalError || userMessage,
+      phase: debugInfo.phase || 'download',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /** Log estruturado para o console do servidor */
+  logDebug() {
+    console.error('\n🎬 ========================================');
+    console.error('🎬 ERRO DE DOWNLOAD DE VÍDEO');
+    console.error('🎬 ========================================');
+    console.error(`🎬 Fase: ${this.debugInfo.phase}`);
+    console.error(`🎬 Método: ${this.debugInfo.method}`);
+    console.error(`🎬 URL: ${this.debugInfo.url}`);
+    console.error(`🎬 Erro técnico: ${this.debugInfo.technicalError}`);
+    console.error(`🎬 Mensagem ao usuário: ${this.message}`);
+    console.error(`🎬 Timestamp: ${this.debugInfo.timestamp}`);
+    console.error('🎬 ========================================\n');
+  }
+}
+
 /**
  * Analisa um erro da API Gemini e retorna o erro customizado apropriado
  * @param {Error} error - Erro original
  * @returns {AppError} Erro customizado
  */
 const parseGeminiError = (error) => {
+  // Preservar VideoDownloadError sem transformar
+  if (error instanceof VideoDownloadError) {
+    return error;
+  }
+
   const message = error.message?.toLowerCase() || '';
   
   if (message.includes('quota') || message.includes('rate limit') || message.includes('429')) {
@@ -138,5 +186,6 @@ module.exports = {
   GeminiApiKeyMissingError,
   GeminiApiError,
   GeminiProcessingError,
+  VideoDownloadError,
   parseGeminiError
 };
