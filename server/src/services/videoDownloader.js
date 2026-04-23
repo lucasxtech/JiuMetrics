@@ -103,7 +103,10 @@ async function downloadWithYtdlCore(url) {
   console.log(`⬇️  Baixando vídeo do YouTube (ytdl-core)...`);
   console.log(`   URL: ${url}`);
 
-  const info = await ytdl.getInfo(url);
+  // Criar agente com cookie jar para reduzir bot detection do YouTube
+  const agent = ytdl.createAgent();
+
+  const info = await ytdl.getInfo(url, { agent });
   const format = ytdl.chooseFormat(info.formats, {
     quality: 'highest',
     filter: (f) => f.container === 'mp4' && f.hasVideo && f.hasAudio && (f.height || 0) <= VIDEO_DOWNLOAD.MAX_HEIGHT
@@ -120,7 +123,7 @@ async function downloadWithYtdlCore(url) {
     let settled = false;
     const settle = (fn) => { if (!settled) { settled = true; fn(); } };
 
-    const stream = ytdl.downloadFromInfo(info, { format });
+    const stream = ytdl.downloadFromInfo(info, { format, agent });
     const writeStream = fs.createWriteStream(filePath);
     let downloadedBytes = 0;
     const maxBytes = VIDEO_DOWNLOAD.MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -286,6 +289,9 @@ async function downloadYouTubeVideo(url) {
 function classifyDownloadError(primaryError, secondaryError) {
   const msg = (primaryError.message + ' ' + (secondaryError?.message || '')).toLowerCase();
 
+  if (msg.includes('sign in to confirm') || msg.includes('confirm you') || msg.includes('not a bot')) {
+    return 'O YouTube bloqueou o download por detecção de bot. Tente novamente em alguns minutos ou use outro link do mesmo vídeo.';
+  }
   if (msg.includes('private') || msg.includes('login') || msg.includes('sign in')) {
     return 'Este vídeo é privado ou requer login. Verifique se o vídeo está público no YouTube.';
   }
