@@ -90,14 +90,14 @@ class AgentBase {
               throw new Error('Data URI inválido: formato não reconhecido');
             }
           } else {
-            // É File URI do Gemini File API (vídeos chegam já uploadados)
-            parts.push({
-              fileData: {
-                fileUri: frameData.fileUri,
-                mimeType: frameData.mimeType || 'video/mp4'
-              }
-            });
-            console.log(`[${this.name}] ✅ Usando fileData (File API): ${frameData.fileUri.substring(0, 60)}...`);
+            // File URI — pode ser Gemini File API ou YouTube URL
+            const fileDataPart = { fileUri: frameData.fileUri };
+            // Só incluir mimeType se não for YouTube URL (Gemini infere automaticamente)
+            if (frameData.mimeType) {
+              fileDataPart.mimeType = frameData.mimeType;
+            }
+            parts.push({ fileData: fileDataPart });
+            console.log(`[${this.name}] ✅ Usando fileData: ${frameData.fileUri.substring(0, 60)}...`);
           }
         } else if (frameData.inlineData) {
           parts.push({

@@ -334,16 +334,19 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
     console.log('   - Cor kimono:', enrichedContext.giColor);
 
     // Preparar frameData para os agentes
-    // Se for YouTube URL, faz download + upload via File API
     let frameData;
 
     const isYouTube = url.includes('youtube.com/') || url.includes('youtu.be/');
 
     if (isYouTube) {
-      // Gemini suporta URLs do YouTube diretamente — sem necessidade de download
-      console.log('🤖 YouTube detectado — passando URL diretamente para o Gemini...');
-      frameData = { fileUri: url };
-      console.log('🤖 Frame preparado via YouTube URL:', url);
+      // Normalizar URL curta youtu.be → youtube.com/watch?v= (formato que a doc do Gemini usa)
+      let youtubeUrl = url;
+      const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+      if (shortMatch) {
+        youtubeUrl = `https://www.youtube.com/watch?v=${shortMatch[1]}`;
+      }
+      frameData = { fileUri: youtubeUrl, isYouTube: true };
+      console.log('🤖 YouTube detectado — URL normalizada:', youtubeUrl);
     } else {
       frameData = { fileUri: url };
       console.log('🤖 Frame preparado:');
@@ -366,8 +369,36 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
     console.log('✅ Orchestrator criado com sucesso');
 
     // Executar orquestração
-    console.log('🤖 Executando orquestração dos agentes...');
-    const result = await orchestrator.orchestrateVideoAnalysis(frameData, enrichedContext);
+    // Para YouTube: tenta URL direto primeiro, fallback para download se falhar
+    let result;
+
+    if (isYouTube) {
+      try {
+        console.log('🤖 Tentativa 1: URL do YouTube direto para o Gemini...');
+        result = await orchestrator.orchestrateVideoAnalysis(frameData, enrichedContext);
+        console.log('✅ YouTube URL direto funcionou!');
+      } catch (urlError) {
+        console.warn(`⚠️  YouTube URL direto falhou: ${urlError.message}`);
+        console.log('🔄 Tentativa 2: Baixando vídeo + upload via File API...');
+
+        const downloaded = await downloadYouTubeVideo(url);
+        videoCleanup = downloaded.cleanup;
+
+        const uploaded = await uploadVideoToGemini(downloaded.filePath);
+        geminiFileName = uploaded.name;
+
+        frameData = {
+          fileUri: uploaded.uri,
+          mimeType: uploaded.mimeType
+        };
+        console.log('🤖 Frame preparado via File API:', uploaded.uri);
+        result = await orchestrator.orchestrateVideoAnalysis(frameData, enrichedContext);
+        console.log('✅ Fallback via download funcionou!');
+      }
+    } else {
+      console.log('🤖 Executando orquestração dos agentes...');
+      result = await orchestrator.orchestrateVideoAnalysis(frameData, enrichedContext);
+    }
     
     console.log('✅ Orquestração concluída com sucesso!');
     console.log('   - Agentes executados:', result.metadata.successfulAgents + '/' + result.metadata.agentCount);
