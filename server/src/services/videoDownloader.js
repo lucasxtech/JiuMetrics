@@ -154,23 +154,28 @@ async function downloadWithYtdlCore(url) {
   const agent = buildYtdlAgent(ytdl);
 
   const info = await ytdl.getInfo(url, { agent });
-  const format = ytdl.chooseFormat(info.formats, {
-    quality: 'highest',
-    filter: (f) => f.container === 'mp4' && f.hasVideo && f.hasAudio && (f.height || 0) <= VIDEO_DOWNLOAD.MAX_HEIGHT
-  }) || ytdl.chooseFormat(info.formats, {
-    quality: 'highest',
-    filter: (f) => f.hasVideo && f.hasAudio && (f.height || 0) <= VIDEO_DOWNLOAD.MAX_HEIGHT
-  });
+
+  // Para análise de frames pela IA, áudio não é necessário.
+  // Pegar o melhor formato de vídeo disponível até MAX_HEIGHT.
+  const format =
+    ytdl.chooseFormat(info.formats, {
+      quality: 'highest',
+      filter: (f) => f.hasVideo && (f.height || 0) <= VIDEO_DOWNLOAD.MAX_HEIGHT
+    }) ||
+    ytdl.chooseFormat(info.formats, { quality: 'highestvideo' });
 
   if (!format) {
     throw new Error('Nenhum formato de vídeo compatível encontrado');
   }
 
+  console.log(`🎞️  Formato selecionado: ${format.container} ${format.height || '?'}p`);
+
+
   return new Promise((resolve, reject) => {
     let settled = false;
     const settle = (fn) => { if (!settled) { settled = true; fn(); } };
 
-    const stream = ytdl.downloadFromInfo(info, { format });
+    const stream = ytdl.downloadFromInfo(info, { format, agent });
     const writeStream = fs.createWriteStream(filePath);
     let downloadedBytes = 0;
     const maxBytes = VIDEO_DOWNLOAD.MAX_FILE_SIZE_MB * 1024 * 1024;
