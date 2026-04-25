@@ -340,18 +340,10 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
     const isYouTube = url.includes('youtube.com/') || url.includes('youtu.be/');
 
     if (isYouTube) {
-      console.log('🤖 YouTube detectado — baixando e enviando via File API...');
-      const downloaded = await downloadYouTubeVideo(url);
-      videoCleanup = downloaded.cleanup;
-
-      const uploaded = await uploadVideoToGemini(downloaded.filePath);
-      geminiFileName = uploaded.name;
-
-      frameData = {
-        fileUri: uploaded.uri,
-        mimeType: uploaded.mimeType
-      };
-      console.log('🤖 Frame preparado via File API:', uploaded.uri);
+      // Gemini suporta URLs do YouTube diretamente — sem necessidade de download
+      console.log('🤖 YouTube detectado — passando URL diretamente para o Gemini...');
+      frameData = { fileUri: url };
+      console.log('🤖 Frame preparado via YouTube URL:', url);
     } else {
       frameData = { fileUri: url };
       console.log('🤖 Frame preparado:');
