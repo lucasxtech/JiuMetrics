@@ -17,6 +17,53 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 /**
+ * Cria um agente ytdl-core com cookies do YouTube se configurados.
+ * 
+ * Para configurar: defina YOUTUBE_COOKIES no .env com o conteúdo
+ * do arquivo cookies.txt exportado via extensão "Get cookies.txt LOCALLY"
+ * enquanto logado no YouTube.
+ * 
+ * Quando os cookies expirarem, o download volta a falhar com bot detection.
+ * Solução: exportar novos cookies e atualizar a variável de ambiente.
+ * 
+ * @param {object} ytdl - instância do @distube/ytdl-core
+ * @returns {object} agente ytdl
+ */
+function buildYtdlAgent(ytdl) {
+  const rawCookies = process.env.YOUTUBE_COOKIES;
+
+  if (rawCookies) {
+    try {
+      // Suporta formato Netscape (cookies.txt) ou JSON array
+      // Formato Netscape: linhas "domain\tTRUE\tpath\tFALSE\texpiry\tname\tvalue"
+      let cookieArray;
+      if (rawCookies.trim().startsWith('[')) {
+        cookieArray = JSON.parse(rawCookies);
+      } else {
+        cookieArray = rawCookies
+          .split('\n')
+          .filter(line => line && !line.startsWith('#'))
+          .map(line => {
+            const parts = line.trim().split('\t');
+            if (parts.length < 7) return null;
+            return { name: parts[5], value: parts[6], domain: parts[0] };
+          })
+          .filter(Boolean);
+      }
+
+      if (cookieArray.length > 0) {
+        console.log(`🍪 Usando YOUTUBE_COOKIES (${cookieArray.length} cookies)`);
+        return ytdl.createAgent(cookieArray);
+      }
+    } catch (err) {
+      console.warn(`⚠️  YOUTUBE_COOKIES inválido, ignorando: ${err.message}`);
+    }
+  }
+
+  return ytdl.createAgent();
+}
+
+/**
  * Verifica se yt-dlp está instalado no sistema
  * @returns {Promise<boolean>}
  */
@@ -103,7 +150,10 @@ async function downloadWithYtdlCore(url) {
   console.log(`⬇️  Baixando vídeo do YouTube (ytdl-core)...`);
   console.log(`   URL: ${url}`);
 
-  const info = await ytdl.getInfo(url);
+  // Criar agente — com cookies se disponível, ou cookie jar vazio
+  const agent = buildYtdlAgent(ytdl);
+
+  const info = await ytdl.getInfo(url, { agent });
   const format = ytdl.chooseFormat(info.formats, {
     quality: 'highest',
     filter: (f) => f.container === 'mp4' && f.hasVideo && f.hasAudio && (f.height || 0) <= VIDEO_DOWNLOAD.MAX_HEIGHT
@@ -286,6 +336,13 @@ async function downloadYouTubeVideo(url) {
 function classifyDownloadError(primaryError, secondaryError) {
   const msg = (primaryError.message + ' ' + (secondaryError?.message || '')).toLowerCase();
 
+  if (msg.includes('sign in to confirm') || msg.includes('confirm you') || msg.includes('not a bot')) {
+    const hasCookies = !!process.env.YOUTUBE_COOKIES;
+    if (hasCookies) {
+      return 'O YouTube bloqueou o download mesmo com cookies configurados — os cookies podem ter expirado. Atualize a variável YOUTUBE_COOKIES no servidor.';
+    }
+    return 'O YouTube bloqueou o download por detecção de bot. Configure YOUTUBE_COOKIES no servidor para resolver definitivamente, ou tente novamente em alguns minutos.';
+  }
   if (msg.includes('private') || msg.includes('login') || msg.includes('sign in')) {
     return 'Este vídeo é privado ou requer login. Verifique se o vídeo está público no YouTube.';
   }
