@@ -542,7 +542,7 @@ export default function VideoAnalysisComponent() {
               </h3>
               <p className="text-slate-600 leading-relaxed">
                 O Gemini está processando o vídeo completo para gerar dados cirúrgicos e insights técnicos. 
-                Este processo geralmente leva cerca de <strong>40 segundos</strong>.
+                Este processo geralmente leva cerca de <strong>1 minuto</strong>.
               </p>
             </div>
           </div>
