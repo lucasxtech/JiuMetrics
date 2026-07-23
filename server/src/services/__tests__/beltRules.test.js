@@ -11,7 +11,7 @@
  */
 
 const { BELT_RULES } = require('../../config/ai');
-const { formatBeltRules, getBeltRulesText, formatBeltRulesForStrategy } = require('../geminiService');
+const { formatBeltRules, getBeltRulesText, formatBeltRulesForStrategy, buildVideoAnalysisContext } = require('../geminiService');
 
 describe('BELT_RULES (fonte única)', () => {
   it('NÃO permite toe hold para faixa roxa (só é liberado a partir de marrom)', () => {
@@ -85,15 +85,48 @@ describe('formatBeltRules (formatter único usado por getBeltRulesText e formatB
     expect(formatBeltRules('ROXA')).toContain('FAIXA: ROXA');
   });
 
-  it('retorna string vazia para faixa desconhecida ou não informada', () => {
-    expect(formatBeltRules(null)).toBe('');
-    expect(formatBeltRules(undefined)).toBe('');
-    expect(formatBeltRules('faixa-inexistente')).toBe('');
+  it('nunca retorna string vazia para faixa desconhecida ou não informada — cai no fallback mais restritivo (branca)', () => {
+    // Antes desta correção, belt vazio fazia o RulesAgent (multi-agente)
+    // receber ZERO informação sobre técnicas ilegais, já que a tabela
+    // hardcoded do prompt havia sido removida em favor do placeholder
+    // {{BELT_RULES}} — que ficava vazio nesse caso. Agora cai no conjunto
+    // mais restritivo em vez de silêncio.
+    for (const belt of [null, undefined, 'faixa-inexistente']) {
+      const text = formatBeltRules(belt);
+      expect(text).not.toBe('');
+      expect(text).toContain('NÃO ESPECIFICADA');
+      expect(text.toLowerCase()).toContain('proibido');
+      // O conteúdo do fallback deve ser o mesmo conjunto de regras da branca
+      // (a mais restritiva) — só o cabeçalho difere.
+      const withoutHeader = (t) => t.split('\n').slice(2).join('\n');
+      expect(withoutHeader(text)).toBe(withoutHeader(formatBeltRules('branca')));
+    }
+  });
+
+  it('não duplica o cabeçalho "FAIXA:" na saída', () => {
+    for (const belt of ['branca', 'azul', 'roxa', 'marrom', 'preta', undefined]) {
+      const text = formatBeltRules(belt);
+      const headerOccurrences = (text.match(/FAIXA:/g) || []).length;
+      expect(headerOccurrences).toBe(1);
+    }
   });
 
   it('getBeltRulesText e formatBeltRulesForStrategy usam a mesma fonte (não mais duas tabelas divergentes)', () => {
     expect(getBeltRulesText('roxa')).toBe(formatBeltRulesForStrategy('roxa'));
     expect(getBeltRulesText('azul')).toBe(formatBeltRulesForStrategy('azul'));
     expect(getBeltRulesText('marrom')).toBe(formatBeltRulesForStrategy('marrom'));
+  });
+});
+
+describe('buildVideoAnalysisContext (contexto do prompt de análise de vídeo)', () => {
+  it('não duplica o cabeçalho "FAIXA:" quando a faixa é informada', () => {
+    const contextText = buildVideoAnalysisContext({ athleteName: 'Atleta Teste', belt: 'roxa' });
+    const headerOccurrences = (contextText.match(/FAIXA:/g) || []).length;
+    expect(headerOccurrences).toBe(1);
+  });
+
+  it('não inclui nenhum texto de faixa quando belt não é informado', () => {
+    const contextText = buildVideoAnalysisContext({ athleteName: 'Atleta Teste' });
+    expect(contextText).not.toContain('FAIXA:');
   });
 });

@@ -67,9 +67,9 @@ function buildVideoAnalysisContext(context = {}) {
     contextText += `\n\n🎯 ATLETA ALVO: ${athleteName}`;
   }
   
-  // Adicionar faixa com regras específicas
+  // Adicionar faixa com regras específicas (getBeltRulesText já inclui o
+  // cabeçalho "🥋 FAIXA: X" — não duplicar aqui)
   if (belt) {
-    contextText += `\n🥋 FAIXA: ${belt.toUpperCase()}`;
     contextText += getBeltRulesText(belt);
   }
   
@@ -132,7 +132,21 @@ function resolveBeltRules(belt) {
  */
 function formatBeltRules(belt) {
   const rules = resolveBeltRules(belt);
-  if (!rules) return '';
+
+  if (!rules) {
+    // Faixa não informada ou desconhecida: nunca deixar o consumidor
+    // (ex.: RulesAgent) sem NENHUMA orientação — aplicar o conjunto mais
+    // restritivo (branca) como fallback seguro, já que assumir uma faixa
+    // mais permissiva arrisca sugerir/validar técnica ilegal.
+    const fallback = BELT_RULES.branca;
+    let fallbackText = `\n🥋 FAIXA: NÃO ESPECIFICADA (aplicando regras da faixa mais restritiva — branca)`;
+    fallbackText += `\n⚠️ REGRAS IBJJF — PERMITIDO: ${fallback.allowed.join(', ')}`;
+    fallbackText += `\n⚠️ REGRAS IBJJF — PROIBIDO: ${fallback.forbidden.join(', ')}`;
+    if (fallback.extraRules) {
+      fallbackText += `\n⚠️ OBSERVAÇÃO: ${fallback.extraRules}`;
+    }
+    return fallbackText;
+  }
 
   const allowedText = rules.allowed.length > 0
     ? rules.allowed.join(', ')
@@ -323,7 +337,7 @@ async function analyzeFrameWithAgents(url, context = {}, customModel = null) {
       giColor: context.giColor || 'azul',
       belt: context.belt || 'Não especificada',
       result: context.matchResult || context.result || 'Não especificado',
-      beltRules: context.belt ? getBeltRulesText(context.belt) : ''
+      beltRules: getBeltRulesText(context.belt)
     };
     
     console.log('🤖 Contexto preparado:');
@@ -1083,10 +1097,11 @@ async function chat({ contextType, contextData, history = [], userMessage, custo
 // EXPORTS
 // ====================================
 
-module.exports = { 
+module.exports = {
   // Análise de vídeo
   analyzeFrame,
   analyzeFrameWithAgents, // Nova função multi-agentes
+  buildVideoAnalysisContext, // Exportado para teste direto (função pura)
   
   // Consolidação
   consolidateAnalyses, 
