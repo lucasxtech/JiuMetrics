@@ -197,7 +197,7 @@ exports.uploadAndAnalyzeVideo = async (req, res) => {
           videoUrl: videoNames.join(', '), // Nome dos arquivos
           charts: consolidatedAnalysis.charts || {},
           summary: consolidatedAnalysis.summary || '',
-          technicalProfile: consolidatedAnalysis.technicalProfile || '',
+          technicalStats: consolidatedAnalysis.technical_stats || null,
           framesAnalyzed: allFrameAnalyses.length,
           userId: req.userId, // ⚠️ CRÍTICO: Adicionar userId
         });

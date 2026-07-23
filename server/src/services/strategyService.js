@@ -608,8 +608,8 @@ OBRIGATÓRIO:
    * @returns {Object} Stats consolidados
    */
   static consolidateTechnicalStats(analyses) {
-    const validAnalyses = analyses.filter(a => a.technical_stats);
-    
+    const validAnalyses = analyses.filter(a => a.technicalStats);
+
     if (validAnalyses.length === 0) {
       return null;
     }
@@ -644,7 +644,7 @@ OBRIGATÓRIO:
 
     // Somar totais
     validAnalyses.forEach(analysis => {
-      const stats = analysis.technical_stats;
+      const stats = analysis.technicalStats;
       
       if (stats.sweeps) {
         consolidated.sweeps.quantidade_total += stats.sweeps.quantidade || 0;

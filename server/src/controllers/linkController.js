@@ -184,7 +184,7 @@ exports.analyzeLink = async (req, res) => {
           videoUrl: videoData.map(v => v.url).join(', '),
           charts: consolidated.charts || {},
           summary: consolidated.summary || '',
-          technicalProfile: consolidated.technicalProfile || '',
+          technicalStats: consolidated.technical_stats || null,
           framesAnalyzed: videos.length,
           userId: req.userId, // ⚠️ CRÍTICO: Adicionar userId
         });
