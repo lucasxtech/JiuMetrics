@@ -13,6 +13,15 @@ function fakeGeminiResult(jsonBody) {
   };
 }
 
+describe('ScoutAgent.focusAreas', () => {
+  it('lista behavioral_pattern (não o antigo psychological_profile) — coerente com o rename em parseResult', () => {
+    const agent = new ScoutAgent();
+
+    expect(agent.focusAreas).toContain('behavioral_pattern');
+    expect(agent.focusAreas).not.toContain('psychological_profile');
+  });
+});
+
 describe('ScoutAgent.parseResult', () => {
   const agent = new ScoutAgent();
 

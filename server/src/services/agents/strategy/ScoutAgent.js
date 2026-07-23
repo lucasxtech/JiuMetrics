@@ -2,14 +2,14 @@ const StrategyAgentBase = require('./StrategyAgentBase');
 
 /**
  * Agente Scout — analisa exclusivamente o adversário.
- * Mapeia: guarda, entrada em pé, arsenal ofensivo, vulnerabilidades, perfil psicológico.
+ * Mapeia: guarda, entrada em pé, arsenal ofensivo, vulnerabilidades, padrão comportamental.
  */
 class ScoutAgent extends StrategyAgentBase {
   constructor() {
     super(
       'Agente Scout',
       'strategy-scout',
-      ['preferred_guard', 'standup_entry', 'signature_attacks', 'vulnerabilities', 'psychological_profile']
+      ['preferred_guard', 'standup_entry', 'signature_attacks', 'vulnerabilities', 'behavioral_pattern']
     );
   }
 
