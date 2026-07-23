@@ -621,7 +621,8 @@ async function consolidateSummariesWithAI(summaries, athleteName, customModel = 
   const prompt = getPrompt('consolidate-summaries', {
     SUMMARY_COUNT: summaries.length,
     ATHLETE_NAME: athleteName,
-    SUMMARIES: summaries.map((s, i) => `[Vídeo ${i + 1}]: ${s}`).join('\n\n')
+    SUMMARIES: summaries.map((s, i) => `[Vídeo ${i + 1}]: ${s}`).join('\n\n'),
+    MAX_WORDS: MAX_SUMMARY_WORDS
   });
 
   try {
