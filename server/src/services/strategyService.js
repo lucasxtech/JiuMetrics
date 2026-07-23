@@ -721,6 +721,20 @@ OBRIGATÓRIO:
   }
 
   /**
+   * Retorna apenas os technical_stats consolidados de um lutador, SEM
+   * nenhuma chamada de IA — usado quando o resumo textual já está salvo
+   * (technicalSummary) e só falta buscar os números.
+   * @param {string} personId - ID do atleta ou adversário
+   * @param {string|string[]|null} userIds - ID(s) do usuário/grupo (para escopo)
+   * @returns {Promise<Object|null>} technical_stats consolidados ou null
+   */
+  static async getConsolidatedStats(personId, userIds = null) {
+    const analyses = await FightAnalysis.getByPersonId(personId, userIds);
+    if (!analyses || analyses.length === 0) return null;
+    return this.consolidateTechnicalStats(analyses);
+  }
+
+  /**
    * Gera estratégia tática usando resumos consolidados de TODAS as análises
    * OTIMIZADO: Usa technical_summary salvo no banco quando disponível
    * @param {string} athleteId - ID do atleta
@@ -760,21 +774,19 @@ OBRIGATÓRIO:
     // Atleta: usar resumo salvo ou consolidar
     if (athlete.technicalSummary) {
       athleteResumo = athlete.technicalSummary;
-      // Buscar stats consolidados
-      const athleteConsolidation = await this.consolidateAnalyses(athleteId, allowedUserIds, null);
-      athleteStats = athleteConsolidation.technical_stats;
+      // Buscar apenas os stats (sem IA — o resumo já está pronto)
+      athleteStats = await this.getConsolidatedStats(athleteId, allowedUserIds);
     } else {
       const athleteConsolidation = await this.consolidateAnalyses(athleteId, allowedUserIds, customModel);
       athleteResumo = athleteConsolidation.resumo;
       athleteStats = athleteConsolidation.technical_stats;
     }
-    
+
     // Adversário: usar resumo salvo ou consolidar
     if (opponent.technicalSummary) {
       opponentResumo = opponent.technicalSummary;
-      // Buscar stats consolidados
-      const opponentConsolidation = await this.consolidateAnalyses(opponentId, allowedUserIds, null);
-      opponentStats = opponentConsolidation.technical_stats;
+      // Buscar apenas os stats (sem IA — o resumo já está pronto)
+      opponentStats = await this.getConsolidatedStats(opponentId, allowedUserIds);
     } else {
       const opponentConsolidation = await this.consolidateAnalyses(opponentId, allowedUserIds, customModel);
       opponentResumo = opponentConsolidation.resumo;
