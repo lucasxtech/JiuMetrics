@@ -6,6 +6,7 @@ const StrategyService = require('../services/strategyService');
 const TacticalAnalysis = require('../models/TacticalAnalysis');
 const ApiUsage = require('../models/ApiUsage');
 const StrategyVersion = require('../models/StrategyVersion');
+const { validateStrategyField } = require('../utils/strategyFieldSchema');
 
 /**
  * POST /api/strategy/compare
@@ -231,6 +232,17 @@ exports.updateAnalysis = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'strategy_data é obrigatório'
+      });
+    }
+
+    // Validar que a seção editada tem o shape esperado antes de persistir.
+    // Evita gravar uma estratégia corrompida quando o chat (ou uma edição
+    // manual) sugere um newValue com schema divergente do real.
+    const fieldValidation = validateStrategyField(edited_field, strategy_data);
+    if (!fieldValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: fieldValidation.message
       });
     }
 
