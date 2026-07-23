@@ -19,25 +19,84 @@ function cleanMarkdown(text) {
 }
 
 /**
- * Encontra os limites corretos de um objeto JSON aninhado
- * @param {string} text - Texto contendo JSON
- * @param {number} start - Posição inicial da chave de abertura
- * @returns {number} Posição do fechamento correspondente
+ * Encontra o fechamento de um objeto JSON e, no mesmo passe, escapa
+ * caracteres de controle brutos (quebras de linha, tabs, retorno de carro)
+ * que aparecem DENTRO de string literals.
+ *
+ * Duas correções em uma função porque nascem da mesma causa: um contador
+ * de chaves ingênuo não sabe distinguir "{"/"}" de conteúdo textual dentro
+ * de uma string (ex.: um resumo que menciona "guarda X}") de chaves
+ * estruturais do JSON — o que fecha o objeto cedo demais ou tarde demais.
+ * E como o Gemini não é forçado a JSON estrito, é comum ele devolver um
+ * "\n" real dentro do valor de uma string (o texto pedido nos prompts é
+ * narrativo, em múltiplos parágrafos) — o que a gramática JSON proíbe e
+ * faria JSON.parse falhar; aqui isso é escapado para "\\n" em vez de
+ * quebrar o parse inteiro.
+ *
+ * @param {string} text - Texto contendo JSON, já sem os fences de markdown
+ * @param {number} start - Posição do "{" de abertura
+ * @returns {{ end: number, json: string }} Posição do "}" de fechamento no
+ *   texto original, e a substring do JSON já com os caracteres de controle
+ *   dentro de strings escapados
  */
-function findJsonEnd(text, start) {
-  let braceCount = 0;
-  
+function extractBalancedJson(text, start) {
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  let json = '';
+
   for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') braceCount++;
-    if (text[i] === '}') {
-      braceCount--;
-      if (braceCount === 0) {
-        return i;
-      }
+    const char = text[i];
+
+    if (escapeNext) {
+      json += char;
+      escapeNext = false;
+      continue;
     }
+
+    if (inString) {
+      if (char === '\\') {
+        escapeNext = true;
+        json += char;
+        continue;
+      }
+      if (char === '"') {
+        inString = false;
+        json += char;
+        continue;
+      }
+      if (char === '\n') { json += '\\n'; continue; }
+      if (char === '\r') { json += '\\r'; continue; }
+      if (char === '\t') { json += '\\t'; continue; }
+      json += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      json += char;
+      continue;
+    }
+
+    if (char === '{') {
+      depth++;
+      json += char;
+      continue;
+    }
+
+    if (char === '}') {
+      depth--;
+      json += char;
+      if (depth === 0) {
+        return { end: i, json };
+      }
+      continue;
+    }
+
+    json += char;
   }
-  
-  return text.length - 1;
+
+  return { end: text.length - 1, json };
 }
 
 /**
@@ -94,8 +153,7 @@ function extractJson(text) {
     throw new GeminiParseError('Nenhum JSON encontrado na resposta da IA');
   }
 
-  const jsonEnd = findJsonEnd(cleanText, start);
-  const jsonString = cleanText.slice(start, jsonEnd + 1);
+  const { json: jsonString } = extractBalancedJson(cleanText, start);
 
   try {
     const parsed = JSON.parse(jsonString);

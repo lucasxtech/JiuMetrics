@@ -24,6 +24,34 @@ describe('chartUtils.extractJson', () => {
 
     expect(parsed.summary).toBe('acesse https://exemplo.com para detalhes');
   });
+
+  it('não falha quando um valor de string contém uma quebra de linha literal (Gemini não é forçado a JSON estrito)', () => {
+    const raw = '```json\n{"summary": "Paragrafo um.\n\nParagrafo dois.", "charts": []}\n```';
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('Paragrafo um.\n\nParagrafo dois.');
+  });
+
+  it('não fecha o objeto prematuramente quando um valor de string contém "}"', () => {
+    const raw = `{"summary": "ele usa a guarda X} para raspar", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('ele usa a guarda X} para raspar');
+  });
+
+  it('não abre um objeto aninhado falso quando um valor de string contém "{"', () => {
+    const raw = `{"summary": "a guarda {de la riva} é usada", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('a guarda {de la riva} é usada');
+  });
+
+  it('preserva aspas escapadas dentro de uma string sem confundir com o fechamento da string', () => {
+    const raw = `{"summary": "ele disse \\"raspagem\\" durante a luta", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('ele disse "raspagem" durante a luta');
+  });
 });
 
 describe('chartUtils.normalizeChartData', () => {
