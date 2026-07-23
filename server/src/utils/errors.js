@@ -99,6 +99,17 @@ class GeminiProcessingError extends AppError {
   }
 }
 
+/**
+ * Erro quando a resposta da IA não contém JSON válido/parseável.
+ * Nunca deve ser mascarado com dados sintéticos — precisa propagar
+ * para que a análise falhe explicitamente em vez de salvar dados inventados.
+ */
+class GeminiParseError extends AppError {
+  constructor(message = 'Resposta da IA não pôde ser interpretada como JSON válido') {
+    super(message, 502);
+  }
+}
+
 // ====================================
 // ERROS DE DOWNLOAD DE VÍDEO
 // ====================================
@@ -148,8 +159,8 @@ class VideoDownloadError extends AppError {
  * @returns {AppError} Erro customizado
  */
 const parseGeminiError = (error) => {
-  // Preservar VideoDownloadError sem transformar
-  if (error instanceof VideoDownloadError) {
+  // Preservar VideoDownloadError e GeminiParseError sem transformar
+  if (error instanceof VideoDownloadError || error instanceof GeminiParseError) {
     return error;
   }
 
@@ -186,6 +197,7 @@ module.exports = {
   GeminiApiKeyMissingError,
   GeminiApiError,
   GeminiProcessingError,
+  GeminiParseError,
   VideoDownloadError,
   parseGeminiError
 };

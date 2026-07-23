@@ -64,11 +64,23 @@ EXEMPLOS:
 {
   "field": "plano_tatico_faseado",
   "newValue": {
-    "fase_inicial": "Queda explosiva + Body lock imediato...",
-    "meio_da_luta": "Pressão no quadril + Ataques variados de esgrima, montada e 100kg...",
-    "final_da_luta": "Finalização por estrangulamento ou kimura..."
+    "em_pe_standup": {
+      "acao_recomendada": "Queda explosiva com body lock imediato",
+      "explicacao": "Impede que ele estabeleça a guarda antes de você consolidar o controle",
+      "como_executar": "Feche a distância, dispute a pegada e finalize com double leg seguido de body lock"
+    },
+    "jogo_de_passagem_top": {
+      "estilo_recomendado": "Pressão de quadril com variação de esgrima",
+      "passo_a_passo": ["Trave a calça e quebre a postura da guarda", "Alterne toreada e knee slice conforme a reação dele", "Consolide em 100kg antes de progredir para montada"],
+      "armadilha_a_evitar": "Não force a passagem se ele já pegou underhook — prefira resetar a pegada"
+    },
+    "jogo_de_guarda_bottom": {
+      "guarda_ideal": "Guarda De la Riva com controle de manga",
+      "momento_de_atacar": "Assim que ele tentar se levantar para passar",
+      "se_der_errado": "Recomponha para meia guarda e busque underhook"
+    }
   },
-  "reason": "Expandido com mais opções de ataque em cada fase"
+  "reason": "Expandido com mais opções de ataque em cada fase do plano tático"
 }
 ---END_SUGGESTION---
 
@@ -77,11 +89,28 @@ EXEMPLOS:
 {
   "field": "checklist_tatico",
   "newValue": {
-    "ofensiva": [...],
-    "defensiva": ["Defender raspagens de gola", "Evitar ser puxado para baixo", "Manter base sólida"],
-    "mental": [...]
+    "oportunidades_de_pontos": [
+      {
+        "tecnica": "Raspagem de guarda fechada",
+        "pontos": 2,
+        "probabilidade": "alta",
+        "quando": "Quando ele tenta abrir a guarda para passar",
+        "por_que_funciona": "Ele tem dificuldade de manter a base ao quebrar a guarda fechada"
+      }
+    ],
+    "armadilhas_dele": [
+      {
+        "situacao": "Quando você está em cima na guarda dele",
+        "o_que_ele_faz": "Busca raspagem de gola puxando para trás",
+        "como_evitar": "Mantenha a postura ereta e controle a manga antes que ele finalize a pegada"
+      }
+    ],
+    "protocolo_de_emergencia": {
+      "posicao_perigosa": "Costas expostas com um gancho dele encaixado",
+      "como_escapar": "Gire o quadril na direção do gancho, remova a mão dele do pescoço e recomponha para meia guarda"
+    }
   },
-  "reason": "Adicionados pontos defensivos específicos"
+  "reason": "Adicionados pontos defensivos específicos no checklist tático"
 }
 ---END_SUGGESTION---
 

@@ -9,12 +9,12 @@ const { logApiUsageWithType } = require('../utils/apiUsageLogger');
 
 /**
  * POST /api/ai/analyze-video
- * Rota descontinuada - use POST /api/video/upload
+ * Rota descontinuada - use POST /api/ai/analyze-link
  */
 exports.analyzeVideo = async (req, res) => {
   res.status(400).json({
     success: false,
-    error: 'Use POST /api/video/upload para enviar um vídeo para análise'
+    error: 'Rota descontinuada. Use POST /api/ai/analyze-link com a URL do vídeo no YouTube'
   });
 };
 

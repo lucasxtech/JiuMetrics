@@ -20,12 +20,18 @@ const strategyController = require('../strategyController');
 const Athlete = require('../../models/Athlete');
 const Opponent = require('../../models/Opponent');
 const FightAnalysis = require('../../models/FightAnalysis');
+const TacticalAnalysis = require('../../models/TacticalAnalysis');
+const StrategyVersion = require('../../models/StrategyVersion');
+const { getScopeIds } = require('../../utils/tenantScope');
 const { generateTacticalStrategy } = require('../../services/geminiService');
 const { processPersonAnalyses } = require('../../utils/athleteStatsUtils');
 
 jest.mock('../../models/Athlete');
 jest.mock('../../models/Opponent');
 jest.mock('../../models/FightAnalysis');
+jest.mock('../../models/TacticalAnalysis');
+jest.mock('../../models/StrategyVersion');
+jest.mock('../../utils/tenantScope');
 jest.mock('../../utils/athleteStatsUtils');
 
 describe('strategyController', () => {
@@ -249,6 +255,71 @@ describe('strategyController', () => {
         success: false,
         error: 'Erro no Gemini'
       });
+    });
+  });
+
+  describe('updateAnalysis', () => {
+    beforeEach(() => {
+      getScopeIds.mockResolvedValue(['user-1']);
+      TacticalAnalysis.getById.mockResolvedValue({ id: 'analysis-1', user_id: 'user-1' });
+      TacticalAnalysis.update.mockResolvedValue({ id: 'analysis-1', strategy_data: {} });
+      StrategyVersion.create.mockResolvedValue({});
+    });
+
+    it('rejeita com 400 quando o newValue de plano_tatico_faseado tem o schema antigo/errado', async () => {
+      req.params = { id: 'analysis-1' };
+      req.body = {
+        strategy_data: {
+          plano_tatico_faseado: {
+            fase_inicial: 'texto',
+            meio_da_luta: 'texto',
+            final_da_luta: 'texto'
+          }
+        },
+        edited_field: 'plano_tatico_faseado'
+      };
+
+      await strategyController.updateAnalysis(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        error: expect.stringMatching(/em_pe_standup/)
+      }));
+      expect(TacticalAnalysis.update).not.toHaveBeenCalled();
+    });
+
+    it('aplica a atualização quando o newValue tem o schema real', async () => {
+      req.params = { id: 'analysis-1' };
+      req.body = {
+        strategy_data: {
+          plano_tatico_faseado: {
+            em_pe_standup: { acao_recomendada: 'x' },
+            jogo_de_passagem_top: { estilo_recomendado: 'y' },
+            jogo_de_guarda_bottom: { guarda_ideal: 'z' }
+          }
+        },
+        edited_field: 'plano_tatico_faseado'
+      };
+
+      await strategyController.updateAnalysis(req, res);
+
+      expect(TacticalAnalysis.update).toHaveBeenCalledWith('analysis-1', 'user-1', {
+        strategy_data: req.body.strategy_data
+      });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('não bloqueia quando edited_field não é informado (ex.: restauração de versão)', async () => {
+      req.params = { id: 'analysis-1' };
+      req.body = {
+        strategy_data: { qualquer_coisa: 'valor' }
+      };
+
+      await strategyController.updateAnalysis(req, res);
+
+      expect(res.status).not.toHaveBeenCalledWith(400);
+      expect(TacticalAnalysis.update).toHaveBeenCalled();
     });
   });
 });

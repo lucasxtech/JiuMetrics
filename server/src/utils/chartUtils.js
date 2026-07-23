@@ -1,101 +1,102 @@
 const fs = require('fs');
-
-// Constantes
-const DEFAULT_CHARTS = [
-  {
-    title: "Personalidade Geral",
-    data: [
-      { label: "Agressivo", value: 50 },
-      { label: "Calmo", value: 50 }
-    ]
-  },
-  {
-    title: "Comportamento Inicial",
-    data: [
-      { label: "Puxar Guarda", value: 60 },
-      { label: "Trocar Queda", value: 40 }
-    ]
-  },
-  {
-    title: "Jogo de Guarda",
-    data: [
-      { label: "Guarda Fechada", value: 70 },
-      { label: "Raspagem", value: 30 }
-    ]
-  },
-  {
-    title: "Jogo de Passagem",
-    data: [
-      { label: "Pressão", value: 60 },
-      { label: "Toreada", value: 40 }
-    ]
-  }
-];
+const { GeminiParseError } = require('./errors');
 
 const DEBUG_FILE_PATH = '/tmp/gemini-json-debug.txt';
 
 /**
- * Limpa texto removendo markdown e formatações problemáticas
+ * Remove apenas os marcadores de code fence markdown (```json ... ```)
+ * da resposta bruta da IA. Não tenta "consertar" JSON malformado —
+ * transformações mais agressivas (remover comentários, auto-quotar chaves)
+ * corrompiam respostas válidas que continham strings com "//" ou vírgulas.
  * @param {string} text - Texto bruto do Gemini
- * @returns {string} Texto limpo
+ * @returns {string} Texto sem os fences de código
  */
 function cleanMarkdown(text) {
   return text
     .replace(/```json\s*/g, '')
     .replace(/```\s*/g, '')
-    .replace(/\\n/g, ' ')
-    .replace(/\*\*/g, '')
-    .replace(/\n/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')  
-    .replace(/,\s*([}\]])/g, '$1')
-    .replace(/\/\/.*$/gm, '')
-    .replace(/\/\*[\s\S]*?\*\//gm, '')
-    .replace(/,\s*,/g, ',')
-    .replace(/:\s*,/g, ': null,')
-    .replace(/:\s*}/g, ': null}')
-    .replace(/:\s*]/g, ': null]');
+    .trim();
 }
 
 /**
- * Encontra os limites corretos de um objeto JSON aninhado
- * @param {string} text - Texto contendo JSON
- * @param {number} start - Posição inicial da chave de abertura
- * @returns {number} Posição do fechamento correspondente
+ * Encontra o fechamento de um objeto JSON e, no mesmo passe, escapa
+ * caracteres de controle brutos (quebras de linha, tabs, retorno de carro)
+ * que aparecem DENTRO de string literals.
+ *
+ * Duas correções em uma função porque nascem da mesma causa: um contador
+ * de chaves ingênuo não sabe distinguir "{"/"}" de conteúdo textual dentro
+ * de uma string (ex.: um resumo que menciona "guarda X}") de chaves
+ * estruturais do JSON — o que fecha o objeto cedo demais ou tarde demais.
+ * E como o Gemini não é forçado a JSON estrito, é comum ele devolver um
+ * "\n" real dentro do valor de uma string (o texto pedido nos prompts é
+ * narrativo, em múltiplos parágrafos) — o que a gramática JSON proíbe e
+ * faria JSON.parse falhar; aqui isso é escapado para "\\n" em vez de
+ * quebrar o parse inteiro.
+ *
+ * @param {string} text - Texto contendo JSON, já sem os fences de markdown
+ * @param {number} start - Posição do "{" de abertura
+ * @returns {{ end: number, json: string }} Posição do "}" de fechamento no
+ *   texto original, e a substring do JSON já com os caracteres de controle
+ *   dentro de strings escapados
  */
-function findJsonEnd(text, start) {
-  let braceCount = 0;
-  
+function extractBalancedJson(text, start) {
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  let json = '';
+
   for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') braceCount++;
-    if (text[i] === '}') {
-      braceCount--;
-      if (braceCount === 0) {
-        return i;
-      }
-    }
-  }
-  
-  return text.length - 1;
-}
+    const char = text[i];
 
-/**
- * Cria estrutura de fallback para quando o parsing falha
- * @param {string} summary - Sumário extraído ou mensagem de erro
- * @returns {Object} Estrutura padrão com charts
- */
-function createFallbackStructure(summary = "Análise baseada em inferência técnica geral.") {
-  return {
-    charts: DEFAULT_CHARTS,
-    summary,
-    technical_stats: {
-      sweeps: { quantidade: 0, efetividade_percentual: 0 },
-      guard_passes: { quantidade: 0, tempo_medio_segundos: 0 },
-      submissions: { tentativas: 0, ajustadas: 0, concluidas: 0, detalhes: [] },
-      back_takes: { quantidade: 0, tempo_medio_segundos: 0, tentou_finalizar: false }
-    },
-    _warning: "JSON malformado - dados padrão retornados"
-  };
+    if (escapeNext) {
+      json += char;
+      escapeNext = false;
+      continue;
+    }
+
+    if (inString) {
+      if (char === '\\') {
+        escapeNext = true;
+        json += char;
+        continue;
+      }
+      if (char === '"') {
+        inString = false;
+        json += char;
+        continue;
+      }
+      if (char === '\n') { json += '\\n'; continue; }
+      if (char === '\r') { json += '\\r'; continue; }
+      if (char === '\t') { json += '\\t'; continue; }
+      json += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      json += char;
+      continue;
+    }
+
+    if (char === '{') {
+      depth++;
+      json += char;
+      continue;
+    }
+
+    if (char === '}') {
+      depth--;
+      json += char;
+      if (depth === 0) {
+        return { end: i, json };
+      }
+      continue;
+    }
+
+    json += char;
+  }
+
+  return { end: text.length - 1, json };
 }
 
 /**
@@ -136,49 +137,45 @@ function normalizeChartData(data) {
 }
 
 /**
- * Extraí e parseia JSON de resposta do Gemini, com tratamento robusto de erros
+ * Extrai e parseia JSON de uma resposta do Gemini.
+ * NUNCA retorna dados sintéticos em caso de falha — lança GeminiParseError
+ * para que o chamador trate a análise como falha explícita, em vez de
+ * salvar um resultado inventado como se fosse real.
  * @param {string} text - Texto bruto contendo JSON
- * @returns {Object} Objeto parseado ou estrutura de fallback
+ * @returns {Object} Objeto parseado
+ * @throws {GeminiParseError} Se nenhum JSON for encontrado ou o parse falhar
  */
 function extractJson(text) {
   const cleanText = cleanMarkdown(text);
   const start = cleanText.indexOf("{");
-  
+
   if (start === -1) {
-    console.warn("⚠️ Nenhum JSON encontrado na resposta");
-    return createFallbackStructure();
+    throw new GeminiParseError('Nenhum JSON encontrado na resposta da IA');
   }
 
-  const jsonEnd = findJsonEnd(cleanText, start);
-  const jsonString = cleanText.slice(start, jsonEnd + 1);
+  const { json: jsonString } = extractBalancedJson(cleanText, start);
 
   try {
     const parsed = JSON.parse(jsonString);
-    
-    // ⚠️ NORMALIZAR TODOS OS GRÁFICOS PARA GARANTIR 100%
+
+    // Normalizar todos os gráficos para garantir soma de 100%
     if (Array.isArray(parsed.charts)) {
       parsed.charts = parsed.charts.map(chart => ({
         ...chart,
         data: normalizeChartData(chart.data)
       }));
     }
-    
+
     return parsed;
   } catch (error) {
-    console.error("❌ Erro ao parsear JSON:", error.message);
-    
-    // Salvar para debug
+    // Salvar para debug antes de propagar o erro
     try {
       fs.writeFileSync(DEBUG_FILE_PATH, jsonString, 'utf8');
     } catch (fsError) {
       // Ignorar erro de escrita
     }
-    
-    // Tentar recuperar sumário
-    const summaryMatch = text.match(/"summary"\s*:\s*"([^"]+)"/);
-    const summary = summaryMatch ? summaryMatch[1] : "Erro no processamento - JSON inválido";
-    
-    return createFallbackStructure(summary);
+
+    throw new GeminiParseError(`JSON malformado na resposta da IA: ${error.message}`);
   }
 }
 

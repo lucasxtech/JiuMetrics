@@ -15,15 +15,12 @@ class StrategyRulesAgent extends StrategyAgentBase {
 
   buildPrompt(context) {
     const { getPrompt } = require('../../prompts');
-    const { BELT_RULES } = require('../../../config/ai');
+    const { resolveBeltRules } = require('../../../config/ai');
 
-    const restrictiveBeltKey = (context.restrictiveBelt || '').toLowerCase();
-
-    // Mapa de aliases (inglês → português)
-    const beltAliases = { white: 'branca', blue: 'azul', purple: 'roxa', brown: 'marrom', black: 'preta' };
-    const normalizedKey = beltAliases[restrictiveBeltKey] || restrictiveBeltKey;
-
-    const rules = BELT_RULES[normalizedKey] || { allowed: [], forbidden: [], extraRules: '' };
+    // Resolução de alias (ex.: 'purple' -> 'roxa') delegada à fonte única em
+    // config/ai.js — este agente tinha seu próprio mapa de alias independente,
+    // que podia divergir silenciosamente de BELT_RULES.
+    const rules = resolveBeltRules(context.restrictiveBelt) || { allowed: [], forbidden: [], extraRules: '' };
 
     return getPrompt('strategy-rules', {
       ATHLETE_BELT: context.athlete.belt || 'Não especificada',

@@ -1,4 +1,5 @@
 const { extractJson, normalizeChartData } = require('../chartUtils');
+const { GeminiParseError } = require('../errors');
 
 describe('chartUtils.extractJson', () => {
   it('extrai JSON válido de uma resposta com texto extra', () => {
@@ -8,10 +9,48 @@ describe('chartUtils.extractJson', () => {
     expect(parsed).toEqual({ summary: 'ok', charts: [] });
   });
 
-  it('retorna estrutura padrão quando não encontra JSON', () => {
-    const parsed = extractJson('sem json aqui');
-    expect(parsed.charts.length).toBeGreaterThan(0);
-    expect(parsed.summary).toBeDefined();
+  it('lança GeminiParseError quando não encontra JSON (nunca retorna dados inventados)', () => {
+    expect(() => extractJson('sem json aqui')).toThrow(GeminiParseError);
+  });
+
+  it('lança GeminiParseError quando o JSON está malformado', () => {
+    const raw = `{"summary": "ok", "charts": [}`;
+    expect(() => extractJson(raw)).toThrow(GeminiParseError);
+  });
+
+  it('não corrompe uma string que contém "//" (regex de comentário removida)', () => {
+    const raw = `{"summary": "acesse https://exemplo.com para detalhes", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('acesse https://exemplo.com para detalhes');
+  });
+
+  it('não falha quando um valor de string contém uma quebra de linha literal (Gemini não é forçado a JSON estrito)', () => {
+    const raw = '```json\n{"summary": "Paragrafo um.\n\nParagrafo dois.", "charts": []}\n```';
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('Paragrafo um.\n\nParagrafo dois.');
+  });
+
+  it('não fecha o objeto prematuramente quando um valor de string contém "}"', () => {
+    const raw = `{"summary": "ele usa a guarda X} para raspar", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('ele usa a guarda X} para raspar');
+  });
+
+  it('não abre um objeto aninhado falso quando um valor de string contém "{"', () => {
+    const raw = `{"summary": "a guarda {de la riva} é usada", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('a guarda {de la riva} é usada');
+  });
+
+  it('preserva aspas escapadas dentro de uma string sem confundir com o fechamento da string', () => {
+    const raw = `{"summary": "ele disse \\"raspagem\\" durante a luta", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('ele disse "raspagem" durante a luta');
   });
 });
 
