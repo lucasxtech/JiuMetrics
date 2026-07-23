@@ -127,12 +127,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Sem continue-on-error: com a suíte 100% verde, testes quebrados
+      # passam a bloquear a PR (o continue-on-error antigo é o motivo de
+      # 10 testes quebrados terem vivido meses no repositório sem ninguém ver).
       - name: Run tests
         run: npm test
         env:
           CI: true
           NODE_ENV: test
-        continue-on-error: true
 
   # Backend Lint (if you add linting later)
   backend-security:

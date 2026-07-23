@@ -11,9 +11,9 @@ jest.mock('../../config/supabase', () => ({
   }
 }));
 
-const { extractTechnicalProfile } = require('../../utils/profileUtils');
+const { extractTechnicalProfile } = require('../profileUtils');
 
-describe('videoController.extractTechnicalProfile', () => {
+describe('profileUtils.extractTechnicalProfile', () => {
   it('organiza dados do gráfico nas chaves corretas', () => {
     const charts = [
       {

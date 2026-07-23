@@ -230,60 +230,28 @@ Os endpoints de adversários seguem a mesma estrutura dos atletas:
 
 ## 🤖 Análise com IA
 
-### POST /ai/analyze-video
-Analisar vídeo local (upload via multipart/form-data).
-
-**Form Data:**
-```
-video: File (arquivo de vídeo)
-athleteName: string
-personId: uuid
-personType: "athlete" | "opponent"
-model: "gemini-2.0-flash" | "gemini-2.5-pro" (opcional)
-matchResult: "win" | "loss" | "draw" (opcional)
-belt: string (opcional)
-```
-
-**Resposta (200 OK):**
-```json
-{
-  "success": true,
-  "analysis": {
-    "summary": "Análise consolidada...",
-    "charts": {
-      "technical_stats": { /* dados do gráfico */ }
-    },
-    "frames_analyzed": 5
-  },
-  "usageMetadata": {
-    "totalTokens": 12500
-  }
-}
-```
+### POST /ai/analyze-video *(descontinuado)*
+Rota mantida apenas como stub: retorna **400** orientando a usar
+`POST /ai/analyze-link`. O caminho de upload de arquivo local foi removido.
 
 ---
 
 ### POST /ai/analyze-link
-Analisar vídeos do YouTube (suporta múltiplos links).
+Analisar vídeos do YouTube (suporta múltiplos links). O vídeo completo é
+enviado ao Gemini (URL pública direto, com fallback de download + File API).
 
 **Body:**
 ```json
 {
   "videos": [
-    {
-      "url": "https://youtube.com/watch?v=...",
-      "color": "white"
-    },
-    {
-      "url": "https://youtu.be/...",
-      "color": "blue"
-    }
+    { "url": "https://youtube.com/watch?v=...", "giColor": "branco" },
+    { "url": "https://youtu.be/...", "giColor": "azul" }
   ],
   "athleteName": "João Silva",
   "personId": "uuid",
   "personType": "athlete",
   "model": "gemini-2.0-flash",
-  "matchResult": "win",
+  "matchResult": "vitoria-pontos",
   "belt": "roxa"
 }
 ```
@@ -292,23 +260,23 @@ Analisar vídeos do YouTube (suporta múltiplos links).
 ```json
 {
   "success": true,
-  "analysis": {
-    "id": "uuid",
-    "summary": "Consolidação de todas as análises...",
-    "charts": {
-      "technical_stats": { /* radar chart data */ }
+  "data": {
+    "charts": [ { "title": "Personalidade Geral", "data": [{ "label": "...", "value": 0 }] } ],
+    "technical_stats": {
+      "sweeps": { "quantidade": 0, "efetividade_percentual": 0 },
+      "guard_passes": { "quantidade": 0 },
+      "submissions": { "tentativas": 0, "ajustadas": 0, "concluidas": 0, "detalhes": [] },
+      "back_takes": { "quantidade": 0, "tentou_finalizar": false }
     },
-    "individual_analyses": [
-      {
-        "video_url": "https://youtube.com/...",
-        "summary": "Análise deste vídeo...",
-        "frames_analyzed": 5
-      }
-    ]
-  },
-  "savedAnalysisId": "uuid"
+    "summary": "Consolidação de todas as análises...",
+    "generatedAt": "2026-07-23T...",
+    "videosAnalyzed": 2
+  }
 }
 ```
+
+Se `personId`/`personType` forem enviados, a análise é salva automaticamente
+e o resumo técnico do perfil (`technicalSummary`) é regenerado.
 
 ---
 
@@ -627,45 +595,6 @@ Deletar análise de luta.
   "message": "Análise deletada com sucesso"
 }
 ```
-
----
-
-## 🎥 Upload de Vídeos
-
-### POST /video/upload
-Fazer upload de vídeo para análise (alternativa ao /ai/analyze-video).
-
-**Form Data:**
-```
-video: File
-```
-
-**Resposta (200 OK):**
-```json
-{
-  "success": true,
-  "filename": "video-1234567890.mp4",
-  "path": "/uploads/video-1234567890.mp4"
-}
-```
-
----
-
-### POST /video/analyze
-Analisar vídeo já enviado por upload.
-
-**Body:**
-```json
-{
-  "videoPath": "/uploads/video-1234567890.mp4",
-  "athleteName": "João Silva",
-  "personId": "uuid",
-  "personType": "athlete",
-  "model": "gemini-2.0-flash"
-}
-```
-
-**Resposta:** Similar a `/ai/analyze-video`
 
 ---
 

@@ -43,8 +43,7 @@ Sistema completo de análise de vídeos de Jiu-Jitsu com IA (Google Gemini), ger
 **Backend:**
 - Node.js + Express
 - Supabase (PostgreSQL)
-- Google Gemini AI
-- FFmpeg (extração de frames)
+- Google Gemini AI (análise do vídeo completo via File API / URL do YouTube)
 
 ## ⚙️ Instalação
 

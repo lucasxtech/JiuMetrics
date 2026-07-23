@@ -1,5 +1,11 @@
 # Sistema Multi-Agentes
 
+> ⚠️ **Status (jul/2026): descontinuação planejada** — ver `SPEC-ANALISE-IA.md`
+> (seções A1/A2) na raiz do repositório. Os exemplos abaixo que mencionam
+> "frames"/`frameData` como imagens estáticas são herança de um caminho
+> removido: hoje a análise recebe o VÍDEO COMPLETO (URL do YouTube direto ou
+> upload via Gemini File API), e `frameData.fileUri` carrega essa referência.
+
 Este diretório contém a implementação do sistema multi-agentes para análise de vídeos de Jiu-Jitsu.
 
 ## Estrutura
