@@ -8,7 +8,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { extractJson } = require("../utils/chartUtils");
 const { getPrompt, fillPrompt } = require("./prompts");
-const { DEFAULT_MODEL, MAX_SUMMARY_WORDS } = require("../config/ai");
+const { DEFAULT_MODEL, MAX_SUMMARY_WORDS, BELT_RULES } = require("../config/ai");
 const { GeminiApiKeyMissingError, parseGeminiError } = require("../utils/errors");
 const { downloadYouTubeVideo } = require("./videoDownloader");
 const { uploadVideoToGemini, deleteFileFromGemini } = require("./fileApiService");
@@ -109,68 +109,66 @@ function buildVideoAnalysisContext(context = {}) {
 }
 
 /**
- * Retorna texto de regras IBJJF baseado na faixa
+ * Resolve uma faixa (incluindo aliases em inglês) para sua entrada
+ * canônica em BELT_RULES (config/ai.js).
+ * @param {string} belt - Faixa (português ou inglês)
+ * @returns {Object|null} Entrada { allowed, forbidden, extraRules } ou null
+ */
+function resolveBeltRules(belt) {
+  if (!belt) return null;
+  const entry = BELT_RULES[belt.toLowerCase()];
+  if (!entry) return null;
+  return entry.alias ? BELT_RULES[entry.alias] : entry;
+}
+
+/**
+ * Formata as regras IBJJF de uma faixa a partir da fonte única BELT_RULES.
+ * Usado tanto no contexto de análise de vídeo quanto no prompt de
+ * estratégia — antes cada consumidor tinha sua própria tabela hardcoded,
+ * e elas divergiam entre si (ex.: toe hold listado como permitido para
+ * faixa roxa, quando só é liberado a partir de marrom).
+ * @param {string} belt - Faixa do atleta (português ou inglês)
+ * @returns {string} Texto formatado com as regras, ou '' se faixa desconhecida
+ */
+function formatBeltRules(belt) {
+  const rules = resolveBeltRules(belt);
+  if (!rules) return '';
+
+  const allowedText = rules.allowed.length > 0
+    ? rules.allowed.join(', ')
+    : 'nenhuma técnica de perna além das básicas';
+  const forbiddenText = rules.forbidden.length > 0
+    ? rules.forbidden.join(', ')
+    : 'nenhuma restrição adicional';
+
+  let text = `\n🥋 FAIXA: ${belt.toUpperCase()}`;
+  text += `\n⚠️ REGRAS IBJJF — PERMITIDO: ${allowedText}`;
+  text += `\n⚠️ REGRAS IBJJF — PROIBIDO: ${forbiddenText}`;
+  if (rules.extraRules) {
+    text += `\n⚠️ OBSERVAÇÃO: ${rules.extraRules}`;
+  }
+
+  return text;
+}
+
+/**
+ * Retorna texto de regras IBJJF baseado na faixa (usado no contexto de
+ * análise de vídeo). Derivado da fonte única formatBeltRules.
  * @param {string} belt - Faixa do atleta
  * @returns {string} Texto com regras
  */
 function getBeltRulesText(belt) {
-  if (!belt) return '';
-  
-  const beltLower = belt.toLowerCase();
-  
-  if (['branca', 'azul', 'white', 'blue'].includes(beltLower)) {
-    return `\n⚠️ REGRA IBJJF: Faixa ${belt} - LEG LOCKS PROIBIDOS (exceto chave de pé reta). Heel hook, toe hold, kneebar são ILEGAIS.`;
-  } else if (['roxa', 'purple'].includes(beltLower)) {
-    return `\n⚠️ REGRA IBJJF: Faixa ${belt} - Apenas chave de pé reta e toe hold são permitidos. Heel hook e kneebar são ILEGAIS.`;
-  } else if (['marrom', 'preta', 'brown', 'black'].includes(beltLower)) {
-    return `\n⚠️ REGRA IBJJF: Faixa ${belt} - Toe hold, kneebar e chave de pé são permitidos. Heel hook só é permitido em NO-GI.`;
-  }
-  
-  return '';
+  return formatBeltRules(belt);
 }
 
 /**
- * Formata regras IBJJF completas para estratégia
+ * Formata regras IBJJF completas para o prompt de estratégia. Derivado da
+ * fonte única formatBeltRules.
  * @param {string} belt - Faixa do atleta
  * @returns {string} Texto formatado com regras
  */
 function formatBeltRulesForStrategy(belt) {
-  if (!belt) return '';
-  
-  const beltLower = belt.toLowerCase();
-  let rules = `\n🥋 FAIXA: ${belt.toUpperCase()}\n`;
-  
-  if (['branca', 'white'].includes(beltLower)) {
-    rules += `⚠️ REGRAS IBJJF FAIXA BRANCA:
-   • LEG LOCKS: Apenas CHAVE DE PÉ RETA é permitida
-   • PROIBIDO: Heel hook, toe hold, kneebar, calf slicer, bicep slicer
-   • PROIBIDO: Puxar guarda saltando (jump guard)
-   • PROIBIDO: Scissor takedown (tesoura)
-   • SLAM: Qualquer slam resulta em desclassificação`;
-  } else if (['azul', 'blue'].includes(beltLower)) {
-    rules += `⚠️ REGRAS IBJJF FAIXA AZUL:
-   • LEG LOCKS: Apenas CHAVE DE PÉ RETA é permitida
-   • PROIBIDO: Heel hook, toe hold, kneebar, calf slicer
-   • PROIBIDO: Bicep slicer, scissor takedown
-   • SLAM: Qualquer slam resulta em desclassificação`;
-  } else if (['roxa', 'purple'].includes(beltLower)) {
-    rules += `⚠️ REGRAS IBJJF FAIXA ROXA:
-   • LEG LOCKS: Chave de pé reta + TOE HOLD permitidos
-   • PROIBIDO: Heel hook, kneebar, calf slicer
-   • PERMITIDO: Bicep slicer da montada`;
-  } else if (['marrom', 'brown'].includes(beltLower)) {
-    rules += `⚠️ REGRAS IBJJF FAIXA MARROM:
-   • LEG LOCKS: Chave de pé reta, toe hold, KNEEBAR, CALF SLICER permitidos
-   • PROIBIDO: Heel hook (apenas em NO-GI de algumas federações)
-   • PERMITIDO: Bicep slicer de qualquer posição`;
-  } else if (['preta', 'black'].includes(beltLower)) {
-    rules += `⚠️ REGRAS IBJJF FAIXA PRETA:
-   • LEG LOCKS: Chave de pé reta, toe hold, kneebar, calf slicer permitidos
-   • PROIBIDO: Heel hook (apenas em NO-GI de algumas federações)
-   • PERMITIDO: Todas as chaves de braço e compressões`;
-  }
-  
-  return rules;
+  return formatBeltRules(belt);
 }
 
 /**
@@ -1107,6 +1105,7 @@ module.exports = {
   // Utilitários
   getModel,
   formatTechnicalStats,
+  formatBeltRules, // Fonte única de formatação de regras IBJJF por faixa
   formatBeltRulesForStrategy,
   getBeltLevel,
   getBeltRulesText // Necessário para o sistema multi-agentes

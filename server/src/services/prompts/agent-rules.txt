@@ -132,31 +132,11 @@ CATEGORIAS DE ANÁLISE:
 
 ## 4. TÉCNICAS ILEGAIS (por faixa)
 
-### FAIXA BRANCA:
-❌ **PROIBIDO:**
-- Todos leg locks (knee bar, toe hold, heel hook, ankle lock)
-- Técnicas de cervical (neck crank, can opener)
-- Slams
-- Dedo nos olhos/nariz
-- Torções de dedos
-
-### FAIXA AZUL:
-❌ **PROIBIDO:**
-- Knee reaping 
-- Biceps slicer
-- Calf slicer
-- Wrist locks
-- Heel hooks
-- Toe holds
-- Knee bars (em algumas divisões)
-
-### FAIXA ROXA:
-✅ Permitido: Toe hold, knee bar, ankle lock
-❌ PROIBIDO: Heel hooks, knee reaping, wrist locks
-
-### FAIXA MARROM/PRETA:
-✅ Quase tudo permitido (exceto slams, dedos, etc)
-❌ PROIBIDO: Heel hooks (na maioria das divisões gi)
+Use EXCLUSIVAMENTE as regras da faixa informadas no topo deste prompt
+(seção "REGRAS ESPECÍFICAS DA FAIXA", placeholder {{BELT_RULES}}) para
+decidir o que é permitido ou proibido. Não assuma regras de outras faixas
+nem generalize — a permissão de leg locks muda significativamente entre
+faixas (ex.: técnicas liberadas a partir de marrom não valem para roxa).
 
 **No Frame:**
 - Identificou técnicas ilegais?

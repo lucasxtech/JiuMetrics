@@ -68,36 +68,42 @@ module.exports = {
     ]
   },
 
-  // Regras IBJJF por faixa
+  // Regras IBJJF por faixa (adulto, gi).
+  // Fonte única de verdade — qualquer texto/prompt que precise descrever
+  // regras de faixa deve derivar destes dados, nunca hardcodar uma tabela
+  // paralela (foi exatamente essa duplicação que causou divergências:
+  // toe hold sendo listado como permitido para roxa, quando na verdade só
+  // é liberado a partir de marrom; wrist lock sendo proibido para azul,
+  // quando é permitido desde essa faixa).
   BELT_RULES: {
     branca: {
       allowed: ['chave de pé reta'],
-      forbidden: ['heel hook', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer'],
-      extraRules: 'Puxar guarda saltando (jump guard) e scissor takedown proibidos'
+      forbidden: ['wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
+      extraRules: 'Puxar guarda saltando (jump guard) e scissor takedown proibidos. Qualquer slam resulta em desclassificação.'
     },
     white: { alias: 'branca' },
     azul: {
-      allowed: ['chave de pé reta'],
-      forbidden: ['heel hook', 'toe hold', 'kneebar', 'calf slicer'],
-      extraRules: 'Bicep slicer e scissor takedown proibidos'
+      allowed: ['chave de pé reta', 'wrist lock'],
+      forbidden: ['toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
+      extraRules: 'Qualquer slam resulta em desclassificação.'
     },
     blue: { alias: 'azul' },
     roxa: {
-      allowed: ['chave de pé reta', 'toe hold'],
-      forbidden: ['heel hook', 'kneebar', 'calf slicer'],
-      extraRules: 'Bicep slicer permitido da montada'
+      allowed: ['chave de pé reta', 'wrist lock'],
+      forbidden: ['toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
+      extraRules: 'Qualquer slam resulta em desclassificação.'
     },
     purple: { alias: 'roxa' },
     marrom: {
-      allowed: ['chave de pé reta', 'toe hold', 'kneebar', 'calf slicer'],
-      forbidden: ['heel hook (apenas em NO-GI de algumas federações)'],
-      extraRules: 'Bicep slicer de qualquer posição'
+      allowed: ['chave de pé reta', 'wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer'],
+      forbidden: ['heel hook (no gi)', 'knee reaping (no gi)'],
+      extraRules: 'Heel hook e knee reaping são permitidos apenas em competições NO-GI — proibidos de gi.'
     },
     brown: { alias: 'marrom' },
     preta: {
-      allowed: ['chave de pé reta', 'toe hold', 'kneebar', 'calf slicer'],
-      forbidden: ['heel hook (apenas em NO-GI de algumas federações)'],
-      extraRules: 'Todas as chaves de braço e compressões permitidas'
+      allowed: ['chave de pé reta', 'wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer'],
+      forbidden: ['heel hook (no gi)', 'knee reaping (no gi)'],
+      extraRules: 'Heel hook e knee reaping são permitidos apenas em competições NO-GI — proibidos de gi.'
     },
     black: { alias: 'preta' }
   },
