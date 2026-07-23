@@ -99,6 +99,74 @@ describe('StrategyService.consolidateTechnicalStats', () => {
     expect(result.total_analises).toBe(1);
     expect(result.sweeps.quantidade_total).toBe(5);
   });
+
+  it('agrega finalizacoes_mais_usadas por técnica quando detalhes vem no formato canônico {tecnica, resultado}', () => {
+    const analyses = [
+      {
+        id: '1',
+        technicalStats: {
+          sweeps: { quantidade: 0, efetividade_percentual: 0 },
+          guard_passes: { quantidade: 0 },
+          submissions: {
+            tentativas: 2,
+            ajustadas: 1,
+            concluidas: 1,
+            detalhes: [
+              { tecnica: 'arm lock', resultado: 'concluida' },
+              { tecnica: 'triângulo', resultado: 'ajustada' }
+            ]
+          },
+          back_takes: { quantidade: 0, tentou_finalizar: false }
+        }
+      },
+      {
+        id: '2',
+        technicalStats: {
+          sweeps: { quantidade: 0, efetividade_percentual: 0 },
+          guard_passes: { quantidade: 0 },
+          submissions: {
+            tentativas: 1,
+            ajustadas: 0,
+            concluidas: 1,
+            detalhes: [{ tecnica: 'arm lock', resultado: 'concluida' }]
+          },
+          back_takes: { quantidade: 0, tentou_finalizar: false }
+        }
+      }
+    ];
+
+    const result = StrategyService.consolidateTechnicalStats(analyses);
+
+    expect(result.submissions.finalizacoes_mais_usadas).toEqual([
+      { tecnica: 'arm lock', quantidade: 2 },
+      { tecnica: 'triângulo', quantidade: 1 }
+    ]);
+  });
+
+  it('também aceita detalhes no formato legado (string solta) sem colapsar em "[object Object]"', () => {
+    const analyses = [
+      {
+        id: '1',
+        technicalStats: {
+          sweeps: { quantidade: 0, efetividade_percentual: 0 },
+          guard_passes: { quantidade: 0 },
+          submissions: {
+            tentativas: 1,
+            ajustadas: 0,
+            concluidas: 1,
+            detalhes: ['arm lock']
+          },
+          back_takes: { quantidade: 0, tentou_finalizar: false }
+        }
+      }
+    ];
+
+    const result = StrategyService.consolidateTechnicalStats(analyses);
+
+    expect(result.submissions.finalizacoes_mais_usadas).toEqual([
+      { tecnica: 'arm lock', quantidade: 1 }
+    ]);
+  });
 });
 
 describe('StrategyService.getConsolidatedStats', () => {

@@ -695,10 +695,15 @@ OBRIGATÓRIO:
       (consolidated.back_takes.percentual_com_finalizacao / count) * 100
     );
 
-    // Contar finalizações mais usadas
+    // Contar finalizações mais usadas.
+    // 'sub' pode vir como string solta (formato legado) ou como objeto
+    // { tecnica, resultado } (formato canônico definido em video-analysis.txt) —
+    // aceitar os dois evita colapsar tudo na chave "[object Object]".
     const submissionCount = {};
     consolidated.submissions.finalizacoes_mais_usadas.forEach(sub => {
-      submissionCount[sub] = (submissionCount[sub] || 0) + 1;
+      const tecnica = typeof sub === 'string' ? sub : sub?.tecnica;
+      if (!tecnica) return;
+      submissionCount[tecnica] = (submissionCount[tecnica] || 0) + 1;
     });
     
     consolidated.submissions.finalizacoes_mais_usadas = Object.entries(submissionCount)

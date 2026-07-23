@@ -66,6 +66,9 @@ Para o campo 'technical_stats':
 - RASPAGENS: Só conta se inverter e manter o oponente no chão. Scrambles não contam.
 - PASSAGEM: Só conta se estabilizar lateralmente (100kg), Norte-Sul ou Joelho na Barriga.
 - FINALIZAÇÕES: Só conte tentativas com PERIGO REAL (oponente teve que defender para não bater).
+- FORMATO DE 'submissions.detalhes': cada item é um OBJETO no formato
+  { "tecnica": "nome da técnica", "resultado": "tentada" | "ajustada" | "concluida" },
+  nunca uma string solta. Exemplo: { "tecnica": "arm lock", "resultado": "ajustada" }.
 
 ---
 
