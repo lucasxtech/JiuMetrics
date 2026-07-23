@@ -87,7 +87,7 @@ exports.getAnalysesByPerson = async (req, res) => {
  */
 exports.createAnalysis = async (req, res) => {
   try {
-    const { personId, personType, videoUrl, videoName, charts, summary, framesAnalyzed } = req.body;
+    const { personId, personType, videoUrl, videoName, charts, summary, technical_stats, framesAnalyzed } = req.body;
 
     if (!personId || !personType) {
       return res.status(400).json({
@@ -130,6 +130,7 @@ exports.createAnalysis = async (req, res) => {
       charts,
       summary,
       technicalProfile,
+      technicalStats: technical_stats || null,
       framesAnalyzed,
       userId: req.userId,
     });
