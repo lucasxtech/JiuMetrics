@@ -13,11 +13,3 @@ export async function compareAndGenerateStrategy(athleteId, opponentId) {
   });
   return response.data;
 }
-
-/**
- * Encontra o melhor atleta para enfrentar um adversário específico
- */
-export async function findBestMatchup(opponentId) {
-  const response = await api.get(`/strategy/best-matchup/${opponentId}`);
-  return response.data;
-}
