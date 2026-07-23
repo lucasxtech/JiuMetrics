@@ -502,11 +502,18 @@ OBRIGATÓRIO:
       throw new Error('Atleta ou adversário não encontrado');
     }
 
-    // Contar análises para validação
-    const [athleteAnalysesCount, opponentAnalysesCount] = await Promise.all([
-      this.getAnalysesCount(athleteId, allowedUserIds),
-      this.getAnalysesCount(opponentId, allowedUserIds)
+    // Buscar as análises de cada pessoa UMA ÚNICA VEZ — o mesmo array é
+    // usado tanto para validar que existem análises quanto (quando o
+    // resumo já está salvo) para consolidar os stats. Antes disso, cada
+    // pessoa era buscada duas vezes (getAnalysesCount + getConsolidatedStats),
+    // ambos chamando FightAnalysis.getByPersonId sobre as mesmas linhas.
+    const [athleteAnalyses, opponentAnalyses] = await Promise.all([
+      FightAnalysis.getByPersonId(athleteId, allowedUserIds),
+      FightAnalysis.getByPersonId(opponentId, allowedUserIds)
     ]);
+
+    const athleteAnalysesCount = athleteAnalyses ? athleteAnalyses.length : 0;
+    const opponentAnalysesCount = opponentAnalyses ? opponentAnalyses.length : 0;
 
     // Validar que há análises suficientes
     if (athleteAnalysesCount === 0) {
@@ -520,12 +527,12 @@ OBRIGATÓRIO:
     // Usar technical_summary salvo no banco OU consolidar se não existir
     let athleteResumo, opponentResumo;
     let athleteStats, opponentStats;
-    
+
     // Atleta: usar resumo salvo ou consolidar
     if (athlete.technicalSummary) {
       athleteResumo = athlete.technicalSummary;
-      // Buscar apenas os stats (sem IA — o resumo já está pronto)
-      athleteStats = await this.getConsolidatedStats(athleteId, allowedUserIds);
+      // Stats a partir do array já buscado acima — sem round-trip extra
+      athleteStats = this.consolidateTechnicalStats(athleteAnalyses);
     } else {
       const athleteConsolidation = await this.consolidateAnalyses(athleteId, allowedUserIds, customModel);
       athleteResumo = athleteConsolidation.resumo;
@@ -535,8 +542,8 @@ OBRIGATÓRIO:
     // Adversário: usar resumo salvo ou consolidar
     if (opponent.technicalSummary) {
       opponentResumo = opponent.technicalSummary;
-      // Buscar apenas os stats (sem IA — o resumo já está pronto)
-      opponentStats = await this.getConsolidatedStats(opponentId, allowedUserIds);
+      // Stats a partir do array já buscado acima — sem round-trip extra
+      opponentStats = this.consolidateTechnicalStats(opponentAnalyses);
     } else {
       const opponentConsolidation = await this.consolidateAnalyses(opponentId, allowedUserIds, customModel);
       opponentResumo = opponentConsolidation.resumo;

@@ -245,4 +245,40 @@ describe('StrategyService.generateStrategy', () => {
 
     consolidateAnalysesSpy.mockRestore();
   });
+
+  it('busca as análises de cada pessoa apenas UMA VEZ (evita round-trip duplicado ao banco)', async () => {
+    Athlete.getById.mockResolvedValue({
+      id: 'athlete-1', name: 'Atleta X', belt: 'azul', technicalSummary: 'resumo salvo do atleta'
+    });
+    Opponent.getById.mockResolvedValue({
+      id: 'opponent-1', name: 'Adversário Y', belt: 'azul', technicalSummary: 'resumo salvo do adversário'
+    });
+
+    FightAnalysis.getByPersonId.mockImplementation((personId) => Promise.resolve([
+      {
+        id: `analysis-${personId}`,
+        technicalStats: {
+          sweeps: { quantidade: 1, efetividade_percentual: 100 },
+          guard_passes: { quantidade: 0 },
+          submissions: { tentativas: 0, ajustadas: 0, concluidas: 0, detalhes: [] },
+          back_takes: { quantidade: 0, tentou_finalizar: false }
+        }
+      }
+    ]));
+
+    geminiService.generateTacticalStrategy.mockResolvedValue({
+      strategy: { resumo_rapido: {} },
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 }
+    });
+
+    await StrategyService.generateStrategy('athlete-1', 'opponent-1', ['user-1'], null);
+
+    // Antes do fix: getAnalysesCount + getConsolidatedStats chamavam
+    // FightAnalysis.getByPersonId separadamente para a mesma pessoa,
+    // totalizando 4 chamadas (2 por pessoa) quando ambas já têm
+    // technicalSummary salvo. Agora deve ser exatamente 1 por pessoa (2 total).
+    expect(FightAnalysis.getByPersonId).toHaveBeenCalledTimes(2);
+    expect(FightAnalysis.getByPersonId).toHaveBeenCalledWith('athlete-1', ['user-1']);
+    expect(FightAnalysis.getByPersonId).toHaveBeenCalledWith('opponent-1', ['user-1']);
+  });
 });
