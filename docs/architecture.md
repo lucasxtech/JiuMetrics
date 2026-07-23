@@ -355,7 +355,7 @@ O sistema registra e monitora o uso da API do Google Gemini para controle de cus
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Cada chamada à API Gemini gera um registro:                   │
-│  - Endpoint usado (/ai/analyze-video, /chat/send, etc)         │
+│  - Endpoint usado (/ai/analyze-link, /chat/send, etc)         │
 │  - Tokens de entrada (promptTokenCount)                        │
 │  - Tokens de saída (candidatesTokenCount)                      │
 │  - Tokens totais (totalTokenCount)                             │

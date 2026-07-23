@@ -1,5 +1,13 @@
 # Sistema Multi-Agentes para Análise de Jiu-Jitsu
 
+> ⚠️ **Status (jul/2026): descontinuação planejada.** A análise multi-agentes
+> triplica o custo de vídeo sem ganho medido e será substituída por 1 chamada
+> com `responseSchema` na Fase 1 da refatoração — ver `SPEC-ANALISE-IA.md`
+> (seções A1/A2) na raiz do repositório. Este documento descreve o sistema
+> ATUAL enquanto ele existir. O caminho de upload por frames citado em
+> exemplos antigos foi REMOVIDO — a única entrada de análise hoje é
+> `POST /api/ai/analyze-link` (URL do YouTube, vídeo completo).
+
 ## 📋 Visão Geral
 
 O sistema possui **dois pipelines multi-agentes** independentes, ambos ativados pela mesma flag `USE_MULTI_AGENTS=true`:
@@ -267,18 +275,19 @@ USE_MULTI_AGENTS=true
 
 ## 🚀 Uso
 
-### Upload de Vídeo
+### Análise de Vídeo
 
-O sistema multi-agentes é **transparente** para o frontend. Basta fazer upload normalmente:
+O sistema multi-agentes é **transparente** para o frontend. A análise entra
+por URL do YouTube (o caminho de upload por frames foi removido):
 
 ```javascript
-// Frontend - Não precisa mudar nada!
-const formData = new FormData();
-formData.append('videos', videoFile);
-formData.append('athleteName', 'João Silva');
-formData.append('giColor', 'azul');
-
-const response = await api.post('/api/video/upload', formData);
+// Frontend
+const response = await api.post('/api/ai/analyze-link', {
+  videos: [{ url: 'https://youtube.com/watch?v=...', giColor: 'azul' }],
+  athleteName: 'João Silva',
+  personId,
+  personType,
+});
 ```
 
 O backend automaticamente usa multi-agentes se `USE_MULTI_AGENTS=true`.

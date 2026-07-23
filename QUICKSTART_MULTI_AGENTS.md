@@ -37,12 +37,12 @@ npm install
 # Iniciar servidor
 npm run dev
 
-# Em outro terminal, fazer upload de vídeo teste
-curl -X POST http://localhost:5000/api/video/upload \
+# Em outro terminal, analisar um vídeo de teste do YouTube
+# (o caminho de upload de arquivo local foi removido)
+curl -X POST http://localhost:5000/api/ai/analyze-link \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "videos=@test-video.mp4" \
-  -F "athleteName=Test Athlete" \
-  -F "giColor=azul"
+  -H "Content-Type: application/json" \
+  -d '{"videos":[{"url":"https://youtube.com/watch?v=VIDEO_ID","giColor":"azul"}],"athleteName":"Test Athlete"}'
 ```
 
 Observe o log:

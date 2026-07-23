@@ -6,13 +6,18 @@
 
 O sistema de estratégia utiliza o **Gemini AI** para analisar comparativamente atletas e adversários, gerando recomendações táticas personalizadas e objetivas para aumentar as chances de vitória.
 
+> ⚠️ **Nota (jul/2026):** este documento descreve o sistema em alto nível; o
+> fluxo interno foi refatorado (ver `SPEC-ANALISE-IA.md` na raiz). Em
+> particular, `processPersonAnalyses`/atributos NÃO alimentam a estratégia —
+> a estratégia usa o resumo técnico consolidado (`technicalSummary`) e os
+> `technical_stats` agregados das análises.
+
 ### Arquitetura
 
 #### Backend
 1. **Rota**: `POST /api/strategy/compare`
 2. **Controller**: `strategyController.compareAndStrategy`
-3. **Service**: `geminiService.generateTacticalStrategy`
-4. **Utilitário**: `athleteStatsUtils.processPersonAnalyses`
+3. **Service**: `StrategyService.generateStrategy` → `geminiService.generateTacticalStrategy` (ou multi-agentes, conforme `USE_MULTI_AGENTS`)
 
 #### Frontend
 1. **Página**: `Strategy.jsx` - Interface de seleção e visualização
@@ -26,13 +31,14 @@ O sistema de estratégia utiliza o **Gemini AI** para analisar comparativamente 
    ↓
 2. Frontend: compareAndGenerateStrategy(athleteId, opponentId)
    ↓
-3. Backend busca dados completos (atleta + adversário + análises)
+3. Backend valida que ambos têm análises e busca os dados
    ↓
-4. Calcula atributos com processPersonAnalyses() - normalizado por análise
+4. Usa o resumo técnico salvo (technicalSummary) ou consolida via IA;
+   agrega technical_stats das análises em código (sem IA)
    ↓
-5. Prepara payload: { name, resumo (aiSummary), atributos }
+5. Gemini gera a estratégia em JSON estruturado
    ↓
-6. Gemini analisa e retorna estratégia em JSON estruturado
+6. Salva no histórico (TacticalAnalysis) com versão inicial
    ↓
 7. Frontend exibe em AiStrategyBox com seções expansíveis
 ```
@@ -44,8 +50,8 @@ O sistema de estratégia utiliza o **Gemini AI** para analisar comparativamente 
   "athlete": {
     "id": "uuid",
     "name": "Nome",
-    "attributes": { "condicionamento": 75, "tecnica": 80, ... },
-    "totalAnalyses": 5
+    "analysesCount": 5,
+    "usedConsolidation": true
   },
   "opponent": { ... },
   "strategy": {
@@ -395,7 +401,7 @@ POST /api/fight-analysis
   "videoName": "Luta IBJJF 2024",
   "charts": [...],
   "summary": "...",
-  "framesAnalyzed": 8
+  "technical_stats": { ... }
 }
 
 # Deletar análise
@@ -408,21 +414,8 @@ DELETE /api/fight-analysis/:id
 POST /api/strategy/compare
 {
   "athleteId": "1",
-  "opponentId": "1"
-}
-
-# Encontrar melhor atleta para enfrentar adversário
-GET /api/strategy/best-matchup/:opponentId
-```
-
-### **Upload de Vídeo (Atualizado)**
-```bash
-# Upload com salvamento automático
-POST /api/video/upload
-FormData {
-  video: <arquivo>,
-  personId: "1",           // opcional
-  personType: "athlete"    // opcional
+  "opponentId": "1",
+  "model": "gemini-2.0-flash" // opcional
 }
 ```
 
@@ -432,40 +425,31 @@ FormData {
 
 ### **Cenário 1: Analisar Adversário**
 
-1. **Upload de vídeo do adversário**
+1. **Analisar vídeo do YouTube do adversário**
 ```javascript
-const formData = new FormData();
-formData.append('video', videoFile);
-formData.append('personId', opponentId);
-formData.append('personType', 'opponent');
-
-const result = await uploadVideo(videoFile, opponentId, 'opponent');
-// Análise salva automaticamente + perfil técnico atualizado
+// POST /api/ai/analyze-link
+const result = await analyzeVideoLink({
+  videos: [{ url: 'https://youtube.com/watch?v=...', giColor: 'azul' }],
+  athleteName: 'Pedro Ramos',
+  personId: opponentId,
+  personType: 'opponent',
+});
+// Análise salva automaticamente + resumo técnico do perfil atualizado
 ```
 
 2. **Comparar com seu atleta**
 ```javascript
 const strategy = await compareAndGenerateStrategy(athleteId, opponentId);
-// Retorna análise completa + estratégia tática
+// Retorna a estratégia tática e salva no histórico (TacticalAnalysis)
 ```
 
 3. **Visualizar estratégia**
 ```javascript
-console.log(strategy.data.matchupAnalysis);
-// { advantages: [...], disadvantages: [...], keyPoints: [...] }
-
-console.log(strategy.data.strategy);
-// { gameplan: [...], priorities: [...], avoid: [...], techniques: [...] }
+console.log(strategy.data.strategy.resumo_rapido);
+// { como_vencer: '...', tres_prioridades: [...] }
 ```
 
-### **Cenário 2: Encontrar Melhor Atleta**
-
-```javascript
-const matchups = await findBestMatchup(opponentId);
-// Retorna todos atletas ranqueados por compatibilidade
-```
-
-### **Cenário 3: Histórico de Atleta**
+### **Cenário 2: Histórico de Atleta**
 
 ```javascript
 const analyses = await getAnalysesByPerson(athleteId);
@@ -483,52 +467,24 @@ const analyses = await getAnalysesByPerson(athleteId);
     "athlete": {
       "id": "1",
       "name": "João Silva",
-      "profile": { ... },
-      "totalAnalyses": 5
+      "analysesCount": 5,
+      "usedConsolidation": true
     },
     "opponent": {
       "id": "1",
       "name": "Pedro Ramos",
-      "profile": { ... },
-      "totalAnalyses": 3
-    },
-    "matchupAnalysis": {
-      "advantages": [
-        "Você é mais agressivo que o adversário",
-        "Seu ponto forte (Raspagem) é ponto fraco do adversário"
-      ],
-      "disadvantages": [
-        "Adversário é mais agressivo",
-        "Seu ponto fraco (Defesa de queda) é ponto forte do adversário"
-      ],
-      "neutralZones": [],
-      "keyPoints": [
-        "Confronto clássico: Guardeiro vs Passador",
-        "Prepare-se para pressão constante"
-      ]
+      "analysesCount": 3,
+      "usedConsolidation": true
     },
     "strategy": {
-      "gameplan": [
-        "Desenvolva sua guarda ativa e movimentada",
-        "Não deixe o adversário estabelecer controle"
-      ],
-      "priorities": [
-        "Raspagens rápidas",
-        "Ataques de guarda (triângulo, omoplata)",
-        "Explorar pontos fracos: Movimentação rápida lateral"
-      ],
-      "avoid": [
-        "Deixar adversário consolidar pressão",
-        "Evitar: Passagem de guarda, Smash pass"
-      ],
-      "techniques": [
-        "Preparar contra-ataques e transições rápidas"
-      ],
-      "mentalPreparation": [
-        "Adversário é agressivo - mantenha a calma"
-      ]
+      "resumo_rapido": { "como_vencer": "...", "tres_prioridades": ["...", "...", "..."] },
+      "analise_de_matchup": { "vantagem_critica": "...", "risco_oculto": "...", "fator_chave": "..." },
+      "plano_tatico_faseado": { "em_pe_standup": {}, "jogo_de_passagem_top": {}, "jogo_de_guarda_bottom": {} },
+      "cronologia_inteligente": { "primeiro_minuto": "...", "minutos_2_a_4": "...", "minutos_finais": "..." },
+      "checklist_tatico": { "oportunidades_de_pontos": [], "armadilhas_dele": [], "protocolo_de_emergencia": {} }
     },
-    "generatedAt": "2024-12-01T..."
+    "generatedAt": "2026-07-23T...",
+    "analysisId": "uuid"
   }
 }
 ```
