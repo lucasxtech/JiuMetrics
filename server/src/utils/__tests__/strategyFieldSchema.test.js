@@ -58,10 +58,32 @@ describe('validateStrategyField', () => {
     it('aceita o alias "plano_tatico"', () => {
       const result = validateStrategyField('plano_tatico', {
         plano_tatico_faseado: {
-          em_pe_standup: {}, jogo_de_passagem_top: {}, jogo_de_guarda_bottom: {}
+          em_pe_standup: { acao_recomendada: 'x' },
+          jogo_de_passagem_top: { estilo_recomendado: 'y' },
+          jogo_de_guarda_bottom: { guarda_ideal: 'z' }
         }
       });
       expect(result.valid).toBe(true);
+    });
+
+    it('rejeita quando as três fases têm as chaves certas mas objetos vazios (sem conteúdo real)', () => {
+      const result = validateStrategyField('plano_tatico_faseado', {
+        plano_tatico_faseado: {
+          em_pe_standup: {}, jogo_de_passagem_top: {}, jogo_de_guarda_bottom: {}
+        }
+      });
+      expect(result.valid).toBe(false);
+    });
+
+    it('rejeita quando as três fases existem mas com valor null/undefined (chave presente, sem conteúdo)', () => {
+      const result = validateStrategyField('plano_tatico_faseado', {
+        plano_tatico_faseado: {
+          em_pe_standup: null,
+          jogo_de_passagem_top: undefined,
+          jogo_de_guarda_bottom: null
+        }
+      });
+      expect(result.valid).toBe(false);
     });
   });
 
@@ -74,7 +96,18 @@ describe('validateStrategyField', () => {
       expect(result.message).toMatch(/oportunidades_de_pontos/);
     });
 
-    it('aceita o schema real com oportunidades_de_pontos/armadilhas_dele/protocolo_de_emergencia', () => {
+    it('aceita o schema real com oportunidades_de_pontos/armadilhas_dele/protocolo_de_emergencia preenchidos', () => {
+      const result = validateStrategyField('checklist_tatico', {
+        checklist_tatico: {
+          oportunidades_de_pontos: [{ tecnica: 'raspagem', pontos: 2 }],
+          armadilhas_dele: [{ situacao: 'x' }],
+          protocolo_de_emergencia: { posicao_perigosa: 'x', como_escapar: 'y' }
+        }
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejeita quando as chaves existem mas os arrays estão vazios (sem conteúdo real)', () => {
       const result = validateStrategyField('checklist_tatico', {
         checklist_tatico: {
           oportunidades_de_pontos: [],
@@ -82,7 +115,7 @@ describe('validateStrategyField', () => {
           protocolo_de_emergencia: { posicao_perigosa: 'x', como_escapar: 'y' }
         }
       });
-      expect(result.valid).toBe(true);
+      expect(result.valid).toBe(false);
     });
   });
 

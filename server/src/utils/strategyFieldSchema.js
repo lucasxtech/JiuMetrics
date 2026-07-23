@@ -11,50 +11,68 @@
  * o que corrompia a análise salva quando o usuário aceitava a sugestão.
  */
 
+/**
+ * Checa conteúdo real, não apenas presença da chave — `key in value` passa
+ * até para `{ key: null }` ou `{ key: undefined }`, o que derrotava o
+ * propósito desta validação (uma sugestão da IA com as chaves certas mas
+ * valores nulos passava e corrompia a estratégia salva silenciosamente).
+ */
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isNonEmptyObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0;
+}
+
+function isNonEmptyArray(value) {
+  return Array.isArray(value) && value.length > 0;
+}
+
 // Mapa: nome do campo (e seus aliases usados no frontend) -> caminho dentro
 // do objeto de estratégia + validador de shape.
 const SECTION_SCHEMAS = {
   como_vencer: {
     aliases: ['tese_da_vitoria', 'strategy'],
     path: ['resumo_rapido', 'como_vencer'],
-    validate: (value) => typeof value === 'string' && value.trim().length > 0,
+    validate: (value) => isNonEmptyString(value),
     expected: 'string não vazia em resumo_rapido.como_vencer',
   },
   analise_de_matchup: {
     aliases: ['matchup'],
     path: ['analise_de_matchup'],
     validate: (value) =>
-      !!value &&
-      typeof value === 'object' &&
-      ['vantagem_critica', 'risco_oculto', 'fator_chave'].every((key) => key in value),
-    expected: 'objeto com vantagem_critica, risco_oculto e fator_chave',
+      isNonEmptyObject(value) &&
+      ['vantagem_critica', 'risco_oculto', 'fator_chave'].every((key) => isNonEmptyString(value[key])),
+    expected: 'objeto com vantagem_critica, risco_oculto e fator_chave preenchidos (não vazios)',
   },
   plano_tatico_faseado: {
     aliases: ['plano_tatico'],
     path: ['plano_tatico_faseado'],
     validate: (value) =>
-      !!value &&
-      typeof value === 'object' &&
-      ['em_pe_standup', 'jogo_de_passagem_top', 'jogo_de_guarda_bottom'].every((key) => key in value),
-    expected: 'objeto com em_pe_standup, jogo_de_passagem_top e jogo_de_guarda_bottom',
+      isNonEmptyObject(value) &&
+      ['em_pe_standup', 'jogo_de_passagem_top', 'jogo_de_guarda_bottom'].every((key) => isNonEmptyObject(value[key])),
+    expected: 'objeto com em_pe_standup, jogo_de_passagem_top e jogo_de_guarda_bottom, cada um não vazio',
   },
   cronologia_inteligente: {
     aliases: ['cronologia'],
     path: ['cronologia_inteligente'],
     validate: (value) =>
-      !!value &&
-      typeof value === 'object' &&
-      ['primeiro_minuto', 'minutos_2_a_4', 'minutos_finais'].every((key) => key in value),
-    expected: 'objeto com primeiro_minuto, minutos_2_a_4 e minutos_finais',
+      isNonEmptyObject(value) &&
+      ['primeiro_minuto', 'minutos_2_a_4', 'minutos_finais'].every((key) => isNonEmptyString(value[key])),
+    expected: 'objeto com primeiro_minuto, minutos_2_a_4 e minutos_finais preenchidos (não vazios)',
   },
   checklist_tatico: {
     aliases: [],
     path: ['checklist_tatico'],
     validate: (value) =>
-      !!value &&
-      typeof value === 'object' &&
-      ['oportunidades_de_pontos', 'armadilhas_dele', 'protocolo_de_emergencia'].every((key) => key in value),
-    expected: 'objeto com oportunidades_de_pontos, armadilhas_dele e protocolo_de_emergencia',
+      isNonEmptyObject(value) &&
+      isNonEmptyArray(value.oportunidades_de_pontos) &&
+      isNonEmptyArray(value.armadilhas_dele) &&
+      isNonEmptyObject(value.protocolo_de_emergencia) &&
+      isNonEmptyString(value.protocolo_de_emergencia.posicao_perigosa) &&
+      isNonEmptyString(value.protocolo_de_emergencia.como_escapar),
+    expected: 'objeto com oportunidades_de_pontos e armadilhas_dele (arrays não vazios) e protocolo_de_emergencia preenchido',
   },
 };
 
