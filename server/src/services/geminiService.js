@@ -8,7 +8,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { extractJson } = require("../utils/chartUtils");
 const { getPrompt, fillPrompt } = require("./prompts");
-const { DEFAULT_MODEL, MAX_SUMMARY_WORDS, BELT_RULES } = require("../config/ai");
+const { DEFAULT_MODEL, MAX_SUMMARY_WORDS, BELT_RULES, resolveBeltRules, getBeltLevel } = require("../config/ai");
 const { GeminiApiKeyMissingError, parseGeminiError } = require("../utils/errors");
 const { downloadYouTubeVideo } = require("./videoDownloader");
 const { uploadVideoToGemini, deleteFileFromGemini } = require("./fileApiService");
@@ -109,19 +109,6 @@ function buildVideoAnalysisContext(context = {}) {
 }
 
 /**
- * Resolve uma faixa (incluindo aliases em inglês) para sua entrada
- * canônica em BELT_RULES (config/ai.js).
- * @param {string} belt - Faixa (português ou inglês)
- * @returns {Object|null} Entrada { allowed, forbidden, extraRules } ou null
- */
-function resolveBeltRules(belt) {
-  if (!belt) return null;
-  const entry = BELT_RULES[belt.toLowerCase()];
-  if (!entry) return null;
-  return entry.alias ? BELT_RULES[entry.alias] : entry;
-}
-
-/**
  * Formata as regras IBJJF de uma faixa a partir da fonte única BELT_RULES.
  * Usado tanto no contexto de análise de vídeo quanto no prompt de
  * estratégia — antes cada consumidor tinha sua própria tabela hardcoded,
@@ -185,21 +172,8 @@ function formatBeltRulesForStrategy(belt) {
   return formatBeltRules(belt);
 }
 
-/**
- * Retorna nível numérico da faixa (para comparação)
- * @param {string} belt - Faixa
- * @returns {number} Nível (1-5)
- */
-function getBeltLevel(belt) {
-  if (!belt) return 5;
-  const beltLower = belt.toLowerCase();
-  if (['branca', 'white'].includes(beltLower)) return 1;
-  if (['azul', 'blue'].includes(beltLower)) return 2;
-  if (['roxa', 'purple'].includes(beltLower)) return 3;
-  if (['marrom', 'brown'].includes(beltLower)) return 4;
-  if (['preta', 'black'].includes(beltLower)) return 5;
-  return 5;
-}
+// getBeltLevel agora vem de config/ai.js (fonte única de resolução de
+// alias de faixa) — importado no topo do arquivo, não redefinido aqui.
 
 // ====================================
 // ANÁLISE DE VÍDEO

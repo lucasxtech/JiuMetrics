@@ -2,6 +2,88 @@
  * Configurações centralizadas para serviços de IA
  */
 
+// Regras IBJJF por faixa (adulto, gi).
+// Fonte única de verdade — qualquer texto/prompt que precise descrever
+// regras de faixa deve derivar destes dados, nunca hardcodar uma tabela
+// paralela (foi exatamente essa duplicação que causou divergências:
+// toe hold sendo listado como permitido para roxa, quando na verdade só
+// é liberado a partir de marrom; wrist lock sendo proibido para azul,
+// quando é permitido desde essa faixa).
+const BELT_RULES = {
+  branca: {
+    allowed: ['chave de pé reta'],
+    forbidden: ['wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
+    extraRules: 'Puxar guarda saltando (jump guard) e scissor takedown proibidos. Qualquer slam resulta em desclassificação.'
+  },
+  white: { alias: 'branca' },
+  azul: {
+    allowed: ['chave de pé reta', 'wrist lock'],
+    forbidden: ['toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
+    extraRules: 'Qualquer slam resulta em desclassificação.'
+  },
+  blue: { alias: 'azul' },
+  roxa: {
+    allowed: ['chave de pé reta', 'wrist lock'],
+    forbidden: ['toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
+    extraRules: 'Qualquer slam resulta em desclassificação.'
+  },
+  purple: { alias: 'roxa' },
+  marrom: {
+    allowed: ['chave de pé reta', 'wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer'],
+    forbidden: ['heel hook (no gi)', 'knee reaping (no gi)'],
+    extraRules: 'Heel hook e knee reaping são permitidos apenas em competições NO-GI — proibidos de gi.'
+  },
+  brown: { alias: 'marrom' },
+  preta: {
+    allowed: ['chave de pé reta', 'wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer'],
+    forbidden: ['heel hook (no gi)', 'knee reaping (no gi)'],
+    extraRules: 'Heel hook e knee reaping são permitidos apenas em competições NO-GI — proibidos de gi.'
+  },
+  black: { alias: 'preta' }
+};
+
+// Nível numérico de cada faixa canônica (1=branca ... 5=preta), usado para
+// determinar a faixa mais restritiva entre dois competidores.
+const BELT_LEVELS = { branca: 1, azul: 2, roxa: 3, marrom: 4, preta: 5 };
+
+/**
+ * Resolve uma faixa (incluindo aliases em inglês) para sua chave canônica
+ * em português (ex.: 'white' -> 'branca'). Fonte única de resolução de
+ * alias — antes desta unificação, StrategyRulesAgent.js e getBeltLevel
+ * tinham cada um seu próprio mapa de alias independente, arriscando
+ * divergir silenciosamente de BELT_RULES.
+ * @param {string} belt - Faixa (português ou inglês)
+ * @returns {string|null} Chave canônica em português, ou null se vazia/desconhecida
+ */
+function resolveBeltKey(belt) {
+  if (!belt) return null;
+  const entry = BELT_RULES[belt.toLowerCase()];
+  if (!entry) return null;
+  return entry.alias || belt.toLowerCase();
+}
+
+/**
+ * Resolve uma faixa para sua entrada de regras canônica em BELT_RULES.
+ * @param {string} belt - Faixa (português ou inglês)
+ * @returns {{allowed: string[], forbidden: string[], extraRules: string}|null}
+ */
+function resolveBeltRules(belt) {
+  const key = resolveBeltKey(belt);
+  return key ? BELT_RULES[key] : null;
+}
+
+/**
+ * Nível numérico da faixa (1=branca ... 5=preta), usado para calcular a
+ * faixa mais restritiva entre atleta e adversário. Faixa desconhecida ou
+ * não informada retorna 5 (preta) — comportamento histórico preservado.
+ * @param {string} belt
+ * @returns {number}
+ */
+function getBeltLevel(belt) {
+  const key = resolveBeltKey(belt);
+  return key ? (BELT_LEVELS[key] || 5) : 5;
+}
+
 module.exports = {
   // Modelos disponíveis (do mais recente ao mais antigo)
   DEFAULT_MODEL: 'gemini-2.0-flash',
@@ -68,45 +150,12 @@ module.exports = {
     ]
   },
 
-  // Regras IBJJF por faixa (adulto, gi).
-  // Fonte única de verdade — qualquer texto/prompt que precise descrever
-  // regras de faixa deve derivar destes dados, nunca hardcodar uma tabela
-  // paralela (foi exatamente essa duplicação que causou divergências:
-  // toe hold sendo listado como permitido para roxa, quando na verdade só
-  // é liberado a partir de marrom; wrist lock sendo proibido para azul,
-  // quando é permitido desde essa faixa).
-  BELT_RULES: {
-    branca: {
-      allowed: ['chave de pé reta'],
-      forbidden: ['wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
-      extraRules: 'Puxar guarda saltando (jump guard) e scissor takedown proibidos. Qualquer slam resulta em desclassificação.'
-    },
-    white: { alias: 'branca' },
-    azul: {
-      allowed: ['chave de pé reta', 'wrist lock'],
-      forbidden: ['toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
-      extraRules: 'Qualquer slam resulta em desclassificação.'
-    },
-    blue: { alias: 'azul' },
-    roxa: {
-      allowed: ['chave de pé reta', 'wrist lock'],
-      forbidden: ['toe hold', 'kneebar', 'calf slicer', 'bicep slicer', 'heel hook', 'knee reaping'],
-      extraRules: 'Qualquer slam resulta em desclassificação.'
-    },
-    purple: { alias: 'roxa' },
-    marrom: {
-      allowed: ['chave de pé reta', 'wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer'],
-      forbidden: ['heel hook (no gi)', 'knee reaping (no gi)'],
-      extraRules: 'Heel hook e knee reaping são permitidos apenas em competições NO-GI — proibidos de gi.'
-    },
-    brown: { alias: 'marrom' },
-    preta: {
-      allowed: ['chave de pé reta', 'wrist lock', 'toe hold', 'kneebar', 'calf slicer', 'bicep slicer'],
-      forbidden: ['heel hook (no gi)', 'knee reaping (no gi)'],
-      extraRules: 'Heel hook e knee reaping são permitidos apenas em competições NO-GI — proibidos de gi.'
-    },
-    black: { alias: 'preta' }
-  },
+  // Regras IBJJF por faixa — dados definidos acima como const BELT_RULES,
+  // reexportados aqui para manter a mesma API pública (config.BELT_RULES).
+  BELT_RULES,
+  resolveBeltKey,
+  resolveBeltRules,
+  getBeltLevel,
 
   // Configuração do Sistema Multi-Agentes
   ORCHESTRATOR_CONFIG: {
