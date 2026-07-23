@@ -1,60 +1,21 @@
 const fs = require('fs');
-
-// Constantes
-const DEFAULT_CHARTS = [
-  {
-    title: "Personalidade Geral",
-    data: [
-      { label: "Agressivo", value: 50 },
-      { label: "Calmo", value: 50 }
-    ]
-  },
-  {
-    title: "Comportamento Inicial",
-    data: [
-      { label: "Puxar Guarda", value: 60 },
-      { label: "Trocar Queda", value: 40 }
-    ]
-  },
-  {
-    title: "Jogo de Guarda",
-    data: [
-      { label: "Guarda Fechada", value: 70 },
-      { label: "Raspagem", value: 30 }
-    ]
-  },
-  {
-    title: "Jogo de Passagem",
-    data: [
-      { label: "Pressão", value: 60 },
-      { label: "Toreada", value: 40 }
-    ]
-  }
-];
+const { GeminiParseError } = require('./errors');
 
 const DEBUG_FILE_PATH = '/tmp/gemini-json-debug.txt';
 
 /**
- * Limpa texto removendo markdown e formatações problemáticas
+ * Remove apenas os marcadores de code fence markdown (```json ... ```)
+ * da resposta bruta da IA. Não tenta "consertar" JSON malformado —
+ * transformações mais agressivas (remover comentários, auto-quotar chaves)
+ * corrompiam respostas válidas que continham strings com "//" ou vírgulas.
  * @param {string} text - Texto bruto do Gemini
- * @returns {string} Texto limpo
+ * @returns {string} Texto sem os fences de código
  */
 function cleanMarkdown(text) {
   return text
     .replace(/```json\s*/g, '')
     .replace(/```\s*/g, '')
-    .replace(/\\n/g, ' ')
-    .replace(/\*\*/g, '')
-    .replace(/\n/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')  
-    .replace(/,\s*([}\]])/g, '$1')
-    .replace(/\/\/.*$/gm, '')
-    .replace(/\/\*[\s\S]*?\*\//gm, '')
-    .replace(/,\s*,/g, ',')
-    .replace(/:\s*,/g, ': null,')
-    .replace(/:\s*}/g, ': null}')
-    .replace(/:\s*]/g, ': null]');
+    .trim();
 }
 
 /**
@@ -77,25 +38,6 @@ function findJsonEnd(text, start) {
   }
   
   return text.length - 1;
-}
-
-/**
- * Cria estrutura de fallback para quando o parsing falha
- * @param {string} summary - Sumário extraído ou mensagem de erro
- * @returns {Object} Estrutura padrão com charts
- */
-function createFallbackStructure(summary = "Análise baseada em inferência técnica geral.") {
-  return {
-    charts: DEFAULT_CHARTS,
-    summary,
-    technical_stats: {
-      sweeps: { quantidade: 0, efetividade_percentual: 0 },
-      guard_passes: { quantidade: 0, tempo_medio_segundos: 0 },
-      submissions: { tentativas: 0, ajustadas: 0, concluidas: 0, detalhes: [] },
-      back_takes: { quantidade: 0, tempo_medio_segundos: 0, tentou_finalizar: false }
-    },
-    _warning: "JSON malformado - dados padrão retornados"
-  };
 }
 
 /**
@@ -136,17 +78,20 @@ function normalizeChartData(data) {
 }
 
 /**
- * Extraí e parseia JSON de resposta do Gemini, com tratamento robusto de erros
+ * Extrai e parseia JSON de uma resposta do Gemini.
+ * NUNCA retorna dados sintéticos em caso de falha — lança GeminiParseError
+ * para que o chamador trate a análise como falha explícita, em vez de
+ * salvar um resultado inventado como se fosse real.
  * @param {string} text - Texto bruto contendo JSON
- * @returns {Object} Objeto parseado ou estrutura de fallback
+ * @returns {Object} Objeto parseado
+ * @throws {GeminiParseError} Se nenhum JSON for encontrado ou o parse falhar
  */
 function extractJson(text) {
   const cleanText = cleanMarkdown(text);
   const start = cleanText.indexOf("{");
-  
+
   if (start === -1) {
-    console.warn("⚠️ Nenhum JSON encontrado na resposta");
-    return createFallbackStructure();
+    throw new GeminiParseError('Nenhum JSON encontrado na resposta da IA');
   }
 
   const jsonEnd = findJsonEnd(cleanText, start);
@@ -154,31 +99,25 @@ function extractJson(text) {
 
   try {
     const parsed = JSON.parse(jsonString);
-    
-    // ⚠️ NORMALIZAR TODOS OS GRÁFICOS PARA GARANTIR 100%
+
+    // Normalizar todos os gráficos para garantir soma de 100%
     if (Array.isArray(parsed.charts)) {
       parsed.charts = parsed.charts.map(chart => ({
         ...chart,
         data: normalizeChartData(chart.data)
       }));
     }
-    
+
     return parsed;
   } catch (error) {
-    console.error("❌ Erro ao parsear JSON:", error.message);
-    
-    // Salvar para debug
+    // Salvar para debug antes de propagar o erro
     try {
       fs.writeFileSync(DEBUG_FILE_PATH, jsonString, 'utf8');
     } catch (fsError) {
       // Ignorar erro de escrita
     }
-    
-    // Tentar recuperar sumário
-    const summaryMatch = text.match(/"summary"\s*:\s*"([^"]+)"/);
-    const summary = summaryMatch ? summaryMatch[1] : "Erro no processamento - JSON inválido";
-    
-    return createFallbackStructure(summary);
+
+    throw new GeminiParseError(`JSON malformado na resposta da IA: ${error.message}`);
   }
 }
 

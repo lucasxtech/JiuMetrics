@@ -1,4 +1,5 @@
 const { extractJson, normalizeChartData } = require('../chartUtils');
+const { GeminiParseError } = require('../errors');
 
 describe('chartUtils.extractJson', () => {
   it('extrai JSON válido de uma resposta com texto extra', () => {
@@ -8,10 +9,20 @@ describe('chartUtils.extractJson', () => {
     expect(parsed).toEqual({ summary: 'ok', charts: [] });
   });
 
-  it('retorna estrutura padrão quando não encontra JSON', () => {
-    const parsed = extractJson('sem json aqui');
-    expect(parsed.charts.length).toBeGreaterThan(0);
-    expect(parsed.summary).toBeDefined();
+  it('lança GeminiParseError quando não encontra JSON (nunca retorna dados inventados)', () => {
+    expect(() => extractJson('sem json aqui')).toThrow(GeminiParseError);
+  });
+
+  it('lança GeminiParseError quando o JSON está malformado', () => {
+    const raw = `{"summary": "ok", "charts": [}`;
+    expect(() => extractJson(raw)).toThrow(GeminiParseError);
+  });
+
+  it('não corrompe uma string que contém "//" (regex de comentário removida)', () => {
+    const raw = `{"summary": "acesse https://exemplo.com para detalhes", "charts": []}`;
+    const parsed = extractJson(raw);
+
+    expect(parsed.summary).toBe('acesse https://exemplo.com para detalhes');
   });
 });
 
