@@ -94,7 +94,7 @@ describe('Seleção Dinâmica de Modelo (via llm.js)', () => {
   });
 
   describe('chat', () => {
-    it('usa o default de CHAT e envia o contexto como systemInstruction nativa', async () => {
+    it('usa o default de CHAT e NUNCA coloca dado do usuário na systemInstruction (mitigação de prompt injection)', async () => {
       llm.sendChatMessage.mockResolvedValue({ text: 'resposta', usage: usageFor(TASK_MODELS.CHAT) });
 
       const result = await chat({
@@ -106,9 +106,16 @@ describe('Seleção Dinâmica de Modelo (via llm.js)', () => {
 
       const call = llm.sendChatMessage.mock.calls[0][0];
       expect(call.model).toBe(TASK_MODELS.CHAT);
-      expect(call.systemInstruction).toContain('João');
-      // Histórico não contém mais o par forjado user/model com o contexto
-      expect(call.history).toEqual([{ role: 'user', parts: [{ text: 'oi' }] }]);
+      // systemInstruction é uma constante fixa — nunca interpola contextData
+      // (dado de usuário na systemInstruction é o vetor de prompt injection
+      // que o CodeQL js/system-prompt-injection sinaliza)
+      expect(call.systemInstruction).not.toContain('João');
+      expect(typeof call.systemInstruction).toBe('string');
+      // O dado do usuário (nome, resumo) entra como o primeiro turno do
+      // histórico — uma mensagem de conversa comum, não a systemInstruction
+      expect(call.history[0]).toEqual({ role: 'user', parts: [{ text: expect.stringContaining('João') }] });
+      expect(call.history[1].role).toBe('model');
+      expect(call.history[2]).toEqual({ role: 'user', parts: [{ text: 'oi' }] });
       expect(result.message).toBe('resposta');
     });
   });
