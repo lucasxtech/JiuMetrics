@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../services/authService';
 import api from '../services/api';
+import { AVAILABLE_MODELS, getSelectedModel, setSelectedModel as persistSelectedModel } from '../utils/aiConfig';
 import styles from './Settings.module.css';
 
 // Formata custo em USD com precisão adaptativa: $0.00 para zero/centavos, mais casas quando necessário
@@ -25,19 +26,15 @@ const OPERATION_LABELS = {
 export default function Settings() {
   const navigate = useNavigate();
   const currentUser = useMemo(() => getCurrentUser(), []);
-  const [selectedModel, setSelectedModel] = useState(() => {
-    return localStorage.getItem('ai_model') || 'gemini-2.0-flash';
-  });
+  const [selectedModel, setSelectedModel] = useState(() => getSelectedModel());
   const [successMessage, setSuccessMessage] = useState('');
   const [usageStats, setUsageStats] = useState(null);
   const [usagePeriod, setUsagePeriod] = useState('month');
   const [loadingUsage, setLoadingUsage] = useState(false);
 
-  const aiModels = [
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Rápido e eficiente para análises básicas' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Equilíbrio entre velocidade e precisão' },
-    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', description: 'Máxima precisão para análises avançadas' }
-  ];
+  // Fonte única da lista de modelos: utils/aiConfig.js (antes havia uma
+  // cópia hardcoded aqui que já tinha divergido da lista oficial)
+  const aiModels = AVAILABLE_MODELS;
 
   useEffect(() => {
     if (!currentUser) {
@@ -63,8 +60,8 @@ export default function Settings() {
 
   const handleModelChange = (modelId) => {
     setSelectedModel(modelId);
-    localStorage.setItem('ai_model', modelId);
-    
+    persistSelectedModel(modelId);
+
     setSuccessMessage('Modelo salvo com sucesso!');
     setTimeout(() => setSuccessMessage(''), 3000);
   };
@@ -115,7 +112,7 @@ export default function Settings() {
         <div className={styles.modelOptions}>
           {aiModels.map((model) => (
             <div
-              key={model.id}
+              key={model.id || 'auto'}
               className={`${styles.modelOption} ${selectedModel === model.id ? styles.selected : ''}`}
               onClick={() => handleModelChange(model.id)}
             >

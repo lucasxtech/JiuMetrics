@@ -2,7 +2,7 @@ const { supabase } = require('../config/supabase');
 
 // Constantes
 const TOKENS_PER_MILLION = 1000000;
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 /**
  * Preços do Google Gemini (USD por 1 milhão de tokens)
@@ -22,9 +22,13 @@ const PRICING = {
     input: 0.075,   // $0.075 por 1M tokens
     output: 0.30    // $0.30 por 1M tokens
   },
+  'gemini-2.5-flash': {
+    input: 0.30,    // $0.30 por 1M tokens
+    output: 2.50    // $2.50 por 1M tokens
+  },
   'gemini-2.5-pro': {
-    input: 1.25,    // $1.25 por 1M tokens
-    output: 5.00    // $5.00 por 1M tokens
+    input: 1.25,    // $1.25 por 1M tokens (até 200K de contexto)
+    output: 10.00   // $10.00 por 1M tokens
   },
   // Gemini 3 Pro Preview e 3.1 Pro Preview — mesmo preço, faixas por contexto
   'gemini-3-pro-preview': {

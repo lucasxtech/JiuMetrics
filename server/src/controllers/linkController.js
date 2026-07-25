@@ -103,7 +103,7 @@ exports.analyzeLink = async (req, res) => {
           videos: [video], // Passa apenas este vídeo para o prompt
           matchResult: matchResult?.trim(), // Adiciona resultado da luta
           belt: belt?.trim() // Adiciona faixa do atleta
-        }, model, true); // Sistema multi-agentes sempre ativo
+        }, model);
         
         analyses.push(result.analysis);
         usageRecords.push(result.usage);

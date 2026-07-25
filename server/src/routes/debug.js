@@ -17,10 +17,7 @@ const envCheckLimiter = rateLimit({
  */
 router.get('/env-check', envCheckLimiter, authMiddleware, adminMiddleware, (req, res) => {
   res.json({
-    USE_MULTI_AGENTS: process.env.USE_MULTI_AGENTS,
-    USE_MULTI_AGENTS_TYPE: typeof process.env.USE_MULTI_AGENTS,
-    HAS_OPENAI_KEY: !!process.env.OPENAI_API_KEY,
-    OPENAI_MODEL: process.env.OPENAI_MODEL,
+    HAS_GEMINI_KEY: !!process.env.GEMINI_API_KEY,
     NODE_ENV: process.env.NODE_ENV,
   });
 });

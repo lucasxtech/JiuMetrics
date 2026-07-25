@@ -1,9 +1,3 @@
-// Força o caminho monolítico de estratégia (não multi-agentes) para que os
-// testes de generateStrategy sejam determinísticos independente do .env.
-// Precisa ser definido ANTES de qualquer require, pois config/ai.js calcula
-// STRATEGY_AGENT_CONFIG.ENABLED uma única vez, no carregamento do módulo.
-process.env.USE_MULTI_AGENTS = 'false';
-
 // Mock Supabase antes de importar qualquer módulo (strategyService importa modelos que
 // inicializam o client do Supabase no require).
 jest.mock('../../config/supabase', () => ({
@@ -23,7 +17,13 @@ jest.mock('../../models/Opponent');
 jest.mock('../../models/FightAnalysis');
 jest.mock('../geminiService', () => ({
   generateTacticalStrategy: jest.fn(),
-  generateTacticalStrategyWithAgents: jest.fn(),
+}));
+jest.mock('../llm', () => ({
+  generateJson: jest.fn(),
+  generateText: jest.fn(),
+  sendChatMessage: jest.fn(),
+  uploadVideo: jest.fn(),
+  deleteFile: jest.fn(),
 }));
 
 const StrategyService = require('../strategyService');

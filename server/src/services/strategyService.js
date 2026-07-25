@@ -3,6 +3,8 @@ const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
 const FightAnalysis = require('../models/FightAnalysis');
 const geminiService = require('./geminiService');
+const llm = require('./llm');
+const { resolveModel, GENERATION } = require('../config/ai');
 
 class StrategyService {
 
@@ -302,22 +304,12 @@ OBRIGATÓRIO:
 - Incluir os dados quantitativos quando relevantes`;
 
     try {
-      const modelToUse = customModel || 'gemini-2.0-flash';
-      const model = geminiService.getModel ? geminiService.getModel(modelToUse) : null;
-      
-      if (!model) {
-        // Fallback: se IA não disponível, concatenar resumos + narrativas
-        return {
-          resumo: summaries.join(' ') + chartsNarrative + statsNarrative,
-          technical_stats: consolidatedStats,
-          charts: consolidatedCharts,
-          analysesCount: summaries.length,
-          model: null
-        };
-      }
-
-      const result = await model.generateContent(consolidationPrompt);
-      const consolidatedResumo = result.response.text().trim();
+      const modelToUse = resolveModel('TEXT', customModel);
+      const { text: consolidatedResumo, usage } = await llm.generateText({
+        model: modelToUse,
+        contents: consolidationPrompt,
+        temperature: GENERATION.TEXT_TEMPERATURE,
+      });
 
       return {
         resumo: consolidatedResumo,
@@ -325,11 +317,7 @@ OBRIGATÓRIO:
         charts: consolidatedCharts,
         analysesCount: summaries.length,
         model: modelToUse,
-        usage: {
-          promptTokens: result.response.usageMetadata?.promptTokenCount || 0,
-          completionTokens: result.response.usageMetadata?.candidatesTokenCount || 0,
-          totalTokens: result.response.usageMetadata?.totalTokenCount || 0
-        }
+        usage
       };
     } catch (error) {
       console.error('❌ Erro ao consolidar análises:', error);
@@ -565,11 +553,9 @@ OBRIGATÓRIO:
       technical_stats: opponentStats
     };
 
-    // Gerar estratégia — monolítico ou multi-agentes conforme flag USE_MULTI_AGENTS
-    const { STRATEGY_AGENT_CONFIG } = require('../config/ai');
-    const strategyResult = STRATEGY_AGENT_CONFIG.ENABLED
-      ? await geminiService.generateTacticalStrategyWithAgents(athleteData, opponentData)
-      : await geminiService.generateTacticalStrategy(athleteData, opponentData, customModel);
+    // Gerar estratégia (o sistema multi-agentes foi aposentado na Fase 1 —
+    // uma chamada com responseSchema; ver SPEC-ANALISE-IA.md A2/D4)
+    const strategyResult = await geminiService.generateTacticalStrategy(athleteData, opponentData, customModel);
 
     return {
       strategy: strategyResult.strategy,
@@ -588,7 +574,7 @@ OBRIGATÓRIO:
           analysesCount: opponentAnalysesCount,
           usedSavedSummary: !!opponent.technicalSummary
         },
-        strategyModel: customModel || 'gemini-2.0-flash',
+        strategyModel: strategyResult.usage?.modelName || customModel || null,
         usage: strategyResult.usage,
         generatedAt: new Date().toISOString()
       }
