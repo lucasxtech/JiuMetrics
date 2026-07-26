@@ -84,15 +84,50 @@ function getBeltLevel(belt) {
   return key ? (BELT_LEVELS[key] || 5) : 5;
 }
 
+// Modelos default por TAREFA, usados quando o usuário não escolhe um modelo
+// explícito. A ingestão de vídeo é a etapa que define a qualidade de todo o
+// resto do pipeline — usa o modelo forte; texto (consolidações/chat) usa o
+// modelo rápido.
+const TASK_MODELS = {
+  VIDEO_ANALYSIS: 'gemini-2.5-pro',
+  STRATEGY: 'gemini-2.5-pro',
+  TEXT: 'gemini-2.5-flash',
+  CHAT: 'gemini-2.5-flash'
+};
+
+/**
+ * Resolve o modelo a usar para uma tarefa: a escolha explícita do usuário
+ * sempre vence; sem escolha, cai no default da tarefa.
+ * @param {'VIDEO_ANALYSIS'|'STRATEGY'|'TEXT'|'CHAT'} task
+ * @param {string|null} [userModel] - Modelo escolhido pelo usuário (opcional)
+ * @returns {string}
+ */
+function resolveModel(task, userModel = null) {
+  if (userModel) return userModel;
+  return TASK_MODELS[task] || TASK_MODELS.TEXT;
+}
+
 module.exports = {
-  // Modelos disponíveis (do mais recente ao mais antigo)
-  DEFAULT_MODEL: 'gemini-2.0-flash',
+  // Default genérico (fallback e exibição) — os fluxos reais usam TASK_MODELS
+  DEFAULT_MODEL: 'gemini-2.5-flash',
+  TASK_MODELS,
+  resolveModel,
   AVAILABLE_MODELS: [
     'gemini-3.1-pro-preview', // Mais recente e preciso ($2/$12 por 1M até 200K tokens)
     'gemini-3-pro-preview',   // Versão anterior do 3 Pro
-    'gemini-2.5-pro',         // Equilíbrio velocidade/precisão
-    'gemini-2.0-flash'        // Padrão - rápido e eficiente
+    'gemini-2.5-pro',         // Forte em vídeo/raciocínio (default de análise e estratégia)
+    'gemini-2.5-flash',       // Rápido e barato (default de texto/chat)
+    'gemini-2.0-flash'        // Legado — mantido para comparação
   ],
+
+  // Temperaturas por tipo de tarefa (antes definidas em AGENT_CONFIG e
+  // nunca aplicadas — agora usadas de fato pela camada llm.js)
+  GENERATION: {
+    JSON_TEMPERATURE: 0.2,      // extração estruturada (análise de vídeo)
+    STRATEGY_TEMPERATURE: 0.3,  // estratégia (um pouco de variação criativa)
+    TEXT_TEMPERATURE: 0.4,      // resumos/consolidações
+    CHAT_TEMPERATURE: 0.7       // conversa
+  },
 
   // Configuração de download de vídeo (YouTube → File API)
   VIDEO_DOWNLOAD: {
@@ -157,87 +192,8 @@ module.exports = {
   resolveBeltRules,
   getBeltLevel,
 
-  // Configuração do Sistema Multi-Agentes
-  ORCHESTRATOR_CONFIG: {
-    PROVIDER: 'openai', // 'openai' para GPT-4/GPT-5
-    MODEL: process.env.OPENAI_MODEL || 'gpt-4.1',
-    TEMPERATURE: 0.2, // Determinístico para análises
-    MAX_TOKENS: 4000,
-    RESPONSE_FORMAT: { type: 'json_object' } // Força resposta em JSON
-  },
-
-  AGENT_CONFIG: {
-    // Feature flag: ativar/desativar sistema multi-agentes
-    ENABLED: process.env.USE_MULTI_AGENTS === 'true',
-    
-    // Agentes especializados disponíveis
-    AGENTS: [
-      { 
-        name: 'technical', 
-        enabled: true,
-        description: 'Análise técnica: guarda, passagem, finalizações, transições'
-      },
-      { 
-        name: 'tactical', 
-        enabled: true,
-        description: 'Análise tática: gameplan, timing, posicionamento, pressão'
-      },
-      { 
-        name: 'rules', 
-        enabled: true,
-        description: 'Análise de regras: pontuação, vantagens, técnicas ilegais'
-      }
-    ],
-    
-    // Execução
-    PARALLEL_EXECUTION: true, // Executar agentes em paralelo (mais rápido)
-    
-    // Resolução de conflitos
-    CONFLICT_RESOLUTION: 'highest_confidence', // ou 'weighted_average'
-    MIN_CONFIDENCE_THRESHOLD: 0.6, // Confidence mínimo aceitável
-    
-    // Configuração do Gemini para agentes
-    GEMINI_CONFIG: {
-      TEMPERATURE: 0.3, // Mais determinístico que o padrão
-      TOP_P: 0.8,
-      TOP_K: 40
-    },
-    
-    // Retry logic
-    RETRY_CONFIG: {
-      MAX_RETRIES: 3,
-      INITIAL_DELAY: 1000, // ms
-      MAX_DELAY: 10000, // ms (10 segundos)
-      BACKOFF_MULTIPLIER: 2 // Exponential backoff
-    }
-  },
-
-  // Multi-agentes para geração de estratégia tática
-  // Ativado pela mesma flag USE_MULTI_AGENTS=true
-  STRATEGY_AGENT_CONFIG: {
-    ENABLED: process.env.USE_MULTI_AGENTS === 'true',
-    AGENTS: ['scout', 'gameplan', 'rules'],
-    PARALLEL_EXECUTION: true,
-    GEMINI_CONFIG: {
-      TEMPERATURE: 0.3,
-      TOP_P: 0.8,
-      TOP_K: 40
-    }
-  },
-
-  // Custos estimados (USD por 1M tokens) - Atualizar conforme pricing
-  PRICING: {
-    GEMINI_FLASH_2_0: {
-      input: 0.075,
-      output: 0.30
-    },
-    GPT_4_TURBO: {
-      input: 10.00,
-      output: 30.00
-    },
-    GPT_5: { // Estimativa - ajustar quando disponível
-      input: 15.00,
-      output: 40.00
-    }
-  }
+  // NOTA (Fase 1): o sistema multi-agentes (ORCHESTRATOR_CONFIG /
+  // AGENT_CONFIG / STRATEGY_AGENT_CONFIG) e a tabela PRICING que só ele
+  // usava foram aposentados — ver SPEC-ANALISE-IA.md itens A1/A2/D4.
+  // O rastreamento de custos vive em models/ApiUsage.js (PRICING por modelo).
 };

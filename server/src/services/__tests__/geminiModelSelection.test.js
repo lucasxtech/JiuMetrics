@@ -1,126 +1,128 @@
 /**
- * Testes de seleção dinâmica de modelo do geminiService.
+ * Testes de seleção dinâmica de modelo do geminiService (pós-Fase 1).
  *
- * Versão anterior deste arquivo chamava a API REAL do Gemini (timeout de
- * 30s, sem mocks, exigia GEMINI_API_KEY no ambiente) e assertava um shape
- * de resposta que não existe mais (pontos_fortes_atleta etc.) — falhava
- * sempre. Reescrito como teste unitário: mocka o SDK e verifica o
- * comportamento que o nome do arquivo promete — qual modelo é instanciado
- * quando customModel é passado vs omitido.
+ * Mockam a camada llm.js e verificam a regra central de resolução de
+ * modelo: a escolha explícita do usuário sempre vence; sem escolha, cada
+ * tarefa usa seu default de TASK_MODELS (vídeo/estratégia usam o modelo
+ * forte, texto/chat o rápido).
  */
 
-// A API key precisa existir ANTES do require, pois geminiService decide no
-// carregamento do módulo se cria o client (apiKey ? new GoogleGenerativeAI : null).
-process.env.GEMINI_API_KEY = 'test-key-nao-usada';
-
-const mockGenerateContent = jest.fn();
-const mockGetGenerativeModel = jest.fn(() => ({
-  generateContent: mockGenerateContent,
-  startChat: jest.fn()
+jest.mock('../llm', () => ({
+  generateJson: jest.fn(),
+  generateText: jest.fn(),
+  sendChatMessage: jest.fn(),
+  uploadVideo: jest.fn(),
+  deleteFile: jest.fn(),
 }));
 
-jest.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: jest.fn(() => ({
-    getGenerativeModel: (...args) => mockGetGenerativeModel(...args)
-  }))
-}));
-
-const { generateTacticalStrategy, generateAthleteSummary } = require('../geminiService');
-const { DEFAULT_MODEL } = require('../../config/ai');
-
-const FAKE_STRATEGY_JSON = JSON.stringify({
-  resumo_rapido: { como_vencer: 'pressionar', tres_prioridades: ['a', 'b', 'c'] },
-  analise_de_matchup: { vantagem_critica: 'x', risco_oculto: 'y', fator_chave: 'z' }
-});
-
-function fakeGeminiResponse(text) {
-  return {
-    response: {
-      text: () => text,
-      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20, totalTokenCount: 30 }
-    }
-  };
-}
+const llm = require('../llm');
+const { generateTacticalStrategy, generateAthleteSummary, chat } = require('../geminiService');
+const { TASK_MODELS } = require('../../config/ai');
 
 const mockAthleteData = { name: 'João Silva', belt: 'azul', resumo: 'Lutador técnico', technical_stats: null };
 const mockOpponentData = { name: 'Pedro Santos', belt: 'azul', resumo: 'Lutador agressivo', technical_stats: null };
 
-describe('Gemini AI - Seleção Dinâmica de Modelo', () => {
+const FAKE_STRATEGY = { resumo_rapido: { como_vencer: 'pressionar', tres_prioridades: ['a', 'b', 'c'] } };
+
+function usageFor(model) {
+  return { modelName: model, promptTokens: 10, completionTokens: 20, totalTokens: 30 };
+}
+
+describe('Seleção Dinâmica de Modelo (via llm.js)', () => {
   beforeEach(() => {
-    mockGenerateContent.mockReset();
-    // Não resetar mockGetGenerativeModel por completo: a instância default
-    // é criada uma única vez no load do módulo. Limpamos apenas o registro
-    // de chamadas para asserções por teste.
-    mockGetGenerativeModel.mockClear();
+    jest.clearAllMocks();
   });
 
   describe('generateTacticalStrategy', () => {
-    it('instancia o modelo customizado quando passado como terceiro parâmetro', async () => {
-      mockGenerateContent.mockResolvedValue(fakeGeminiResponse(FAKE_STRATEGY_JSON));
+    it('usa o modelo escolhido pelo usuário quando informado', async () => {
+      llm.generateJson.mockResolvedValue({ data: FAKE_STRATEGY, usage: usageFor('gemini-3-pro-preview') });
 
-      const result = await generateTacticalStrategy(mockAthleteData, mockOpponentData, 'gemini-2.5-pro');
+      const result = await generateTacticalStrategy(mockAthleteData, mockOpponentData, 'gemini-3-pro-preview');
 
-      expect(mockGetGenerativeModel).toHaveBeenCalledWith({ model: 'gemini-2.5-pro' });
-      expect(result.strategy.resumo_rapido.como_vencer).toBe('pressionar');
-      expect(result.usage.modelName).toBe('gemini-2.5-pro');
+      expect(llm.generateJson).toHaveBeenCalledWith(expect.objectContaining({ model: 'gemini-3-pro-preview' }));
+      expect(result.strategy).toEqual(FAKE_STRATEGY);
+      expect(result.usage.modelName).toBe('gemini-3-pro-preview');
     });
 
-    it('usa o modelo padrão (instância criada no load) quando nenhum modelo é especificado', async () => {
-      mockGenerateContent.mockResolvedValue(fakeGeminiResponse(FAKE_STRATEGY_JSON));
+    it('usa o default de STRATEGY quando nenhum modelo é informado', async () => {
+      llm.generateJson.mockResolvedValue({ data: FAKE_STRATEGY, usage: usageFor(TASK_MODELS.STRATEGY) });
 
-      const result = await generateTacticalStrategy(mockAthleteData, mockOpponentData);
+      await generateTacticalStrategy(mockAthleteData, mockOpponentData);
 
-      // Sem customModel, reutiliza a instância default — nenhuma instância nova é criada
-      expect(mockGetGenerativeModel).not.toHaveBeenCalled();
-      expect(result.usage.modelName).toBe(DEFAULT_MODEL);
+      expect(llm.generateJson).toHaveBeenCalledWith(expect.objectContaining({ model: TASK_MODELS.STRATEGY }));
     });
 
-    it('usa o modelo padrão quando customModel é null', async () => {
-      mockGenerateContent.mockResolvedValue(fakeGeminiResponse(FAKE_STRATEGY_JSON));
+    it('usa o default de STRATEGY quando customModel é null', async () => {
+      llm.generateJson.mockResolvedValue({ data: FAKE_STRATEGY, usage: usageFor(TASK_MODELS.STRATEGY) });
 
-      const result = await generateTacticalStrategy(mockAthleteData, mockOpponentData, null);
+      await generateTacticalStrategy(mockAthleteData, mockOpponentData, null);
 
-      expect(mockGetGenerativeModel).not.toHaveBeenCalled();
-      expect(result.usage.modelName).toBe(DEFAULT_MODEL);
+      expect(llm.generateJson).toHaveBeenCalledWith(expect.objectContaining({ model: TASK_MODELS.STRATEGY }));
+    });
+
+    it('sempre envia o schema de estratégia (saída estruturada, sem parse manual)', async () => {
+      llm.generateJson.mockResolvedValue({ data: FAKE_STRATEGY, usage: usageFor(TASK_MODELS.STRATEGY) });
+
+      await generateTacticalStrategy(mockAthleteData, mockOpponentData);
+
+      const call = llm.generateJson.mock.calls[0][0];
+      expect(call.schema).toBeDefined();
+      expect(call.schema.required).toContain('resumo_rapido');
+      expect(call.temperature).toBeDefined();
     });
   });
 
   describe('generateAthleteSummary', () => {
     const athleteWithAnalyses = { name: 'João Silva', analyses: [], attributes: null };
 
-    it('instancia o modelo customizado quando passado como segundo parâmetro', async () => {
-      mockGenerateContent.mockResolvedValue(fakeGeminiResponse('Resumo técnico do atleta.'));
+    it('usa o modelo escolhido pelo usuário quando informado', async () => {
+      llm.generateText.mockResolvedValue({ text: 'Resumo técnico.', usage: usageFor('gemini-2.5-pro') });
 
       const result = await generateAthleteSummary(athleteWithAnalyses, 'gemini-2.5-pro');
 
-      expect(mockGetGenerativeModel).toHaveBeenCalledWith({ model: 'gemini-2.5-pro' });
-      expect(result.summary).toBe('Resumo técnico do atleta.');
-      expect(result.usage.modelName).toBe('gemini-2.5-pro');
+      expect(llm.generateText).toHaveBeenCalledWith(expect.objectContaining({ model: 'gemini-2.5-pro' }));
+      expect(result.summary).toBe('Resumo técnico.');
     });
 
-    it('usa o modelo padrão quando nenhum modelo é especificado', async () => {
-      mockGenerateContent.mockResolvedValue(fakeGeminiResponse('Resumo técnico do atleta.'));
+    it('usa o default de TEXT quando nenhum modelo é informado', async () => {
+      llm.generateText.mockResolvedValue({ text: 'Resumo técnico.', usage: usageFor(TASK_MODELS.TEXT) });
 
-      const result = await generateAthleteSummary(athleteWithAnalyses);
+      await generateAthleteSummary(athleteWithAnalyses);
 
-      expect(mockGetGenerativeModel).not.toHaveBeenCalled();
-      expect(result.summary).toBe('Resumo técnico do atleta.');
-      expect(result.usage.modelName).toBe(DEFAULT_MODEL);
+      expect(llm.generateText).toHaveBeenCalledWith(expect.objectContaining({ model: TASK_MODELS.TEXT }));
     });
+  });
 
-    it('usa o modelo padrão quando customModel é null', async () => {
-      mockGenerateContent.mockResolvedValue(fakeGeminiResponse('Resumo técnico do atleta.'));
+  describe('chat', () => {
+    it('usa o default de CHAT e NUNCA coloca dado do usuário na systemInstruction (mitigação de prompt injection)', async () => {
+      llm.sendChatMessage.mockResolvedValue({ text: 'resposta', usage: usageFor(TASK_MODELS.CHAT) });
 
-      const result = await generateAthleteSummary(athleteWithAnalyses, null);
+      const result = await chat({
+        contextType: 'profile',
+        contextData: { personName: 'João', personType: 'athlete', currentSummary: 'resumo atual' },
+        history: [{ role: 'user', content: 'oi' }],
+        userMessage: 'melhora o resumo',
+      });
 
-      expect(mockGetGenerativeModel).not.toHaveBeenCalled();
-      expect(result.usage.modelName).toBe(DEFAULT_MODEL);
+      const call = llm.sendChatMessage.mock.calls[0][0];
+      expect(call.model).toBe(TASK_MODELS.CHAT);
+      // systemInstruction é uma constante fixa — nunca interpola contextData
+      // (dado de usuário na systemInstruction é o vetor de prompt injection
+      // que o CodeQL js/system-prompt-injection sinaliza)
+      expect(call.systemInstruction).not.toContain('João');
+      expect(typeof call.systemInstruction).toBe('string');
+      // O dado do usuário (nome, resumo) entra como o primeiro turno do
+      // histórico — uma mensagem de conversa comum, não a systemInstruction
+      expect(call.history[0]).toEqual({ role: 'user', parts: [{ text: expect.stringContaining('João') }] });
+      expect(call.history[1].role).toBe('model');
+      expect(call.history[2]).toEqual({ role: 'user', parts: [{ text: 'oi' }] });
+      expect(result.message).toBe('resposta');
     });
   });
 
   describe('Contrato de retorno', () => {
     it('generateTacticalStrategy retorna { strategy, usage } com contagem de tokens', async () => {
-      mockGenerateContent.mockResolvedValue(fakeGeminiResponse(FAKE_STRATEGY_JSON));
+      llm.generateJson.mockResolvedValue({ data: FAKE_STRATEGY, usage: usageFor(TASK_MODELS.STRATEGY) });
 
       const result = await generateTacticalStrategy(mockAthleteData, mockOpponentData);
 

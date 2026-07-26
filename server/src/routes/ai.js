@@ -26,8 +26,4 @@ router.post('/athlete-summary', aiController.generateAthleteSummary);
 // POST /api/ai/consolidate-profile - Consolida todas as análises e salva no perfil
 router.post('/consolidate-profile', aiController.consolidateProfile);
 
-// POST /api/ai/debug/compare-analysis - Endpoint de debug para comparar sistemas
-// ⚠️ TEMPORÁRIO: Para testes de validação do sistema multi-agentes
-router.post('/debug/compare-analysis', aiController.compareAnalysis);
-
 module.exports = router;

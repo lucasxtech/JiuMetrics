@@ -310,34 +310,10 @@ describe('Integração - Placeholders vs variáveis fornecidas nos call-sites', 
         addCallSite(promptName, file, extractSuppliedKeys(objectLiteralText));
       }
 
-      // Caso especial: AgentBase.buildPrompt chama getPrompt(this.promptFile, {...})
-      // com nome dinâmico — mas o conjunto de chaves fornecidas é fixo e conhecido,
-      // e se aplica a qualquer prompt usado pelos agentes que estendem AgentBase
-      // (agent-technical, agent-tactical, agent-rules).
-      if (file.endsWith(`${path.sep}agents${path.sep}AgentBase.js`)) {
-        const dynamicCallMatch = content.match(/getPrompt\(\s*this\.promptFile\s*,/);
-        if (dynamicCallMatch) {
-          const openBraceIndex = content.indexOf('{', dynamicCallMatch.index + dynamicCallMatch[0].length);
-          const closeBraceIndex = findObjectLiteralEnd(content, openBraceIndex);
-          const objectLiteralText = content.slice(openBraceIndex, closeBraceIndex + 1);
-          const keys = extractSuppliedKeys(objectLiteralText);
-
-          // Descobre quais prompts usam esse buildPrompt genérico: qualquer
-          // classe em services/agents/*.js (exceto AgentBase/index/Orchestrator)
-          // cujo super() define o promptFile.
-          const agentsDir = path.dirname(file);
-          for (const agentFile of realFs.readdirSync(agentsDir)) {
-            const agentPath = path.join(agentsDir, agentFile);
-            if (!realFs.statSync(agentPath).isFile()) continue;
-            if (['AgentBase.js', 'Orchestrator.js', 'index.js'].includes(agentFile)) continue;
-            const agentContent = realFs.readFileSync(agentPath, 'utf-8');
-            const superMatch = agentContent.match(/super\(\s*['"][^'"]*['"]\s*,\s*['"]([\w-]+)['"]/);
-            if (superMatch) {
-              addCallSite(superMatch[1], file, keys);
-            }
-          }
-        }
-      }
+      // NOTA (Fase 1): o caso especial de AgentBase.buildPrompt (nome de
+      // prompt dinâmico via this.promptFile) foi removido junto com o
+      // sistema multi-agentes — todos os call-sites restantes usam nome
+      // literal e são cobertos pelo padrão acima.
     }
 
     return callSites;

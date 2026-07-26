@@ -1,58 +1,9 @@
-const { extractJson, normalizeChartData } = require('../chartUtils');
-const { GeminiParseError } = require('../errors');
+const { normalizeChartData } = require('../chartUtils');
 
-describe('chartUtils.extractJson', () => {
-  it('extrai JSON válido de uma resposta com texto extra', () => {
-    const raw = `Algum texto antes {"summary":"ok","charts":[]} texto depois`;
-    const parsed = extractJson(raw);
-
-    expect(parsed).toEqual({ summary: 'ok', charts: [] });
-  });
-
-  it('lança GeminiParseError quando não encontra JSON (nunca retorna dados inventados)', () => {
-    expect(() => extractJson('sem json aqui')).toThrow(GeminiParseError);
-  });
-
-  it('lança GeminiParseError quando o JSON está malformado', () => {
-    const raw = `{"summary": "ok", "charts": [}`;
-    expect(() => extractJson(raw)).toThrow(GeminiParseError);
-  });
-
-  it('não corrompe uma string que contém "//" (regex de comentário removida)', () => {
-    const raw = `{"summary": "acesse https://exemplo.com para detalhes", "charts": []}`;
-    const parsed = extractJson(raw);
-
-    expect(parsed.summary).toBe('acesse https://exemplo.com para detalhes');
-  });
-
-  it('não falha quando um valor de string contém uma quebra de linha literal (Gemini não é forçado a JSON estrito)', () => {
-    const raw = '```json\n{"summary": "Paragrafo um.\n\nParagrafo dois.", "charts": []}\n```';
-    const parsed = extractJson(raw);
-
-    expect(parsed.summary).toBe('Paragrafo um.\n\nParagrafo dois.');
-  });
-
-  it('não fecha o objeto prematuramente quando um valor de string contém "}"', () => {
-    const raw = `{"summary": "ele usa a guarda X} para raspar", "charts": []}`;
-    const parsed = extractJson(raw);
-
-    expect(parsed.summary).toBe('ele usa a guarda X} para raspar');
-  });
-
-  it('não abre um objeto aninhado falso quando um valor de string contém "{"', () => {
-    const raw = `{"summary": "a guarda {de la riva} é usada", "charts": []}`;
-    const parsed = extractJson(raw);
-
-    expect(parsed.summary).toBe('a guarda {de la riva} é usada');
-  });
-
-  it('preserva aspas escapadas dentro de uma string sem confundir com o fechamento da string', () => {
-    const raw = `{"summary": "ele disse \\"raspagem\\" durante a luta", "charts": []}`;
-    const parsed = extractJson(raw);
-
-    expect(parsed.summary).toBe('ele disse "raspagem" durante a luta');
-  });
-});
+// NOTA (Fase 1): os testes de extractJson foram removidos junto com a
+// função — a saída da IA agora é estruturada via responseSchema (llm.js),
+// então não existe mais parse manual de texto livre para testar aqui.
+// O contrato JSON é coberto pelos testes de services/__tests__/llm.test.js.
 
 describe('chartUtils.normalizeChartData', () => {
   test('deve normalizar valores que somam mais de 100', () => {
