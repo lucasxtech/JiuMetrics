@@ -11,6 +11,46 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### Portões de qualidade no CI — 2026-08-13 · [spec 003](./specs/003-quality-gates/spec.md)
+
+O CI passa a **recusar** o que antes apenas comentava.
+
+#### Adicionado
+
+- **ESLint no backend** (`server/eslint.config.js`) — 69 arquivos que nunca passaram por análise estática. Conjunto de regras deliberadamente **mínimo**: só erro real (`no-undef`, `no-unused-vars`, `no-unreachable`, `no-dupe-keys`, `no-const-assign`, `no-unsafe-finally`…), **nada de estilo**. Script `npm run lint` e job `Backend Lint` no CI.
+- **`eslint`** como `devDependency` do `server` — única dependência nova. Dependências de produção **inalteradas**.
+
+#### Alterado
+
+- **Secrets scanning (TruffleHog) passa a bloquear merge.** Escopo é o **diff** (`base..head`), não o histórico: impede a entrada de segredo **novo**. Com `--only-verified`, só bloqueia segredo confirmado como ativo.
+- **Lint do frontend passa a bloquear merge** (era `continue-on-error`).
+- **`Integration Check` agora exige os 5 portões** (testes de front e back, lint de front e back, build), não só 2.
+- **`react-refresh/only-export-components` rebaixada para `warn`** no frontend — disparava em 3 de 3 contexts porque cada um exporta `XProvider` + `useX` no mesmo arquivo, que é o padrão **idiomático** de React Context. Quando uma regra reprova um padrão correto em 100% dos usos, o problema é a configuração.
+
+#### Removido
+
+- **`server/tests/`** — 3 arquivos com extensão `.test.js` que **nunca rodavam** (`testMatch` do Jest cobre só `__tests__/`) e estavam quebrados: zero `describe`/`it`, dois com `process.exit`, um com `require` de caminho inexistente. Davam falsa impressão de cobertura.
+
+#### Correções pontuais (necessárias para o lint passar)
+
+Código morto comprovado, sem mudança de comportamento: import não usado em `AuthContext` e em um teste; leitura de `localStorage` sem uso em `initAuth`; campo desestruturado e ignorado em `chatController`; 3 variáveis locais mortas em `strategyController`. Em `index.js`, o 4º parâmetro do error handler do Express foi renomeado para `_next` — **a aridade 4 é preservada**, que é o único critério do Express, e isso foi verificado.
+
+#### Dívida documentada em vez de escondida
+
+Onde o lint apontou algo que exige **decisão de comportamento**, a correção **não** foi feita: há `eslint-disable` com comentário nomeando a spec responsável. Nenhum caso foi mascarado com prefixo `_`, porque isso apagaria a evidência do problema. Casos: `versionManager` (3× — evidência direta dos bugs das specs 006/007), `AthleteCard` (4 props nunca renderizadas), `StrategyChatPanel` (callback nunca chamado), `VideoAnalysis` (`addVideo` sem controle na UI), `AuthContext` (`set-state-in-effect` na hidratação de sessão), `Strategy` (loading calculado e nunca renderizado).
+
+#### Diferido
+
+- **E2E (Playwright) no CI.** A spec assumia "adicionar um job"; a inspeção mostrou que exige **backend + banco + usuário semeado** — ambiente de teste, não configuração de job. Depende da mesma decisão que a [spec 004](./specs/004-authorization-safety-net/spec.md) precisa tomar, e passa a ser pré-requisito dela.
+
+#### Segurança — novo achado, ação do proprietário
+
+🔴 **`playwright/.env.example` contém a senha em texto claro de uma conta viva** (`contateste@teste.com` — verificado no banco: existe, `role=user`, `is_active=true`). O arquivo é rastreado pelo git.
+
+⚠️ **O portão desta spec não pega este caso:** o TruffleHog detecta segredo por padrão reconhecível; uma senha genérica em `TEST_USER_PASSWORD=` não casa com nenhum detector. Registrado para não criar falsa confiança no instrumento. **Ação recomendada:** rotacionar essa senha junto da chave do Gemini.
+
+---
+
 ### Segurança e verificação — 2026-08-13 · [spec 002](./specs/002-verification-baseline/spec.md)
 
 Primeira etapa executada do plano de refatoração. **Uma alteração de código; o resto é verificação e correção de documentação.**

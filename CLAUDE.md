@@ -178,8 +178,16 @@ cd frontend && npm test        # Vitest (bloqueia merge no CI)
 ```
 
 ```bash
-cd frontend && npm run lint    # ESLint — só frontend; backend NÃO tem lint
+cd frontend && npm run lint    # ESLint (bloqueia merge no CI)
 ```
+
+```bash
+cd server && npm run lint      # ESLint (bloqueia merge no CI) — spec 003
+```
+
+**Portões que bloqueiam merge:** testes de frontend e backend, lint de frontend e backend, build, e **secrets scanning**. Informativos (não bloqueiam): coverage, `npm audit`, CodeQL, Lighthouse. **E2E não roda no CI** — ver [spec 003](./specs/003-quality-gates/spec.md).
+
+O lint do backend cobre **só erro real, não estilo** (`server/eslint.config.js`). Onde uma dívida conhecida dispara o lint, há um `eslint-disable` **com comentário apontando a spec que vai resolver** — não prefixe com `_` nem remova o parâmetro: isso apagaria a evidência do problema.
 
 ⚠️ `npm ci` é o instalador do CI (`package-lock.json`). Existem **6 lockfiles** (npm + yarn) para 3 pacotes — rodar `yarn install` resolve uma árvore diferente da testada. Dívida conhecida.
 

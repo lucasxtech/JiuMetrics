@@ -89,11 +89,12 @@ Funcionalidades verificadas no código e em uso.
 | Funcionalidade | Notas |
 |---|---|
 | Deploy na Vercel | Frontend e backend, separados |
-| CI no GitHub Actions | Testes de frontend e backend **bloqueiam** merge |
+| CI no GitHub Actions | **5 portões bloqueiam** merge: testes de front e back, lint de front e back, build. Mais secrets scanning em workflow separado |
 | Testes de backend | 16 suítes Jest |
 | Testes de frontend | 5 arquivos Vitest |
 | Testes E2E | 6 specs Playwright com Page Objects — ⚠️ **nunca rodam no CI** |
-| CodeQL, TruffleHog, Lighthouse | ⚠️ todos com `continue-on-error` — nenhum bloqueia |
+| Secrets scanning (TruffleHog) | ✅ **bloqueia** desde a spec 003 (escopo = diff, `--only-verified`) |
+| CodeQL, Lighthouse, `npm audit`, coverage | ⚠️ informativos — não bloqueiam (decisão consciente: podem reprovar por causa fora do controle do PR) |
 | Rate limiting | ⚠️ `MemoryStore` — **inoperante em serverless** |
 
 ---
@@ -110,6 +111,7 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). **Na
 | 2 | 🔴 **AGRAVADO (medido 2026-08-13)** — a chave publicável versionada **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários**; a escrita também está liberada. É o achado mais grave do projeto | `frontend/.env.production` + estado real do banco |
 | ~~3~~ | ✅ **RESOLVIDO (spec 002, 2026-08-13)** — `GET /api/fight-analysis/debug/all` removida | — |
 | 4 | **3 endpoints do chat sem verificação de posse** — `manual-edit` (escreve), `versions` (lê), `restore-version` (escreve) em qualquer tenant | `chatController.js` |
+| **5** | 🆕 **Senha em texto claro de uma conta VIVA, commitada** — `TEST_USER_PASSWORD` de `contateste@teste.com`. Verificado no banco: a conta existe, `role=user`, `is_active=true`. Descoberto na spec 003. ⚠️ O secrets scanning **não pega** isso (senha genérica não casa com detector de padrão) | `playwright/.env.example` |
 
 ### HIGH
 
@@ -145,13 +147,14 @@ Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **esc
 | Categoria | Estado |
 |---|---|
 | **Tipagem** | **Ausente na aplicação** — 148 arquivos JS, 0 TS. As 3 falhas silenciosas seriam erro de compilação. Decisão de adotar: [ADR-010](./decisions/010-adotar-typescript-incrementalmente.md) (`PLANNED`) |
-| **Lint** | Só no frontend, e **com `continue-on-error`** — nenhum lint bloqueia. **Backend não tem lint** (69 arquivos) |
+| **Lint** | ✅ **RESOLVIDO na spec 003** — lint de frontend **e** backend bloqueiam merge. O do backend usa conjunto mínimo (só erro real, não estilo). Dívida remanescente: sem Prettier, `.editorconfig` nem pre-commit; ampliar o conjunto de regras é spec futura |
 | **Testes de autorização** | **Não existem.** Nenhuma das 6 falhas de posse seria detectada pela suíte atual |
-| **Testes inertes** | `server/tests/` tem 3 arquivos `.test.js` que **nunca rodam** (`testMatch` só cobre `__tests__/`) e estão **quebrados** (`require` com caminho inexistente, `process.exit`) |
-| **Testes E2E** | 6 specs bem construídos, com Page Objects e fixtures — **nunca executados no CI** |
+| **Testes inertes** | ✅ **RESOLVIDO na spec 003** — `server/tests/` removido (3 scripts com zero `describe`/`it`, confirmados como não alcançados por `jest --listTests`) |
+| **Testes E2E** | 6 specs bem construídos, com Page Objects e fixtures — **continuam não executados no CI**. A spec 003 tentou ligá-los e **diferiu**: exigem backend + banco + usuário semeado, que é ambiente de teste, não job de CI. Passa a ser pré-requisito da [spec 004](../specs/004-authorization-safety-net/spec.md) |
 | **Cobertura de frontend** | 5 arquivos de teste para 79 de código (~6%); 1 teste de componente |
 | **Tratamento de erro** | Taxonomia boa (12 classes tipadas), aplicação inconsistente. **5 `catch` que engolem erro** — causa das 3 funcionalidades que nunca funcionaram |
 | **Logging** | `console.*` com emoji, sem níveis, sem correlação, sem redação de PII. Log por request em serverless |
+| **Dívida de lint documentada em código** | A spec 003 tornou o lint bloqueante sem corrigir o que exige decisão de comportamento. Há `eslint-disable` **com comentário apontando a spec responsável** em: `versionManager` (3× — evidência dos bugs das specs 006/007), `AthleteCard` (4 props nunca renderizadas — F7), `StrategyChatPanel` (callback nunca chamado — cluster F14/F19-F22), `VideoAnalysis` (`addVideo` sem controle na UI), `AuthContext` (`set-state-in-effect` na hidratação de sessão), `Strategy` (loading calculado e nunca renderizado). **Nenhum foi escondido com `_`** — a evidência fica visível |
 | **Duplicação** | `processPersonAnalyses` (front × back, divergente) · `AVAILABLE_MODELS` (2 lugares) · `Opponent.js` = cópia de `Athlete.js` · `chatLimiter` 2× |
 | **Complexidade** | `StrategySummaryModal.jsx` 1116 · `AiStrategyBox.jsx` 1016 · `Analyses.jsx` 922 (com o PDF inteiro dentro) · `geminiService.js` 845 · `chatController.js` 818 · `linkController.analyzeLink` 206 linhas numa função |
 | **Documentação morta** | ~800 linhas descrevendo o sistema multi-agentes removido — **movidas para [`_legacy/`](./_legacy/) em 2026-08-12**. `.github/copilot-instructions.md` ainda documenta `USE_MULTI_AGENTS`/`OPENAI_API_KEY` — **pendente** |

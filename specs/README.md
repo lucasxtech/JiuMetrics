@@ -8,7 +8,7 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 |---|---|---|---|
 | [001](./001-refactor-foundation/spec.md) | Refatoração de fundação (umbrella) | — | **Superseded** por 002–011 |
 | [002](./002-verification-baseline/spec.md) | Verificação e contenção | 0 | ✅ **Implemented** (parcial — 5 itens pendentes de acesso do proprietário) |
-| [003](./003-quality-gates/spec.md) | Portões de qualidade no CI | 1 | Proposed |
+| [003](./003-quality-gates/spec.md) | Portões de qualidade no CI | 1 | ✅ **Implemented** (item de E2E diferido para a 004) |
 | [004](./004-authorization-safety-net/spec.md) | Rede de testes de autorização | 2 | Proposed |
 | [005](./005-authorization-policy-seam/spec.md) | Seam de política de autorização | 3 | Proposed |
 | [006](./006-ownership-in-data-access/spec.md) | Ownership obrigatório no acesso a dados | 4 | Proposed |
@@ -44,7 +44,7 @@ flowchart TD
     style S11 fill:#8b1a1a,color:#fff
 ```
 
-**Ponto de partida: ✅ [002](./002-verification-baseline/spec.md) concluída.** Próxima recomendada: [003](./003-quality-gates/spec.md) — ou **[008](./008-database-access-lockdown/spec.md), se o proprietário optar por antecipar** o fechamento do banco diante da exposição de hashes de senha.
+**✅ [002](./002-verification-baseline/spec.md) e [003](./003-quality-gates/spec.md) concluídas.** Próxima recomendada: [004](./004-authorization-safety-net/spec.md) — que agora carrega também o pré-requisito de ambiente de teste herdado da 003 (ligar o Playwright no CI). Alternativa: **[008](./008-database-access-lockdown/spec.md), se o proprietário optar por antecipar** o fechamento do banco diante da exposição de hashes de senha.
 **Spec 007 pode correr em paralelo** às 005–006 (coordenando arquivos).
 **Spec 011 é grande demais para uma unidade** e deve ser quebrada quando chegar a vez, com os números reais da 002 em mãos.
 

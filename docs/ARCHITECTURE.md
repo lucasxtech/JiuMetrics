@@ -266,14 +266,31 @@ O backend roda como **function serverless**. Isso tem três consequências arqui
 
 ### CI (GitHub Actions)
 
-| Workflow | Faz | Bloqueia? |
-|---|---|---|
-| `ci.yml` | testes de frontend e backend, lint de frontend, build, `npm audit` | **só os testes** de front e back |
-| `code-quality.yml` | CodeQL, TruffleHog (secrets), deps desatualizadas | **nada** (`continue-on-error`) |
-| `deploy.yml` | build + deploy no GitHub Pages | — |
-| `performance.yml` | Lighthouse CI em PR | — |
+Estado após a [spec 003](../specs/003-quality-gates/spec.md) (2026-08-13):
 
-**Problemas conhecidos:** lint de frontend, `npm audit` e o scanner de segredos rodam com `continue-on-error: true` — **foi por isso que uma chave de API commitada nunca foi bloqueada**. O backend não tem lint. Os 6 testes E2E do Playwright **nunca rodam no CI**.
+| Job | Workflow | Bloqueia? |
+|---|---|---|
+| Frontend Tests (Vitest) | `ci.yml` | ✅ **sim** |
+| **Frontend Lint** (ESLint) | `ci.yml` | ✅ **sim** — passou a bloquear na spec 003 |
+| Frontend Build | `ci.yml` | ✅ **sim** |
+| Backend Tests (Jest) | `ci.yml` | ✅ **sim** |
+| **Backend Lint** (ESLint) | `ci.yml` | ✅ **sim** — job **novo** na spec 003 |
+| **Secrets Scanning** (TruffleHog) | `code-quality.yml` | ✅ **sim** — passou a bloquear na spec 003 |
+| Integration Check | `ci.yml` | ✅ agrega os 5 portões acima |
+| Coverage report | `ci.yml` | ❌ informativo |
+| `npm audit` | `ci.yml` | ❌ informativo — pode reprovar por vulnerabilidade transitiva sem correção |
+| CodeQL | `code-quality.yml` | ❌ informativo |
+| Deps desatualizadas | `code-quality.yml` | ❌ informativo |
+| Lighthouse | `performance.yml` | ❌ informativo |
+| **E2E (Playwright)** | — | ⏸️ **não roda** |
+
+**Escopo do secrets scanning:** o **diff** (`base..head`), não o histórico — impede a entrada de segredo **novo**; segredo já no histórico não bloqueia PR. Com `--only-verified`, só bloqueia segredo confirmado como ativo.
+⚠️ **Limitação:** detecta segredo por padrão reconhecível (chave de API com formato verificável). **Não pega senha genérica** em variável de ambiente.
+
+**Problemas conhecidos:**
+- **Os 6 testes E2E do Playwright continuam não rodando no CI.** Ligá-los exige um ambiente de teste (backend + banco + usuário semeado) que não existe — ver a decisão registrada na [spec 003](../specs/003-quality-gates/spec.md) e o pré-requisito da [spec 004](../specs/004-authorization-safety-net/spec.md).
+- **O lint do backend usa um conjunto mínimo de regras** (só erro real, não estilo) — ver `server/eslint.config.js`. Ampliar é trabalho de spec futura.
+- **Não há Prettier, `.editorconfig` nem hook de pre-commit.**
 
 ### Variáveis de ambiente (backend)
 

@@ -1,6 +1,63 @@
 # SPEC-003 — Portões de qualidade no CI
 
-**Status: Proposed** · Etapa 1 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (item 4 diferido)** · Etapa 1 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Executada em:** 2026-08-13 · **Branch:** `chore/spec-002-verification-baseline`
+
+---
+
+## Registro de execução (2026-08-13)
+
+### Resultado
+
+O CI passou de **2 portões bloqueantes** (testes de front e back) para **6**: + lint de frontend, + lint de backend (novo), + build no gate de integração, + secrets scanning. O item 4 (E2E) foi **diferido** com motivo registrado.
+
+| Item do escopo | Estado |
+|---|---|
+| 1 · Secrets scanning bloqueante | ✅ **FEITO** — + `--only-verified` |
+| 2 · ESLint no backend | ✅ **FEITO** — config, script, job de CI |
+| 3 · Lint do frontend bloqueante | ✅ **FEITO** |
+| 4 · Playwright no CI | ⏸️ **DIFERIDO** — ver o bloco de decisão no escopo |
+| 5 · Remover `server/tests/` | ✅ **FEITO** |
+
+### Números
+
+| Medida | Antes | Depois |
+|---|---|---|
+| Portões bloqueantes no CI | 2 | **6** |
+| Erros de lint no backend | *nunca medido* (sem lint) | **19 → 0** |
+| Erros de lint no frontend | **15** (reportados e ignorados) | **0** (+ 4 warnings visíveis) |
+| Arquivos `.test.js` que nunca rodavam | 3 | **0** |
+| Testes | 16 suítes / 180 (back) · 21 / 33 (front) | **idêntico — nenhuma regressão** |
+
+### Decisões tomadas durante a execução
+
+**1. `eslint` como devDependency do `server`.** Única dependência nova. Verificado: dependências de **produção inalteradas**. Efeito colateral: `minimatch` 3.1.2 → 3.1.5 (patch, `dev: true`, compartilhado com jest) — validado pela suíte verde. Ambos os lockfiles (`package-lock.json` e `yarn.lock`) foram atualizados porque o ambiente rotea comandos de pacote via yarn; mantê-los consistentes é preferível a deixá-los divergir.
+
+**2. Conjunto mínimo de regras no backend.** Só erro real, nada de estilo. Motivo: 69 arquivos nunca analisados; um preset completo produziria centenas de apontamentos de formatação e o portão nasceria ignorado — que é exatamente o problema que esta spec resolve.
+
+**3. `react-refresh/only-export-components` rebaixada a `warn`.** Disparava em **3 de 3** contexts, sobre o padrão idiomático `XProvider` + `useX` no mesmo arquivo. Quando uma regra reprova um padrão correto em 100% dos usos, configurar a regra é mais honesto que suprimi-la três vezes. O aviso continua visível.
+
+**4. Dívida documentada, não escondida.** Onde o lint apontou algo que exige decisão de comportamento, **não** corrigi: usei `eslint-disable` com comentário nomeando a spec responsável. **Nenhum caso foi mascarado com prefixo `_`** — isso faria o problema parecer intencional e apagaria a evidência. Em `versionManager`, os 3 casos são evidência **direta** dos bugs das specs 006 e 007.
+
+**5. Uma cascata que eu mesmo criei.** Remover `isLoadingData` de `Strategy.jsx` orfanou `isLoadingAthletes`/`isLoadingOpponents` — e apagaria a evidência de que a tela calcula estado de loading e nunca o renderiza. **Revertido:** a variável foi restaurada e documentada.
+
+### Verificação do portão
+
+Não é possível executar GitHub Actions localmente, então validei o equivalente: **plantei um erro deliberado** e confirmei `exit 1` do lint; revertido, `exit 0`. Os YAMLs dos 4 workflows foram validados por parser.
+
+### Testes e validação
+
+Backend **16 suítes / 180 testes** · Frontend **21 suítes / 33 testes** — verdes antes e depois. Lint backend `exit 0`, frontend `exit 0`. Build OK. App carrega e o **error handler do Express preservou aridade 4** (verificado programaticamente).
+
+### Achado de segurança fora do escopo
+
+**Senha em texto claro de conta viva em `playwright/.env.example`** — ver o bloco dedicado no escopo. Não corrigido (regra 18); registrado em `docs/PROJECT_STATUS.md` e no `CHANGELOG.md`.
+
+### Limitação assumida
+
+**Nenhum destes portões foi exercitado no GitHub Actions de verdade** — só localmente. O primeiro PR nesta branch é o teste real. Riscos identificados: (a) se o TruffleHog escanear além do diff, todo PR bloqueia até a chave do Gemini sair do histórico — mitigação documentada no comentário do workflow; (b) `npm ci` no job novo depende do `package-lock.json` atualizado, que está neste commit.
+
+---
 
 ## Context
 
@@ -41,8 +98,42 @@ Fazer o CI recusar o que hoje ele apenas comenta, para que as specs seguintes te
 1. **Remover `continue-on-error` do secrets scanning** (`.github/workflows/code-quality.yml`).
 2. **ESLint no backend**: configuração flat, com o conjunto **mínimo** de regras que pegam erro real, não estilo — `no-undef`, `no-unused-vars`, `no-unreachable`, `no-dupe-keys`, `no-const-assign`. Script `npm run lint` em `server/`. Job no CI, bloqueando.
 3. **Lint do frontend passa a bloquear** (remover `continue-on-error`).
-4. **Playwright no CI** — com a IA mockada, contra o frontend buildado. Se instável, rodar como job **explicitamente marcado como não bloqueante**, nunca com `continue-on-error` silencioso.
-5. **Remover `server/tests/`** — 3 arquivos quebrados que nunca rodam.
+4. ~~**Playwright no CI**~~ → ⏸️ **DIFERIDO** (decidido em 2026-08-13, durante a inspeção pré-implementação).
+
+> **Motivo.** A spec assumiu que era "adicionar um job". A inspeção mostrou que não é: `playwright/playwright.config.ts` sobe **apenas o frontend** (`webServer` → `npm run dev` em `frontend/`). Os testes precisam também de:
+> - **backend em `:5050`** — não há entrada de `webServer` para ele;
+> - **um banco com usuário de teste semeado** — o fixture `authenticatedPage` faz **login real**, e `playwright/.env.example` aponta para uma conta específica;
+> - **variáveis de ambiente do backend** (`JWT_SECRET`, `SUPABASE_*`, `GEMINI_API_KEY`) como secrets do GitHub;
+> - **IA mockada**.
+>
+> Isso é **construir um ambiente de teste**, não configurar um job — e depende da **decisão P2** (banco de teste real ou fake de PostgREST) que a [spec 004](../004-authorization-safety-net/spec.md) também precisa resolver. Fazer aqui incharia esta spec e duplicaria a decisão.
+>
+> **Para onde vai:** o item passa a ser pré-requisito de infraestrutura da [spec 004](../004-authorization-safety-net/spec.md), que já precisa do mesmo ambiente para os testes de autorização. Ligar o Playwright depois disso é o job simples que esta spec imaginava.
+>
+> **O que esta spec entrega no lugar:** nada — reduzir escopo é a decisão. Os 6 specs de E2E continuam parados, e isso está registrado em `docs/PROJECT_STATUS.md`.
+
+5. **Remover `server/tests/`** — 3 arquivos quebrados que nunca rodam. **Confirmado na inspeção:** os 3 têm **zero** `describe`/`it`/`test`, dois chamam `process.exit`, e `jest --listTests` retorna **0** arquivos de `server/tests/`. São scripts, não testes.
+
+---
+
+## ⚠️ Achado de segurança fora do escopo (2026-08-13)
+
+Descoberto ao inspecionar o que os E2E exigem. **Não corrigido nesta spec** (regra 18 — não é necessário para cumpri-la), mas exige ação do proprietário:
+
+**`playwright/.env.example` contém a senha em texto claro de uma conta viva:**
+
+```
+TEST_USER_EMAIL=contateste@teste.com
+TEST_USER_PASSWORD=<senha em texto claro>
+```
+
+**Verificado no banco de produção:** a conta existe, `role=user`, `is_active=true`. Nenhuma tentativa de login foi feita — só verificação de existência.
+
+O arquivo é **rastreado pelo git**. A migration `019` mantém essa conta deliberadamente separada como conta de teste, então ela não é descartável.
+
+**Por que o portão desta spec não pega isso:** o TruffleHog detecta segredos por **padrão reconhecível** (chaves de API com formato verificável). Uma senha genérica em `TEST_USER_PASSWORD=` não casa com nenhum detector. **Tornar o scanner bloqueante não resolve este caso** — é uma limitação real do instrumento, e vale registrar para não criar falsa confiança.
+
+**Ação recomendada:** rotacionar a senha dessa conta e mover a credencial para secret, junto da rotação da chave do Gemini (pendência da [spec 002](../002-verification-baseline/spec.md)).
 
 ## Out of Scope
 
