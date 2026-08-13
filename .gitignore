@@ -38,3 +38,10 @@ server/uploads/*
 # Scripts temporários
 organize-files.sh
 reorganize-docs.sh
+
+# Área de trabalho temporária de agentes de IA — rascunhos, prompts,
+# análises intermediárias, artefatos descartáveis.
+# Conhecimento permanente vai para docs/; mudanças planejadas, para specs/.
+# NUNCA adicione specs/ ou docs/ aqui.
+.ai/*
+!.ai/README.md

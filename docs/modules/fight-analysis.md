@@ -1,0 +1,142 @@
+# Módulo: Análise de Luta (Fight Analysis)
+
+> **Código:** `server/src/controllers/{linkController,fightAnalysisController}.js`, `server/src/models/FightAnalysis.js`, `server/src/services/{geminiService,videoDownloader}.js`, `server/src/schemas/videoAnalysis.js`, `server/src/services/prompts/video-analysis.txt` · **Tabela:** `fight_analyses` · **Frontend:** `pages/VideoAnalysis.jsx`, `components/video/*`, `components/analysis/AnalysisDetailModal.jsx`
+
+---
+
+## Responsibility
+
+Transformar **um ou mais vídeos de luta do YouTube** em uma análise estruturada da pessoa alvo: perfil comportamental (5 gráficos), estatísticas técnicas quantitativas e um resumo narrativo.
+
+É a **unidade de evidência do sistema**. Tudo a jusante — o perfil técnico consolidado e a estratégia — deriva daqui. Sem análise, não existe estratégia.
+
+## Business Rules
+
+`IMPLEMENTED`, verificadas no código:
+
+1. **Só YouTube.** `extractYouTubeId` valida com `new URL()` e rejeita o resto. **Não há upload de arquivo** — `POST /api/ai/analyze-video` é um stub que retorna 400 apontando para `analyze-link`.
+2. **Uma análise pode cobrir N vídeos.** Cada vídeo é analisado individualmente e os resultados são consolidados numa única linha de `fight_analyses`. O `video_url` guarda as URLs concatenadas por vírgula.
+3. **A pessoa alvo é identificada pela cor do kimono**, e o prompt instrui explicitamente a **ignorar o oponente** no vídeo.
+4. **O resultado da luta contextualiza a análise** — informar que o atleta perdeu por finalização faz o prompt pedir a identificação do que falhou.
+5. **A faixa da pessoa injeta as regras IBJJF** no contexto da análise.
+6. **Se um vídeo falha, o loop continua** com os demais. Só retorna erro se **nenhum** vídeo foi analisado com sucesso.
+7. **Consolidação híbrida:** os números são consolidados por **função pura** (médias, sem IA); os resumos narrativos, quando há mais de um, por uma **segunda chamada de IA**.
+8. **Os 5 gráficos são normalizados para somar 100%**, e gráficos sem nenhum dado observado são descartados.
+9. **`person_type` só aceita `'athlete'` ou `'opponent'`** — validado no controller de `POST /api/fight-analysis` (⚠️ **não** em `analyze-link`) e por CHECK no banco.
+10. **A pessoa precisa existir e pertencer ao escopo** — validado em `POST /api/fight-analysis`, ⚠️ **não** em `POST /api/ai/analyze-link`.
+11. **Criar ou deletar análise regenera o `technical_summary`** da pessoa; se sobram zero análises, o resumo é limpo.
+12. **A versão original é preservada** antes da primeira edição (`ensureOriginalVersion`).
+13. **Exclusão é hard delete.**
+
+## Inputs
+
+`POST /api/ai/analyze-link` (`heavyLimiter` 30/15min, autenticado) — o caminho que **gera** a análise:
+
+```
+{
+  videos:      [{ url, giColor }],   // N itens — ⚠️ SEM LIMITE
+  athleteName: string,
+  personId:    string,               // opcional; se presente, persiste
+  personType:  'athlete' | 'opponent',
+  belt:        string,
+  matchResult: string,               // 'vitoria-pontos' | 'derrota-finalizacao' | ...
+  model:       string                // opcional, ⚠️ NÃO validado
+}
+```
+
+`POST /api/fight-analysis` — o caminho que **persiste** uma análise já produzida: `{ personId, personType, videoUrl, videoName, charts, summary, technical_stats, framesAnalyzed }`.
+
+## Outputs
+
+| Consumidor | Dado |
+|---|---|
+| Resposta imediata do `analyze-link` | `{ charts, technical_stats, summary, videosAnalyzed }` — em **`snake_case`** |
+| `GET /api/fight-analysis` · `/:id` · `/person/:personId` | análises em **`camelCase`** (via `parseAnalysisFromDB`) |
+| Módulo [`strategies`](./strategies.md) | as análises consolidadas em `technical_summary` + `technical_stats` |
+| Módulo [`athletes-opponents`](./athletes-opponents.md) | `technical_summary`, `technical_summary_updated_at` |
+| Módulo [`chat-and-versions`](./chat-and-versions.md) | a análise como contexto de chat, e as versões editadas |
+| Módulo [`usage-tracking`](./usage-tracking.md) | tokens somados de todos os vídeos |
+
+⚠️ **A assimetria `snake_case` / `camelCase` entre esses dois primeiros é um bug ativo** — ver *Known Issues*.
+
+## Dependencies
+
+- `services/geminiService.js#analyzeFrame` — monta prompt e chama a IA
+- `services/llm.js` — fronteira única com `@google/genai`
+- `schemas/videoAnalysis.js#VIDEO_ANALYSIS_SCHEMA` — contrato de saída
+- `services/prompts/video-analysis.txt`
+- `services/videoDownloader.js` — `yt-dlp` (binário, **dependência de sistema não declarada**) → fallback `@distube/ytdl-core`
+- Gemini **Files API** — para o caminho de upload
+- `config/ai.js` — modelo, temperatura, `BELT_RULES`, limites de vídeo
+- `utils/chartUtils.js#normalizeChartData`, `utils/profileUtils.js#extractTechnicalProfile`
+- `StrategyService.consolidateAnalyses` — regeneração do resumo
+- `utils/tenantScope.js`, `utils/dbParsers.js`
+
+## Flow
+
+```mermaid
+flowchart TD
+    UI["VideoAnalysis.jsx: pessoa + kimono + resultado + N URLs"] --> POST["POST /api/ai/analyze-link"]
+    POST --> VAL{"toda URL é<br/>do YouTube?"}
+    VAL -->|não| E400["400"]
+    VAL -->|sim| LOOP["loop SERIAL sobre N vídeos<br/>⚠️ sem limite"]
+
+    LOOP --> T1["Tentativa 1: URL do YouTube<br/>direto para o Gemini"]
+    T1 -->|aceita| SCHEMA["JSON validado por<br/>VIDEO_ANALYSIS_SCHEMA"]
+    T1 -->|recusa| DL["download: yt-dlp → ytdl-core<br/>máx 200MB / 720p / 120s"]
+    DL --> UP["upload Files API<br/>aguarda ACTIVE (máx 120s)"]
+    UP --> T2["Tentativa 2: fileData{fileUri}"]
+    T2 --> SCHEMA
+    SCHEMA --> NORM["normalizeAnalysisCharts<br/>força soma 100%"]
+    NORM --> CLEAN["finally: remove arquivo local<br/>+ delete na Files API"]
+    CLEAN --> LOOP
+
+    LOOP --> CONS["consolidateAnalyses<br/>(função PURA, sem IA)"]
+    CONS --> MULTI{">1 resumo?"}
+    MULTI -->|sim| AI2["consolidateSummariesWithAI<br/>(2ª chamada de IA)"]
+    MULTI -->|não| SAVE
+    AI2 --> SAVE{"personId<br/>enviado?"}
+    SAVE -->|não| RESP["responde sem persistir"]
+    SAVE -->|sim| INS["FightAnalysis.create<br/>⚠️ sem verificar posse de personId"]
+    INS --> TS["technical_summary reconsolidado<br/>(SÍNCRONO)"]
+    TS --> USAGE["ApiUsage.logUsage<br/>⚠️ provavelmente falha em silêncio"]
+    USAGE --> RESP
+
+    style INS fill:#8b1a1a,color:#fff
+```
+
+## Not Responsible For
+
+- **Cadastrar a pessoa** — módulo [`athletes-opponents`](./athletes-opponents.md).
+- **Gerar a estratégia** — módulo [`strategies`](./strategies.md). Este módulo produz evidência sobre **uma** pessoa; cruzar duas é outro módulo.
+- **Editar a análise via chat e versionar** — módulo [`chat-and-versions`](./chat-and-versions.md).
+- **Decidir o preço/custo** — módulo [`usage-tracking`](./usage-tracking.md).
+- **Upload de arquivo de vídeo** — não existe no produto.
+- **Progresso da operação** — não há canal de progresso no servidor; a barra na UI é simulada no cliente.
+
+## Known Issues
+
+| Severidade | Problema |
+|---|---|
+| **CRITICAL** | **Escrita cross-tenant.** `FightAnalysis.update()` e `.delete()` **não filtram `user_id`** no model — a posse é responsabilidade exclusiva do controller, e 3 endpoints do chat não a verificam (`manual-edit`, `restore-version`, `versions`). Ver [`../AUTHORIZATION.md`](../AUTHORIZATION.md#known-issues) |
+| **HIGH** | **`analyze-link` não valida posse de `personId`.** Cria análise vinculada a pessoa de outro tenant. O caminho equivalente (`POST /api/fight-analysis`) **faz** essa validação — mesma operação, dois níveis de rigor |
+| **HIGH** | **Nenhum limite em `videos[]`.** Cada item é uma inferência de vídeo em `gemini-2.5-pro`, a operação mais cara do sistema. Combinado com o rate limit ineficaz em serverless e o registro de custo quebrado, **não há controle efetivo de gasto** |
+| **HIGH** | **Trabalho longo em request serverless.** Download (até 120s) + upload/polling (até 120s) + inferência, × N vídeos em série, sem `maxDuration` no `vercel.json`. Provável timeout **após** consumir tokens. **NEEDS_CONFIRMATION:** plano da Vercel |
+| **HIGH** | **As estatísticas técnicas nunca aparecem no histórico.** A resposta imediata traz `technical_stats` (snake), o banco devolve `technicalStats` (camel), e os componentes de histórico leem `technical_stats`. Os pills "X raspagens" e o grid "Estatísticas Técnicas" só renderizam logo após analisar |
+| **MEDIUM** | **`technical_profile` da pessoa nunca é atualizado** — `updateTechnicalProfile` chamada com 2 de 3 argumentos, no-op silencioso |
+| **MEDIUM** | **Validação de host por substring** — `hostname.includes('youtube.com')` deixa `youtube.com.attacker.net` passar → SSRF limitado. O frontend é pior: aceita qualquer URL contendo "video" |
+| **MEDIUM** | **Consolidação de perfil pode rodar duas vezes** — `analyze-link` consolida no seu caminho, e `POST /api/fight-analysis` dispara `refreshTechnicalSummary` em *fire-and-forget*. Em serverless, trabalho após `res.json()` pode ser congelado antes de terminar |
+| **MEDIUM** | **Fallback degrada o dado em silêncio** — se a consolidação por IA falha, grava `summaries.join(' ')` em `technical_summary`, indistinguível de um resumo real, e isso alimenta a estratégia |
+| **MEDIUM** | **`person_type` não validado em `analyze-link`** — depende do CHECK do banco, e o erro do insert é engolido |
+| **MEDIUM** | **Sem retry nem timeout de inferência** — quota estourada perde a operação inteira, depois de o vídeo já ter sido baixado e enviado |
+| **MEDIUM** | **`controller` obeso** — `analyzeLink` tem 206 linhas orquestrando IA + persistência + efeitos colaterais |
+| **LOW** | **`frames_analyzed` é resquício** de um caminho de análise por frames estáticos já removido; a UI ainda exibe "N frames" |
+| **LOW** | **Gráficos não auditáveis** — percentuais forçados a somar 100%, sem timestamps nem eventos verificáveis. Ver [`../AI.md`](../AI.md#constraints) |
+| **LOW** | **Sem paginação** em `getAll` / `getByPersonId` |
+
+## Future Considerations
+
+- **Job assíncrono** (`202 {jobId}` + polling) — resolveria o timeout serverless e habilitaria progresso real na UI. `PLANNED`, sem implementação.
+- **Event log com timestamps** substituindo os percentuais forçados, com agregação determinística em código — proposto em [`../../SPEC-ANALISE-IA.md`](../../SPEC-ANALISE-IA.md) (A3/A4), não implementado.
+- **Normalizador único na borda** (`normalizeAnalysis()`) para encerrar a divergência `technical_stats` × `technicalStats`.
+- **Limite explícito de vídeos por request** + allow-list de modelos.
