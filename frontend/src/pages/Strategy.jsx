@@ -41,6 +41,12 @@ export default function Strategy() {
     },
   });
 
+  // DÍVIDA CONHECIDA (spec 010): o estado de carregamento é calculado a partir
+  // das duas queries e NUNCA é renderizado — a tela não mostra indicador de
+  // loading ao buscar atletas e adversários. Manter a variável preserva a
+  // evidência; removê-la orfanaria `isLoadingAthletes`/`isLoadingOpponents` e
+  // apagaria o rastro do problema. Decisão de UI, fora do escopo da spec 003.
+  // eslint-disable-next-line no-unused-vars
   const isLoadingData = isLoadingAthletes || isLoadingOpponents;
 
   const handleGenerateStrategy = () => {

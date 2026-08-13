@@ -12,6 +12,13 @@ const ProfileVersion = require('../models/ProfileVersion');
  * @param {string} userId - ID do usuário
  * @returns {number} Número da próxima versão
  */
+// DÍVIDA CONHECIDA: `userId` é recebido e IGNORADO porque a tabela
+// `analysis_versions` NÃO TEM coluna `user_id` (migration 010). É a causa
+// estrutural do vazamento AZ-3 em docs/AUTHORIZATION.md, e será resolvida pela
+// spec 006 (decisão P4: JOIN com a análise pai ou coluna denormalizada).
+// NÃO prefixe com _ : faria o parâmetro parecer descarte intencional e apagaria
+// a evidência do problema.
+// eslint-disable-next-line no-unused-vars
 async function ensureOriginalVersion(analysisId, currentData, userId) {
   try {
     const existingVersions = await AnalysisVersion.getByAnalysisId(analysisId, 'fight');
@@ -53,6 +60,9 @@ async function ensureOriginalVersion(analysisId, currentData, userId) {
  * @param {string} params.userId - ID do usuário
  * @returns {Object|null} Versão criada ou null
  */
+// DÍVIDA CONHECIDA: mesmo motivo de ensureOriginalVersion — `analysis_versions`
+// não tem coluna `user_id`. Ver spec 006.
+// eslint-disable-next-line no-unused-vars
 async function createAnalysisVersion({ analysisId, versionNumber, analysis, editReason, userId }) {
   try {
     const version = await AnalysisVersion.create({
@@ -88,6 +98,16 @@ async function createAnalysisVersion({ analysisId, versionNumber, analysis, edit
  * @param {string} params.editReason - Motivo da edição
  * @returns {Object|null} Versão criada ou null
  */
+// 🐛 BUG ATIVO — `editedBy` é recebido e IGNORADO.
+// Evidência DIRETA do defeito descrito na spec 007: esta função chama
+// ProfileVersion.create com chaves snake_case (person_id, summary,
+// change_description, created_by) enquanto create() desestrutura camelCase
+// (personId, content, editedBy, userId). Todos os campos chegam undefined, o
+// insert viola NOT NULL e o erro morre no catch abaixo.
+// Quebrado desde 2026-01-16 (commit 2b13a64) — verificado na spec 002.
+// NÃO prefixe com _ nem remova: o parâmetro precisa continuar visível até a
+// spec 007 corrigir o contrato.
+// eslint-disable-next-line no-unused-vars
 async function saveProfileVersion({ personId, personType, userId, currentSummary, editedBy = 'user', editReason = 'Edição manual' }) {
   try {
     const existingVersions = await ProfileVersion.getByPersonId(personId, personType);

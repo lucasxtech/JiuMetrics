@@ -1,6 +1,11 @@
 // Card para exibir informações de atleta/adversário - Design Moderno
 import CreatorBadge from './CreatorBadge';
 
+// DÍVIDA CONHECIDA (spec 010 / achado F7 da SPEC-FRONTEND): `weight`, `age`,
+// `style` e `technicalProfile` são recebidos e NUNCA renderizados. Remover as
+// props altera o contrato do componente e o que as telas passam — decisão de
+// produto, fora do escopo da spec 003 (portões de CI).
+/* eslint-disable no-unused-vars */
 export default function AthleteCard({ 
   name, 
   belt, 
@@ -13,6 +18,7 @@ export default function AthleteCard({
   onClick,
   type = 'athlete' // 'athlete' ou 'opponent'
 }) {
+  /* eslint-enable no-unused-vars */
   // Cores por faixa - Modernas e suaves
   const beltStyles = {
     'Branca': 'bg-slate-50 text-slate-700 border-slate-200',
