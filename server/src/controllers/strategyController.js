@@ -130,7 +130,6 @@ exports.compareAndStrategy = async (req, res) => {
  */
 exports.listAnalyses = async (req, res) => {
   try {
-    const userId = req.userId;
     const { athleteId, opponentId, limit, offset } = req.query;
 
     const allowedUserIds = await getScopeIds(req, User);
@@ -166,7 +165,6 @@ exports.listAnalyses = async (req, res) => {
 exports.getAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.userId;
 
     const allowedUserIds = await getScopeIds(req, User);
     const analysis = await TacticalAnalysis.getById(id, allowedUserIds);
@@ -199,7 +197,6 @@ exports.getAnalysis = async (req, res) => {
 exports.deleteAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.userId;
 
     const allowedUserIds = await getScopeIds(req, User);
     await TacticalAnalysis.delete(id, allowedUserIds);

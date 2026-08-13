@@ -3,7 +3,7 @@
  */
 
 const { handleError, asyncHandler } = require('../utils/errorHandler');
-const { AppError, NotFoundError, ValidationError } = require('../utils/errors');
+const { NotFoundError, ValidationError } = require('../utils/errors');
 
 describe('handleError', () => {
   let mockRes;

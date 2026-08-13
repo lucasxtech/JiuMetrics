@@ -222,7 +222,9 @@ function aggregateStats(usageRecords) {
 }
 
 // Alias para compatibilidade com logApiUsage (que passa endpoint em vez de operationType)
-async function create({ userId, endpoint, model: modelName, promptTokens, completionTokens, totalTokens, ...rest }) {
+// totalTokens é desestruturado de propósito para NÃO cair em ...rest (e daí em
+// metadata); logUsage o recalcula. O alias _ satisfaz o lint preservando isso.
+async function create({ userId, endpoint, model: modelName, promptTokens, completionTokens, totalTokens: _totalTokens, ...rest }) {
   const operationType = endpoint
     ? endpoint.replace(/^\/api\//, '').replace(/\//g, '_')
     : 'unknown';

@@ -189,7 +189,7 @@ exports.getSessionsByContext = async (req, res) => {
  */
 exports.applyEdit = async (req, res) => {
   try {
-    const { sessionId, analysisId, editSuggestion, acceptedByUser } = req.body;
+    const { sessionId, analysisId, editSuggestion } = req.body;
     const userId = req.userId;
 
     if (!analysisId || !editSuggestion) {

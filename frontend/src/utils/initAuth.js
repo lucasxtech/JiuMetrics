@@ -7,7 +7,6 @@ import api from '../services/api';
  */
 export const initializeAuth = () => {
   const token = localStorage.getItem('jiumetrics_token');
-  const user = localStorage.getItem('jiumetrics_user');
   
   if (token) {
     // Configurar token no header da API

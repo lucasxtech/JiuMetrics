@@ -79,7 +79,10 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err, req, res, next) => {
+// O 4º parâmetro é OBRIGATÓRIO: o Express identifica error handler por
+// fn.length === 4. Prefixado com _ para satisfazer o lint sem alterar a
+// aridade — renomear é seguro, remover quebraria o handler.
+app.use((err, req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: 'Erro interno do servidor' });
 });
