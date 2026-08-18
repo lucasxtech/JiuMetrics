@@ -54,7 +54,7 @@ O motivo original da separação, segundo o proprietário (2026-08-12): permitir
 
 ## Dependencies
 
-- `utils/tenantScope.js#getScopeIds` — regra de escopo
+- `services/authorization.js#resolveScope` — regra de escopo (spec 005; `utils/tenantScope.js#getScopeIds` é wrapper `@deprecated`)
 - `utils/dbParsers.js` — tradução `snake_case` → `camelCase`
 - `models/User.js#getGroupUserIds` — expansão do escopo para admin
 - `supabase` (cliente **anon**) — as tabelas têm RLS **desligado**
@@ -91,7 +91,7 @@ flowchart TD
 | **HIGH** | **`technical_profile` nunca é atualizado.** `Athlete.updateTechnicalProfile(personId, technicalProfile)` é chamada com **2 de 3 argumentos** em `fightAnalysisController`; com `userId === undefined`, o `getById` interno filtra `.in('user_id', [undefined])`, não acha nada e retorna `null` — **no-op silencioso**. Só não estoura erro porque `athletes.user_id` é `VARCHAR`, não `UUID` |
 | **HIGH** | **Regra de negócio duplicada e divergente.** `processPersonAnalyses` existe em `frontend/src/utils/athleteStats.js` (238 linhas) e `server/src/utils/athleteStatsUtils.js` (121 linhas), com o comentário *"Versão backend - espelhando a lógica do frontend"*. Já divergiram: o retorno quando `person` é falsy é diferente nos dois |
 | **MEDIUM** | **Defaults fabricados exibidos como fato.** Um atleta criado pelo QuickAdd com só nome+faixa aparece na tela de estratégia com "75 kg", "25 anos", "Guardeiro" — valores que ninguém informou |
-| **MEDIUM** | **Escopo inconsistente no chat de perfil.** `createProfileSession`, `saveProfileSummary` e `restoreProfileVersion` chamam `Model.getById(personId, userId)` com escalar em vez do array de `getScopeIds` → **admin perde o acesso ao grupo** nesses três caminhos |
+| **MEDIUM** | **Escopo inconsistente no chat de perfil.** `createProfileSession`, `saveProfileSummary` e `restoreProfileVersion` chamam `Model.getById(personId, userId)` com escalar em vez do array de `resolveScope` → **admin perde o acesso ao grupo** nesses três caminhos |
 | **MEDIUM** | **Duas tabelas e dois models idênticos** — toda lógica de CRUD, escopo e parsing duplicada |
 | **MEDIUM** | **Sem FK e sem cascade.** Deletar a pessoa deixa `fight_analyses`, `tactical_analyses` e `profile_versions` órfãos apontando para um `person_id` inexistente |
 | **MEDIUM** | **RLS desligado** nas duas tabelas + chave anon publicada em `frontend/.env.production` → acesso direto ao banco contornando a API. Ver [`../DATABASE.md`](../DATABASE.md#4-estado-de-rls--visão-consolidada) |

@@ -134,9 +134,9 @@ flowchart LR
 | `routes/` (10) | montagem de endpoints, rate limit, auth | Nenhuma exceção — a query de banco que existia em `routes/fightAnalysis.js` foi removida com a rota `/debug/all` (spec 002) |
 | `controllers/` (10) | validação, orquestração, resposta | Onde vive a checagem de posse — e onde ela falta em 6 pontos |
 | `models/` (10) | *data mappers* PostgREST | **Não são entidades de domínio.** Não há camada de domínio |
-| `services/` | IA e download de vídeo | `llm.js`, `geminiService.js`, `strategyService.js`, `videoDownloader.js` |
+| `services/` | IA, download de vídeo, **política de autorização** | `llm.js`, `geminiService.js`, `strategyService.js`, `videoDownloader.js`, `authorization.js` (ponto único de decisão — spec 005) |
 | `schemas/` | `responseSchema` do Gemini | Contrato de saída da IA |
-| `utils/` | erros, parsers, escopo, versões, custo | `tenantScope.js` é a regra de autorização |
+| `utils/` | erros, parsers, versões, custo | `tenantScope.js#getScopeIds` é wrapper `@deprecated` — a regra de autorização mudou para `services/authorization.js` (spec 005) |
 | `config/` | `ai.js` (domínio + infra), `supabase.js` (2 clientes) | |
 
 ### Endpoints (fonte de verdade: `server/src/routes/`)
@@ -211,12 +211,14 @@ O `authMiddleware` faz três validações por request, com cache em memória de 
 
 É por isso que **não existe escalonamento de privilégio** neste sistema. Ver [ADR-004](./decisions/004-token-version-para-invalidacao-de-sessao.md).
 
-**Autorização:** dois papéis (`admin`, `user`). Toda a regra de escopo cabe em um helper de 8 linhas, `utils/tenantScope.js#getScopeIds`:
+**Autorização:** dois papéis (`admin`, `user`). Toda a regra de escopo cabe num ponto único de decisão, `services/authorization.js#resolveScope` (spec 005 — antes vivia em `utils/tenantScope.js#getScopeIds`, que agora é só um wrapper `@deprecated`):
 
 - `admin` → todos os `user_id` do mesmo `tenant_id`;
 - `user` → apenas o próprio `user_id`.
 
-**Problema conhecido:** o helper é correto, mas **não é obrigatório**. `getScopeIds` é chamado **23 vezes** nos controllers (contagem verificada em 2026-08-12) e está **ausente em 6 endpoints**, além de 1 chamada de escrita desprotegida dentro de um endpoint correto. Ver [`AUTHORIZATION.md`](./AUTHORIZATION.md#known-issues).
+O ator (`{ id, role, tenantId }`) é extraído do `req` pelo `authMiddleware` (`req.actor`) — o módulo de política nunca importa Express nem lê `req` diretamente, o que o torna testável sem HTTP. Existe também `authorize(actor, action, resource)`, com implementação mínima (equivalente a `resolveScope`), reservado para as dimensões futuras do §6 do [plano de refatoração](../JIU_METRICS_REFACTORING_PLAN.md#6-autenticação-e-autorização--target).
+
+**Problema conhecido:** a regra é correta, mas **não é obrigatória**. `resolveScope` é chamado **23 vezes** nos controllers (contagem verificada em 2026-08-12, preservada pela migração da spec 005) e está **ausente em 6 endpoints**, além de 1 chamada de escrita desprotegida dentro de um endpoint correto — mover o filtro para o model é a spec 006. Ver [`AUTHORIZATION.md`](./AUTHORIZATION.md#known-issues).
 
 ---
 

@@ -101,21 +101,21 @@ Aplicado em: todo `/api/admin/*` e em `GET /api/debug/env-check`.
 
 ## 5. Ownership — a regra de escopo
 
-Toda a autorização de dados do sistema cabe em 8 linhas (`utils/tenantScope.js`):
+✅ **SPEC-005 (2026-08-18):** a regra vive agora em `server/src/services/authorization.js` — um módulo desacoplado do Express (`resolveScope(actor)`, `authorize(actor, action, resource)`), não mais em `utils/tenantScope.js`. `getScopeIds` continua existindo só como wrapper `@deprecated`, delegando ao novo módulo; nenhum dos 23 call sites o chama mais. **Comportamento idêntico ao de antes** — a extração ganhou um novo endereço, não mudou de regra.
 
 ```js
-async function getScopeIds(req, User) {
-  if (req.user?.role === 'admin') return User.getGroupUserIds(req.userId); // todos do tenant
-  return [req.userId];                                                     // só o próprio
+async function resolveScope(actor) {
+  if (actor?.role === 'admin') return User.getGroupUserIds(actor.id); // todos do tenant
+  return [actor.id];                                                   // só o próprio
 }
 ```
 
-O resultado é um array de `user_id` usado como filtro nas queries: `.in('user_id', allowedUserIds)`.
+`actor` é `{ id, role, tenantId }`, extraído do `req` pelo `middleware/auth.js` (que popula `req.actor`) — o módulo de política nunca vê `req`. O resultado de `resolveScope` é um array de `user_id` usado como filtro nas queries: `.in('user_id', allowedUserIds)`.
 
 **O padrão correto**, aplicado consistentemente em `athleteController`, `opponentController`, `fightAnalysisController`, `strategyController`, `usageController`:
 
 ```js
-const allowedUserIds = await getScopeIds(req, User);
+const allowedUserIds = await resolveScope(req.actor);
 const recurso = await Model.getByIdAndUser(req.params.id, allowedUserIds);
 if (!recurso) return res.status(404).json({ error: 'não encontrado' });
 // escrita usa o owner REAL do registro, não o requisitante:
@@ -134,7 +134,7 @@ Dois detalhes deste padrão que merecem atenção ao replicá-lo:
 | **Rotas do frontend** | `ProtectedRoute` (`requireAdmin`) | ❌ **UX apenas** — `isAdmin` vem do `localStorage` |
 | **API — autenticação** | `authMiddleware` em todos os routers exceto `/auth/login`, `/auth/register`, `/api/health` | ✅ |
 | **API — papel** | `adminMiddleware` em `/admin` e `/debug` | ✅ |
-| **API — posse do dado** | `getScopeIds` no controller | ⚠️ **23 chamadas nos controllers; ausente em 6 endpoints** (+1 chamada de escrita desprotegida dentro de um endpoint correto — AZ-5) |
+| **API — posse do dado** | `resolveScope` (`services/authorization.js`, spec 005) no controller | ⚠️ **23 chamadas nos controllers; ausente em 6 endpoints** (+1 chamada de escrita desprotegida dentro de um endpoint correto — AZ-5). A extração mudou de módulo; a contagem de vazamentos não — corrigir é a spec 006 |
 | **Model** | filtro `user_id` na query | ⚠️ **inconsistente** — `FightAnalysis.update/delete` e todos os métodos de `AnalysisVersion` aceitam qualquer ID |
 | **Banco (RLS)** | — | ❌ **desligado** em `athletes`/`opponents`/`fight_analyses`; `USING (true)` em outras 3 tabelas |
 | **Rate limiting** | `express-rate-limit` | ❌ **`MemoryStore` em serverless** — contador por instância |
@@ -151,7 +151,7 @@ flowchart TD
     ADMIN -->|sim| AM["adminMiddleware: role === 'admin'"]
     ADMIN -->|não| CTRL["controller"]
     AM --> CTRL
-    CTRL --> SCOPE{"controller chama<br/>getScopeIds?"}
+    CTRL --> SCOPE{"controller chama<br/>resolveScope?"}
     SCOPE -->|"sim (23 chamadas)"| FILTER["query filtrada por user_id → seguro"]
     SCOPE -->|"NÃO (6 endpoints)"| LEAK["ID do req.body vai cru para o model<br/>→ acesso cross-tenant"]
     FILTER --> DB[("Supabase — sem RLS efetivo")]
@@ -249,7 +249,9 @@ Investigados e **descartados**, para não desperdiçar esforço futuro:
 >
 > Specs: [005](../specs/005-authorization-policy-seam/spec.md) (seam de política) e [006](../specs/006-ownership-in-data-access/spec.md) (ownership no acesso a dados).
 
-## Decidido (`PLANNED`)
+## Decidido (`PLANNED` / em execução)
+
+✅ **Estágio 1 do seam de política — parcialmente concluído.** A spec 005 criou o ponto único de decisão (`services/authorization.js`) e migrou os 23 call sites, sem ganho funcional (comportamento idêntico, ver §5). Falta a spec 006 para completar o Estágio 1: empurrar o filtro de posse para o model, o que fecha os 6 vazamentos. Ver [JIU_METRICS_REFACTORING_PLAN.md §6.3](../JIU_METRICS_REFACTORING_PLAN.md#63-evolução-em-três-estágios) e [ADR-011](./decisions/011-seam-de-politica-de-autorizacao.md).
 
 **Acesso ao banco exclusivamente por `service_role`** — revogar todo GRANT de `anon`/`authenticated` nas tabelas; o backend passa a ser o único caminho até o dado. Ver [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
 
@@ -257,12 +259,12 @@ Consequência que precisa ficar explícita: **isso remove qualquer possibilidade
 
 ## Em consideração (sem decisão)
 
-- **Empurrar o filtro de posse para o model** — fazer `FightAnalysis.update/delete` exigirem escopo, para que a próxima omissão de controller *falhe* em vez de vazar. É a correção estrutural; os 6 endpoints são o sintoma.
+- **Empurrar o filtro de posse para o model** — fazer `FightAnalysis.update/delete` exigirem escopo, para que a próxima omissão de controller *falhe* em vez de vazar. É a correção estrutural; os 6 endpoints são o sintoma. Consome o escopo resolvido por `services/authorization.js` (spec 005) — spec 006.
 - **Autorização de `analysis_versions`** — a tabela não tem dono. A autorização precisa derivar da `fight_analysis` pai, o que exige decidir entre `JOIN` na consulta ou adicionar `user_id` denormalizado.
-- **Testes de autorização como portão de CI** — hoje não existe um único teste que verifique que o usuário A não lê o dado do usuário B. Nenhuma das 9 falhas acima seria detectada pela suíte atual.
+- **Testes de autorização como portão de CI** — ✅ os testes existem desde a spec 004 (`server/src/__tests__/authorization/`), vermelhos e intencionais; ainda não bloqueiam o CI (passam a bloquear na spec 006).
 - **Token de acesso curto + refresh token** — reduziria a janela de um token vazado (hoje 7–30 dias).
 - **Rate limiting com store externo** ou na borda.
-- **Papéis profissionais** (médico, nutricionista, preparador) **não estão no domínio atual** — ver [`DOMAIN.md`](./DOMAIN.md#6-o-que-não-faz-parte-do-domínio-atual). Se entrarem, o modelo binário `admin`/`user` e a ausência de RLS precisam ser reavaliados **antes** de qualquer implementação, porque passariam a existir dados sensíveis cruzando fronteira de organização.
+- **Papéis profissionais** (médico, nutricionista, preparador) **não estão no domínio atual** — ver [`DOMAIN.md`](./DOMAIN.md#6-o-que-não-faz-parte-do-domínio-atual). Se entrarem, o modelo binário `admin`/`user` e a ausência de RLS precisam ser reavaliados **antes** de qualquer implementação, porque passariam a existir dados sensíveis cruzando fronteira de organização. O seam (`authorize(actor, action, resource)`) existe para que essa evolução não exija tocar controllers de novo.
 
 ---
 

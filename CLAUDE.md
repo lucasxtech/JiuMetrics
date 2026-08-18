@@ -83,13 +83,15 @@ Regras não negociáveis:
 **O padrão obrigatório** em qualquer endpoint que toque dado de usuário:
 
 ```js
-const allowedUserIds = await getScopeIds(req, User);           // utils/tenantScope.js
+const allowedUserIds = await resolveScope(req.actor);   // services/authorization.js — spec 005
 const recurso = await Model.getByIdAndUser(req.params.id, allowedUserIds);
 if (!recurso) return res.status(404).json({ error: 'não encontrado' });
 await Model.update(id, dados, recurso.userId);   // owner REAL, não o requisitante
 ```
 
 Dois detalhes: **404, não 403** (não vaza existência); e a escrita usa o `userId` **do registro**, permitindo admin editar dado de membro do grupo.
+
+`utils/tenantScope.js#getScopeIds` ainda existe, mas é **wrapper `@deprecated`** delegando a `resolveScope` — não use em código novo. `req.actor` (`{ id, role, tenantId }`) é populado pelo `authMiddleware`; `services/authorization.js` nunca importa Express nem lê `req` diretamente, o que o torna testável sem HTTP (ver [ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md)).
 
 **Armadilha ativa:** `FightAnalysis.update()` e `.delete()` **não filtram `user_id`**, e nenhum método de `AnalysisVersion` filtra (a tabela nem tem a coluna). **Se você chamar esses métodos sem verificar posse antes, cria um IDOR.** Já existem 6 casos assim no código — não some ao total. Referência de model bem feito: `models/TacticalAnalysis.js` (filtra em todos os métodos).
 
@@ -162,7 +164,7 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 2. **Verifique se o comportamento que você acha que existe realmente existe.** Três funcionalidades da UI nunca funcionaram; várias falham dentro de um `catch` silencioso.
 3. **Se a mudança é relevante** (ver *Specs*), escreva a spec primeiro e obtenha aprovação.
 4. **Implemente**, seguindo os padrões deste arquivo — em especial o padrão de autorização.
-5. **Teste.** Se a mudança toca autorização, **escreva o teste de posse primeiro** (deve falhar antes, passar depois). Desde a [spec 004](./specs/004-authorization-safety-net/spec.md) existe `server/src/__tests__/authorization/` — fixtures de 2 tenants × 2 usuários (`support/fixtures.js`) e um fake de PostgREST em memória (`support/fakeSupabase.js`, `support/supabaseMock.js`) prontos para reuso. Reaproveite-os em vez de recriar fixtures; não mocke `models/*` nem `utils/tenantScope` nesses testes — é exatamente o que os testes de controller existentes já fazem, e por isso nunca provariam ownership.
+5. **Teste.** Se a mudança toca autorização, **escreva o teste de posse primeiro** (deve falhar antes, passar depois). Desde a [spec 004](./specs/004-authorization-safety-net/spec.md) existe `server/src/__tests__/authorization/` — fixtures de 2 tenants × 2 usuários (`support/fixtures.js`) e um fake de PostgREST em memória (`support/fakeSupabase.js`, `support/supabaseMock.js`) prontos para reuso. Reaproveite-os em vez de recriar fixtures; não mocke `models/*` nem `services/authorization` nesses testes — é exatamente o que os testes de controller existentes já fazem, e por isso nunca provariam ownership.
 6. **Atualize a documentação na mesma tarefa** (ver *Documentation Integrity*).
 7. **Atualize o [`CHANGELOG.md`](./CHANGELOG.md)** se a mudança é relevante para quem usa ou opera o sistema.
 8. **Nunca commite direto em `main`.** Trabalhe em branch e abra PR.

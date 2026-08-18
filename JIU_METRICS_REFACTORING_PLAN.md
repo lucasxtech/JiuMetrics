@@ -431,6 +431,8 @@ flowchart TD
 
 **O Estágio 1 é a única coisa a fazer agora**, e é deliberadamente sem ganho funcional: mesma regra, mesmo comportamento, novo endereço. É a costura.
 
+✅ **Etapa 3 concluída (spec 005, 2026-08-18):** `services/authorization.js` existe, com `resolveScope`/`authorize`, e os 23 call sites foram migrados. `getScopeIds` é wrapper `@deprecated`. Comportamento idêntico, provado pelos testes de baseline da spec 004. Falta a **etapa 4 (spec 006)** para completar o Estágio 1: empurrar o filtro de posse para dentro dos models, fechando os 6 vazamentos. Ver [ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md).
+
 ### 6.4 Como evitar os problemas conhecidos
 
 | Problema | Mecanismo no `TARGET` |

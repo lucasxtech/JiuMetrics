@@ -1,6 +1,6 @@
 # SPEC-005 — Seam de política de autorização
 
-**Status: Proposed** · Etapa 3 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (2026-08-18)** · Etapa 3 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
 
 ## Context
 
@@ -88,14 +88,14 @@ Esta spec deliberadamente **não entrega ganho funcional**. Entrega a costura on
 
 ## Acceptance Criteria
 
-- [ ] Módulo `authorization` existe e seus testes rodam **sem** Express
-- [ ] `resolveScope(actor)` cobre admin (tenant) e usuário comum (próprio id)
-- [ ] `authorize(actor, action, resource)` existe, documentada, com implementação mínima
-- [ ] `grep -rn "getScopeIds" server/src` retorna **apenas** o wrapper deprecado e seus usos internos
-- [ ] Todos os testes da spec 004 passam **sem uma linha alterada**
-- [ ] Diff de comportamento vazio: mesmas respostas para as mesmas requisições
-- [ ] Wrapper `getScopeIds` marcado como deprecado, apontando o substituto
-- [ ] ADR novo registrando a decisão do seam
+- [x] Módulo `authorization` existe e seus testes rodam **sem** Express (`server/src/services/authorization.js` + `__tests__/authorization.test.js`)
+- [x] `resolveScope(actor)` cobre admin (tenant), usuário comum (próprio id) e ator sem role
+- [x] `authorize(actor, action, resource)` existe, documentada, com implementação mínima
+- [x] `grep -rn "getScopeIds" server/src` retorna **apenas** o wrapper deprecado (`utils/tenantScope.js`) e seu comentário em `services/authorization.js` — verificado
+- [x] Todos os testes da spec 004 passam **sem uma linha alterada** (`git diff` vazio em `src/__tests__/authorization/` e `src/utils/__tests__/tenantScope.test.js`)
+- [x] Diff de comportamento vazio: suíte completa 194 → 201 testes, todos verdes; baseline B1–B5 inalterado
+- [x] Wrapper `getScopeIds` marcado como deprecado, apontando o substituto
+- [x] ADR novo registrando a decisão do seam ([ADR-011](../../docs/decisions/011-seam-de-politica-de-autorizacao.md))
 
 ## Testing Strategy
 
@@ -106,7 +106,7 @@ Esta spec deliberadamente **não entrega ganho funcional**. Entrega a costura on
 | **Regressão (spec 004)** | B1–B5 passam **sem modificação** — é a prova principal de que nada mudou |
 | **Regressão (existente)** | as 16 suítes de backend passam. Os testes que mockam `utils/tenantScope` podem precisar mockar o novo módulo — **essa alteração é permitida e esperada**, e é a única exceção a R5 |
 
-⚠️ Nota sobre R5 vs os mocks existentes: três suítes de controller fazem `jest.mock('../../utils/tenantScope')`. Ao migrar os call sites, esses mocks passam a apontar para o lugar errado. **Atualizá-los é parte do escopo** e não viola R5, que se refere aos testes **novos** da spec 004 (que testam via API, não via mock).
+⚠️ Nota sobre R5 vs os mocks existentes: a spec estimava três suítes de controller com `jest.mock('../../utils/tenantScope')`; a contagem real, verificada na implementação, é **duas** (`fightAnalysisController.test.js` e `strategyController.test.js` — `aiController.test.js` só testa o stub `analyzeVideo`, que não chama a política). Ao migrar os call sites, esses mocks passam a apontar para o lugar errado. **Atualizá-los é parte do escopo** e não viola R5, que se refere aos testes **novos** da spec 004 (que testam via API, não via mock).
 
 ## Documentation Impact
 

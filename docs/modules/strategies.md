@@ -71,7 +71,7 @@ Consumidores: `pages/Strategy.jsx` (visualização imediata), `pages/Analyses.js
 ```mermaid
 flowchart TD
     UI["Strategy.jsx: seleciona atleta + adversário"] --> POST["POST /api/strategy/compare"]
-    POST --> SCOPE["getScopeIds → Athlete/Opponent.getById<br/>✅ posse verificada"]
+    POST --> SCOPE["resolveScope → Athlete/Opponent.getById<br/>✅ posse verificada"]
     SCOPE --> FOUND{"os dois<br/>existem?"}
     FOUND -->|não| E404["404"]
     FOUND -->|sim| FETCH["análises dos dois lados<br/>1 query cada, em paralelo"]

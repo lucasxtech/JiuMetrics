@@ -16,6 +16,7 @@ Registro das decisões arquiteturais do JiuMetrics. Cada ADR captura **o problem
 | [008](./008-vercel-como-unico-destino-de-deploy.md) | Vercel como único destino de deploy | **Accepted — não implementado** |
 | [009](./009-acesso-ao-banco-exclusivamente-por-service-role.md) | Acesso ao banco exclusivamente por `service_role` | **Accepted — não implementado** |
 | [010](./010-adotar-typescript-incrementalmente.md) | Adotar TypeScript incrementalmente | **Accepted — não implementado** |
+| [011](./011-seam-de-politica-de-autorizacao.md) | Seam de política de autorização (`services/authorization.js`) | **Accepted — implementado** |
 
 ## Convenções
 

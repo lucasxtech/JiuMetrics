@@ -148,7 +148,7 @@ Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **esc
 |---|---|
 | **Tipagem** | **Ausente na aplicação** — 148 arquivos JS, 0 TS. As 3 falhas silenciosas seriam erro de compilação. Decisão de adotar: [ADR-010](./decisions/010-adotar-typescript-incrementalmente.md) (`PLANNED`) |
 | **Lint** | ✅ **RESOLVIDO na spec 003** — lint de frontend **e** backend bloqueiam merge. O do backend usa conjunto mínimo (só erro real, não estilo). Dívida remanescente: sem Prettier, `.editorconfig` nem pre-commit; ampliar o conjunto de regras é spec futura |
-| **Testes de autorização** | ✅ **EXISTEM desde a spec 004** — 6 testes de vazamento (`test.failing`, vermelho intencional até a spec 006 corrigir) + 5 de baseline (passam hoje, protegem o comportamento de admin) + testes de unidade de `getScopeIds`. `server/src/__tests__/authorization/`. Rodam contra um **fake de PostgREST em memória** (decisão P2), não banco real — não existe projeto Supabase de teste separado da produção. **Limitação aceita:** prova que o filtro foi *pedido* na chamada, não que a query final restringiria as linhas num Postgres real; revisitar se/quando houver banco de teste dedicado |
+| **Testes de autorização** | ✅ **EXISTEM desde a spec 004** — 6 testes de vazamento (`test.failing`, vermelho intencional até a spec 006 corrigir) + 5 de baseline (passam hoje, protegem o comportamento de admin). `server/src/__tests__/authorization/`. Rodam contra um **fake de PostgREST em memória** (decisão P2), não banco real — não existe projeto Supabase de teste separado da produção. **Limitação aceita:** prova que o filtro foi *pedido* na chamada, não que a query final restringiria as linhas num Postgres real; revisitar se/quando houver banco de teste dedicado. Desde a spec 005, a regra de escopo em si é testada em `server/src/services/__tests__/authorization.test.js` (sem Express); `utils/__tests__/tenantScope.test.js` cobre só o wrapper `@deprecated` |
 | **Testes inertes** | ✅ **RESOLVIDO na spec 003** — `server/tests/` removido (3 scripts com zero `describe`/`it`, confirmados como não alcançados por `jest --listTests`) |
 | **Testes E2E** | 6 specs bem construídos, com Page Objects e fixtures — **continuam não executados no CI**. A spec 003 tentou ligá-los e **diferiu**: exigem backend + banco + usuário semeado, que é ambiente de teste, não job de CI. A spec 004 resolveu a decisão de banco de teste (P2) **só para a rede de autorização** — optou por fake de PostgREST, que não serve para o Playwright (ele precisa de um backend de verdade respondendo). O pré-requisito de ambiente real para E2E continua em aberto, sem spec própria ainda |
 | **Cobertura de frontend** | 5 arquivos de teste para 79 de código (~6%); 1 teste de componente |
@@ -198,22 +198,22 @@ Histórico completo de lutas · histórico de lesões · acompanhamento médico,
 
 ## Refactoring
 
-> **`PROPOSED`.** Nada abaixo está implementado. Arquitetura-alvo, justificativas e análise de risco em **[`../JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md)**.
+> Arquitetura-alvo, justificativas e análise de risco em **[`../JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md)**. **4 de 10 etapas implementadas** (2026-08-18); as demais seguem `Status: Proposed`.
 
-Escopo aprovado em 2026-08-12: **tudo**, na ordem de dependência. Cada etapa tem uma spec própria em [`../specs/`](../specs/), todas com `Status: Proposed`.
+Escopo aprovado em 2026-08-12: **tudo**, na ordem de dependência. Cada etapa tem uma spec própria em [`../specs/`](../specs/).
 
-| Etapa | Spec | Escopo |
-|---|---|---|
-| **0** | [002](../specs/002-verification-baseline/spec.md) | Verificação e contenção — rotacionar a chave do Gemini, confirmar o estado real do banco, remover `/debug/all`. **Não escreve código** |
-| **1** | [003](../specs/003-quality-gates/spec.md) | Portões de CI — ESLint no backend, secrets scanning bloqueante, Playwright no CI |
-| **2** | [004](../specs/004-authorization-safety-net/spec.md) | Rede de testes de autorização — **escritos para falhar** antes da correção |
-| **3** | [005](../specs/005-authorization-policy-seam/spec.md) | Seam de política — ponto único de decisão, comportamento idêntico |
-| **4** | [006](../specs/006-ownership-in-data-access/spec.md) | **Ownership obrigatório no acesso a dados** — fecha os 6 vazamentos e a classe inteira |
-| **5** | [007](../specs/007-silent-failures-and-input-validation/spec.md) | Falhas silenciosas e validação de entrada |
-| **6** | [008](../specs/008-database-access-lockdown/spec.md) | Fechamento do acesso ao banco — revogar `anon` |
-| **7** | [009](../specs/009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA |
-| **8** | [010](../specs/010-frontend-consolidation/spec.md) | Consolidação do frontend — XSS, normalização, duplicação |
-| **9** | [011](../specs/011-schema-integrity/spec.md) | Integridade de schema — **maior risco, menor urgência** |
+| Etapa | Spec | Escopo | Status |
+|---|---|---|---|
+| **0** | [002](../specs/002-verification-baseline/spec.md) | Verificação e contenção — rotacionar a chave do Gemini, confirmar o estado real do banco, remover `/debug/all`. **Não escreve código** | ✅ Implemented (parcial) |
+| **1** | [003](../specs/003-quality-gates/spec.md) | Portões de CI — ESLint no backend, secrets scanning bloqueante, Playwright no CI | ✅ Implemented (item 4 diferido) |
+| **2** | [004](../specs/004-authorization-safety-net/spec.md) | Rede de testes de autorização — **escritos para falhar** antes da correção | ✅ Implemented |
+| **3** | [005](../specs/005-authorization-policy-seam/spec.md) | Seam de política — ponto único de decisão, comportamento idêntico | ✅ Implemented |
+| **4** | [006](../specs/006-ownership-in-data-access/spec.md) | **Ownership obrigatório no acesso a dados** — fecha os 6 vazamentos e a classe inteira | Proposed |
+| **5** | [007](../specs/007-silent-failures-and-input-validation/spec.md) | Falhas silenciosas e validação de entrada | Proposed |
+| **6** | [008](../specs/008-database-access-lockdown/spec.md) | Fechamento do acesso ao banco — revogar `anon` | Proposed |
+| **7** | [009](../specs/009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | Proposed |
+| **8** | [010](../specs/010-frontend-consolidation/spec.md) | Consolidação do frontend — XSS, normalização, duplicação | Proposed |
+| **9** | [011](../specs/011-schema-integrity/spec.md) | Integridade de schema — **maior risco, menor urgência** | Proposed |
 
 **Princípio que governa a ordem:** verificar antes de corrigir; **ligar os portões antes de mexer no código**. Sem teste de posse, corrigir 6 endpoints de autorização é apostar — e é justamente esse tipo de garantia que já falhou três vezes neste projeto.
 

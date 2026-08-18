@@ -82,7 +82,7 @@ sequenceDiagram
     participant DB as conteúdo
 
     U->>CC: POST /session {contextType, contextId}
-    CC->>DB: valida posse ✅ (getScopeIds)
+    CC->>DB: valida posse ✅ (resolveScope)
     CC->>CS: create com context_snapshot
     CS-->>U: sessionId
 
@@ -139,7 +139,7 @@ Os quatro problemas abaixo compartilham a mesma causa: **o `analysisId`/`session
 
 | # | Problema |
 |---|---|
-| **Escopo escalar em vez de array** | `createProfileSession`, `saveProfileSummary` e `restoreProfileVersion` passam `userId` escalar onde o resto do sistema passa o array de `getScopeIds` → **admin perde acesso ao grupo** nesses três caminhos |
+| **Escopo escalar em vez de array** | `createProfileSession`, `saveProfileSummary` e `restoreProfileVersion` passam `userId` escalar onde o resto do sistema passa o array de `resolveScope` → **admin perde acesso ao grupo** nesses três caminhos |
 | **Escritas sem filtro de usuário no model** | `ChatSession.addMessage`, `addMessages` e `updateContextSnapshot` não filtram `user_id`. Hoje são chamadas após um `getById` validado (exceto AZ-5), mas a proteção é convencional, não estrutural |
 | **`type` do query string sem validação** | `GET /versions/:analysisId?type=...` passa o valor cru para a query |
 | **Sem validação de shape na edição de análise** | Estratégia tem `validateStrategyField`; análise não tem equivalente |

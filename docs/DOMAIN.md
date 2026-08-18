@@ -292,7 +292,7 @@ erDiagram
     TACTICAL_ANALYSIS ||--o{ STRATEGY_VERSION : "analysis_id (FK CASCADE)"
 ```
 
-**Regra de escopo** — toda a autorização de dados cabe em `utils/tenantScope.js#getScopeIds`:
+**Regra de escopo** — toda a autorização de dados cabe em `services/authorization.js#resolveScope` (spec 005; antes vivia em `utils/tenantScope.js#getScopeIds`, que hoje é só um wrapper `@deprecated`):
 
 | Papel | Vê |
 |---|---|

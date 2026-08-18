@@ -420,7 +420,7 @@ Consequências reais:
 ### Padrão de leitura
 
 ```js
-const allowedUserIds = await getScopeIds(req, User);   // admin → grupo; user → só ele
+const allowedUserIds = await resolveScope(req.actor);   // admin → grupo; user → só ele (services/authorization.js, spec 005)
 await supabase.from('tabela').select('*').in('user_id', allowedUserIds);
 ```
 

@@ -11,6 +11,29 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### Seam de política de autorização — 2026-08-18 · [spec 005](./specs/005-authorization-policy-seam/spec.md)
+
+`refactor:` — **sem mudança de comportamento observável.** Mesma regra, mesmo resultado para as mesmas requisições; só mudou onde ela mora.
+
+#### Adicionado
+
+- **`server/src/services/authorization.js`** — ponto único de decisão de autorização: `resolveScope(actor)` (idêntico ao antigo `getScopeIds`) e `authorize(actor, action, resource)` (assinatura estável para as dimensões futuras — papel profissional, relacionamento, escopo de campo). Testável sem Express: `server/src/services/__tests__/authorization.test.js`.
+- **`req.actor = { id, role, tenantId }`** — populado por `middleware/auth.js` ao lado do já existente `req.user`/`req.userId`. `tenantId` fica reservado (não resolvido eagerly, para não adicionar query em todo request).
+- **[ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md)** — contexto, decisão, por que não RBAC agora.
+
+#### Alterado
+
+- **23 call sites em 8 controllers** migrados de `getScopeIds(req, User)` para `resolveScope(req.actor)`. `import` de `models/User` removido nos 7 controllers onde só existia para alimentar essa chamada (mantido em `fightAnalysisController`, que usa `User.getGroupUserIds` diretamente em outro lugar).
+- **`utils/tenantScope.js#getScopeIds`** vira wrapper `@deprecated`, delegando a `resolveScope`. `grep -rn "getScopeIds" server/src` confirma: só o wrapper.
+- **2 suítes de controller** (`fightAnalysisController.test.js`, `strategyController.test.js`) tiveram o mock de `utils/tenantScope` trocado por `services/authorization` — única exceção prevista à regra de "nenhum teste muda".
+
+#### Verificação
+
+- Os 5 testes de baseline da spec 004 (B1–B5) passam **sem uma linha alterada** — é a prova de que o comportamento não mudou.
+- Suíte completa: 194 → 201 testes, todos verdes. Lint: 0 erros, 0 avisos.
+
+---
+
 ### Rede de testes de autorização — 2026-08-18 · [spec 004](./specs/004-authorization-safety-net/spec.md)
 
 Nenhuma correção de código (`git diff server/src` vazio). O objetivo desta spec era produzir testes vermelhos **intencionais e documentados** para os 6 endpoints sem verificação de posse — a correção é escopo da spec 006.

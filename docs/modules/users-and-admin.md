@@ -8,7 +8,7 @@
 
 ## Responsibility
 
-Gerenciar identidade, credenciais, papéis e pertencimento a grupo (`tenant`), além de ser a origem de toda decisão de autorização do sistema (via `getScopeIds`).
+Gerenciar identidade, credenciais, papéis e pertencimento a grupo (`tenant`). Desde a spec 005, a decisão de autorização em si vive em `services/authorization.js` (`resolveScope`/`authorize`) — este módulo fornece o `actor` (via `authMiddleware`) e o `User.getGroupUserIds` que a política consome, mas não é mais a origem da regra.
 
 Concentra três coisas que em sistemas maiores estariam separadas: autenticação, gestão de usuários e a regra de escopo de dados.
 
@@ -64,8 +64,8 @@ Concentra três coisas que em sistemas maiores estariam separadas: autenticaçã
 ## Outputs
 
 - **JWT + objeto do usuário** (`{id, name, email, role}`) no login/registro
-- **`req.user = {id, role}`** e **`req.userId`** para todos os controllers a jusante — é a saída mais consumida do módulo
-- **`getScopeIds(req, User)`** → array de `user_id`, a base de toda autorização de dados
+- **`req.user = {id, role}`**, **`req.userId`** e **`req.actor = {id, role, tenantId}`** (spec 005) para todos os controllers a jusante — é a saída mais consumida do módulo
+- **`User.getGroupUserIds`** — consumido por `services/authorization.js#resolveScope`, não chamado diretamente pelos controllers
 - **Lista de usuários do tenant** para o painel admin (com `creator`, `is_active`, `last_login`)
 - **Logs de auditoria** no stdout
 
@@ -98,8 +98,8 @@ flowchart TD
         FB --> RU
     end
 
-    subgraph "Autorização de dados"
-        RU --> GS["getScopeIds"]
+    subgraph "Autorização de dados (services/authorization.js)"
+        RU --> GS["resolveScope(req.actor)"]
         GS -->|admin| GRP["todos os user_id do tenant"]
         GS -->|user| OWN["apenas o próprio user_id"]
     end
@@ -117,7 +117,7 @@ flowchart TD
 
 ## Not Responsible For
 
-- **Autorização de dados de domínio** — este módulo **fornece** `getScopeIds`; aplicá-lo é responsabilidade de cada controller (e 6 deles não aplicam).
+- **Autorização de dados de domínio** — desde a spec 005, a regra vive em `services/authorization.js` (`resolveScope`/`authorize`), não neste módulo. Este módulo fornece o `actor` (via `authMiddleware`) e `User.getGroupUserIds`, que a política consome; aplicar `resolveScope` continua sendo responsabilidade de cada controller (e 6 deles não aplicam).
 - **RLS no banco** — não existe RLS efetiva. Ver [`../DATABASE.md`](../DATABASE.md#4-estado-de-rls--visão-consolidada).
 - **Proteção de rotas no frontend** — `ProtectedRoute` é UX; a decisão real é do backend.
 - **Recuperação de senha** — **não existe** no produto.

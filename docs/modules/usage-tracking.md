@@ -23,7 +23,7 @@ Registrar cada chamada à API do Gemini com tokens consumidos e custo estimado, 
 3. **Custo é calculado por tabela de preços por modelo** (`PRICING`), em USD por 1 M de tokens, com preço separado de input e output.
 4. **Modelos `3-pro-preview` usam preço em faixas (*tiered*)** — até 200 K tokens de prompt: $2/$12; acima: $4/$18.
 5. **Modelo desconhecido cai no preço de `gemini-2.5-flash`** (`DEFAULT_MODEL`). ⚠️ Combinado com a falta de validação do modelo escolhido pelo usuário, isso significa que o custo registrado pode não ter relação com o cobrado.
-6. **Escopo:** admin vê o consumo de todo o grupo; usuário comum vê só o próprio (via `getScopeIds`).
+6. **Escopo:** admin vê o consumo de todo o grupo; usuário comum vê só o próprio (via `resolveScope`, `services/authorization.js` — spec 005).
 7. **Períodos suportados:** `today`, `week`, `month` (default), `all`.
 8. **A resposta agrega por modelo e por operação**, e devolve os 10 registros mais recentes.
 9. **`api_usage` não é transferido** quando um usuário é excluído com transferência de dados — é descartado junto com a conta.
@@ -73,7 +73,7 @@ O objeto `usage` vem sempre de `services/llm.js#extractUsage`, que normaliza o `
 ## Dependencies
 
 - `models/ApiUsage.js` — cálculo, persistência e agregação
-- `utils/tenantScope.js#getScopeIds` — escopo admin/usuário
+- `services/authorization.js#resolveScope` — escopo admin/usuário (spec 005; `utils/tenantScope.js#getScopeIds` é wrapper `@deprecated`)
 - **`supabase` (cliente anon)** — funciona porque a política RLS de `api_usage` **não está ativa** em produção (verificado 2026-08-13). Frágil por depender disso: se a política for reativada, o registro para de gravar em silêncio
 - Tabela `api_usage` — RLS ligada nas migrations, **inativa na prática**
 - `services/llm.js#extractUsage` — origem de todo `usage`
@@ -93,7 +93,7 @@ flowchart TD
     end
 
     subgraph "Leitura"
-        GET["GET /api/usage/stats"] --> SC["getScopeIds"]
+        GET["GET /api/usage/stats"] --> SC["resolveScope"]
         SC --> SEL["SELECT filtrado por user_id + período"]
         SEL --> AGG["aggregateStats: por modelo e operação"]
         AGG --> UI["Settings.jsx · card de custo do Overview"]
