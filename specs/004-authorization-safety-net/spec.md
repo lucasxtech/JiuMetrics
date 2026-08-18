@@ -1,6 +1,6 @@
 # SPEC-004 — Rede de testes de autorização
 
-**Status: Proposed** · Etapa 2 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (2026-08-18)** · Etapa 2 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
 
 ## Context
 
@@ -39,7 +39,7 @@ Ao final desta spec, o repositório tem testes vermelhos **intencionais e docume
 
 ## Scope
 
-1. **Adicionar `supertest`** como devDependency do backend. ⚠️ **Decisão pendente P1** — é a única dependência nova que o plano propõe.
+1. **Adicionar `supertest`** como devDependency do backend. ✅ **P1 aprovado** (2026-08-18) — é a única dependência nova que o plano propõe.
 2. **Fixtures de dois tenants**, com dois usuários cada (1 admin + 1 comum por tenant), e dados de domínio em cada: atleta, adversário, análise de luta, estratégia, sessão de chat, versões.
 3. **Testes de vazamento** — devem **falhar**:
 
@@ -96,14 +96,16 @@ Ao final desta spec, o repositório tem testes vermelhos **intencionais e docume
 
 **`supertest` funciona sem abrir porta** — `server/index.js` já faz `module.exports = app`, e o `listen` é condicionado a `NODE_ENV !== 'production'`. Verificado.
 
-⚠️ **Decisão pendente P2 — ambiente de banco.** Duas opções:
+✅ **P2 decidido (2026-08-18): fake de PostgREST, banco real fica fora de escopo.**
 
 | Opção | Prova | Custo |
 |---|---|---|
-| **Supabase de teste** | a query real, com PostgREST real | precisa de projeto e seed |
-| **Fake de PostgREST** | apenas que o filtro foi *pedido* | rápido, sem infra |
+| Supabase de teste | a query real, com PostgREST real | precisa de projeto e seed |
+| **Fake de PostgREST** ← escolhida | apenas que o filtro foi *pedido* | rápido, sem infra |
 
-**Recomendação: Supabase de teste.** O fake não valida a query — e a query **é** exatamente o que está errado. Um fake que aceite `.in('user_id', [...])` sem executá-lo passaria mesmo com o filtro ausente no `WHERE` final.
+O único banco disponível hoje é o de **produção** (`server/.env`, confirmado — não existe projeto separado nem `.env.test`). Rodar fixtures de 2 tenants fictícios contra ele significaria: (a) criar e apagar dado de teste em produção a cada execução do CI, misturado com os 25 usuários e 285 análises reais; (b) uma limpeza de fixture com bug apagando dado real — exatamente o que a regra *"nunca apague dados para fazer testes passarem"* do `CLAUDE.md` proíbe; (c) corrida entre CI runs concorrentes usando os mesmos tenants fixos.
+
+**Consequência aceita e documentada:** esta rede prova que o filtro de escopo foi **pedido** na chamada (ex.: `.in('user_id', [...])` foi invocado com os IDs certos), não que a query final no Postgres realmente restringe as linhas. Um fake que aceite o `.in(...)` sem executá-lo passaria mesmo com o `WHERE` ausente no SQL gerado — é uma prova mais fraca que a de banco real, e fica registrada como dívida técnica (ver `docs/PROJECT_STATUS.md` § Technical Debt) até que um projeto Supabase de teste esteja disponível.
 
 **Como manter testes vermelhos no CI sem travar tudo:** marcá-los com `test.failing()` (Jest 29 suporta) ou agrupá-los numa suíte separada, executada e reportada mas não bloqueante — **com o estado declarado**. Na spec 006 eles passam a bloquear. Nunca usar `skip`: um teste pulado é invisível.
 
@@ -111,14 +113,14 @@ Ao final desta spec, o repositório tem testes vermelhos **intencionais e docume
 
 ## Acceptance Criteria
 
-- [ ] `supertest` em `devDependencies` do backend (após aprovação de P1)
-- [ ] Fixtures criam 2 tenants × 2 usuários × dados de domínio completos
-- [ ] Os 6 testes de vazamento **falham**, cada um referenciando seu AZ
-- [ ] Os 5 testes de baseline **passam**
-- [ ] Teste de unidade de `getScopeIds` cobre admin e usuário comum
-- [ ] CI executa e reporta; estado (bloqueante ou não) declarado no workflow
-- [ ] `git diff server/src` **vazio**
-- [ ] `docs/PROJECT_STATUS.md` registra a existência da rede e o estado vermelho intencional
+- [x] `supertest` em `devDependencies` do backend
+- [x] Fixtures criam 2 tenants × 2 usuários × dados de domínio completos (`support/fixtures.js`)
+- [x] Os 6 testes de vazamento **falham**, cada um referenciando seu AZ (`leaks.test.js`, verificado com `test.failing` temporariamente trocado por `test` — todos os 6 falham pelo motivo certo, não por erro incidental)
+- [x] Os 5 testes de baseline **passam** (`baseline.test.js`)
+- [x] Teste de unidade de `getScopeIds` cobre admin, usuário comum e ausência de `req.user` (`server/src/utils/__tests__/tenantScope.test.js`)
+- [x] CI executa e reporta; estado declarado — `test.failing()` faz `npm test` sair com código 0 mesmo com os 6 vermelhos, sem precisar alterar `ci.yml`
+- [x] `git diff server/src` **vazio** — só arquivos novos em `server/src/__tests__/` e `server/src/utils/__tests__/`
+- [x] `docs/PROJECT_STATUS.md` registra a existência da rede e o estado vermelho intencional
 
 ## Testing Strategy
 
@@ -135,18 +137,17 @@ Esta spec **é** a estratégia de teste. O que ela não faz:
 
 | Documento | Mudança |
 |---|---|
-| `docs/PROJECT_STATUS.md` | *Technical Debt* — testes de autorização passam de "não existem" para "existem, vermelhos" |
+| `docs/PROJECT_STATUS.md` | *Technical Debt* — testes de autorização passam de "não existem" para "existem, vermelhos"; nova entrada registrando o fake de PostgREST e o banco de teste real como melhoria futura |
 | `docs/AUTHORIZATION.md` | cada AZ ganha referência ao teste que o comprova |
 | `CLAUDE.md` | *Change Process* item 5 — apontar as fixtures como ponto de partida |
-| `JIU_METRICS_REFACTORING_PLAN.md` | §10 — registrar a decisão de P2 |
+| `JIU_METRICS_REFACTORING_PLAN.md` | §10 — registrar as decisões de P1 e P2 |
 | `CHANGELOG.md` | `test:` — rede de autorização |
 
 ## Risks
 
 | Risco | Severidade | Mitigação |
 |---|---|---|
-| Ambiente de banco de teste não viável | **Média** | Decisão P2; fallback é fake de PostgREST, com cobertura menor **declarada** |
-| `supertest` recusado (P1) | Média | Fallback: testes de model + E2E via Playwright. Ciclo mais lento, cobertura menor |
+| Fake de PostgREST não captura ausência do filtro no SQL final (aceito em P2) | **Média — aceita** | Limitação documentada em `docs/PROJECT_STATUS.md`; revisitar se/quando houver projeto Supabase de teste |
 | Testes vermelhos no CI geram ruído e viram normal | **Média** | Estado declarado no workflow; a spec 006 os torna bloqueantes. Nunca `skip` |
 | Fixtures acoplam-se ao schema atual e a spec 011 as quebra | Média | Fixtures via API (não `INSERT` direto) onde possível, para sobreviverem a mudança de schema |
 | Escrever teste revela um 7º vazamento | Baixa | Bem-vindo. Documentar e incluir no escopo da spec 006 |
@@ -154,6 +155,6 @@ Esta spec **é** a estratégia de teste. O que ela não faz:
 ## Dependencies
 
 **Depende de:** [spec 003](../003-quality-gates/spec.md) — sem CI que bloqueie, teste não é rede.
-**Decisões pendentes:** P1 (`supertest`), P2 (ambiente de banco).
+**Decisões:** P1 (`supertest`) ✅ aprovado · P2 (ambiente de banco) ✅ decidido — fake de PostgREST, banco real adiado.
 
 **Bloqueia:** [spec 005](../005-authorization-policy-seam/spec.md) (precisa do baseline para provar equivalência) e [spec 006](../006-ownership-in-data-access/spec.md) (precisa dos testes vermelhos para provar a correção).

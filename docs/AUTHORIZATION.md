@@ -176,28 +176,34 @@ A rota devolvia `id`, `person_id`, `person_type`, `user_id` e `created_at` de **
 `chatController.manualEdit` usa `FightAnalysis.getById(analysisId)` — a variante **sem** filtro de usuário — e `FightAnalysis.update()`, que também não filtra. O `analysisId` vem cru do `req.body`.
 **Impacto:** qualquer usuário autenticado sobrescreve `summary`, `charts` ou `technical_stats` de qualquer análise de qualquer tenant. Corrupção silenciosa — a vítima não recebe sinal.
 **Nota:** `applyEdit`, no mesmo arquivo, faz a verificação corretamente. A inconsistência é interna ao módulo.
+🔴 **Provado em teste (spec 004):** `server/src/__tests__/authorization/leaks.test.js` — `test.failing` (vermelho intencional até a spec 006).
 
 ### AZ-3 — `GET /api/chat/versions/:analysisId` lê versões de qualquer tenant
 Nenhum método de `AnalysisVersion` filtra por usuário, e a tabela `analysis_versions` **não tem coluna `user_id`** — não há como filtrar sem alterar o schema.
 **Impacto:** leitura do `content` completo (summary, charts, stats) de todas as versões de qualquer análise.
+🔴 **Provado em teste (spec 004):** `server/src/__tests__/authorization/leaks.test.js` — `test.failing` (vermelho intencional até a spec 006).
 
 ### AZ-4 — `POST /api/chat/restore-version` reverte análise de qualquer tenant
 Nenhuma verificação de posse em ponto algum. Faz `FightAnalysis.update()` e `AnalysisVersion.setAsCurrent()` com IDs do `req.body`.
 **Impacto:** destrutivo e persistente — reverte o conteúdo e altera o ponteiro de versão atual de outro usuário.
+🔴 **Provado em teste (spec 004):** `server/src/__tests__/authorization/leaks.test.js` — `test.failing` (vermelho intencional até a spec 006).
 
 ## HIGH
 
 ### AZ-5 — `updateContextSnapshot` aceita qualquer `sessionId`
 Dentro de `chatController.applyEdit`. O `sessionId` vem do `req.body` e nunca é validado; o método filtra só por `id` e usa **`supabaseAdmin`** (RLS ignorado).
 **Impacto:** envenena o `context_snapshot` da sessão de chat de outro usuário — isto é, o contexto que a IA daquele usuário recebe nos turnos seguintes.
+🔴 **Provado em teste (spec 004):** `server/src/__tests__/authorization/leaks.test.js` — `test.failing` (vermelho intencional até a spec 006).
 
 ### AZ-6 — `POST /api/ai/analyze-link` não valida posse de `personId`
 Cria a análise sem verificar que a pessoa existe e pertence ao usuário. O caminho equivalente (`POST /api/fight-analysis`) **faz** essa validação.
 **Impacto:** não vaza leitura (a listagem filtra por `user_id`), mas cria vínculo para `person_id` de outro tenant e polui as consolidações de perfil, que agregam por `person_id`.
+🔴 **Provado em teste (spec 004):** `server/src/__tests__/authorization/leaks.test.js` — `test.failing` (vermelho intencional até a spec 006).
 
 ### AZ-7 — `POST /api/ai/athlete-summary` aceita corpo arbitrário
 `athleteData` é aceito inteiro do `req.body` e serializado direto no prompt, sem validação de schema, sem limite (teto é o `express.json` de 10 MB) e sem relação com o `user_id` do chamador.
 **Impacto:** abuso de custo de IA + prompt injection direta. O endpoint não tem noção de posse.
+🔴 **Provado em teste (spec 004):** `server/src/__tests__/authorization/leaks.test.js` — `test.failing` (vermelho intencional até a spec 006).
 
 ### AZ-8 — Fallback de autenticação abre em falha do banco
 Se `User.getAuthInfo` lançar, o middleware continua com o `role` **do token**.

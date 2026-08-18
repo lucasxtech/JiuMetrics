@@ -162,7 +162,7 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 2. **Verifique se o comportamento que você acha que existe realmente existe.** Três funcionalidades da UI nunca funcionaram; várias falham dentro de um `catch` silencioso.
 3. **Se a mudança é relevante** (ver *Specs*), escreva a spec primeiro e obtenha aprovação.
 4. **Implemente**, seguindo os padrões deste arquivo — em especial o padrão de autorização.
-5. **Teste.** Se a mudança toca autorização, **escreva o teste de posse primeiro** (deve falhar antes, passar depois). Hoje não existe nenhum teste desse tipo, e nenhuma das 6 falhas conhecidas seria detectada pela suíte atual.
+5. **Teste.** Se a mudança toca autorização, **escreva o teste de posse primeiro** (deve falhar antes, passar depois). Desde a [spec 004](./specs/004-authorization-safety-net/spec.md) existe `server/src/__tests__/authorization/` — fixtures de 2 tenants × 2 usuários (`support/fixtures.js`) e um fake de PostgREST em memória (`support/fakeSupabase.js`, `support/supabaseMock.js`) prontos para reuso. Reaproveite-os em vez de recriar fixtures; não mocke `models/*` nem `utils/tenantScope` nesses testes — é exatamente o que os testes de controller existentes já fazem, e por isso nunca provariam ownership.
 6. **Atualize a documentação na mesma tarefa** (ver *Documentation Integrity*).
 7. **Atualize o [`CHANGELOG.md`](./CHANGELOG.md)** se a mudança é relevante para quem usa ou opera o sistema.
 8. **Nunca commite direto em `main`.** Trabalhe em branch e abra PR.

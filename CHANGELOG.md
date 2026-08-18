@@ -11,6 +11,25 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### Rede de testes de autorização — 2026-08-18 · [spec 004](./specs/004-authorization-safety-net/spec.md)
+
+Nenhuma correção de código (`git diff server/src` vazio). O objetivo desta spec era produzir testes vermelhos **intencionais e documentados** para os 6 endpoints sem verificação de posse — a correção é escopo da spec 006.
+
+#### Adicionado
+
+- **`server/src/__tests__/authorization/`** — 6 testes de vazamento (`leaks.test.js`, um por AZ-2..AZ-7 de [`docs/AUTHORIZATION.md`](./docs/AUTHORIZATION.md)) e 5 de baseline (`baseline.test.js`, comportamento correto de escopo que as specs 005/006 não podem quebrar), rodando via `supertest` sobre o `app` real.
+- **Fixtures reutilizáveis** (`support/fixtures.js`) — 2 tenants × 2 usuários (1 admin + 1 comum cada) com atleta, adversário, análise de luta, versão, sessão de chat e estratégia em cada.
+- **Fake de PostgREST em memória** (`support/fakeSupabase.js`, `support/supabaseMock.js`) — reproduz `.from().select().eq().in().order().single()`/`.insert()`/`.update()`/`.delete()` sobre um `Map`, sem executar SQL de verdade.
+- **`supertest`** como devDependency do backend — única dependência nova (decisão P1, aprovada).
+- **Testes de unidade de `getScopeIds`** (`server/src/utils/__tests__/tenantScope.test.js`) — baseline da regra (admin → grupo; usuário → próprio id) para a spec 005 provar equivalência.
+
+#### Decisão de processo
+
+- **P2 — banco de teste:** fake de PostgREST, não Supabase real. Só existe o banco de **produção** configurado; rodar fixtures de 2 tenants contra ele misturaria dado de teste com os 25 usuários reais a cada execução do CI. **Limitação aceita e documentada:** o fake prova que o filtro foi *pedido* na chamada, não que a query final restringiria as linhas num Postgres real.
+- **Testes vermelhos via `test.failing()`** (Jest 29), não `skip` — o CI roda, reporta, e sai com código 0 porque a falha é a esperada; se um dia passar sem a spec 006 ter rodado, `test.failing` sinaliza como regressão do sinal.
+
+---
+
 ### Portões de qualidade no CI — 2026-08-13 · [spec 003](./specs/003-quality-gates/spec.md)
 
 O CI passa a **recusar** o que antes apenas comentava.

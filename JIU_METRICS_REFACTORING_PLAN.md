@@ -652,7 +652,9 @@ Isso invalida o instinto natural ("testar autorização nos controllers") e dete
 | **API (ponta a ponta interna)** | a requisição inteira respeita o escopo | `supertest` sobre o `app` exportado |
 | **Política (unitário)** | a regra de escopo está certa | Jest puro — `authorization` não depende de Express |
 
-⚠️ **`supertest` não está instalado.** Teste de API exige **nova devDependency** — a única que este plano propõe, e ela precisa de aprovação explícita (§14). `server/index.js` já faz `module.exports = app`, então funciona sem abrir porta.
+✅ **P1 aprovado (2026-08-18):** `supertest` foi adicionado como devDependency do backend — a única que este plano propôs. `server/index.js` já faz `module.exports = app`, então funciona sem abrir porta.
+
+✅ **P2 decidido (2026-08-18):** fake de PostgREST em memória, não Supabase de teste. Só existe o banco de **produção** configurado (`server/.env`; sem `.env.test` nem projeto separado) — rodar fixtures de 2 tenants contra ele significaria criar/apagar dado de teste misturado aos 25 usuários reais a cada execução do CI, o oposto da regra "nunca apague dados para fazer testes passarem" do `CLAUDE.md`. Consequência aceita: a rede prova que o filtro foi *pedido* na chamada, não que a query final restringiria as linhas num Postgres real. Ver `specs/004-authorization-safety-net/spec.md` e `docs/PROJECT_STATUS.md` § Technical Debt.
 
 ### 10.2 Prioridades
 
