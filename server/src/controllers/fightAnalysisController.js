@@ -1,4 +1,4 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 // Controlador para Análises de Lutas
 const FightAnalysis = require('../models/FightAnalysis');
 const Athlete = require('../models/Athlete');
@@ -45,7 +45,7 @@ async function refreshTechnicalSummary(personId, personType, userId) {
  */
 exports.getAllAnalyses = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analyses = await FightAnalysis.getAll(allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
@@ -58,7 +58,7 @@ exports.getAllAnalyses = async (req, res) => {
  */
 exports.getAnalysisById = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analysis = await FightAnalysis.getByIdAndUser(req.params.id, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
@@ -74,7 +74,7 @@ exports.getAnalysisById = async (req, res) => {
  */
 exports.getAnalysesByPerson = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analyses = await FightAnalysis.getByPersonId(req.params.personId, allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
@@ -105,7 +105,7 @@ exports.createAnalysis = async (req, res) => {
     }
 
     // Validar se pessoa existe (dentro do grupo do usuário)
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     if (personType === 'athlete') {
       const athlete = await Athlete.getById(personId, allowedUserIds);
       if (!athlete) {
@@ -162,7 +162,7 @@ exports.createAnalysis = async (req, res) => {
  */
 exports.deleteAnalysis = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const existing = await FightAnalysis.getByIdAndUser(req.params.id, allowedUserIds);
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });

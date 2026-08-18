@@ -1,4 +1,4 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 // Controller para Chat de IA
 const ChatSession = require('../models/ChatSession');
 const AnalysisVersion = require('../models/AnalysisVersion');
@@ -6,7 +6,6 @@ const ProfileVersion = require('../models/ProfileVersion');
 const FightAnalysis = require('../models/FightAnalysis');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
 const { chat } = require('../services/geminiService');
 
 // Utilitários centralizados
@@ -33,7 +32,7 @@ exports.createSession = async (req, res) => {
     // Buscar contexto (análise) com verificação de acesso por grupo
     let contextSnapshot;
     if (contextType === 'analysis') {
-      const allowedUserIds = await getScopeIds(req, User);
+      const allowedUserIds = await resolveScope(req.actor);
       const analysis = await FightAnalysis.getByIdAndUser(contextId, allowedUserIds);
       if (!analysis) {
         return res.status(404).json({
@@ -200,7 +199,7 @@ exports.applyEdit = async (req, res) => {
     }
 
     // Buscar análise atual (com grupo do usuário para garantir ownership)
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analysis = await FightAnalysis.getByIdAndUser(analysisId, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({

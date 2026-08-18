@@ -1,6 +1,5 @@
 const ApiUsage = require('../models/ApiUsage');
-const User = require('../models/User');
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 
 // Constantes de período
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -50,7 +49,7 @@ exports.getStats = async (req, res) => {
     const now = new Date();
 
     // Admin vê consumo de todo o grupo; usuário comum vê só o próprio
-    const scopeIds = await getScopeIds(req, User);
+    const scopeIds = await resolveScope(req.actor);
     const usageRecords = await ApiUsage.getUsageStats(scopeIds, startDate?.toISOString(), null);
 
     if (!usageRecords) {

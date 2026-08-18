@@ -18,7 +18,7 @@ const TacticalAnalysis = require('../../models/TacticalAnalysis');
 const StrategyVersion = require('../../models/StrategyVersion');
 const ApiUsage = require('../../models/ApiUsage');
 const StrategyService = require('../../services/strategyService');
-const { getScopeIds } = require('../../utils/tenantScope');
+const { resolveScope } = require('../../services/authorization');
 
 jest.mock('../../models/Athlete');
 jest.mock('../../models/Opponent');
@@ -26,7 +26,7 @@ jest.mock('../../models/TacticalAnalysis');
 jest.mock('../../models/StrategyVersion');
 jest.mock('../../models/ApiUsage');
 jest.mock('../../services/strategyService');
-jest.mock('../../utils/tenantScope');
+jest.mock('../../services/authorization');
 
 describe('strategyController', () => {
   let req, res;
@@ -110,7 +110,7 @@ describe('strategyController', () => {
 
       req.body = { athleteId: '1', opponentId: '2', model: 'gemini-2.5-pro' };
       req.userId = 'user-1';
-      getScopeIds.mockResolvedValue(['user-1']);
+      resolveScope.mockResolvedValue(['user-1']);
       Athlete.getById.mockResolvedValue({ id: '1', name: 'João Silva' });
       Opponent.getById.mockResolvedValue({ id: '2', name: 'Pedro Santos' });
       StrategyService.generateStrategy.mockResolvedValue(strategyResult);
@@ -146,7 +146,7 @@ describe('strategyController', () => {
     it('não falha a request se salvar o histórico der erro (histórico é best-effort)', async () => {
       req.body = { athleteId: '1', opponentId: '2' };
       req.userId = 'user-1';
-      getScopeIds.mockResolvedValue(['user-1']);
+      resolveScope.mockResolvedValue(['user-1']);
       Athlete.getById.mockResolvedValue({ id: '1', name: 'João Silva' });
       Opponent.getById.mockResolvedValue({ id: '2', name: 'Pedro Santos' });
       StrategyService.generateStrategy.mockResolvedValue({
@@ -168,7 +168,7 @@ describe('strategyController', () => {
 
     it('deve lidar com erro na geração de estratégia', async () => {
       req.body = { athleteId: '1', opponentId: '2' };
-      getScopeIds.mockResolvedValue(['user-1']);
+      resolveScope.mockResolvedValue(['user-1']);
       Athlete.getById.mockResolvedValue({ id: '1', name: 'João Silva' });
       Opponent.getById.mockResolvedValue({ id: '2', name: 'Pedro Santos' });
       StrategyService.generateStrategy.mockRejectedValue(new Error('Erro no Gemini'));
@@ -186,7 +186,7 @@ describe('strategyController', () => {
 
   describe('updateAnalysis', () => {
     beforeEach(() => {
-      getScopeIds.mockResolvedValue(['user-1']);
+      resolveScope.mockResolvedValue(['user-1']);
       TacticalAnalysis.getById.mockResolvedValue({ id: 'analysis-1', user_id: 'user-1' });
       TacticalAnalysis.update.mockResolvedValue({ id: 'analysis-1', strategy_data: {} });
       StrategyVersion.create.mockResolvedValue({});

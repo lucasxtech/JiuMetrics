@@ -1,9 +1,8 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 const { generateAthleteSummary } = require('../services/geminiService');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
 const { handleError } = require('../utils/errorHandler');
 const { logApiUsageWithType } = require('../utils/apiUsageLogger');
 
@@ -75,7 +74,7 @@ exports.consolidateProfile = async (req, res) => {
     }
 
     // Consolidar análises usando StrategyService (com gráficos e stats)
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, model);
 
     // Salvar o resumo consolidado no perfil do atleta/adversário

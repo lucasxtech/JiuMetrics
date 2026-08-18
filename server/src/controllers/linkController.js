@@ -1,11 +1,10 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 const { analyzeFrame, consolidateAnalyses, consolidateSummariesWithAI } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
 
 function extractYouTubeId(url) {
   try {
@@ -193,7 +192,7 @@ exports.analyzeLink = async (req, res) => {
         // Gera o resumo técnico consolidado de forma síncrona
         // (o usuário já esperou a análise — segundos extras não fazem diferença)
         try {
-          const allowedUserIds = await getScopeIds(req, User);
+          const allowedUserIds = await resolveScope(req.actor);
           const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, null);
           const updateData = {
             technicalSummary: consolidation.resumo,

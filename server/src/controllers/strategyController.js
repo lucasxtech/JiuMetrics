@@ -1,7 +1,6 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
 const StrategyService = require('../services/strategyService');
 const TacticalAnalysis = require('../models/TacticalAnalysis');
 const ApiUsage = require('../models/ApiUsage');
@@ -29,7 +28,7 @@ exports.compareAndStrategy = async (req, res) => {
     }
 
     // Buscar dados básicos (escopo do grupo)
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const [athlete, opponent] = await Promise.all([
       Athlete.getById(athleteId, allowedUserIds),
       Opponent.getById(opponentId, allowedUserIds)
@@ -132,7 +131,7 @@ exports.listAnalyses = async (req, res) => {
   try {
     const { athleteId, opponentId, limit, offset } = req.query;
 
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analyses = await TacticalAnalysis.getAll(allowedUserIds, {
       athleteId,
       opponentId,
@@ -166,7 +165,7 @@ exports.getAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analysis = await TacticalAnalysis.getById(id, allowedUserIds);
 
     if (!analysis) {
@@ -198,7 +197,7 @@ exports.deleteAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     await TacticalAnalysis.delete(id, allowedUserIds);
 
     res.json({
@@ -244,7 +243,7 @@ exports.updateAnalysis = async (req, res) => {
     }
 
     // Verificar se a análise existe e pertence ao grupo
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analysis = await TacticalAnalysis.getById(id, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({

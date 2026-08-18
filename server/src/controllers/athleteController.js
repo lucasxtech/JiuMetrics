@@ -1,15 +1,14 @@
 // Controlador de Atletas
 const Athlete = require('../models/Athlete');
-const User = require('../models/User');
 const { handleError } = require('../utils/errorHandler');
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 
 /**
  * GET /api/athletes - Retorna todos os atletas
  */
 exports.getAll = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const athletes = await Athlete.getAll(allowedUserIds);
     res.json({
       success: true,
@@ -27,7 +26,7 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const athlete = await Athlete.getById(id, allowedUserIds);
 
     if (!athlete) {
@@ -88,7 +87,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const athlete = await Athlete.getById(id, allowedUserIds);
 
     if (!athlete) {
@@ -116,7 +115,7 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const athlete = await Athlete.getById(id, allowedUserIds);
 
     if (!athlete) {

@@ -1,15 +1,14 @@
 // Controlador de Adversários
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
 const { handleError } = require('../utils/errorHandler');
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 
 /**
  * GET /api/opponents - Retorna todos os adversários
  */
 exports.getAll = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const opponents = await Opponent.getAll(allowedUserIds);
     res.json({
       success: true,
@@ -27,7 +26,7 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const opponent = await Opponent.getById(id, allowedUserIds);
 
     if (!opponent) {
@@ -88,7 +87,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const opponent = await Opponent.getById(id, allowedUserIds);
 
     if (!opponent) {
@@ -116,7 +115,7 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const opponent = await Opponent.getById(id, allowedUserIds);
 
     if (!opponent) {
