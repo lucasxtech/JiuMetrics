@@ -1,19 +1,20 @@
 /**
- * SPEC-004 — Testes de vazamento (R1): devem FALHAR hoje, comprovando os 6
- * pontos sem verificação de posse listados em docs/AUTHORIZATION.md e na
- * spec (specs/004-authorization-safety-net/spec.md). Nenhuma correção é
- * feita nesta spec — a correção é escopo da spec 006.
+ * Testes de vazamento de autorização — os 6 pontos sem verificação de posse
+ * que a auditoria encontrou (AZ-2..AZ-7 de docs/AUTHORIZATION.md).
  *
- * Usamos `test.failing()` (suportado desde o Jest 29): o Jest reporta cada
- * um desses testes como "falha esperada" e o `npm test` continua saindo com
- * código 0, então o CI (bloqueante desde a spec 003) não trava. Se algum
- * destes começar a PASSAR sem que a spec 006 tenha rodado, `test.failing`
- * vira o sinal — o teste passa a ser reportado como falho, porque a falha
- * deixou de acontecer. Nunca use `skip` aqui: um teste pulado é invisível.
+ * ✅ Todos PASSAM desde a spec 006, que fechou os 6 vazamentos. Foram escritos
+ * na spec 004 com `test.failing()` e **verificados falhando** antes de
+ * qualquer correção existir — é por isso que provam algo: um teste que nunca
+ * falhou não prova nada. Cada correção da spec 006 inverteu o seu
+ * `test.failing` para `test` no mesmo commit.
+ *
+ * São, daqui para a frente, testes de REGRESSÃO: se algum voltar a falhar, um
+ * vazamento cross-tenant foi reintroduzido. Eles bloqueiam merge (o job
+ * `backend-tests` não tem `continue-on-error` desde a spec 003).
  *
  * Nível: API real (supertest) + fake de PostgREST (decisão P2) + models e
- * utils/tenantScope REAIS — os mesmos que os testes de controller existentes
- * mockam, o que é exatamente por que eles nunca pegariam esses bugs.
+ * services/authorization REAIS — os mesmos que os testes de controller
+ * existentes mockam, o que é exatamente por que eles nunca pegariam esses bugs.
  */
 jest.mock('../../config/supabase', () => require('./support/supabaseMock'));
 jest.mock('../../services/geminiService');
@@ -31,7 +32,7 @@ const StrategyService = require('../../services/strategyService');
 
 const app = loadApp();
 
-describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
+describe('Vazamentos de autorização — fechados na spec 006 (regressão)', () => {
   let fx;
 
   beforeEach(() => {
@@ -54,8 +55,8 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
     StrategyService.consolidateAnalyses.mockResolvedValue({ resumo: 'ok', analysesCount: 1 });
   });
 
-  // AZ-2 — docs/AUTHORIZATION.md — chatController.manualEdit usa
-  // FightAnalysis.getById/update, nenhum dos dois filtra por usuário.
+  // AZ-2 — manualEdit usava FightAnalysis.getById (variante SEM filtro de
+  // usuário) e um update que também não filtrava. Fechado na spec 006.
   test('AZ-2 — POST /api/chat/manual-edit não deve sobrescrever análise de outro tenant', async () => {
     const res = await request(app)
       .post('/api/chat/manual-edit')
@@ -75,8 +76,9 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
     expect(stored.summary).toBe(fx.tenantB.fightAnalysis.summary);
   });
 
-  // AZ-3 — chatController.getVersions chama AnalysisVersion.getByAnalysisId
-  // sem checar a quem a análise pai pertence (a tabela nem tem user_id).
+  // AZ-3 — getVersions chamava AnalysisVersion.getByAnalysisId sem checar a
+  // quem a análise pai pertencia (a tabela não tem user_id). A spec 006 fez a
+  // autorização derivar da análise pai (decisão P4).
   test('AZ-3 — GET /api/chat/versions/:analysisId não deve ler versões de análise de outro tenant', async () => {
     const res = await request(app)
       .get(`/api/chat/versions/${fx.tenantB.fightAnalysis.id}`)
@@ -85,8 +87,8 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
     expect(res.status).toBe(404);
   });
 
-  // AZ-4 — chatController.restoreVersion não verifica posse antes de
-  // restaurar/escrever na análise.
+  // AZ-4 — restoreVersion não verificava posse em ponto algum, e escreve
+  // duas vezes (a análise e o ponteiro de versão atual).
   test('AZ-4 — POST /api/chat/restore-version não deve reverter análise de outro tenant', async () => {
     const res = await request(app)
       .post('/api/chat/restore-version')
@@ -99,9 +101,10 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
     expect(res.status).toBe(404);
   });
 
-  // AZ-5 — chatController.applyEdit escopa `analysisId` corretamente (via
-  // getScopeIds + getByIdAndUser) mas confia cegamente em `sessionId`:
-  // ChatSession.updateContextSnapshot não recebe nem filtra por userId.
+  // AZ-5 — applyEdit escopava `analysisId` corretamente mas confiava
+  // cegamente no `sessionId` do corpo: updateContextSnapshot não recebia nem
+  // filtrava por userId. Hoje exige o dono, e um sessionId alheio é ignorado
+  // com aviso — sem desfazer a edição da própria análise.
   test('AZ-5 — POST /api/chat/apply-edit não deve alterar context_snapshot de sessão de outro tenant', async () => {
     const res = await request(app)
       .post('/api/chat/apply-edit')
@@ -121,8 +124,9 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
     expect(session.context_snapshot).toEqual(fx.tenantB.chatSession.context_snapshot);
   });
 
-  // AZ-6 — linkController.analyzeLink cria a FightAnalysis com o personId
-  // recebido no corpo sem checar se ele pertence ao escopo do requisitante.
+  // AZ-6 — analyzeLink criava a FightAnalysis com o personId recebido no
+  // corpo sem checar se pertencia ao escopo do requisitante. Hoje a validação
+  // acontece ANTES das chamadas de IA.
   test('AZ-6 — POST /api/ai/analyze-link não deve criar análise vinculada a atleta de outro tenant', async () => {
     const res = await request(app)
       .post('/api/ai/analyze-link')
@@ -142,10 +146,11 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
     expect(leaked).toBeUndefined();
   });
 
-  // AZ-7 — aiController.generateAthleteSummary aceita `athleteData` bruto do
-  // corpo, sem personId nem noção de posse — não há "dado alheio" a ler,
-  // o próprio contrato do endpoint é o problema.
-  test.failing('AZ-7 — POST /api/ai/athlete-summary não deve aceitar corpo arbitrário sem posse', async () => {
+  // AZ-7 — generateAthleteSummary aceitava `athleteData` bruto do corpo, sem
+  // noção de posse: não havia "dado alheio" a ler porque o endpoint não
+  // buscava nada — o próprio contrato era o problema. Hoje recebe `athleteId`
+  // e carrega no servidor. Contrato completo em athleteSummary.test.js.
+  test('AZ-7 — POST /api/ai/athlete-summary não deve aceitar corpo arbitrário sem posse', async () => {
     const res = await request(app)
       .post('/api/ai/athlete-summary')
       .set('Authorization', authHeader(fx.tenantA.user))
