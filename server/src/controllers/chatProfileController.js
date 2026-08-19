@@ -6,7 +6,17 @@
  * ⚠️ O versionamento de perfil que estes handlers acionam está **quebrado
  * desde 2026-01-16** por contrato incompatível entre `versionManager` e
  * `ProfileVersion` — dívida da spec 007, não desta. Ver docs/PROJECT_STATUS.md.
+ *
+ * Sobre escopo (AZ-10, corrigido na spec 006): a BUSCA da pessoa usa o escopo
+ * resolvido (`resolveScope`), então o admin alcança o dado do grupo; a ESCRITA
+ * usa o `userId` do REGISTRO, para não transferir a posse ao editar.
+ *
+ * As chamadas a `ProfileVersion` continuam usando o `userId` do requisitante,
+ * como antes: as versões de perfil são por editor, não compartilhadas com o
+ * grupo. Torná-las visíveis ao grupo é mudança de comportamento que depende
+ * da decisão P5 (corrigir ou remover o versionamento) — spec 007.
  */
+const { resolveScope } = require('../services/authorization');
 const ChatSession = require('../models/ChatSession');
 const ProfileVersion = require('../models/ProfileVersion');
 const Athlete = require('../models/Athlete');
@@ -33,9 +43,12 @@ exports.createProfileSession = async (req, res) => {
       });
     }
 
-    // Verificar se pessoa existe
+    // Verificar se pessoa existe, dentro do escopo do ator (AZ-10: aqui era
+    // `getById(personId, userId)` com o id escalar do requisitante, o que
+    // fazia o admin perder o acesso ao dado do próprio grupo).
+    const allowedUserIds = await resolveScope(req.actor);
     const Model = personType === 'opponent' ? Opponent : Athlete;
-    const person = await Model.getById(personId, userId);
+    const person = await Model.getById(personId, allowedUserIds);
 
     if (!person) {
       return res.status(404).json({
@@ -155,10 +168,12 @@ exports.saveProfileSummary = async (req, res) => {
       });
     }
 
+    const allowedUserIds = await resolveScope(req.actor);
     const Model = personType === 'opponent' ? Opponent : Athlete;
 
-    // Buscar perfil atual para salvar versão anterior
-    const currentPerson = await Model.getById(personId, userId);
+    // Buscar perfil atual para salvar versão anterior (AZ-10: escopo, não o
+    // id escalar do requisitante)
+    const currentPerson = await Model.getById(personId, allowedUserIds);
     if (!currentPerson) {
       return res.status(404).json({
         success: false,
@@ -176,11 +191,12 @@ exports.saveProfileSummary = async (req, res) => {
       editReason: editReason || 'Edição manual'
     });
 
-    // Atualizar perfil com novo resumo
+    // Atualizar perfil com novo resumo — a escrita usa o owner REAL do
+    // registro, não o requisitante, para não transferir a posse
     const updatedPerson = await Model.update(personId, {
       technicalSummary: newSummary,
       technicalSummaryUpdatedAt: new Date().toISOString()
-    }, userId);
+    }, currentPerson.userId);
 
     res.json({
       success: true,
@@ -229,6 +245,20 @@ exports.restoreProfileVersion = async (req, res) => {
       });
     }
 
+    // AZ-10: a pessoa passa a ser buscada no escopo do ator (era o id escalar
+    // do requisitante) e ANTES da versão. A ordem importa: antes,
+    // `currentPerson` podia vir null sem nenhuma verificação e o `update`
+    // logo abaixo falhava com erro cru do PostgREST em vez de um 404 claro.
+    const allowedUserIds = await resolveScope(req.actor);
+    const Model = personType === 'opponent' ? Opponent : Athlete;
+    const currentPerson = await Model.getById(personId, allowedUserIds);
+    if (!currentPerson) {
+      return res.status(404).json({
+        success: false,
+        error: `${personType === 'opponent' ? 'Adversário' : 'Atleta'} não encontrado`
+      });
+    }
+
     // Buscar versão específica
     const version = await ProfileVersion.getByVersionNumber(personId, personType, versionNumber, userId);
     if (!version) {
@@ -238,24 +268,21 @@ exports.restoreProfileVersion = async (req, res) => {
       });
     }
 
-    const Model = personType === 'opponent' ? Opponent : Athlete;
-
     // Salvar versão atual antes de restaurar
-    const currentPerson = await Model.getById(personId, userId);
     await saveProfileVersion({
       personId,
       personType,
       userId,
-      currentSummary: currentPerson?.technicalSummary,
+      currentSummary: currentPerson.technicalSummary,
       editedBy: 'user',
       editReason: `Backup antes de restaurar versão ${versionNumber}`
     });
 
-    // Restaurar versão
+    // Restaurar versão — a escrita usa o owner REAL do registro
     const updatedPerson = await Model.update(personId, {
       technicalSummary: version.content,
       technicalSummaryUpdatedAt: new Date().toISOString()
-    }, userId);
+    }, currentPerson.userId);
 
     // Marcar como versão atual
     await ProfileVersion.setAsCurrent(version.id, personId, personType, userId);
