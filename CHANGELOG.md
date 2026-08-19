@@ -11,6 +11,44 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 🔒 Ownership obrigatório no acesso a dados — 2026-08-18 · [spec 006](./specs/006-ownership-in-data-access/spec.md)
+
+**A mudança de segurança mais importante do projeto até aqui.** Fecha os **7 vazamentos de posse** (o último remanescente da auditoria) e, mais que isso, fecha a **classe** do problema.
+
+#### O que era possível antes, e deixou de ser
+
+Qualquer usuário autenticado, com apenas o ID de um recurso alheio no corpo da requisição, conseguia:
+
+- **sobrescrever** `summary`/`charts`/`technical_stats` de qualquer análise de qualquer tenant (`POST /api/chat/manual-edit`) — corrupção silenciosa, sem sinal para a vítima;
+- **ler** o conteúdo completo de todas as versões de qualquer análise (`GET /api/chat/versions/:analysisId`);
+- **reverter** a análise de outro tenant e mexer no ponteiro de versão atual dele (`POST /api/chat/restore-version`);
+- **envenenar o contexto de IA** da sessão de chat de outro usuário, alterando o que o modelo receberia nos turnos seguintes (`POST /api/chat/apply-edit` via `sessionId`);
+- **criar análise vinculada** a um atleta de outro tenant, poluindo as consolidações de perfil (`POST /api/ai/analyze-link`);
+- **injetar conteúdo arbitrário direto no prompt** e gastar IA sem teto nem posse (`POST /api/ai/athlete-summary`).
+
+#### Adicionado
+
+- **Escopo de posse obrigatório na assinatura dos models** — `utils/scopeGuard.js#requireScope` + `MissingScopeError`. A chamada sem escopo **lança** em vez de devolver `null` ou lista vazia, que seriam indistinguíveis de "não encontrado" e morreriam no primeiro `catch` que só loga. Rejeita também `[undefined]`, que é o valor que realmente chega quando o chamador passa uma variável inexistente.
+- **`AnalysisVersion.isAnalysisInScope`** — a tabela `analysis_versions` não tem dono, então a autorização deriva da análise pai.
+- **3 suítes de teste novas**: `models.test.js` (63 casos de escopo obrigatório), `athleteSummary.test.js` (contrato novo + teste explícito de prompt injection), `profileScope.test.js` (acesso de admin ao grupo).
+
+#### Alterado
+
+- **`POST /api/ai/athlete-summary` mudou de contrato**: recebe `athleteId` e carrega os dados no servidor. O formato antigo (`athleteData` no corpo) devolve **400**. Verificado que nenhum componente do frontend chamava o endpoint; o service foi alinhado no mesmo commit.
+- **`POST /api/ai/analyze-link`** valida a posse de `personId` **antes** das chamadas de IA — um pedido que vai dar 404 não queima mais tokens pagos primeiro. `personType` inválido virou 400.
+- **`FightAnalysis.getById`** (a variante sem filtro de usuário) foi **removida**.
+- **Chat de perfil**: a busca da pessoa usa o escopo resolvido e a escrita o `userId` do registro — o **admin recuperou** o acesso ao dado do próprio grupo, que perdia silenciosamente.
+- **`chatController.js` (818 linhas, 16 handlers) foi dividido em 4** controllers por subdomínio, em commit de movimentação pura.
+- **Os 6 testes de vazamento deixaram de ser `test.failing`** e passaram a bloquear merge.
+
+#### Decisão de arquitetura (P4)
+
+**A autorização de `analysis_versions` deriva da análise pai, verificada na aplicação.** Não por coluna denormalizada (exigiria migration + backfill e criaria uma segunda fonte de verdade de posse), e **não por JOIN do PostgREST — que é inviável aqui**: `analysis_id` é polimórfico (aponta para `fight_analyses` ou `tactical_analyses`) e não tem foreign key. O plano de refatoração descrevia esta opção como "JOIN"; a correção de rumo está registrada no [§8.1 RN-1](./JIU_METRICS_REFACTORING_PLAN.md).
+
+**Nenhuma migration foi executada. Nenhum dado foi alterado.**
+
+---
+
 ### Seam de política de autorização — 2026-08-18 · [spec 005](./specs/005-authorization-policy-seam/spec.md)
 
 `refactor:` — **sem mudança de comportamento observável.** Mesma regra, mesmo resultado para as mesmas requisições; só mudou onde ela mora.

@@ -2,7 +2,7 @@
 
 > **Responde a uma pergunta:** em que estado o JiuMetrics está agora?
 >
-> **Última atualização:** 2026-08-13 · **Baseline:** `main` (`895066f`) · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
+> **Última atualização:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs 002–006 executadas · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
 >
 > **Regra deste documento:** `IMPLEMENTED` significa que existe no código e funciona. `PLANNED` significa decidido e **não** implementado. Nada é promovido de `PLANNED` para `IMPLEMENTED` sem verificação no código.
 
@@ -10,11 +10,13 @@
 
 ## Resumo em cinco linhas
 
-O produto funciona e é usado. A camada de IA passou por uma modernização recente e genuinamente boa. **O código não é ruim — é desigual:** as partes recentes mostram julgamento técnico real, e as falhas graves estão concentradas em código antigo que ninguém revisitou. Existem **5 endpoints sem verificação de posse** (leitura e escrita entre tenants — um sexto foi removido na spec 002) e **2 funcionalidades quebradas** que a UI oferece, ambas escondidas por um `catch` que só escreve no console.
+O produto funciona e é usado. A camada de IA passou por uma modernização recente e genuinamente boa. **O código não é ruim — é desigual:** as partes recentes mostram julgamento técnico real, e as falhas graves estavam concentradas em código antigo que ninguém revisitou.
+
+✅ **Os 7 endpoints sem verificação de posse foram fechados** (um na spec 002, seis na [spec 006](../specs/006-ownership-in-data-access/spec.md)), e o escopo passou a ser **exigido na assinatura dos models** — a próxima omissão falha em vez de vazar. Continuam abertas **2 funcionalidades quebradas** que a UI oferece, ambas escondidas por um `catch` que só escreve no console.
 
 🔴 **O risco dominante, medido em 2026-08-13, não é nenhum desses:** a chave publicável do Supabase está commitada no git e **lê `users` com `password_hash` e `email` dos 25 usuários**. Ver *Known Issues* item 2.
 
-**Adequado** para o uso atual (poucos tenants, provavelmente confiáveis entre si). **Não adequado** para abrir a usuários que não confiam uns nos outros. A distância entre os dois estados é de ~6 correções pontuais, não de uma reescrita.
+**Adequado** para o uso atual. Para abrir a usuários que não confiam uns nos outros, o que falta agora **não é mais autorização de aplicação** — é rotacionar as credenciais expostas e fechar o acesso direto ao banco (item 2 abaixo e [spec 008](../specs/008-database-access-lockdown/spec.md)).
 
 ---
 
@@ -76,7 +78,7 @@ Funcionalidades verificadas no código e em uso.
 
 | Funcionalidade | Notas |
 |---|---|
-| Chat sobre análise, perfil e estratégia | 3 contextos, 15 endpoints |
+| Chat sobre análise, perfil e estratégia | 3 contextos, 16 endpoints, 4 controllers (divididos na spec 006) |
 | Sugestão de edição da IA | Só aplicada quando o usuário aceita |
 | Snapshot de contexto | Congela o conteúdo no início da conversa |
 | Mitigação de prompt injection | `systemInstruction` fixa; dados como primeiro turno `user` |
@@ -90,7 +92,7 @@ Funcionalidades verificadas no código e em uso.
 |---|---|
 | Deploy na Vercel | Frontend e backend, separados |
 | CI no GitHub Actions | **5 portões bloqueiam** merge: testes de front e back, lint de front e back, build. Mais secrets scanning em workflow separado |
-| Testes de backend | 16 suítes Jest |
+| Testes de backend | 23 suítes Jest / 274 testes — inclui a rede de autorização (specs 004/006) |
 | Testes de frontend | 5 arquivos Vitest |
 | Testes E2E | 6 specs Playwright com Page Objects — ⚠️ **nunca rodam no CI** |
 | Secrets scanning (TruffleHog) | ✅ **bloqueia** desde a spec 003 (escopo = diff, `--only-verified`) |
@@ -101,7 +103,7 @@ Funcionalidades verificadas no código e em uso.
 
 ## Known Issues
 
-Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). **Nada foi corrigido.**
+Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Itens riscados foram corrigidos nas specs 002–006 e ficam registrados como referência do que era possível.
 
 ### CRITICAL
 
@@ -110,7 +112,7 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). **Na
 | 1 | **Chave da API do Gemini commitada** e presente no histórico do git | `.archived/SUPABASE_SETUP.md:25` |
 | 2 | 🔴 **AGRAVADO (medido 2026-08-13)** — a chave publicável versionada **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários**; a escrita também está liberada. É o achado mais grave do projeto | `frontend/.env.production` + estado real do banco |
 | ~~3~~ | ✅ **RESOLVIDO (spec 002, 2026-08-13)** — `GET /api/fight-analysis/debug/all` removida | — |
-| 4 | **3 endpoints do chat sem verificação de posse** — `manual-edit` (escreve), `versions` (lê), `restore-version` (escreve) em qualquer tenant | `chatController.js` |
+| ~~4~~ | ✅ **RESOLVIDO (spec 006, 2026-08-18)** — os 3 endpoints do chat sem verificação de posse (`manual-edit` escrevia, `versions` lia, `restore-version` revertia em qualquer tenant). Junto deles, AZ-5/AZ-6/AZ-7 e o escopo escalar do chat de perfil. **Os 7 vazamentos de posse estão fechados**, e o escopo passou a ser exigido na assinatura dos models | — |
 | **5** | 🆕 **Senha em texto claro de uma conta VIVA, commitada** — `TEST_USER_PASSWORD` de `contateste@teste.com`. Verificado no banco: a conta existe, `role=user`, `is_active=true`. Descoberto na spec 003. ⚠️ O secrets scanning **não pega** isso (senha genérica não casa com detector de padrão) | `playwright/.env.example` |
 
 ### HIGH
@@ -120,17 +122,17 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). **Na
 | 5 | **Histórico de versões de perfil quebrado desde 2026-01-16** — contrato incompatível entre `versionManager` e `ProfileVersion`; todos os campos chegam `undefined`, o insert viola `NOT NULL`, o erro morre num `console.warn`. **A UI oferece o recurso.** Medido: 5 linhas, todas anteriores a 2026-01-16 |
 | 6 | **`technical_profile` do atleta nunca é atualizado** — `updateTechnicalProfile` chamada com 2 de 3 argumentos → no-op silencioso. **Confirmado: 0 de 37 atletas com o campo preenchido** |
 | ~~7~~ | ❌ **REFUTADO (medido 2026-08-13)** — o rastreamento de custo **funciona**: 173 linhas, US$ 3,0295, de 2025-12-14 a 2026-08-12. A política RLS não está ativa em produção. Dívida real e menor: **55 das 173 linhas com custo zero** |
-| 8 | **Sink de XSS no export de PDF** + JWT em `localStorage` → roubo de sessão válida por 7–30 dias |
+| 8 | **Sink de XSS no export de PDF** + JWT em `localStorage` → roubo de sessão válida por 7–30 dias. Escopo da [spec 010](../specs/010-frontend-consolidation/spec.md) |
 | 9 | **Rate limiting inoperante em produção** — `MemoryStore` em serverless; brute force e abuso de IA sem freio efetivo |
 | 10 | **Gasto de IA sem teto** — sem limite de `videos[]`, modelo escolhido pelo cliente sem validação, sem quota. A **visibilidade existe** (item 7 refutado): US$ 3,03 registrados em 8 meses |
-| 11 | **`POST /api/ai/athlete-summary` aceita corpo arbitrário** direto no prompt, sem posse nem limite |
+| ~~11~~ | ✅ **RESOLVIDO (spec 006)** — `POST /api/ai/athlete-summary` aceitava corpo arbitrário direto no prompt, sem posse nem limite. Passou a receber `athleteId` e carregar os dados no servidor, dentro do escopo |
 | 12 | **Fallback de autenticação abre em falha do banco** — volta a confiar no `role` do token, desligando as 3 proteções de uma vez |
 | 13 | **Migrations não são a fonte de verdade** — `users` nunca é criada, falta a `020`, sem runner nem controle de estado. **Impossível reconstruir o banco a partir do repositório** |
 | 14 | **Tipos de `user_id` divergentes** — VARCHAR em 3 tabelas, UUID em 5; FKs derrubadas na `008`. Mascara bugs (o de nº 6 passa por causa disso) |
 | 15 | **Regra de negócio duplicada e já divergente** — `processPersonAnalyses` no frontend (238 linhas) e no backend (121) |
 | 16 | **Trabalho longo de IA em request serverless** — provável timeout **após** consumir tokens |
 | 17 | **6 lockfiles para 3 `package.json`** (npm + yarn); `playwright/` sem lockfile |
-| 18 | **`updateContextSnapshot` sem validar posse** — envenena o contexto de IA da sessão de outro usuário |
+| ~~18~~ | ✅ **RESOLVIDO (spec 006)** — `updateContextSnapshot` não validava posse e envenenava o contexto de IA da sessão de outro usuário. Os três métodos de escrita de `ChatSession` passaram a exigir o dono |
 
 ### MEDIUM (resumo)
 
@@ -138,7 +140,7 @@ Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **esc
 
 ### LOW (resumo)
 
-6 componentes órfãos · `server/=` (arquivo de 0 bytes rastreado) · scripts de debug na raiz do server · dependências declaradas e não usadas · `chatLimiter` aplicado 2× · 11 `alert()` nativos · `bcrypt` 10 rounds · `urlencoded` com limite de 500 MB · sem `.editorconfig`/Prettier/pre-commit · sem recuperação de senha.
+6 componentes órfãos · `server/=` (arquivo de 0 bytes rastreado) · scripts de debug na raiz do server · dependências declaradas e não usadas · `chatLimiter` aplicado 2× (preservado no split da spec 006 — corrigir é mudança de comportamento de rate limit) · 11 `alert()` nativos · `bcrypt` 10 rounds · `urlencoded` com limite de 500 MB · sem `.editorconfig`/Prettier/pre-commit · sem recuperação de senha.
 
 ---
 
@@ -156,7 +158,7 @@ Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **esc
 | **Logging** | `console.*` com emoji, sem níveis, sem correlação, sem redação de PII. Log por request em serverless |
 | **Dívida de lint documentada em código** | A spec 003 tornou o lint bloqueante sem corrigir o que exige decisão de comportamento. Há `eslint-disable` **com comentário apontando a spec responsável** em: `versionManager` (3× — evidência dos bugs das specs 006/007), `AthleteCard` (4 props nunca renderizadas — F7), `StrategyChatPanel` (callback nunca chamado — cluster F14/F19-F22), `VideoAnalysis` (`addVideo` sem controle na UI), `AuthContext` (`set-state-in-effect` na hidratação de sessão), `Strategy` (loading calculado e nunca renderizado). **Nenhum foi escondido com `_`** — a evidência fica visível |
 | **Duplicação** | `processPersonAnalyses` (front × back, divergente) · `AVAILABLE_MODELS` (2 lugares) · `Opponent.js` = cópia de `Athlete.js` · `chatLimiter` 2× |
-| **Complexidade** | `StrategySummaryModal.jsx` 1116 · `AiStrategyBox.jsx` 1016 · `Analyses.jsx` 922 (com o PDF inteiro dentro) · `geminiService.js` 845 · `chatController.js` 818 · `linkController.analyzeLink` 206 linhas numa função |
+| **Complexidade** | `StrategySummaryModal.jsx` 1116 · `AiStrategyBox.jsx` 1016 · `Analyses.jsx` 922 (com o PDF inteiro dentro) · `geminiService.js` 845 · `linkController.analyzeLink` 206 linhas numa função. ✅ `chatController.js` (818) foi dividido em 4 na spec 006 |
 | **Documentação morta** | ~800 linhas descrevendo o sistema multi-agentes removido — **movidas para [`_legacy/`](./_legacy/) em 2026-08-12**. `.github/copilot-instructions.md` ainda documenta `USE_MULTI_AGENTS`/`OPENAI_API_KEY` — **pendente** |
 | **Migrations** | Sem runner, sem controle de estado, com contradições internas, PII e operação destrutiva |
 | **Dependências** | 6 lockfiles; `yt-dlp` é dependência de sistema não declarada; deps declaradas e não usadas; stack agressivamente na ponta (React 19, Express 5, Vite 7, Tailwind 4) sem rede de proteção para atualizar |

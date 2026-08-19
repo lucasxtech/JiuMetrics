@@ -239,7 +239,7 @@ Três históricos independentes, um por tipo de conteúdo editável. Nenhum comp
 
 **Responsabilidade** — manter uma conversa com a IA para refinar um conteúdo já gerado (uma análise, um perfil técnico ou uma estratégia).
 
-**Onde vive** — `models/ChatSession.js`, `controllers/chatController.js`, tabela `ai_chat_sessions`.
+**Onde vive** — `models/ChatSession.js`, `controllers/chat{Session,Analysis,Profile,Strategy}Controller.js`, tabela `ai_chat_sessions`.
 
 **Campos** — `user_id`, `context_type` (`'analysis'|'strategy'|'profile'`, CHECK), `context_id` (**nullable** desde a migration `014`), `context_snapshot` (JSONB — o estado do conteúdo quando o chat começou), `messages` (JSONB — array de turnos), `title`, `is_active`.
 
@@ -319,7 +319,7 @@ O que deveria ser sempre verdade. Marcado se o código garante.
 | 6 | Toda edição gera uma versão | ⚠️ parcial — funciona para análise e estratégia; **falha silenciosamente** para perfil |
 | 7 | Uma única versão é `is_current` por conteúdo | ⚠️ **não** — sem constraint nem transação |
 | 8 | Número de versão é único por conteúdo | ⚠️ **não** — calculado no app, sem `UNIQUE` |
-| 9 | Usuário comum não acessa dado de outro | ⚠️ **não** — 6 endpoints sem verificação de posse |
+| 9 | Usuário comum não acessa dado de outro | ✅ **sim, desde a spec 006** — os 6 endpoints sem verificação de posse foram corrigidos, e o escopo é exigido na assinatura dos models |
 | 10 | Todo consumo de IA é registrado | ⚠️ **provavelmente não** — ver §3.7 |
 
 ---

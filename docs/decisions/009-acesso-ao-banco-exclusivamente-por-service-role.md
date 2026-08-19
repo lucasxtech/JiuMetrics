@@ -35,7 +35,9 @@ Implicações da decisão:
 4. Remover as variáveis de Supabase de `frontend/.env.production` e rotacionar as chaves.
 5. **A autorização é 100% responsabilidade da aplicação** — assumido explicitamente, não por acidente.
 
-**Consequência de projeto que precisa ser executada junto:** como não haverá mais nenhuma possibilidade de o banco servir de rede de segurança, **a garantia de posse deve descer do controller para o model**. Hoje `FightAnalysis.update()` e `.delete()` aceitam qualquer ID, e 6 endpoints não verificam posse — corrigir só os endpoints deixa a armadilha armada para o próximo. Ver [`../../specs/006-ownership-in-data-access/spec.md`](../../specs/006-ownership-in-data-access/spec.md), que é **pré-requisito** de [`008`](../../specs/008-database-access-lockdown/spec.md).
+**Consequência de projeto que precisa ser executada junto:** como não haverá mais nenhuma possibilidade de o banco servir de rede de segurança, **a garantia de posse deve descer do controller para o model**.
+
+✅ **Pré-requisito CUMPRIDO (2026-08-18).** A [spec 006](../../specs/006-ownership-in-data-access/spec.md) desceu a garantia: o escopo de posse é obrigatório na assinatura de todo método de model de domínio, e a chamada sem ele lança `MissingScopeError` (`utils/scopeGuard.js`). Os 6 endpoints que não verificavam posse foram corrigidos, e a armadilha estrutural — `FightAnalysis.update()`/`.delete()` aceitando qualquer ID, `AnalysisVersion` sem filtro — deixou de existir. A [spec 008](../../specs/008-database-access-lockdown/spec.md) está desbloqueada do ponto de vista de aplicação; **continua bloqueada** pela pergunta aberta ao proprietário (existe consumidor externo da chave anon?).
 
 ## Rationale
 
@@ -59,9 +61,9 @@ Implicações da decisão:
 
 ### Negativas
 
-- **Zero defesa em profundidade, agora por decisão.** Um endpoint que esqueça o filtro de posse vaza dados sem nenhuma rede abaixo. A auditoria encontrou **6 casos** desses. Isto é o custo consciente da decisão — e a razão pela qual empurrar a garantia para o model deixa de ser opcional.
+- **Zero defesa em profundidade no banco, agora por decisão.** A auditoria encontrou **6 endpoints** que esqueciam o filtro de posse. Foi o custo consciente da decisão — e a razão pela qual empurrar a garantia para o model deixou de ser opcional. ✅ Feito na spec 006: um endpoint que esqueça o escopo agora **falha** em vez de vazar. Continua não havendo rede no banco.
 - **Todo o backend passa a rodar com a chave mais poderosa do projeto.** Um SSRF ou RCE no backend passa a ter acesso total ao banco. (Na prática o efeito é limitado: com RLS desligada, a chave anon já dava acesso equivalente.)
-- **Testes de autorização passam a ser infraestrutura crítica.** Hoje não existe um único teste verificando que o usuário A não lê o dado do usuário B — e nenhuma das 6 falhas seria detectada pela suíte atual.
+- **Testes de autorização passam a ser infraestrutura crítica.** ✅ Existem desde a [spec 004](../../specs/004-authorization-safety-net/spec.md) e **bloqueiam merge** desde a spec 006: `server/src/__tests__/authorization/`, com fixtures de 2 tenants. Limitação declarada: rodam contra um fake de PostgREST, não contra banco real (decisão P2).
 - **Se o produto evoluir para papéis profissionais** (médico, nutricionista — ver [`../DOMAIN.md`](../DOMAIN.md#6-o-que-não-faz-parte-do-domínio-atual)), com dado sensível cruzando fronteira de organização, esta decisão precisa ser reavaliada. Nesse cenário, defesa em profundidade no banco deixa de ser luxo.
 - **A revogação de GRANTs pode quebrar acesso legítimo não mapeado.** **NEEDS_CONFIRMATION:** existe algum consumidor da chave anon fora deste repositório (script, dashboard, automação)?
 

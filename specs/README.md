@@ -9,16 +9,18 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [001](./001-refactor-foundation/spec.md) | Refatoração de fundação (umbrella) | — | **Superseded** por 002–011 |
 | [002](./002-verification-baseline/spec.md) | Verificação e contenção | 0 | ✅ **Implemented** (parcial — 5 itens pendentes de acesso do proprietário) |
 | [003](./003-quality-gates/spec.md) | Portões de qualidade no CI | 1 | ✅ **Implemented** (item de E2E diferido para a 004) |
-| [004](./004-authorization-safety-net/spec.md) | Rede de testes de autorização | 2 | Proposed |
-| [005](./005-authorization-policy-seam/spec.md) | Seam de política de autorização | 3 | Proposed |
-| [006](./006-ownership-in-data-access/spec.md) | Ownership obrigatório no acesso a dados | 4 | Proposed |
+| [004](./004-authorization-safety-net/spec.md) | Rede de testes de autorização | 2 | ✅ **Implemented** |
+| [005](./005-authorization-policy-seam/spec.md) | Seam de política de autorização | 3 | ✅ **Implemented** |
+| [006](./006-ownership-in-data-access/spec.md) | Ownership obrigatório no acesso a dados | 4 | ✅ **Implemented** (E2E declarado como não executado) |
 | [007](./007-silent-failures-and-input-validation/spec.md) | Falhas silenciosas e validação de entrada | 5 | Proposed |
 | [008](./008-database-access-lockdown/spec.md) | Fechamento do acesso ao banco | 6 | Proposed |
 | [009](./009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | 7 | Proposed |
 | [010](./010-frontend-consolidation/spec.md) | Consolidação do frontend | 8 | Proposed |
 | [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | Proposed |
 
-A spec **002 foi executada em 2026-08-13**; as demais estão `Proposed`. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
+As specs **002 a 006 foram executadas** (002 e 003 em 2026-08-13; 004, 005 e 006 em 2026-08-18); as demais estão `Proposed`. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
+
+**Com a 006, os 7 vazamentos de posse da auditoria estão fechados** e o escopo passou a ser exigido na assinatura dos models.
 
 > ⚠️ **A execução da 002 mudou o escopo de duas specs seguintes:** o registro de custo de IA **funciona** (refutado), então o item correspondente saiu da [007](./007-silent-failures-and-input-validation/spec.md) e a [009](./009-ai-cost-and-reliability/spec.md) **deixou de depender** dela. E a exposição de `password_hash` pela chave anon sugere **antecipar a [008](./008-database-access-lockdown/spec.md)** — decisão pendente do proprietário.
 

@@ -2,9 +2,9 @@
 
 > **Documentados juntos** porque são a mesma fronteira funcional: o chat é o mecanismo de edição, e o versionamento é o registro dessas edições. Separá-los produziria dois documentos que só falam um do outro.
 >
-> ⚠️ **Este é o módulo com as falhas de segurança mais graves do sistema** (4 dos 6 endpoints sem verificação de posse) **e uma funcionalidade que nunca funcionou** (versionamento de perfil).
+> ⚠️ **Era o módulo com as falhas de segurança mais graves do sistema** — 4 dos 6 endpoints sem verificação de posse, **corrigidos na [spec 006](../../specs/006-ownership-in-data-access/spec.md)**. Continua com uma funcionalidade **quebrada**: o versionamento de perfil (spec 007).
 >
-> **Código:** `server/src/controllers/chatController.js` (818 linhas, 15 handlers), `server/src/models/{ChatSession,AnalysisVersion,ProfileVersion,StrategyVersion}.js`, `server/src/utils/versionManager.js`, `server/src/services/geminiService.js#chat`, `server/src/services/prompts/chat-{analysis,profile,strategy}.txt` · **Tabelas:** `ai_chat_sessions`, `analysis_versions`, `profile_versions`, `strategy_versions` · **Frontend:** `components/chat/*`, `components/analysis/StrategyVersionHistoryPanel.jsx`, `components/common/{DiffViewer,InlineDiff}.jsx`
+> **Código:** `server/src/controllers/chat{Session,Analysis,Profile,Strategy}Controller.js` (divididos na spec 006 — antes era um `chatController.js` de 818 linhas), `server/src/models/{ChatSession,AnalysisVersion,ProfileVersion,StrategyVersion}.js`, `server/src/utils/versionManager.js`, `server/src/services/geminiService.js#chat`, `server/src/services/prompts/chat-{analysis,profile,strategy}.txt` · **Tabelas:** `ai_chat_sessions`, `analysis_versions`, `profile_versions`, `strategy_versions` · **Frontend:** `components/chat/*`, `components/analysis/StrategyVersionHistoryPanel.jsx`, `components/common/{DiffViewer,InlineDiff}.jsx`
 
 ---
 
@@ -37,7 +37,7 @@ Três tipos de conteúdo refinável, cada um com sua tabela de versões:
 
 ## Inputs
 
-15 endpoints em `/api/chat` (`chatLimiter` 100/15min — ⚠️ aplicado duas vezes no mesmo router), todos autenticados:
+16 endpoints em `/api/chat` (`chatLimiter` 100/15min — ⚠️ aplicado duas vezes no mesmo router), todos autenticados:
 
 | Grupo | Endpoints |
 |---|---|
@@ -75,7 +75,7 @@ Mais dois em `/api/strategy`: `GET /analyses/:analysisId/versions` e `POST /anal
 ```mermaid
 sequenceDiagram
     participant U as Usuário
-    participant CC as chatController
+    participant CC as chat*Controller
     participant CS as ChatSession
     participant GS as geminiService
     participant VM as versionManager
@@ -102,7 +102,7 @@ sequenceDiagram
     CC->>VM: ensureOriginalVersion
     CC->>DB: update do conteúdo
     CC->>VM: createAnalysisVersion
-    CC->>CS: updateContextSnapshot(sessionId) ⚠️ SEM validar posse
+    CC->>CS: updateContextSnapshot(sessionId, userId) ✅ exige o dono
 ```
 
 ## Not Responsible For
@@ -114,18 +114,18 @@ sequenceDiagram
 
 ## Known Issues
 
-### CRITICAL — acesso cross-tenant
+### ~~CRITICAL — acesso cross-tenant~~ · ✅ **RESOLVIDO na [spec 006](../../specs/006-ownership-in-data-access/spec.md)** (2026-08-18)
 
-Os quatro problemas abaixo compartilham a mesma causa: **o `analysisId`/`sessionId` vem cru do `req.body` e `FightAnalysis.update()/delete()` não filtram `user_id` no model.** Ver [`../AUTHORIZATION.md`](../AUTHORIZATION.md#known-issues).
+Os quatro problemas abaixo compartilhavam a mesma causa: **o `analysisId`/`sessionId` vinha cru do `req.body` e `FightAnalysis.update()/delete()` não filtravam `user_id` no model.** Ficam registrados porque descrevem o que era possível — detalhe da correção em [`../AUTHORIZATION.md`](../AUTHORIZATION.md#known-issues).
 
-| # | Endpoint | Problema |
+| # | Endpoint | O que era possível |
 |---|---|---|
-| AZ-2 | `POST /manual-edit` | Usa `FightAnalysis.getById(analysisId)` — a variante **sem** filtro de usuário. **Sobrescreve `summary`/`charts`/`technical_stats` de qualquer análise de qualquer tenant.** Corrupção silenciosa — a vítima não recebe sinal |
-| AZ-3 | `GET /versions/:analysisId` | Nenhum método de `AnalysisVersion` filtra por usuário, e a tabela **não tem coluna `user_id`**. Lê o `content` completo de todas as versões de qualquer análise |
-| AZ-4 | `POST /restore-version` | **Nenhuma verificação de posse em ponto algum.** Reverte a análise de outro tenant e altera o ponteiro `is_current` do histórico dele |
-| AZ-5 | `POST /apply-edit` → `updateContextSnapshot` | O `sessionId` nunca é validado; o método filtra só por `id` e usa `supabaseAdmin`. **Envenena o contexto de IA da sessão de outro usuário** |
+| ~~AZ-2~~ | `POST /manual-edit` | Usava `FightAnalysis.getById(analysisId)` — variante **sem** filtro. Sobrescrevia `summary`/`charts`/`technical_stats` de qualquer análise de qualquer tenant, sem sinal para a vítima |
+| ~~AZ-3~~ | `GET /versions/:analysisId` | Nenhum método de `AnalysisVersion` filtrava por usuário, e a tabela **não tem coluna `user_id`**. Lia o `content` completo de todas as versões de qualquer análise |
+| ~~AZ-4~~ | `POST /restore-version` | **Nenhuma verificação de posse em ponto algum.** Revertia a análise de outro tenant e alterava o ponteiro `is_current` do histórico dele |
+| ~~AZ-5~~ | `POST /apply-edit` → `updateContextSnapshot` | O `sessionId` nunca era validado; o método filtrava só por `id` e usa `supabaseAdmin`. Envenenava o contexto de IA da sessão de outro usuário |
 
-**O que torna isso instrutivo:** `applyEdit` — no mesmo arquivo, poucas linhas acima — faz a verificação de posse **corretamente**. A inconsistência é interna ao módulo, não uma lacuna de conhecimento.
+**O que torna isso instrutivo:** `applyEdit` — no mesmo arquivo, poucas linhas acima — fazia a verificação de posse **corretamente**. A inconsistência era interna ao módulo, não lacuna de conhecimento. Foi o argumento decisivo para a spec 006 mover a exigência de escopo para a **assinatura do model**, em vez de só corrigir os quatro handlers.
 
 ### HIGH
 
@@ -139,14 +139,14 @@ Os quatro problemas abaixo compartilham a mesma causa: **o `analysisId`/`session
 
 | # | Problema |
 |---|---|
-| **Escopo escalar em vez de array** | `createProfileSession`, `saveProfileSummary` e `restoreProfileVersion` passam `userId` escalar onde o resto do sistema passa o array de `resolveScope` → **admin perde acesso ao grupo** nesses três caminhos |
-| **Escritas sem filtro de usuário no model** | `ChatSession.addMessage`, `addMessages` e `updateContextSnapshot` não filtram `user_id`. Hoje são chamadas após um `getById` validado (exceto AZ-5), mas a proteção é convencional, não estrutural |
-| **`type` do query string sem validação** | `GET /versions/:analysisId?type=...` passa o valor cru para a query |
+| ~~**Escopo escalar em vez de array**~~ | ✅ **spec 006** — os três caminhos de perfil passavam `userId` escalar onde o resto do sistema passa o escopo resolvido, e o **admin perdia** acesso ao dado do grupo. A busca usa `resolveScope`; a escrita, o `userId` do registro |
+| ~~**Escritas sem filtro de usuário no model**~~ | ✅ **spec 006** — `ChatSession.addMessage`, `addMessages` e `updateContextSnapshot` passaram a **exigir** o dono na assinatura. A proteção deixou de ser convencional |
+| ~~**`type` do query string sem validação**~~ | ✅ **spec 006** — `GET /versions/:analysisId?type=...` valida contra o CHECK da migration 010 (`fight`/`tactical`) e lança `ValidationError` no resto |
 | **Sem validação de shape na edição de análise** | Estratégia tem `validateStrategyField`; análise não tem equivalente |
 | **`chatLimiter` aplicado duas vezes** no mesmo router |
 | **Sem `UNIQUE(analysis_id, version_number)`** nas três tabelas de versão, e o número é calculado no app (`length + 1` ou `MAX + 1`) sem transação → versões com número repetido |
 | **`is_current` sem constraint** — `setAsCurrent` faz "update todas → marca uma" sem transação; nada impede duas versões atuais |
-| **`controller` obeso** — 818 linhas, 15 handlers, três subdomínios (análise, perfil, estratégia) no mesmo arquivo |
+| ~~**`controller` obeso**~~ — ✅ **spec 006**: os 818 linhas / 16 handlers foram divididos em `chat{Session,Analysis,Profile,Strategy}Controller.js`, todos abaixo de 280 linhas, em commit de movimentação pura |
 
 ### LOW
 

@@ -1,7 +1,7 @@
 # SPEC-006 — Ownership obrigatório no acesso a dados
 
-**Status: Proposed** · Etapa 4 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
-**É a spec mais importante do plano — e a mais arriscada.**
+**Status: Implemented (2026-08-18)** · Etapa 4 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Era a spec mais importante do plano — e a mais arriscada.**
 
 ## Context
 
@@ -55,7 +55,13 @@ A exigência é de **assinatura + verificação em runtime**: chamada sem escopo
 
 ### 3. Autorização de `analysis_versions`
 
-⚠️ **Decisão pendente P4.** A tabela não tem dono. Duas opções, com recomendação por `JOIN` (reversível sem tocar dados) — detalhes em §8.1 do plano.
+✅ **P4 DECIDIDO (2026-08-18): derivar da análise pai, verificando em duas etapas na aplicação.** Sem migration, sem backfill, reversível sem tocar em dado.
+
+⚠️ **Correção de rumo:** o plano descrevia esta opção como "`JOIN` com `fight_analyses`". **O JOIN do PostgREST é inviável aqui** — `analysis_id` é polimórfico (aponta para `fight_analyses` **ou** `tactical_analyses`, conforme `analysis_type`) e **não tem foreign key**; o PostgREST só embeda relação declarada. Confirmado na migration `010`, que cria a tabela sem FK e com `CHECK (analysis_type IN ('fight','tactical'))`.
+
+A coluna `user_id` denormalizada foi descartada por dois motivos: exige migration + backfill, e cria uma **segunda fonte de verdade de posse**, que pode divergir da análise pai.
+
+Custo aceito: **uma query extra por chamada**. Quem decide o status HTTP é o controller (via `AnalysisVersion.isAnalysisInScope` → 404); o model repete a verificação como rede para um chamador futuro que esqueça.
 
 ### 4. Escopo escalar nos caminhos de perfil
 
@@ -63,7 +69,16 @@ A exigência é de **assinatura + verificação em runtime**: chamada sem escopo
 
 ### 5. Split de `chatController.js`
 
-818 linhas, 15 handlers, 3 subdomínios — e é onde estão 4 dos 6 vazamentos. Dividir em `analysis`, `profile`, `strategy`. **Mecânico, sem mudança de comportamento**, e feito num PR separado das correções de segurança para não misturar movimentação de código com mudança de lógica.
+818 linhas, 16 handlers, 3 subdomínios — e é onde estavam 4 dos 6 vazamentos. **Mecânico, sem mudança de comportamento**, em commit separado das correções de segurança para não misturar movimentação de código com mudança de lógica.
+
+✅ **Feito em 4 arquivos, não 3.** A spec pedia `analysis`/`profile`/`strategy` **e** "cada um < 350 linhas", e os dois requisitos são incompatíveis: o módulo de análise sozinho passaria de 420 linhas, e mais ainda depois das correções. O subdomínio de análise foi dividido em **sessão** (genérica, usada pelos três) e **edição/versionamento**:
+
+| Arquivo | Linhas |
+|---|---|
+| `chatSessionController.js` | 204 |
+| `chatAnalysisController.js` | 243 |
+| `chatProfileController.js` | 271 |
+| `chatStrategyController.js` | 139 |
 
 ## Out of Scope
 
@@ -126,16 +141,16 @@ O split vem primeiro porque mover 818 linhas **junto** de mudança de lógica to
 
 ## Acceptance Criteria
 
-- [ ] Os 6 testes de vazamento da spec 004 **passam**
-- [ ] B1–B5 continuam passando; **B4 verificado explicitamente**
-- [ ] Teste de unidade: cada model afetado **lança** sem escopo
-- [ ] `analysis_versions` autorizada pela análise pai; teste comprova
-- [ ] Admin edita dado de membro do grupo em atleta, adversário, análise e estratégia
-- [ ] `athlete-summary` não aceita `analyses` arbitrário
-- [ ] `chatController.js` dividido em 3, cada um < 350 linhas
-- [ ] As 16 suítes de backend verdes
-- [ ] E2E dos fluxos críticos verdes
-- [ ] Nenhum método de model de domínio aceita ID sem escopo, exceto os explicitamente nomeados como *unscoped*
+- [x] Os 6 testes de vazamento da spec 004 **passam** (cada `test.failing` invertido no mesmo commit da sua correção)
+- [x] B1–B5 continuam passando; **B4 verificado explicitamente** em cada etapa
+- [x] Teste de unidade: cada model afetado **lança** sem escopo — `models.test.js`, 63 casos, incluindo `[undefined]`
+- [x] `analysis_versions` autorizada pela análise pai; teste comprova (inclusive o caminho `tactical`)
+- [x] Admin edita dado de membro do grupo em atleta, adversário, análise e estratégia — e os 2 testes novos de perfil foram **verificados falhando** com o bug reintroduzido
+- [x] `athlete-summary` não aceita `analyses` arbitrário — corpo antigo devolve 400, e um teste prova que `athleteData` enviado junto **não alcança o prompt**
+- [x] `chatController.js` dividido, cada arquivo < 350 linhas (4 arquivos em vez de 3 — ver escopo item 5)
+- [x] Suítes de backend verdes: **23 suítes / 274 testes**
+- [ ] ⚠️ **E2E dos fluxos críticos: NÃO executado.** O Playwright continua sem rodar (exige backend + banco + usuário semeado — pendência herdada da spec 003, sem spec própria ainda). Declarado, não silenciado
+- [x] Nenhum método de model de domínio aceita ID sem escopo — `getById` sem filtro foi **removido**, e nenhum *unscoped* foi criado
 
 ## Testing Strategy
 
@@ -180,6 +195,6 @@ O split vem primeiro porque mover 818 linhas **junto** de mudança de lógica to
 **Depende de:**
 - [spec 004](../004-authorization-safety-net/spec.md) — os testes vermelhos são a prova da correção; B1–B5 são a prova de não-regressão
 - [spec 005](../005-authorization-policy-seam/spec.md) — consome o escopo do módulo de política
-- **Decisão P4** — autorização de `analysis_versions`
+- ~~**Decisão P4**~~ — ✅ decidida nesta spec (ver escopo item 3)
 
 **Bloqueia:** [spec 008](../008-database-access-lockdown/spec.md) — fechar o banco antes de a aplicação estar correta cria uma janela em que nada protege.

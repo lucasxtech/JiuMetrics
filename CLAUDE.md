@@ -2,7 +2,7 @@
 
 > **Para agentes de IA e desenvolvedores trabalhando neste repositório.** Leia isto antes de alterar qualquer coisa.
 >
-> **Atualizado:** 2026-08-13 · **Baseline:** `main` (`895066f`) + [spec 002](./specs/002-verification-baseline/spec.md) executada (verificação contra produção)
+> **Atualizado:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [006](./specs/006-ownership-in-data-access/spec.md) executadas
 
 ---
 
@@ -14,7 +14,7 @@ JiuMetrics analisa vídeos de luta de Jiu-Jitsu com IA para produzir um perfil t
 
 ```
 frontend/    SPA React (11 páginas, 40 componentes, 12 services)
-server/      API Express (10 rotas, 10 controllers, 10 models, 22 migrations)
+server/      API Express (10 rotas, 13 controllers, 10 models, 22 migrations)
 playwright/  6 specs E2E em TypeScript (nunca rodam no CI)
 docs/        documentação permanente ← comece aqui
 specs/       histórico versionado de mudanças planejadas
@@ -49,7 +49,7 @@ Confirme sempre de qual se trata antes de mexer:
 
 **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** — arquitetura real, com diagramas, camadas, endpoints, infraestrutura e problemas conhecidos.
 
-Decisão que mais define o sistema: **toda a autorização vive na camada de aplicação.** O banco não a reforça (RLS desligado ou neutralizado em todas as tabelas de domínio). **Não há defesa em profundidade** — existe exatamente uma camada de proteção de dados, o filtro no controller.
+Decisão que mais define o sistema: **toda a autorização vive na camada de aplicação.** O banco não a reforça (RLS desligado ou neutralizado em todas as tabelas de domínio) — **não há nenhuma defesa abaixo da aplicação**. Dentro dela existem duas camadas desde a spec 006: o controller resolve o escopo e o model o **exige**.
 
 ## Domain
 
@@ -63,7 +63,7 @@ Regra de porta do produto: **não é possível gerar estratégia sem ≥1 análi
 
 Regras não negociáveis:
 
-1. **Nunca commite segredo.** Já aconteceu, e o dano é real e medido: há uma chave da API do Gemini no histórico do git (`.archived/SUPABASE_SETUP.md`) e a chave publicável do Supabase em `frontend/.env.production`, arquivo rastreado. O scanner do CI roda com `continue-on-error` e não bloqueou.
+1. **Nunca commite segredo.** Já aconteceu, e o dano é real e medido: há uma chave da API do Gemini no histórico do git (`.archived/SUPABASE_SETUP.md`) e a chave publicável do Supabase em `frontend/.env.production`, arquivo rastreado. O scanner do CI só passou a bloquear na spec 003, e mesmo assim **cobre apenas o diff** — não expurga o que já está no histórico, e não pega senha genérica (ver o achado em `playwright/.env.example`).
    > 🔴 **Verificado em 2026-08-13:** essa chave publicável **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários** — e a escrita também está liberada. É o achado de segurança mais grave do projeto. Ver [`docs/DATABASE.md`](./docs/DATABASE.md) §4 e a [spec 008](./specs/008-database-access-lockdown/spec.md).
 2. **Nunca devolva `error.message` ao cliente** em produção. `utils/errorHandler.js#handleError` faz exatamente isso hoje, em ~30 handlers — é dívida conhecida, não padrão a seguir.
 3. **Nunca logue PII.** O login loga o e-mail do usuário em toda tentativa — dívida conhecida.
@@ -93,7 +93,9 @@ Dois detalhes: **404, não 403** (não vaza existência); e a escrita usa o `use
 
 `utils/tenantScope.js#getScopeIds` ainda existe, mas é **wrapper `@deprecated`** delegando a `resolveScope` — não use em código novo. `req.actor` (`{ id, role, tenantId }`) é populado pelo `authMiddleware`; `services/authorization.js` nunca importa Express nem lê `req` diretamente, o que o torna testável sem HTTP (ver [ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md)).
 
-**Armadilha ativa:** `FightAnalysis.update()` e `.delete()` **não filtram `user_id`**, e nenhum método de `AnalysisVersion` filtra (a tabela nem tem a coluna). **Se você chamar esses métodos sem verificar posse antes, cria um IDOR.** Já existem 6 casos assim no código — não some ao total. Referência de model bem feito: `models/TacticalAnalysis.js` (filtra em todos os métodos).
+**O escopo é OBRIGATÓRIO no model** (spec 006). Todo método de model de domínio exige o escopo de posse na assinatura e lança `MissingScopeError` sem ele — `utils/scopeGuard.js#requireScope`. Ao criar um método novo, siga isso: **nunca aceite um `id` sem escopo.** A armadilha antiga (`FightAnalysis.update()`/`.delete()` aceitando qualquer ID, `AnalysisVersion` sem filtro nenhum) produziu 6 IDORs; hoje o mesmo esquecimento falha em vez de vazar.
+
+`analysis_versions` **não tem coluna `user_id`**: a autorização deriva da análise pai, verificada na aplicação (decisão P4 — PostgREST não faz JOIN aqui, porque `analysis_id` é polimórfico e sem FK). Referências de model bem feito: `models/TacticalAnalysis.js` e `models/FightAnalysis.js`.
 
 ## AI
 
@@ -172,7 +174,7 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 ### Comandos
 
 ```bash
-cd server && npm test          # Jest — 16 suítes (bloqueia merge no CI)
+cd server && npm test          # Jest — 23 suítes / 274 testes (bloqueia merge no CI)
 ```
 
 ```bash

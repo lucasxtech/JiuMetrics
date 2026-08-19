@@ -431,7 +431,7 @@ flowchart TD
 
 **O Estágio 1 é a única coisa a fazer agora**, e é deliberadamente sem ganho funcional: mesma regra, mesmo comportamento, novo endereço. É a costura.
 
-✅ **Etapa 3 concluída (spec 005, 2026-08-18):** `services/authorization.js` existe, com `resolveScope`/`authorize`, e os 23 call sites foram migrados. `getScopeIds` é wrapper `@deprecated`. Comportamento idêntico, provado pelos testes de baseline da spec 004. Falta a **etapa 4 (spec 006)** para completar o Estágio 1: empurrar o filtro de posse para dentro dos models, fechando os 6 vazamentos. Ver [ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md).
+✅ **Estágio 1 CONCLUÍDO (etapas 3 e 4 — specs 005 e 006, 2026-08-18).** A spec 005 criou `services/authorization.js` (`resolveScope`/`authorize`) e migrou os 23 call sites, com comportamento idêntico. A spec 006 empurrou a exigência de escopo para a **assinatura dos models** (`utils/scopeGuard.js#requireScope` → `MissingScopeError`) e fechou os 6 vazamentos. Ver [ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md).
 
 ### 6.4 Como evitar os problemas conhecidos
 
@@ -441,7 +441,7 @@ flowchart TD
 | **Condicionais espalhadas no frontend** | Frontend **nunca** decide autorização. Continua com `ProtectedRoute` para UX, e o backend devolve apenas o que o ator pode ver. Nenhum `if (isNutricionista)` na UI — a API já filtrou |
 | **Proteção de API** | Validação → política → escopo, nesta ordem. Nenhum controller recebe corpo não validado nem consulta sem escopo |
 | **Proteção de dados** | Hoje: só aplicação ([ADR-009](./docs/decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md)). **Se o Estágio 3 chegar, RLS volta à mesa** — dado clínico cruzando fronteira de organização sem defesa no banco é imprudente, e isso **muda a premissa do ADR-009** |
-| **`analysis_versions` sem dono** | Autorização deriva da `fight_analysis` pai. Decisão pendente: `JOIN` ou `user_id` denormalizado (§10) |
+| **`analysis_versions` sem dono** | ✅ **decidido e implementado (P4, spec 006):** autorização deriva da análise pai, verificada em duas etapas na aplicação. `JOIN` do PostgREST foi descartado por ser **inviável** — `analysis_id` é polimórfico e sem FK |
 
 ---
 
@@ -520,15 +520,14 @@ Mínimo para a refatoração de autorização e para as correções silenciosas.
 #### RN-1 — Autorização de `analysis_versions`
 
 - **Problema:** a tabela não tem `user_id`; nenhum método filtra por dono → leitura cross-tenant (AZ-3). **Não é corrigível apenas no código.**
-- **Solução:** duas opções, **decisão pendente** (§14):
-  - **(a) `JOIN` com `fight_analyses`** — sem migração, sem backfill; custa uma query a mais por leitura.
-  - **(b) `user_id` denormalizado** — mais rápido; exige migração + backfill + risco de divergir do pai.
-- **Impacto:** leitura de versões de análise.
-- **Risco:** (a) baixo · (b) médio (backfill sobre dados existentes).
-- **Migration:** (a) nenhuma · (b) `ADD COLUMN` + `UPDATE ... FROM` + índice.
-- **Rollback:** (a) reverter código · (b) `DROP COLUMN` (a coluna é aditiva; o código antigo a ignora).
-- **Preservação:** nenhum dado é alterado em (a). Em (b), apenas adição.
-- **Recomendação:** **(a)**, por ser reversível sem tocar dados. Reavaliar se a query virar gargalo.
+- **Solução:** ✅ **DECIDIDO e IMPLEMENTADO (P4, spec 006, 2026-08-18) — opção (a), verificação em duas etapas na aplicação.**
+  - **(a) derivar da análise pai** — sem migração, sem backfill; custa uma query a mais por chamada. **Escolhida.**
+  - **(b) `user_id` denormalizado** — mais rápido; exige migração + backfill, e cria uma segunda fonte de verdade de posse que pode divergir do pai. Descartada.
+- ⚠️ **Correção de rumo em relação a este plano:** a opção (a) foi descrita aqui como "`JOIN` com `fight_analyses`". **O `JOIN` do PostgREST é inviável neste caso** — `analysis_id` é polimórfico (aponta para `fight_analyses` **ou** `tactical_analyses`, conforme `analysis_type`) e **não tem foreign key**, e o PostgREST só embeda relação declarada. A implementação é, portanto, uma verificação em duas etapas na aplicação: confirma o pai no escopo, depois consulta as versões. O efeito de autorização é o mesmo; o mecanismo, não.
+- **Impacto:** leitura e escrita de versões de análise.
+- **Risco:** baixo — nenhum dado tocado.
+- **Migration:** nenhuma.
+- **Rollback:** reverter código.
 
 #### RN-2 — Revogar GRANTs de `anon`/`authenticated`
 
@@ -885,13 +884,13 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 **Documentation.** `docs/AUTHORIZATION.md` (mover de *Known Issues* para *Current Implementation*), `docs/DATABASE.md` (ownership por model), `docs/modules/{chat-and-versions,fight-analysis}.md`, ADR-009 (progresso), `CHANGELOG.md` — **seção de segurança**.
 
-**Acceptance Criteria.**
-- [ ] Os 6 testes de ownership **passam**
-- [ ] Model **lança** quando chamado sem escopo (teste de unidade)
-- [ ] Admin continua acessando dado do próprio tenant
-- [ ] `analysis_versions` só devolve versões do escopo
-- [ ] Nenhum teste de admin regrediu
-- [ ] Mudança de contrato de `athlete-summary` coordenada com o frontend
+**Acceptance Criteria.** ✅ **Etapa 4 CONCLUÍDA (spec 006, 2026-08-18)**
+- [x] Os 6 testes de ownership **passam**
+- [x] Model **lança** quando chamado sem escopo (63 casos de unidade, incluindo `[undefined]`)
+- [x] Admin continua acessando dado do próprio tenant (B2/B4 verdes; 2 testes novos de perfil verificados falhando com o bug reintroduzido)
+- [x] `analysis_versions` só devolve versões do escopo (autorização pela análise pai)
+- [x] Nenhum teste de admin regrediu
+- [x] Mudança de contrato de `athlete-summary` coordenada com o frontend — verificado que **nenhum componente** chamava o endpoint; o service foi alinhado no mesmo commit
 
 ---
 

@@ -18,7 +18,7 @@ flowchart TD
         LC["linkController<br/>análise de vídeo"]
         SC["strategyController<br/>estratégia"]
         AC["aiController<br/>resumo / consolidação"]
-        CC["chatController<br/>15 endpoints de chat"]
+        CC["chat*Controller<br/>16 endpoints de chat"]
     end
     LC --> GS["geminiService.js (845 linhas)<br/>prompts + domínio IBJJF + parsing"]
     SC --> SS["strategyService.js<br/>consolidação + orquestração"]

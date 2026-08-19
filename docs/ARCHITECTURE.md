@@ -33,7 +33,9 @@ flowchart TD
 
 ### Decisão estrutural mais importante
 
-**Toda a autorização vive na camada de aplicação.** O banco não a reforça: RLS está desligado em `athletes`, `opponents` e `fight_analyses` (migrations `008`/`009`) e as políticas de `tactical_analyses`, `ai_chat_sessions` e `analysis_versions` são `USING (true)`. Consequência: um endpoint que esqueça o filtro de posse vaza dados, sem nenhuma rede de segurança abaixo dele — e [`AUTHORIZATION.md`](./AUTHORIZATION.md) documenta 6 lugares onde isso acontece hoje.
+**Toda a autorização vive na camada de aplicação.** O banco não a reforça: RLS está desligado em `athletes`, `opponents` e `fight_analyses` (migrations `008`/`009`) e as políticas de `tactical_analyses`, `ai_chat_sessions` e `analysis_versions` são `USING (true)`. Não há rede de segurança abaixo da aplicação.
+
+Como havia **6 endpoints** que esqueciam o filtro de posse (todos corrigidos na [spec 006](../specs/006-ownership-in-data-access/spec.md)), a exigência de escopo desceu do controller para a **assinatura dos models**: hoje a omissão lança `MissingScopeError` em vez de vazar. Continuam duas camadas de aplicação, e zero no banco.
 
 Ver [ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md) e [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
 
@@ -132,11 +134,11 @@ flowchart LR
 | Camada | Papel | Observação |
 |---|---|---|
 | `routes/` (10) | montagem de endpoints, rate limit, auth | Nenhuma exceção — a query de banco que existia em `routes/fightAnalysis.js` foi removida com a rota `/debug/all` (spec 002) |
-| `controllers/` (10) | validação, orquestração, resposta | Onde vive a checagem de posse — e onde ela falta em 6 pontos |
-| `models/` (10) | *data mappers* PostgREST | **Não são entidades de domínio.** Não há camada de domínio |
+| `controllers/` (13) | validação, orquestração, resposta | Resolvem o escopo e o passam adiante. O chat virou 4 controllers na spec 006 |
+| `models/` (10) | *data mappers* PostgREST | **Não são entidades de domínio.** Não há camada de domínio. Desde a spec 006 **exigem escopo de posse na assinatura** — chamada sem ele lança |
 | `services/` | IA, download de vídeo, **política de autorização** | `llm.js`, `geminiService.js`, `strategyService.js`, `videoDownloader.js`, `authorization.js` (ponto único de decisão — spec 005) |
 | `schemas/` | `responseSchema` do Gemini | Contrato de saída da IA |
-| `utils/` | erros, parsers, versões, custo | `tenantScope.js#getScopeIds` é wrapper `@deprecated` — a regra de autorização mudou para `services/authorization.js` (spec 005) |
+| `utils/` | erros, parsers, versões, custo, **guard de escopo** | `scopeGuard.js#requireScope` (spec 006) é o que torna o escopo obrigatório nos models. `tenantScope.js#getScopeIds` é wrapper `@deprecated` — a regra mudou para `services/authorization.js` (spec 005) |
 | `config/` | `ai.js` (domínio + infra), `supabase.js` (2 clientes) | |
 
 ### Endpoints (fonte de verdade: `server/src/routes/`)
@@ -159,13 +161,13 @@ Detalhe parcial em [`API.md`](./API.md) (incompleto — o código é a fonte de 
 
 ### Problemas conhecidos
 
-- **Posse verificada no controller, nunca no model.** `FightAnalysis.update()`/`delete()` aceitam qualquer ID. O sistema é seguro só enquanto todo controller lembrar de filtrar.
+- ~~**Posse verificada no controller, nunca no model.**~~ ✅ **Resolvido na [spec 006](../specs/006-ownership-in-data-access/spec.md):** `FightAnalysis.update()`/`delete()` aceitavam qualquer ID, e o sistema era seguro só enquanto todo controller lembrasse de filtrar. Hoje o escopo é obrigatório na assinatura (`utils/scopeGuard.js`) e a omissão lança `MissingScopeError`.
 - **Rate limiting inoperante em produção**: `MemoryStore` em function serverless — cada instância tem seu contador.
-- **Nenhum validador de schema de entrada** (sem zod/joi/yup). Validação é `if (!campo)` ad hoc.
-- **Sem lint no backend** — 69 arquivos sem análise estática.
+- **Nenhum validador de schema de entrada** (sem zod/joi/yup). Validação é `if (!campo)` ad hoc — escopo da [spec 007](../specs/007-silent-failures-and-input-validation/spec.md).
+- ~~**Sem lint no backend**~~ ✅ resolvido na spec 003 (conjunto mínimo, bloqueia merge).
 - **Sem `helmet`** nem headers de segurança; CORS aceita qualquer `*.vercel.app`.
 - **`handleError` devolve `error.message` ao cliente**, vazando mensagens do PostgREST/Postgres.
-- **Controller obeso**: `linkController.analyzeLink` tem 206 linhas orquestrando IA + persistência + efeitos colaterais.
+- **Controller obeso**: `linkController.analyzeLink` orquestra IA + persistência + efeitos colaterais numa única função. (`chatController.js`, que tinha 818 linhas, foi dividido em 4 na spec 006.)
 - **Cinco `catch` que engolem erro** — causa de três funcionalidades que nunca funcionaram. Ver [`PROJECT_STATUS.md`](./PROJECT_STATUS.md#known-issues).
 
 ---

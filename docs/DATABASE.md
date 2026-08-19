@@ -430,17 +430,19 @@ await supabase.from('tabela').select('*').in('user_id', allowedUserIds);
 await supabase.from('tabela').update(dados).eq('id', id).eq('user_id', ownerRealDoRegistro);
 ```
 
+Desde a [spec 006](../specs/006-ownership-in-data-access/spec.md) o escopo é **obrigatório na assinatura** dos métodos de model: chamada sem ele lança `MissingScopeError` em vez de devolver `null` ou lista vazia. `utils/scopeGuard.js#requireScope` é o guard, e rejeita também `[undefined]` — o valor que chega quando o chamador passa uma variável inexistente.
+
 ### Ownership por model
 
 | Model | Leitura | Escrita |
 |---|---|---|
 `TacticalAnalysis` | ✅ `.in('user_id')` em todos | ✅ em todos — **model exemplar** |
 `Athlete` / `Opponent` | ✅ | ✅ `.eq('user_id')` |
-`FightAnalysis` | ✅ `getByIdAndUser` / `getAll` | ❌ **`update` e `delete` não filtram** |
-`AnalysisVersion` | ❌ **nenhum método filtra** (a tabela não tem `user_id`) | ❌ |
+`FightAnalysis` | ✅ `getByIdAndUser` / `getAll` / `getByPersonId` | ✅ **`update`/`delete` filtram e EXIGEM escopo** (spec 006) |
+`AnalysisVersion` | ✅ autoriza pela **análise pai** (spec 006, decisão P4 — a tabela não tem `user_id`) | ✅ idem |
 `ProfileVersion` | ✅ | ✅ |
 `StrategyVersion` | ✅ | ✅ |
-`ChatSession` | ✅ em `getById`/`getByContext`/`delete` | ❌ em `addMessage`/`addMessages`/`updateContextSnapshot` |
+`ChatSession` | ✅ em `getById`/`getByContext`/`delete` | ✅ `addMessage`/`addMessages`/`updateContextSnapshot` exigem o dono (spec 006) |
 `ApiUsage` | ✅ | ✅ |
 `User` | ✅ por tenant | ✅ |
 

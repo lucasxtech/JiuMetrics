@@ -22,8 +22,8 @@ Transformar **um ou mais vídeos de luta do YouTube** em uma análise estruturad
 6. **Se um vídeo falha, o loop continua** com os demais. Só retorna erro se **nenhum** vídeo foi analisado com sucesso.
 7. **Consolidação híbrida:** os números são consolidados por **função pura** (médias, sem IA); os resumos narrativos, quando há mais de um, por uma **segunda chamada de IA**.
 8. **Os 5 gráficos são normalizados para somar 100%**, e gráficos sem nenhum dado observado são descartados.
-9. **`person_type` só aceita `'athlete'` ou `'opponent'`** — validado no controller de `POST /api/fight-analysis` (⚠️ **não** em `analyze-link`) e por CHECK no banco.
-10. **A pessoa precisa existir e pertencer ao escopo** — validado em `POST /api/fight-analysis`, ⚠️ **não** em `POST /api/ai/analyze-link`.
+9. **`person_type` só aceita `'athlete'` ou `'opponent'`** — validado nos controllers de `POST /api/fight-analysis` **e** de `analyze-link` (spec 006) e por CHECK no banco.
+10. **A pessoa precisa existir e pertencer ao escopo** — validado em `POST /api/fight-analysis` **e**, desde a spec 006, em `POST /api/ai/analyze-link` (antes das chamadas de IA).
 11. **Criar ou deletar análise regenera o `technical_summary`** da pessoa; se sobram zero análises, o resumo é limpo.
 12. **A versão original é preservada** antes da primeira edição (`ensureOriginalVersion`).
 13. **Exclusão é hard delete.**
@@ -97,7 +97,7 @@ flowchart TD
     MULTI -->|não| SAVE
     AI2 --> SAVE{"personId<br/>enviado?"}
     SAVE -->|não| RESP["responde sem persistir"]
-    SAVE -->|sim| INS["FightAnalysis.create<br/>⚠️ sem verificar posse de personId"]
+    SAVE -->|sim| INS["FightAnalysis.create<br/>posse de personId validada ANTES da IA (spec 006)"]
     INS --> TS["technical_summary reconsolidado<br/>(SÍNCRONO)"]
     TS --> USAGE["ApiUsage.logUsage<br/>⚠️ provavelmente falha em silêncio"]
     USAGE --> RESP
@@ -118,8 +118,8 @@ flowchart TD
 
 | Severidade | Problema |
 |---|---|
-| **CRITICAL** | **Escrita cross-tenant.** `FightAnalysis.update()` e `.delete()` **não filtram `user_id`** no model — a posse é responsabilidade exclusiva do controller, e 3 endpoints do chat não a verificam (`manual-edit`, `restore-version`, `versions`). Ver [`../AUTHORIZATION.md`](../AUTHORIZATION.md#known-issues) |
-| **HIGH** | **`analyze-link` não valida posse de `personId`.** Cria análise vinculada a pessoa de outro tenant. O caminho equivalente (`POST /api/fight-analysis`) **faz** essa validação — mesma operação, dois níveis de rigor |
+| ~~**CRITICAL**~~ | ✅ **RESOLVIDO na [spec 006](../../specs/006-ownership-in-data-access/spec.md)** — `FightAnalysis.update()` e `.delete()` **não filtravam `user_id`** no model, e 3 endpoints do chat não verificavam posse (`manual-edit`, `restore-version`, `versions`). Hoje o escopo é **obrigatório na assinatura** e a chamada sem ele lança. `getById` (a variante sem filtro) foi removido. Ver [`../AUTHORIZATION.md`](../AUTHORIZATION.md#known-issues) |
+| ~~**HIGH**~~ | ✅ **RESOLVIDO na spec 006** — `analyze-link` criava análise vinculada a pessoa de outro tenant, enquanto o caminho equivalente (`POST /api/fight-analysis`) validava. A verificação foi colocada **antes** das chamadas de IA, para um pedido que vai dar 404 não queimar tokens pagos |
 | **HIGH** | **Nenhum limite em `videos[]`.** Cada item é uma inferência de vídeo em `gemini-2.5-pro`, a operação mais cara do sistema. Combinado com o rate limit ineficaz em serverless e o registro de custo quebrado, **não há controle efetivo de gasto** |
 | **HIGH** | **Trabalho longo em request serverless.** Download (até 120s) + upload/polling (até 120s) + inferência, × N vídeos em série, sem `maxDuration` no `vercel.json`. Provável timeout **após** consumir tokens. **NEEDS_CONFIRMATION:** plano da Vercel |
 | **HIGH** | **As estatísticas técnicas nunca aparecem no histórico.** A resposta imediata traz `technical_stats` (snake), o banco devolve `technicalStats` (camel), e os componentes de histórico leem `technical_stats`. Os pills "X raspagens" e o grid "Estatísticas Técnicas" só renderizam logo após analisar |
