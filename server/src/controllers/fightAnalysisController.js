@@ -135,12 +135,14 @@ exports.createAnalysis = async (req, res) => {
       userId: req.userId,
     });
 
-    // Atualizar perfil técnico da pessoa
-    if (personType === 'athlete') {
-      await Athlete.updateTechnicalProfile(personId, technicalProfile);
-    } else if (personType === 'opponent') {
-      await Opponent.updateTechnicalProfile(personId, technicalProfile);
-    }
+    // Atualizar perfil técnico da pessoa.
+    //
+    // O escopo era OMITIDO aqui — chamada com 2 de 3 argumentos. Dentro do
+    // model, `getById(id, undefined)` filtrava `.in('user_id', [undefined])`,
+    // não achava nada e devolvia null: no-op silencioso. Medido na spec 002:
+    // 0 de 37 atletas com o campo preenchido. (spec 007, defeito 3)
+    const Model = personType === 'athlete' ? Athlete : Opponent;
+    await Model.updateTechnicalProfile(personId, technicalProfile, allowedUserIds);
 
     res.status(201).json({
       success: true,

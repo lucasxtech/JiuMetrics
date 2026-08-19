@@ -1,6 +1,8 @@
 // Modelo de dados para Atleta com Supabase
 const { supabase } = require('../config/supabase');
 const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers');
+const { requireScope } = require('../utils/scopeGuard');
+const { NotFoundError } = require('../utils/errors');
 
 class Athlete {
   /**
@@ -8,6 +10,8 @@ class Athlete {
    * @param {string[]} allowedUserIds - IDs do grupo (tenant)
    */
   static async getAll(allowedUserIds) {
+    requireScope(allowedUserIds, 'Athlete.getAll');
+
     const { data: athletes, error } = await supabase
       .from('athletes')
       .select('*')
@@ -62,7 +66,11 @@ class Athlete {
    * @param {string|string[]} userIdOrAllowed - userId único OU array de allowedUserIds
    */
   static async getById(id, userIdOrAllowed) {
-    const ids = Array.isArray(userIdOrAllowed) ? userIdOrAllowed : [userIdOrAllowed];
+    // Exigir o escopo (spec 007) fecha a variante silenciosa deste método:
+    // chamado sem ele, filtrava `.in('user_id', [undefined])`, não achava nada
+    // e devolvia `null` — indistinguível de "não existe". Era a causa direta
+    // do no-op de `updateTechnicalProfile`.
+    const ids = requireScope(userIdOrAllowed, 'Athlete.getById');
     const { data, error } = await supabase
       .from('athletes')
       .select('*')
@@ -109,6 +117,7 @@ class Athlete {
    * Atualiza um atleta
    */
   static async update(id, athleteData, userId) {
+    requireScope(userId, 'Athlete.update');
     const updateData = {};
     
     if (athleteData.name !== undefined) updateData.name = athleteData.name;
@@ -141,6 +150,8 @@ class Athlete {
    * Deleta um atleta
    */
   static async delete(id, userId) {
+    requireScope(userId, 'Athlete.delete');
+
     const { data, error } = await supabase
       .from('athletes')
       .delete()
@@ -156,17 +167,28 @@ class Athlete {
   /**
    * Atualiza perfil técnico baseado em análises de lutas
    */
-  static async updateTechnicalProfile(id, analysisData, userId) {
-    const athlete = await this.getById(id, userId);
-    if (!athlete) return null;
+  static async updateTechnicalProfile(id, analysisData, allowedUserIds) {
+    const athlete = await this.getById(id, allowedUserIds);
+    if (!athlete) {
+      // LANÇA em vez de devolver null (spec 007). O `return null` silencioso
+      // era metade do motivo de este método nunca ter funcionado: o chamador
+      // não tinha como distinguir "não encontrei" de "atualizei".
+      throw new NotFoundError('Atleta');
+    }
 
-    // Mesclar dados de análise com perfil existente
+    // `getById` devolve o objeto já convertido por parseAthleteFromDB, que produz
+    // camelCase. Lia-se `technical_profile` aqui — sempre undefined —, então
+    // o merge descartava o perfil existente mesmo depois de corrigida a
+    // aridade da chamada. Defeito da mesma família dos outros quatro, não
+    // listado na spec e encontrado ao implementá-la.
     const updatedProfile = {
-      ...athlete.technical_profile,
+      ...athlete.technicalProfile,
       ...analysisData,
     };
 
-    return this.update(id, { technicalProfile: updatedProfile }, userId);
+    // A escrita usa o owner REAL do registro, não o escopo — permite ao admin
+    // atualizar o perfil de um membro do grupo sem transferir a posse.
+    return this.update(id, { technicalProfile: updatedProfile }, athlete.userId);
   }
 }
 

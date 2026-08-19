@@ -134,6 +134,70 @@ describe('SPEC-007 — persistência que falhava em silêncio', () => {
     });
   });
 
+  describe('R2 — technical_profile do atleta (0 de 37 preenchidos antes desta spec)', () => {
+    it('criar análise ALTERA athletes.technical_profile', async () => {
+      supabaseMock.__setFake(createFakeSupabase(fx.seedRows));
+      const antes = rows('athletes').find((a) => a.id === fx.tenantA.athlete.id);
+      expect(antes.technical_profile).toEqual({});
+
+      const res = await request(app)
+        .post('/api/fight-analysis')
+        .set('Authorization', authHeader(fx.tenantA.user))
+        .send({
+          personId: fx.tenantA.athlete.id,
+          personType: 'athlete',
+          videoUrl: 'https://youtube.com/watch?v=abc',
+          summary: 'resumo',
+          charts: [
+            { title: 'Personalidade Geral', data: [{ label: 'Agressivo/Ofensivo', value: 70 }] },
+            { title: 'Jogo de Guarda', data: [{ label: 'Guarda Fechada', value: 60 }] },
+          ],
+        });
+
+      expect(res.status).toBe(201);
+
+      const depois = rows('athletes').find((a) => a.id === fx.tenantA.athlete.id);
+      expect(depois.technical_profile).not.toEqual({});
+      expect(depois.technical_profile.personality).toEqual({ 'Agressivo/Ofensivo': 70 });
+      expect(depois.technical_profile.guardGame).toEqual({ 'Guarda Fechada': 60 });
+      // A posse não migra para quem editou
+      expect(depois.user_id).toBe(fx.tenantA.user.id);
+    });
+
+    it('o merge PRESERVA o perfil existente em vez de descartá-lo', async () => {
+      fx.tenantA.athlete.technical_profile = { guardGame: { 'Guarda Aberta': 40 } };
+      supabaseMock.__setFake(createFakeSupabase(fx.seedRows));
+
+      await request(app)
+        .post('/api/fight-analysis')
+        .set('Authorization', authHeader(fx.tenantA.user))
+        .send({
+          personId: fx.tenantA.athlete.id,
+          personType: 'athlete',
+          videoUrl: 'https://youtube.com/watch?v=abc',
+          summary: 'resumo',
+          charts: [{ title: 'Personalidade Geral', data: [{ label: 'Calmo/Controlador', value: 80 }] }],
+        });
+
+      const depois = rows('athletes').find((a) => a.id === fx.tenantA.athlete.id);
+      // chave nova entrou...
+      expect(depois.technical_profile.personality).toEqual({ 'Calmo/Controlador': 80 });
+      // ...e a antiga sobreviveu. `Athlete` lia `technical_profile` de um
+      // objeto camelCase, então o spread era de `undefined` e o perfil
+      // anterior era descartado a cada análise.
+      expect(depois.technical_profile.guardGame).toEqual({ 'Guarda Aberta': 40 });
+    });
+
+    it('updateTechnicalProfile LANÇA quando a pessoa está fora do escopo', async () => {
+      supabaseMock.__setFake(createFakeSupabase(fx.seedRows));
+      const Athlete = require('../models/Athlete');
+
+      await expect(
+        Athlete.updateTechnicalProfile(fx.tenantB.athlete.id, { x: 1 }, [fx.tenantA.user.id])
+      ).rejects.toThrow(/não encontrado/i);
+    });
+  });
+
   describe('R4 — versões de análise preservam as estatísticas técnicas', () => {
     it('a versão salva contém technicalStats, não undefined', async () => {
       const stats = { sweeps: { quantidade: 3, efetividade_percentual: 66 } };

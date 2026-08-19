@@ -1,6 +1,8 @@
 // Modelo de dados para Adversário com Supabase
 const { supabase } = require('../config/supabase');
 const { parseOpponentFromDB, parseOpponentsFromDB } = require('../utils/dbParsers');
+const { requireScope } = require('../utils/scopeGuard');
+const { NotFoundError } = require('../utils/errors');
 
 class Opponent {
   /**
@@ -8,6 +10,8 @@ class Opponent {
    * @param {string[]} allowedUserIds - IDs do grupo (tenant)
    */
   static async getAll(allowedUserIds) {
+    requireScope(allowedUserIds, 'Opponent.getAll');
+
     const { data: opponents, error } = await supabase
       .from('opponents')
       .select('*')
@@ -62,7 +66,10 @@ class Opponent {
    * @param {string|string[]} userIdOrAllowed - userId único OU array de allowedUserIds
    */
   static async getById(id, userIdOrAllowed) {
-    const ids = Array.isArray(userIdOrAllowed) ? userIdOrAllowed : [userIdOrAllowed];
+    // Exigir o escopo (spec 007) fecha a variante silenciosa deste método:
+    // chamado sem ele, filtrava `.in('user_id', [undefined])`, não achava nada
+    // e devolvia `null` — indistinguível de "não existe".
+    const ids = requireScope(userIdOrAllowed, 'Opponent.getById');
     const { data, error } = await supabase
       .from('opponents')
       .select('*')
@@ -109,6 +116,7 @@ class Opponent {
    * Atualiza um adversário
    */
   static async update(id, opponentData, userId) {
+    requireScope(userId, 'Opponent.update');
     const updateData = {};
     
     if (opponentData.name !== undefined) updateData.name = opponentData.name;
@@ -141,6 +149,8 @@ class Opponent {
    * Deleta um adversário
    */
   static async delete(id, userId) {
+    requireScope(userId, 'Opponent.delete');
+
     const { data, error } = await supabase
       .from('opponents')
       .delete()
@@ -156,17 +166,24 @@ class Opponent {
   /**
    * Atualiza perfil técnico baseado em análises de lutas
    */
-  static async updateTechnicalProfile(id, analysisData, userId) {
-    const opponent = await this.getById(id, userId);
-    if (!opponent) return null;
+  static async updateTechnicalProfile(id, analysisData, allowedUserIds) {
+    const opponent = await this.getById(id, allowedUserIds);
+    if (!opponent) {
+      // LANÇA em vez de devolver null (spec 007) — o chamador não tinha como
+      // distinguir "não encontrei" de "atualizei".
+      throw new NotFoundError('Adversário');
+    }
 
-    // Mesclar dados de análise com perfil existente
+    // NOTA: este método NÃO tinha o defeito da chave que `Athlete` tinha
+    // (lá se lia `technical_profile` de um objeto camelCase). As duas
+    // "cópias" já haviam divergido — evidência a mais para o ADR-007.
     const updatedProfile = {
       ...opponent.technicalProfile,
       ...analysisData,
     };
 
-    return this.update(id, { technicalProfile: updatedProfile }, userId);
+    // A escrita usa o owner REAL do registro, não o escopo.
+    return this.update(id, { technicalProfile: updatedProfile }, opponent.userId);
   }
 }
 
