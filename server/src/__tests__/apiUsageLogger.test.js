@@ -16,7 +16,10 @@ describe('apiUsageLogger', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+    // spec 007: falhas deliberadamente toleradas passaram a ser registradas
+    // por logToleratedFailure (console.error + marcador localizável), em vez
+    // de um console.warn indistinguível de ruído.
+    consoleSpy = jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
@@ -83,7 +86,7 @@ describe('apiUsageLogger', () => {
       );
     });
 
-    it('deve logar aviso mas não lançar exceção em erro', async () => {
+    it('registra a falha como TOLERADA e não lança exceção', async () => {
       ApiUsage.create.mockRejectedValue(new Error('DB error'));
 
       await expect(
@@ -94,7 +97,13 @@ describe('apiUsageLogger', () => {
         })
       ).resolves.not.toThrow();
 
-      expect(consoleSpy).toHaveBeenCalled();
+      // Tolerar continua correto (custo não derruba a operação paga), mas a
+      // falha precisa ser localizável: `grep "FALHA TOLERADA"` acha todas.
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('FALHA TOLERADA'),
+        'DB error',
+        expect.stringContaining('user-123')
+      );
     });
 
     it('não deve logar se userId for undefined', async () => {

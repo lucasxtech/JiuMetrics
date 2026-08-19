@@ -1,5 +1,5 @@
 const { resolveScope } = require('../services/authorization');
-const { errorDetails } = require('../utils/errorHandler');
+const { errorDetails, logToleratedFailure } = require('../utils/errorHandler');
 const { analyzeFrame, consolidateAnalyses, consolidateSummariesWithAI } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
@@ -208,6 +208,13 @@ exports.analyzeLink = async (req, res) => {
     }
     
     // Salvar análise — `person` só é não-nulo se a posse foi validada acima
+    //
+    // DECISÃO (spec 007, item 3): TOLERAR a falha de persistência, mas
+    // **devolver estado explícito**. Propagar aqui jogaria fora uma análise de
+    // IA já paga e já concluída; ficar em silêncio era pior — o usuário via
+    // 200 com a análise na tela e ela não estava no banco. O cliente agora
+    // recebe `saved: false`.
+    let saved = false;
     if (person) {
       try {
         console.log('💾 Salvando análise com userId:', req.userId);
@@ -221,6 +228,7 @@ exports.analyzeLink = async (req, res) => {
           framesAnalyzed: videos.length,
           userId: req.userId, // ⚠️ CRÍTICO: Adicionar userId
         });
+        saved = true;
         console.log(`✅ Análise salva com sucesso para ${personType} ${personId}`);
 
         // Gera o resumo técnico consolidado de forma síncrona
@@ -238,21 +246,29 @@ exports.analyzeLink = async (req, res) => {
           await Model.update(personId, updateData, person.userId);
           console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
         } catch (summaryErr) {
-          console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, summaryErr.message);
+          // TOLERAR: o resumo é derivado e regenerável; a análise, que é o
+          // dado primário, já foi persistida acima.
+          logToleratedFailure('atualizar resumo técnico após análise', summaryErr, {
+            personType, personId
+          });
         }
       } catch (saveError) {
-        console.error('❌ Erro ao salvar análise:', saveError);
-        // Não retornar erro, apenas logar
+        logToleratedFailure('salvar análise de vídeo', saveError, {
+          personType, personId, userId: req.userId
+        });
       }
     }
     
     console.log('✅ Análise concluída com sucesso!\n');
     
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       data: {
         ...consolidated,
         videosAnalyzed: videos.length,
+        // Estado explícito: `false` significa que a análise foi gerada mas NÃO
+        // persistida. `null` quando não havia personId — nada a salvar.
+        saved: person ? saved : null,
       }
     });
   } catch (err) {

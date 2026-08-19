@@ -138,7 +138,10 @@ describe('strategyController', () => {
           opponent: { id: '2', name: 'Pedro Santos', analysesCount: 1, usedConsolidation: false },
           strategy: strategyResult.strategy,
           generatedAt: '2026-07-23T00:00:00.000Z',
-          analysisId: 'analysis-1'
+          analysisId: 'analysis-1',
+          // spec 007 (R5/R6): estado explícito. Sem este campo, uma estratégia
+          // NÃO persistida era indistinguível de uma persistida.
+          savedToHistory: true
         }
       });
     });
@@ -164,6 +167,11 @@ describe('strategyController', () => {
 
       expect(res.status).not.toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      // ...mas o cliente é AVISADO de que não foi para o histórico (spec 007).
+      // Antes, a falha era indistinguível do sucesso.
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.data.savedToHistory).toBe(false);
+      expect(payload.data.analysisId).toBeUndefined();
     });
 
     it('deve lidar com erro na geração de estratégia', async () => {

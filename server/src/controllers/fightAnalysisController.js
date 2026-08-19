@@ -6,7 +6,7 @@ const Opponent = require('../models/Opponent');
 const User = require('../models/User');
 const StrategyService = require('../services/strategyService');
 const { extractTechnicalProfile } = require('../utils/profileUtils');
-const { handleError } = require('../utils/errorHandler');
+const { handleError, logToleratedFailure } = require('../utils/errorHandler');
 
 /**
  * Regenera o resumo técnico de um atleta/adversário em background.
@@ -20,7 +20,11 @@ async function refreshTechnicalSummary(personId, personType, userId) {
       : await Opponent.getById(personId, allowedUserIds);
 
     if (!person) {
-      console.warn('⚠️ [auto] Pessoa não encontrada para refreshTechnicalSummary —', personType, personId);
+      logToleratedFailure(
+        'regenerar resumo técnico: pessoa não encontrada no escopo',
+        new Error('pessoa fora do escopo ou inexistente'),
+        { personType, personId }
+      );
       return;
     }
 
@@ -36,7 +40,10 @@ async function refreshTechnicalSummary(personId, personType, userId) {
     }
     console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
   } catch (err) {
-    console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, err.message);
+    // DECISÃO (spec 007, item 3): TOLERAR. Roda em fire-and-forget DEPOIS do
+    // res.json() — lançar aqui não teria a quem responder, e a análise em si
+    // já foi persistida com sucesso. O resumo é derivado e regenerável.
+    logToleratedFailure('regenerar resumo técnico', err, { personType, personId });
   }
 }
 
@@ -152,7 +159,7 @@ exports.createAnalysis = async (req, res) => {
 
     // Fire-and-forget: regenera o resumo técnico em background após salvar a análise
     refreshTechnicalSummary(personId, personType, req.userId).catch(err =>
-      console.error('❌ [auto] Falha no refreshTechnicalSummary:', err.message)
+      logToleratedFailure('refreshTechnicalSummary (fire-and-forget)', err, { personType, personId })
     );
   } catch (error) {
     handleError(res, 'criar análise', error);

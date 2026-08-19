@@ -52,4 +52,33 @@ function asyncHandler(fn) {
   };
 }
 
-module.exports = { handleError, asyncHandler, errorDetails };
+/**
+ * Registra uma falha DELIBERADAMENTE tolerada (spec 007, item 3 e R6).
+ *
+ * Há lugares onde engolir o erro é a decisão certa: registrar custo de IA não
+ * deve derrubar a análise que o usuário já pagou, e a estratégia precisa ser
+ * entregue mesmo se o histórico falhar. O problema nunca foi tolerar — foi
+ * tolerar de forma **invisível**, num `console.warn` indistinguível de ruído.
+ *
+ * Esta função existe para dar a essas falhas uma forma única e localizável:
+ * `grep "FALHA TOLERADA"` encontra todas. É deliberadamente simples — logging
+ * estruturado (nível, request id, PII redigida) é spec própria, e este é o
+ * ponto de costura onde ele vai entrar sem tocar os 4 call sites.
+ *
+ * ⚠️ Limitação declarada: continua sendo stdout. Em serverless isso vai para o
+ * log da Vercel, sem alerta e sem agregação — observável se alguém procurar,
+ * não se ninguém procurar.
+ *
+ * @param {string} context - o que falhou, em termos de domínio
+ * @param {Error} error
+ * @param {Object} [metadata] - identificadores para achar o registro afetado
+ */
+function logToleratedFailure(context, error, metadata = {}) {
+  console.error(
+    `⚠️ [FALHA TOLERADA] ${context}:`,
+    error?.message || error,
+    Object.keys(metadata).length ? JSON.stringify(metadata) : ''
+  );
+}
+
+module.exports = { handleError, asyncHandler, errorDetails, logToleratedFailure };
