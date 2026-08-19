@@ -123,7 +123,7 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
 
   // AZ-6 — linkController.analyzeLink cria a FightAnalysis com o personId
   // recebido no corpo sem checar se ele pertence ao escopo do requisitante.
-  test.failing('AZ-6 — POST /api/ai/analyze-link não deve criar análise vinculada a atleta de outro tenant', async () => {
+  test('AZ-6 — POST /api/ai/analyze-link não deve criar análise vinculada a atleta de outro tenant', async () => {
     const res = await request(app)
       .post('/api/ai/analyze-link')
       .set('Authorization', authHeader(fx.tenantA.user))

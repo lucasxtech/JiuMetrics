@@ -37,6 +37,39 @@ exports.analyzeLink = async (req, res) => {
       });
     }
 
+    // AZ-6: `personId`/`personType` vinham crus do corpo e eram usados para
+    // criar a análise sem NENHUMA verificação de posse, criando vínculo
+    // cross-tenant que também polui as consolidações de perfil (que agregam
+    // por `person_id`). É a mesma validação que POST /api/fight-analysis já
+    // fazia.
+    //
+    // A verificação acontece AQUI, antes das chamadas de IA, e não no momento
+    // de salvar: um pedido que vai terminar em 404 não deve queimar tokens
+    // pagos primeiro.
+    let person = null;
+    let allowedUserIds = null;
+    if (personId && personType) {
+      const VALID_PERSON_TYPES = ['athlete', 'opponent'];
+      if (!VALID_PERSON_TYPES.includes(personType)) {
+        return res.status(400).json({
+          success: false,
+          error: 'personType deve ser "athlete" ou "opponent"'
+        });
+      }
+
+      allowedUserIds = await resolveScope(req.actor);
+      person = personType === 'athlete'
+        ? await Athlete.getById(personId, allowedUserIds)
+        : await Opponent.getById(personId, allowedUserIds);
+
+      if (!person) {
+        return res.status(404).json({
+          success: false,
+          error: personType === 'athlete' ? 'Atleta não encontrado' : 'Adversário não encontrado'
+        });
+      }
+    }
+
     // Log do modelo selecionado
     if (model) {
       console.log(`🤖 Modelo selecionado pelo usuário: ${model}`);
@@ -173,8 +206,8 @@ exports.analyzeLink = async (req, res) => {
       });
     }
     
-    // Salvar análise se personId for fornecido
-    if (personId && personType) {
+    // Salvar análise — `person` só é não-nulo se a posse foi validada acima
+    if (person) {
       try {
         console.log('💾 Salvando análise com userId:', req.userId);
         await FightAnalysis.create({
@@ -192,19 +225,16 @@ exports.analyzeLink = async (req, res) => {
         // Gera o resumo técnico consolidado de forma síncrona
         // (o usuário já esperou a análise — segundos extras não fazem diferença)
         try {
-          const allowedUserIds = await resolveScope(req.actor);
           const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, null);
           const updateData = {
             technicalSummary: consolidation.resumo,
             technicalSummaryUpdatedAt: new Date().toISOString()
           };
-          if (personType === 'athlete') {
-            const person = await Athlete.getById(personId, allowedUserIds);
-            if (person) await Athlete.update(personId, updateData, person.userId);
-          } else {
-            const person = await Opponent.getById(personId, allowedUserIds);
-            if (person) await Opponent.update(personId, updateData, person.userId);
-          }
+          // Escopo e pessoa já resolvidos na validação de posse acima — a
+          // escrita usa o owner REAL do registro, permitindo que um admin
+          // atualize o dado de um membro do grupo.
+          const Model = personType === 'athlete' ? Athlete : Opponent;
+          await Model.update(personId, updateData, person.userId);
           console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
         } catch (summaryErr) {
           console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, summaryErr.message);
