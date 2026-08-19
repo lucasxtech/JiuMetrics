@@ -207,7 +207,9 @@ Criadas em `001` com **colunas idênticas**. Toda alteração posterior foi apli
 
 **Índices:** `(person_id, person_type)`, `user_id`, `(person_id, person_type, version_number DESC)`.
 **RLS:** ligado, política `auth.uid() = user_id` **FOR ALL**. Como o model usa `supabaseAdmin`, a política é contornada e não bloqueia.
-⚠️ **A tabela está vazia na prática** — `versionManager.saveProfileVersion` passa argumentos incompatíveis, o insert viola os `NOT NULL` e o erro é engolido. **NEEDS_CONFIRMATION:** `SELECT count(*) FROM profile_versions;` (esperado: 0).
+✅ **Volta a receber escrita desde a [spec 007](../specs/007-silent-failures-and-input-validation/spec.md)** (2026-08-18). Estava parada desde 2026-01-16: `versionManager.saveProfileVersion` passava chaves incompatíveis, o insert violava os `NOT NULL` desta tabela e o erro era engolido. Medição da spec 002: **5 linhas**, todas do período em que funcionava.
+
+⚠️ Uma consequência do `content NOT NULL` que vale saber ao mexer aqui: **a primeira edição de um perfil sem resumo anterior não gera versão** — não há estado anterior a registrar. É comportamento correto e explícito, não falha silenciosa.
 
 ### `strategy_versions`
 

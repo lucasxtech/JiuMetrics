@@ -152,7 +152,7 @@ O split vem primeiro porque mover 818 linhas **junto** de mudança de lógica to
 - [x] `chatController.js` dividido, cada arquivo < 350 linhas (4 arquivos em vez de 3 — ver escopo item 5)
 - [x] Suítes de backend verdes: **23 suítes / 274 testes**
 - [ ] ⚠️ **E2E dos fluxos críticos: NÃO executado.** O Playwright continua sem rodar (exige backend + banco + usuário semeado — pendência herdada da spec 003, sem spec própria ainda). Declarado, não silenciado
-- [x] Nenhum método de model de domínio aceita ID sem escopo — `getById` sem filtro foi **removido**, e nenhum *unscoped* foi criado
+- [x] ⚠️ **PARCIAL, corrigido na spec 007.** Nenhum método de model de domínio aceita ID sem escopo — `getById` sem filtro foi **removido**, e nenhum *unscoped* foi criado. **Mas eu marquei isto como cumprido de forma exagerada:** `Athlete` e `Opponent` ficaram de fora por estarem em *Out of Scope* ("não tocar no que funciona"). Eles **filtravam** por escopo mas não o **exigiam** — `getById(id, undefined)` devolvia `null` em silêncio. A spec 007 fechou isso ao corrigir `updateTechnicalProfile`, que era justamente a vítima desse comportamento.
 
 ## Testing Strategy
 

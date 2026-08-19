@@ -11,6 +11,36 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### Falhas silenciosas e validação de entrada — 2026-08-18 · [spec 007](./specs/007-silent-failures-and-input-validation/spec.md)
+
+**As duas funcionalidades que a UI oferecia e que não funcionavam passam a funcionar.** Nenhuma era erro de lógica: as duas eram incompatibilidade de contrato na fronteira `snake_case` (banco) × `camelCase` (aplicação), e sobreviveram meses porque falhavam dentro de um `catch` que só escrevia no console.
+
+#### Corrigido
+
+- **Histórico de versões de perfil técnico** — quebrado desde 2026-01-16. `versionManager.saveProfileVersion` chamava `ProfileVersion.create` com chaves `snake_case` numa função que desestrutura `camelCase`: todos os campos chegavam `undefined`, o insert violava os `NOT NULL` e o erro morria num `console.warn`. A UI mostrava o histórico vazio e parecia "nunca editei".
+- **`technical_profile` do atleta** — 0 de 37 atletas com o campo preenchido. Eram **duas** causas, não uma: a chamada com 2 de 3 argumentos, e o merge lendo `athlete.technical_profile` de um objeto que vem em `camelCase` — este segundo defeito descartaria o perfil existente a cada análise mesmo com a aridade corrigida.
+- **Versões de análise perdiam as estatísticas técnicas** — `content.technical_stats` gravado a partir de um objeto que produz `technicalStats`.
+
+#### Segurança
+
+- **`error.message` não é mais devolvido ao cliente em produção.** Eram ~30 handlers via `handleError`, mais 4 diretos, expondo mensagens cruas do PostgREST/Postgres (nome de coluna, constraint violada). O `.github/copilot-instructions.md` já proibia esse padrão — o código violava a regra escrita nele mesmo. O detalhe continua no log do servidor.
+- **Teto de 5 vídeos por análise**, verificado **antes** de qualquer chamada de IA. Cada vídeo é uma chamada paga num laço que não tinha limite: um corpo com 500 URLs eram 500 chamadas.
+- **Validação de entrada com zod** nos 3 endpoints de `/api/ai/*` ([ADR-012](./docs/decisions/012-zod-para-validacao-de-entrada.md)). Campos não declarados são removidos antes do controller, o que faz o formato antigo de `athlete-summary` deixar de ser possível estruturalmente.
+
+#### Alterado — comportamento observável
+
+- **Uma versão de perfil que não gravar agora devolve erro**, em vez de 200 silencioso. É o objetivo da spec, mas parece regressão para quem usa: operações que "funcionavam" com falha oculta passam a falhar visivelmente.
+- **`POST /api/ai/analyze-link`** devolve `data.saved` e **`POST /api/strategy/compare`** devolve `data.savedToHistory`. Sem esses campos, uma operação não persistida era indistinguível de uma persistida. Propagar o erro nesses dois casos jogaria fora trabalho de IA já pago.
+- **Os 5 `catch` que engoliam falha foram auditados**, cada um com a decisão registrada em comentário: 1 propaga, 4 toleram por motivo explícito. Onde tolerar é a decisão certa, a falha passou a ser localizável (`grep "FALHA TOLERADA"`).
+
+#### Limitações declaradas
+
+- **A validação cobre 3 dos ~15 endpoints que recebem corpo.** "A API valida entrada" não é verdadeiro fora de `/api/ai/*`.
+- **Não verificado na UI:** o histórico de versões de perfil aparecendo na tela exige rodar a aplicação contra um banco.
+- **E2E continua não executado** (pendência herdada da spec 003).
+
+---
+
 ### 🔒 Ownership obrigatório no acesso a dados — 2026-08-18 · [spec 006](./specs/006-ownership-in-data-access/spec.md)
 
 **A mudança de segurança mais importante do projeto até aqui.** Fecha os **7 vazamentos de posse** (o último remanescente da auditoria) e, mais que isso, fecha a **classe** do problema.

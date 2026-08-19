@@ -28,10 +28,11 @@ specs/       histórico versionado de mudanças planejadas
 
 > histórico completo de lutas · histórico de lesões · acompanhamento médico, nutricional ou físico · contas de médico, nutricionista ou preparador físico · compartilhamento de informação entre profissionais · upload de arquivo de vídeo (só URL do YouTube) · recuperação de senha · fila, worker ou job assíncrono · WebSocket/SSE · cache de servidor.
 
-**Duas funcionalidades quebradas** — verificado contra produção em 2026-08-13 ([spec 002](./specs/002-verification-baseline/spec.md)); não presuma que funcionam ao mexer perto delas:
+✅ **As duas funcionalidades quebradas foram corrigidas na [spec 007](./specs/007-silent-failures-and-input-validation/spec.md)** (2026-08-18): histórico de versões de perfil técnico e atualização do `technical_profile`. Ficam registradas aqui porque a **causa** delas é o risco que continua vivo neste repositório:
 
-1. **Histórico de versões de perfil técnico — quebrado desde 2026-01-16.** Contrato incompatível entre `versionManager.saveProfileVersion` (manda `snake_case`) e `ProfileVersion.create` (espera `camelCase`); o insert viola `NOT NULL` e o erro morre num `console.warn`. A tabela tem 5 linhas, todas de antes de 2026-01-16 — funcionou por 6 dias.
-2. **Atualização do `technical_profile` do atleta — nunca funcionou.** `updateTechnicalProfile` é chamada com 2 de 3 argumentos → no-op silencioso. Medido: **0 de 37 atletas** com o campo preenchido.
+1. As duas eram **incompatibilidade de contrato** na fronteira `snake_case` (banco) × `camelCase` (aplicação) — não erro de lógica.
+2. As duas sobreviveram meses porque falhavam dentro de um `catch` que só escrevia no console.
+3. Uma delas tinha **duas** causas independentes, e a segunda só apareceu ao corrigir a primeira.
 
 ⚠️ **Correção de rumo:** a auditoria listava o **rastreamento de custo de IA** como terceira funcionalidade quebrada. **Está errado — ele funciona** (173 linhas, US$ 3,03, última em 2026-08-12). A política RLS que supostamente o bloqueava não está ativa em produção.
 
@@ -65,11 +66,12 @@ Regras não negociáveis:
 
 1. **Nunca commite segredo.** Já aconteceu, e o dano é real e medido: há uma chave da API do Gemini no histórico do git (`.archived/SUPABASE_SETUP.md`) e a chave publicável do Supabase em `frontend/.env.production`, arquivo rastreado. O scanner do CI só passou a bloquear na spec 003, e mesmo assim **cobre apenas o diff** — não expurga o que já está no histórico, e não pega senha genérica (ver o achado em `playwright/.env.example`).
    > 🔴 **Verificado em 2026-08-13:** essa chave publicável **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários** — e a escrita também está liberada. É o achado de segurança mais grave do projeto. Ver [`docs/DATABASE.md`](./docs/DATABASE.md) §4 e a [spec 008](./specs/008-database-access-lockdown/spec.md).
-2. **Nunca devolva `error.message` ao cliente** em produção. `utils/errorHandler.js#handleError` faz exatamente isso hoje, em ~30 handlers — é dívida conhecida, não padrão a seguir.
+2. **Nunca devolva `error.message` ao cliente** em produção. ✅ Resolvido na spec 007: use `errorDetails(error)` de `utils/errorHandler.js`, que omite o detalhe quando `NODE_ENV === 'production'` e o mantém no log do servidor. Não volte a escrever `details: error.message` à mão.
 3. **Nunca logue PII.** O login loga o e-mail do usuário em toda tentativa — dívida conhecida.
 4. **Nunca construa HTML por string com conteúdo de LLM.** `pages/Analyses.jsx` faz `innerHTML` com saída de IA — é o sink de XSS conhecido, e o JWT fica em `localStorage`.
 5. **`ProtectedRoute` no frontend é UX, não segurança.** `isAdmin` vem do `localStorage`. A decisão real é sempre do backend.
 6. **Não confie em rate limiting.** `MemoryStore` em serverless: os limites não valem em produção.
+7. **Endpoint que recebe corpo e chama IA precisa de schema.** Os 3 de `/api/ai/*` validam com zod (`middleware/validate.js`, [ADR-012](./docs/decisions/012-zod-para-validacao-de-entrada.md)); os outros ~12 endpoints com corpo **ainda não**. Ao declarar um schema, cuidado: campo que o controller usa e o schema não declara chega `undefined` **em silêncio** — mapeie o payload real do frontend antes.
 
 ## Authorization
 
@@ -174,7 +176,7 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 ### Comandos
 
 ```bash
-cd server && npm test          # Jest — 23 suítes / 274 testes (bloqueia merge no CI)
+cd server && npm test          # Jest — 25 suítes / 293 testes (bloqueia merge no CI)
 ```
 
 ```bash
@@ -232,5 +234,5 @@ Quatro coisas que vão te economizar tempo e evitar dano:
 
 1. **Este projeto foi construído com muita assistência de IA, e isso deixou marcas.** Há documentação morta, instruções de Copilot obsoletas, e funcionalidades que parecem implementadas e não estão. **Verifique no código antes de confiar em qualquer descrição** — inclusive nesta.
 2. **A qualidade é desigual, e existe um padrão bom para copiar.** `services/llm.js`, `models/TacticalAnalysis.js`, `utils/errors.js` e `controllers/userController.js` são bem feitos. Use-os como referência em vez de imitar o código vizinho ao que você está mexendo.
-3. **Cuidado com `catch` que só loga.** É o padrão de falha dominante deste repo — três funcionalidades sobreviveram meses quebradas por isso. Ao escrever código novo, propague o erro.
+3. **Cuidado com `catch` que só loga.** Foi o padrão de falha dominante deste repo — duas funcionalidades sobreviveram meses quebradas por isso (corrigidas na spec 007). Ao escrever código novo, **propague o erro**. Se tolerar a falha for a decisão certa, registre o **motivo em comentário** e use `logToleratedFailure` (`utils/errorHandler.js`) em vez de `console.warn` — e devolva **estado explícito** ao cliente quando a operação parecer ter dado certo sem ter dado.
 4. **Ao investigar "X não funciona", suspeite primeiro de contrato, não de lógica.** A fronteira `snake_case` (banco) × `camelCase` (aplicação) só é traduzida em `utils/dbParsers.js`, e só para 3 dos 10 models. Aridade de argumento e nome de chave já causaram três bugs silenciosos.

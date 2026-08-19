@@ -896,7 +896,7 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 ### Etapa 5 — Falhas silenciosas e validação de entrada
 
-**Goal.** Fazer as três funcionalidades quebradas funcionarem, e impedir que a próxima falhe em silêncio.
+**Goal.** Fazer as funcionalidades quebradas funcionarem, e impedir que a próxima falhe em silêncio. (Eram **duas**, não três — a Etapa 0 refutou a do rastreamento de custo.)
 
 **Why.** São defeitos, não dívida arquitetural — a UI oferece recursos que não existem. E a causa comum (erro engolido + nenhuma validação de entrada) é o que permitiria repetir o problema.
 
@@ -912,14 +912,14 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 **Documentation.** `docs/PROJECT_STATUS.md` (remover as três de *Known Issues*), `docs/modules/{chat-and-versions,athletes-opponents,usage-tracking}.md`, `CLAUDE.md` (remover a advertência das três funcionalidades), `CHANGELOG.md`.
 
-**Acceptance Criteria.**
-- [ ] `profile_versions` grava; histórico aparece na UI
-- [ ] `technical_profile` muda após criar análise
-- [ ] `api_usage` grava; telas de custo mostram valor real
-- [ ] Versões salvas contêm as estatísticas técnicas
-- [ ] Nenhuma resposta de produção contém `error.message`
-- [ ] Endpoints com corpo validam schema
-- [ ] Nenhum `catch` no caminho de persistência retorna `null` silencioso
+**Acceptance Criteria.** ✅ **Etapa 5 CONCLUÍDA (spec 007, 2026-08-18)**, com duas ressalvas declaradas
+- [x] `profile_versions` grava — ⚠️ **o "aparece na UI" NÃO foi verificado** (exige rodar a aplicação contra um banco)
+- [x] `technical_profile` muda após criar análise — eram **duas** causas, não uma; a segunda (chave `technical_profile` × `technicalProfile`) só apareceu ao corrigir a primeira
+- [~] `api_usage` grava — **fora do escopo**: a Etapa 0 refutou a falha (173 linhas, US$ 3,03 medidos)
+- [x] Versões salvas contêm as estatísticas técnicas
+- [x] Nenhuma resposta de produção contém `error.message` — `errorDetails()` centraliza a decisão
+- [~] Endpoints com corpo validam schema — **PARCIAL: 3 dos ~15**, só os de IA. Ver [ADR-012](./docs/decisions/012-zod-para-validacao-de-entrada.md)
+- [x] Nenhum `catch` no caminho de persistência retorna `null` silencioso — 5 auditados, decisão em comentário, e 2 endpoints ganharam estado explícito na resposta
 
 ---
 

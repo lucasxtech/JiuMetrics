@@ -1,6 +1,6 @@
 # SPEC-007 — Falhas silenciosas e validação de entrada
 
-**Status: Proposed** · Etapa 5 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (2026-08-18)** · Etapa 5 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
 
 ## Context
 
@@ -13,6 +13,8 @@
 | ~~3~~ | ~~**Rastreamento de custo de IA**~~ | ❌ **REFUTADO em 2026-08-13** — funciona (173 linhas, US$ 3,03). A política RLS não está ativa em produção. Ver escopo item 2 |
 
 Há um quarto defeito da mesma família: `versionManager` grava `content.technical_stats`, mas o objeto vem de `parseAnalysisFromDB`, que produz `technicalStats` — **as versões salvas perdem as estatísticas técnicas**.
+
+✅ **E um QUINTO, descoberto ao implementar esta spec** (2026-08-18): `Athlete.updateTechnicalProfile` fazia o merge com `athlete.technical_profile`, chave que `parseAthleteFromDB` não produz. O spread era de `undefined`, então **o perfil existente seria descartado a cada análise mesmo depois de corrigida a aridade** do defeito 2. Notável: `Opponent.updateTechnicalProfile`, que a documentação descreve como cópia, lia `technicalProfile` corretamente — as duas cópias já haviam divergido. Evidência a mais para o [ADR-007](../../docs/decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md).
 
 E há uma causa comum que permitiria repetir tudo: **não existe validação de entrada em nenhum endpoint**. Duas falhas HIGH da auditoria são o mesmo problema — `athlete-summary` aceita corpo arbitrário que vai direto ao LLM, e `analyze-link` aceita `videos[]` sem limite.
 
@@ -64,7 +66,9 @@ Cinco locais. Para cada um, decidir explicitamente:
 
 ### 4. Validação de entrada
 
-Introduzir schema por endpoint, na borda. ⚠️ **Decisão pendente P3** (zod, joi ou manual). Começar pelos endpoints que recebem corpo, priorizando `analyze-link` (limite de `videos[]`) e `athlete-summary`.
+✅ **P3 DECIDIDO: zod**, conforme a recomendação já registrada no plano (§12 e §14). Raciocínio completo no [ADR-012](../../docs/decisions/012-zod-para-validacao-de-entrada.md) — em resumo: manual "tende a divergir" e este repositório tem duas evidências locais disso (`processPersonAnalyses` e, descoberto aqui, `Opponent.js` × `Athlete.js`); e zod converge com o [ADR-010](../../docs/decisions/010-adotar-typescript-incrementalmente.md), porque o schema vira tipo via `z.infer` sem retrabalho.
+
+⚠️ **Cobertura PARCIAL e declarada: 3 dos ~15 endpoints que recebem corpo** — os de `/api/ai/*`, os únicos onde corpo não validado custa dinheiro. Estender exige mapear o payload real de cada tela antes: um campo que o controller usa e o schema não declara chega `undefined` **em silêncio**, que é a própria classe de falha que esta spec combate. Cobrir 3 com payload verificado é melhor que 15 no escuro.
 
 ### 5. Parar de vazar `error.message`
 
@@ -112,17 +116,17 @@ Introduzir schema por endpoint, na borda. ⚠️ **Decisão pendente P3** (zod, 
 
 ## Acceptance Criteria
 
-- [ ] Teste de integração: salvar resumo de perfil **cria linha** em `profile_versions`
-- [ ] Teste de integração: criar análise **altera** `athletes.technical_profile`
-- [ ] Teste de integração: operação de IA **cria linha** em `api_usage`
-- [ ] Teste de integração: versão salva contém as estatísticas técnicas
-- [ ] Histórico de versões de perfil aparece na UI (verificação manual)
-- [ ] Telas de custo mostram valor diferente de zero após uma operação
-- [ ] `analyze-link` com `videos[]` acima do limite → 400 **sem chamar a IA**
-- [ ] Resposta de produção sem `details: error.message` (verificado com `NODE_ENV=production`)
-- [ ] Os 5 `catch` auditados, com a decisão registrada em comentário
-- [ ] As 16 suítes verdes; E2E verde
-- [ ] `CLAUDE.md` sem a advertência das três funcionalidades quebradas
+- [x] Teste de integração: salvar resumo de perfil **cria linha** em `profile_versions` — verificando a linha, não o status
+- [x] Teste de integração: criar análise **altera** `athletes.technical_profile` (+ um caso provando que o merge **preserva** o perfil anterior)
+- [~] Teste de integração: operação de IA **cria linha** em `api_usage` — **fora do escopo desta spec** (o item 2 foi removido: a spec 002 refutou a falha, medindo 173 linhas e US$ 3,03)
+- [x] Teste de integração: versão salva contém as estatísticas técnicas
+- [ ] ⚠️ **NÃO verificado: histórico de versões de perfil aparecendo na UI.** Exige rodar a aplicação contra um banco; declarado, não silenciado
+- [~] Telas de custo mostram valor diferente de zero — já mostravam (item 2 removido do escopo)
+- [x] `analyze-link` com `videos[]` acima do limite → 400 **sem chamar a IA** (asserção explícita de que `analyzeFrame` não foi chamada)
+- [x] Resposta de produção sem `details: error.message` — teste afirma o payload **inteiro** com `NODE_ENV=production`
+- [x] Os 5 `catch` auditados, com a decisão registrada em comentário
+- [x] 25 suítes verdes (não 16 — a suíte cresceu nas specs 004–007); ⚠️ **E2E continua não executado**, pendência herdada da spec 003
+- [x] `CLAUDE.md` sem a advertência das funcionalidades quebradas — substituída pela **causa** delas, que é o risco que permanece
 
 ## Testing Strategy
 
@@ -163,8 +167,8 @@ Introduzir schema por endpoint, na borda. ⚠️ **Decisão pendente P3** (zod, 
 
 ## Dependencies
 
-**Depende de:** [spec 002](../002-verification-baseline/spec.md) — confirmação das três falhas. Se `api_usage` tiver linhas, o item 2 precisa ser reinvestigado.
-**Decisão pendente:** P3 (validador), P5 (corrigir ou remover o versionamento de perfil).
+**Depende de:** [spec 002](../002-verification-baseline/spec.md) — confirmação das três falhas. Se `api_usage` tiver linhas, o item 2 precisa ser reinvestigado. ✅ Tinha: item 2 removido do escopo.
+**Decisões:** ✅ **P3 — zod** ([ADR-012](../../docs/decisions/012-zod-para-validacao-de-entrada.md)). ✅ **P5 — corrigir, não remover** o versionamento de perfil: o componente existe na UI e a tabela tem 5 linhas de quando funcionava; remover seria decisão de produto, corrigir é reversível.
 
 **Independente das specs 005–006** — pode rodar em paralelo, com coordenação de arquivos.
 

@@ -228,7 +228,7 @@ Três históricos independentes, um por tipo de conteúdo editável. Nenhum comp
 **Regras comuns** (`IMPLEMENTED`) — versões são numeradas sequencialmente; uma é marcada `is_current`; `edited_by` registra a origem (`user`, `ai`, `ai_suggestion`, `system`); `edit_reason` guarda o motivo.
 
 **Problemas conhecidos**
-- `ProfileVersion`: `versionManager.saveProfileVersion` passa chaves `snake_case` para uma função que desestrutura `camelCase` → todos os campos ficam `undefined` → o insert viola `NOT NULL` → o erro morre num `console.warn`. **O histórico de versões de perfil nunca funcionou**, e a UI o oferece.
+- ~~`ProfileVersion`~~ ✅ **CORRIGIDO na [spec 007](../specs/007-silent-failures-and-input-validation/spec.md)** (2026-08-18). `versionManager.saveProfileVersion` passava chaves `snake_case` para uma função que desestrutura `camelCase` → todos os campos ficavam `undefined` → o insert violava os `NOT NULL` → o erro morria num `console.warn`. Estava quebrado desde 2026-01-16 (não "nunca funcionou" — a spec 002 mediu 5 linhas do período em que funcionou). O erro agora propaga.
 - Sem constraint `UNIQUE(analysis_id, version_number)` e com o número calculado no app sem transação → duas edições simultâneas geram versões com o mesmo número.
 - Nada impede duas versões com `is_current = true`.
 - `analysis_versions` guarda `content` completo e não tem dono → leitura cross-tenant.
@@ -316,11 +316,11 @@ O que deveria ser sempre verdade. Marcado se o código garante.
 | 3 | Uma `fight_analysis` aponta para pessoa existente | ⚠️ **não** — sem FK, e `analyze-link` não valida |
 | 4 | Técnica sugerida é legal para a faixa mais restritiva | ✅ na montagem do prompt (**correção esportiva da tabela é `NEEDS_CONFIRMATION`**) |
 | 5 | `technical_summary` reflete as análises existentes | ✅ na criação/exclusão de análise |
-| 6 | Toda edição gera uma versão | ⚠️ parcial — funciona para análise e estratégia; **falha silenciosamente** para perfil |
+| 6 | Toda edição gera uma versão | ✅ **sim, desde a spec 007** — análise, estratégia e perfil. Uma exceção explícita e correta: a primeira edição de um perfil sem resumo anterior não gera versão, porque não há estado anterior a registrar (`content` é `NOT NULL`) |
 | 7 | Uma única versão é `is_current` por conteúdo | ⚠️ **não** — sem constraint nem transação |
 | 8 | Número de versão é único por conteúdo | ⚠️ **não** — calculado no app, sem `UNIQUE` |
 | 9 | Usuário comum não acessa dado de outro | ✅ **sim, desde a spec 006** — os 6 endpoints sem verificação de posse foram corrigidos, e o escopo é exigido na assinatura dos models |
-| 10 | Todo consumo de IA é registrado | ⚠️ **provavelmente não** — ver §3.7 |
+| 10 | Todo consumo de IA é registrado | ✅ **sim** — refutado como falha na spec 002 (173 linhas, US$ 3,03 medidos). A falha de registro continua **tolerada** por decisão (custo não derruba operação paga), mas agora é observável: `grep "FALHA TOLERADA"`. Dívida remanescente: 55 das 173 linhas com custo zero (spec 009) |
 
 ---
 

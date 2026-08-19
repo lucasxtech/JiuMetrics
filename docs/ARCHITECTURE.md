@@ -163,7 +163,7 @@ Detalhe parcial em [`API.md`](./API.md) (incompleto — o código é a fonte de 
 
 - ~~**Posse verificada no controller, nunca no model.**~~ ✅ **Resolvido na [spec 006](../specs/006-ownership-in-data-access/spec.md):** `FightAnalysis.update()`/`delete()` aceitavam qualquer ID, e o sistema era seguro só enquanto todo controller lembrasse de filtrar. Hoje o escopo é obrigatório na assinatura (`utils/scopeGuard.js`) e a omissão lança `MissingScopeError`.
 - **Rate limiting inoperante em produção**: `MemoryStore` em function serverless — cada instância tem seu contador.
-- **Nenhum validador de schema de entrada** (sem zod/joi/yup). Validação é `if (!campo)` ad hoc — escopo da [spec 007](../specs/007-silent-failures-and-input-validation/spec.md).
+- **Validação de entrada: parcial.** A [spec 007](../specs/007-silent-failures-and-input-validation/spec.md) introduziu `zod` ([ADR-012](./decisions/012-zod-para-validacao-de-entrada.md)) via `middleware/validate.js`, aplicado aos **3 endpoints de IA** — os únicos onde corpo não validado custa dinheiro. Os demais ~12 endpoints que recebem corpo seguem com `if (!campo)` ad hoc. ⚠️ Não leia "a API valida entrada" como verdadeiro: vale só para `/api/ai/*`.
 - ~~**Sem lint no backend**~~ ✅ resolvido na spec 003 (conjunto mínimo, bloqueia merge).
 - **Sem `helmet`** nem headers de segurança; CORS aceita qualquer `*.vercel.app`.
 - **`handleError` devolve `error.message` ao cliente**, vazando mensagens do PostgREST/Postgres.

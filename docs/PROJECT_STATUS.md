@@ -12,7 +12,9 @@
 
 O produto funciona e é usado. A camada de IA passou por uma modernização recente e genuinamente boa. **O código não é ruim — é desigual:** as partes recentes mostram julgamento técnico real, e as falhas graves estavam concentradas em código antigo que ninguém revisitou.
 
-✅ **Os 7 endpoints sem verificação de posse foram fechados** (um na spec 002, seis na [spec 006](../specs/006-ownership-in-data-access/spec.md)), e o escopo passou a ser **exigido na assinatura dos models** — a próxima omissão falha em vez de vazar. Continuam abertas **2 funcionalidades quebradas** que a UI oferece, ambas escondidas por um `catch` que só escreve no console.
+✅ **Os 7 endpoints sem verificação de posse foram fechados** (um na spec 002, seis na [spec 006](../specs/006-ownership-in-data-access/spec.md)), e o escopo passou a ser **exigido na assinatura dos models** — a próxima omissão falha em vez de vazar.
+
+✅ **As 2 funcionalidades quebradas foram corrigidas** na [spec 007](../specs/007-silent-failures-and-input-validation/spec.md): versionamento de perfil técnico e atualização do `technical_profile`. As duas eram incompatibilidade de contrato na fronteira `snake_case` × `camelCase`, escondidas por um `catch` que só escrevia no console.
 
 🔴 **O risco dominante, medido em 2026-08-13, não é nenhum desses:** a chave publicável do Supabase está commitada no git e **lê `users` com `password_hash` e `email` dos 25 usuários**. Ver *Known Issues* item 2.
 
@@ -92,7 +94,7 @@ Funcionalidades verificadas no código e em uso.
 |---|---|
 | Deploy na Vercel | Frontend e backend, separados |
 | CI no GitHub Actions | **5 portões bloqueiam** merge: testes de front e back, lint de front e back, build. Mais secrets scanning em workflow separado |
-| Testes de backend | 23 suítes Jest / 274 testes — inclui a rede de autorização (specs 004/006) |
+| Testes de backend | 25 suítes Jest / 293 testes — inclui a rede de autorização (004/006) e a de persistência e validação (007) |
 | Testes de frontend | 5 arquivos Vitest |
 | Testes E2E | 6 specs Playwright com Page Objects — ⚠️ **nunca rodam no CI** |
 | Secrets scanning (TruffleHog) | ✅ **bloqueia** desde a spec 003 (escopo = diff, `--only-verified`) |
@@ -119,13 +121,13 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Iten
 
 | # | Problema |
 |---|---|
-| 5 | **Histórico de versões de perfil quebrado desde 2026-01-16** — contrato incompatível entre `versionManager` e `ProfileVersion`; todos os campos chegam `undefined`, o insert viola `NOT NULL`, o erro morre num `console.warn`. **A UI oferece o recurso.** Medido: 5 linhas, todas anteriores a 2026-01-16 |
-| 6 | **`technical_profile` do atleta nunca é atualizado** — `updateTechnicalProfile` chamada com 2 de 3 argumentos → no-op silencioso. **Confirmado: 0 de 37 atletas com o campo preenchido** |
+| ~~5~~ | ✅ **RESOLVIDO (spec 007, 2026-08-18)** — histórico de versões de perfil, quebrado desde 2026-01-16 por contrato incompatível entre `versionManager` e `ProfileVersion`. O erro agora propaga em vez de morrer num `console.warn`. Coberto por teste que verifica a **linha no banco**, não o status HTTP |
+| ~~6~~ | ✅ **RESOLVIDO (spec 007, 2026-08-18)** — `technical_profile` nunca era atualizado (medido: 0 de 37 atletas). Eram **duas** causas: a chamada com 2 de 3 argumentos e, descoberto ao corrigir, o merge lendo `technical_profile` de um objeto camelCase — que descartaria o perfil existente mesmo com a aridade certa |
 | ~~7~~ | ❌ **REFUTADO (medido 2026-08-13)** — o rastreamento de custo **funciona**: 173 linhas, US$ 3,0295, de 2025-12-14 a 2026-08-12. A política RLS não está ativa em produção. Dívida real e menor: **55 das 173 linhas com custo zero** |
 | 8 | **Sink de XSS no export de PDF** + JWT em `localStorage` → roubo de sessão válida por 7–30 dias. Escopo da [spec 010](../specs/010-frontend-consolidation/spec.md) |
 | 9 | **Rate limiting inoperante em produção** — `MemoryStore` em serverless; brute force e abuso de IA sem freio efetivo |
-| 10 | **Gasto de IA sem teto** — sem limite de `videos[]`, modelo escolhido pelo cliente sem validação, sem quota. A **visibilidade existe** (item 7 refutado): US$ 3,03 registrados em 8 meses |
-| ~~11~~ | ✅ **RESOLVIDO (spec 006)** — `POST /api/ai/athlete-summary` aceitava corpo arbitrário direto no prompt, sem posse nem limite. Passou a receber `athleteId` e carregar os dados no servidor, dentro do escopo |
+| 10 | **Gasto de IA sem teto** — ✅ o limite de `videos[]` existe desde a spec 007 (5 por análise, barrado **antes** de chamar a IA). Continuam abertos: modelo escolhido pelo cliente sem validação e **ausência de quota** — escopo da [spec 009](../specs/009-ai-cost-and-reliability/spec.md). A visibilidade existe: US$ 3,03 em 8 meses |
+| ~~11~~ | ✅ **RESOLVIDO (specs 006 e 007)** — `athlete-summary` aceitava corpo arbitrário direto no prompt, sem posse nem limite. Passou a receber `athleteId` e carregar os dados no servidor (006); o schema de entrada (007) faz o formato antigo ser removido antes do controller |
 | 12 | **Fallback de autenticação abre em falha do banco** — volta a confiar no `role` do token, desligando as 3 proteções de uma vez |
 | 13 | **Migrations não são a fonte de verdade** — `users` nunca é criada, falta a `020`, sem runner nem controle de estado. **Impossível reconstruir o banco a partir do repositório** |
 | 14 | **Tipos de `user_id` divergentes** — VARCHAR em 3 tabelas, UUID em 5; FKs derrubadas na `008`. Mascara bugs (o de nº 6 passa por causa disso) |
@@ -136,7 +138,7 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Iten
 
 ### MEDIUM (resumo)
 
-Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **escreve no banco**) · `handleError` vaza `error.message` (violando a regra escrita no próprio `copilot-instructions.md`) · enumeração de usuários no login · PII em log · sem `helmet`/CSP · CORS aceita qualquer `*.vercel.app` · validação de host do YouTube por substring (SSRF limitado) · nenhum validador de schema de entrada · sem `UNIQUE` em nenhuma migration · dois clientes Supabase com divisão arbitrária e fallback silencioso · prompt de produção hardcoded fora de `services/prompts/` · dois padrões de fetch no frontend sem invalidação cruzada · dashboard carrega 3 tabelas para exibir 4 números · sem paginação nas listagens · `athletes` e `opponents` duplicados · migrations com PII e `UPDATE` destrutivo sem `WHERE` · dois destinos de deploy simultâneos.
+Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **escreve no banco**) · ~~`handleError` vaza `error.message`~~ ✅ **resolvido na spec 007** (omitido em produção; o detalhe fica só no log do servidor) · enumeração de usuários no login · PII em log · sem `helmet`/CSP · CORS aceita qualquer `*.vercel.app` · validação de host do YouTube por substring (SSRF limitado) · nenhum validador de schema de entrada · sem `UNIQUE` em nenhuma migration · dois clientes Supabase com divisão arbitrária e fallback silencioso · prompt de produção hardcoded fora de `services/prompts/` · dois padrões de fetch no frontend sem invalidação cruzada · dashboard carrega 3 tabelas para exibir 4 números · sem paginação nas listagens · `athletes` e `opponents` duplicados · migrations com PII e `UPDATE` destrutivo sem `WHERE` · dois destinos de deploy simultâneos.
 
 ### LOW (resumo)
 
@@ -154,7 +156,7 @@ Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **esc
 | **Testes inertes** | ✅ **RESOLVIDO na spec 003** — `server/tests/` removido (3 scripts com zero `describe`/`it`, confirmados como não alcançados por `jest --listTests`) |
 | **Testes E2E** | 6 specs bem construídos, com Page Objects e fixtures — **continuam não executados no CI**. A spec 003 tentou ligá-los e **diferiu**: exigem backend + banco + usuário semeado, que é ambiente de teste, não job de CI. A spec 004 resolveu a decisão de banco de teste (P2) **só para a rede de autorização** — optou por fake de PostgREST, que não serve para o Playwright (ele precisa de um backend de verdade respondendo). O pré-requisito de ambiente real para E2E continua em aberto, sem spec própria ainda |
 | **Cobertura de frontend** | 5 arquivos de teste para 79 de código (~6%); 1 teste de componente |
-| **Tratamento de erro** | Taxonomia boa (12 classes tipadas), aplicação inconsistente. **5 `catch` que engolem erro** — causa das 3 funcionalidades que nunca funcionaram |
+| **Tratamento de erro** | Taxonomia boa (14 classes tipadas). ✅ Os **5 `catch` que engoliam erro** foram auditados na spec 007, cada um com a decisão registrada em comentário: 1 propaga, 4 toleram por motivo explícito e registram via `logToleratedFailure` (localizável por `grep "FALHA TOLERADA"`). Dois endpoints ganharam estado explícito na resposta (`saved`, `savedToHistory`) |
 | **Logging** | `console.*` com emoji, sem níveis, sem correlação, sem redação de PII. Log por request em serverless |
 | **Dívida de lint documentada em código** | A spec 003 tornou o lint bloqueante sem corrigir o que exige decisão de comportamento. Há `eslint-disable` **com comentário apontando a spec responsável** em: `versionManager` (3× — evidência dos bugs das specs 006/007), `AthleteCard` (4 props nunca renderizadas — F7), `StrategyChatPanel` (callback nunca chamado — cluster F14/F19-F22), `VideoAnalysis` (`addVideo` sem controle na UI), `AuthContext` (`set-state-in-effect` na hidratação de sessão), `Strategy` (loading calculado e nunca renderizado). **Nenhum foi escondido com `_`** — a evidência fica visível |
 | **Duplicação** | `processPersonAnalyses` (front × back, divergente) · `AVAILABLE_MODELS` (2 lugares) · `Opponent.js` = cópia de `Athlete.js` · `chatLimiter` 2× |

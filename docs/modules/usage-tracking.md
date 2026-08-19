@@ -19,7 +19,7 @@ Registrar cada chamada à API do Gemini com tokens consumidos e custo estimado, 
 `IMPLEMENTED`, verificadas no código:
 
 1. **Toda operação de IA registra uso**, com `operation_type` identificando a origem: `video_analysis`, `strategy`, `summary`, `consolidate_profile`, `chat_analysis`, `chat_profile`, `chat_strategy`.
-2. **Falha no registro nunca derruba a operação principal.** `logApiUsage`/`logApiUsageWithType` capturam qualquer erro e apenas avisam no console. Decisão defensável — mas engole qualquer falha futura de persistência sem sinal observável.
+2. **Falha no registro nunca derruba a operação principal.** Decisão mantida e agora **explícita**: a spec 007 auditou este `catch` e registrou TOLERAR como a decisão certa — custo não pode derrubar uma operação de IA que o usuário já pagou. O que mudou é a visibilidade: `logToleratedFailure` marca a falha de forma localizável (`grep "FALHA TOLERADA"`) em vez de um `console.warn` indistinguível de ruído. ⚠️ Continua sendo stdout, sem alerta nem agregação.
 3. **Custo é calculado por tabela de preços por modelo** (`PRICING`), em USD por 1 M de tokens, com preço separado de input e output.
 4. **Modelos `3-pro-preview` usam preço em faixas (*tiered*)** — até 200 K tokens de prompt: $2/$12; acima: $4/$18.
 5. **Modelo desconhecido cai no preço de `gemini-2.5-flash`** (`DEFAULT_MODEL`). ⚠️ Combinado com a falta de validação do modelo escolhido pelo usuário, isso significa que o custo registrado pode não ter relação com o cobrado.
@@ -89,7 +89,7 @@ flowchart TD
         CALC --> INS["INSERT em api_usage<br/>via cliente ANON"]
         INS --> OK["✅ gravado<br/>(173 linhas, verificado 2026-08-13)"]
         INS -.->|"se a política RLS for reativada"| REJ["❌ rejeitado"]
-        REJ --> WARN["console.warn<br/>⚠️ erro ENGOLIDO — sem sinal"]
+        REJ --> WARN["logToleratedFailure (spec 007)<br/>falha TOLERADA por decisão,<br/>mas localizável no log"]
     end
 
     subgraph "Leitura"
