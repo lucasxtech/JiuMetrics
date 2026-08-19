@@ -56,7 +56,7 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
 
   // AZ-2 — docs/AUTHORIZATION.md — chatController.manualEdit usa
   // FightAnalysis.getById/update, nenhum dos dois filtra por usuário.
-  test.failing('AZ-2 — POST /api/chat/manual-edit não deve sobrescrever análise de outro tenant', async () => {
+  test('AZ-2 — POST /api/chat/manual-edit não deve sobrescrever análise de outro tenant', async () => {
     const res = await request(app)
       .post('/api/chat/manual-edit')
       .set('Authorization', authHeader(fx.tenantA.user))
@@ -77,7 +77,7 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
 
   // AZ-3 — chatController.getVersions chama AnalysisVersion.getByAnalysisId
   // sem checar a quem a análise pai pertence (a tabela nem tem user_id).
-  test.failing('AZ-3 — GET /api/chat/versions/:analysisId não deve ler versões de análise de outro tenant', async () => {
+  test('AZ-3 — GET /api/chat/versions/:analysisId não deve ler versões de análise de outro tenant', async () => {
     const res = await request(app)
       .get(`/api/chat/versions/${fx.tenantB.fightAnalysis.id}`)
       .set('Authorization', authHeader(fx.tenantA.user));
@@ -87,7 +87,7 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
 
   // AZ-4 — chatController.restoreVersion não verifica posse antes de
   // restaurar/escrever na análise.
-  test.failing('AZ-4 — POST /api/chat/restore-version não deve reverter análise de outro tenant', async () => {
+  test('AZ-4 — POST /api/chat/restore-version não deve reverter análise de outro tenant', async () => {
     const res = await request(app)
       .post('/api/chat/restore-version')
       .set('Authorization', authHeader(fx.tenantA.user))
@@ -102,7 +102,7 @@ describe('SPEC-004 — vazamentos de autorização (devem FALHAR hoje)', () => {
   // AZ-5 — chatController.applyEdit escopa `analysisId` corretamente (via
   // getScopeIds + getByIdAndUser) mas confia cegamente em `sessionId`:
   // ChatSession.updateContextSnapshot não recebe nem filtra por userId.
-  test.failing('AZ-5 — POST /api/chat/apply-edit não deve alterar context_snapshot de sessão de outro tenant', async () => {
+  test('AZ-5 — POST /api/chat/apply-edit não deve alterar context_snapshot de sessão de outro tenant', async () => {
     const res = await request(app)
       .post('/api/chat/apply-edit')
       .set('Authorization', authHeader(fx.tenantA.user))

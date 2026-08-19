@@ -123,7 +123,7 @@ exports.sendStrategyMessage = async (req, res) => {
       }
     ];
 
-    await ChatSession.addMessages(sessionId, newMessages);
+    await ChatSession.addMessages(sessionId, newMessages, userId);
 
     res.json({
       success: true,

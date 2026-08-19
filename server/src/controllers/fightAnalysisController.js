@@ -168,7 +168,7 @@ exports.deleteAnalysis = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }
 
-    const deleted = await FightAnalysis.delete(req.params.id);
+    const deleted = await FightAnalysis.delete(req.params.id, allowedUserIds);
     if (!deleted) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }

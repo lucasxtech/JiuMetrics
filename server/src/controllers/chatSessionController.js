@@ -97,7 +97,7 @@ exports.sendMessage = async (req, res) => {
     await ChatSession.addMessage(sessionId, {
       role: 'user',
       content: message
-    });
+    }, userId);
 
     // Chamar IA com contexto e histórico
     const aiResponse = await chat({
@@ -113,7 +113,7 @@ exports.sendMessage = async (req, res) => {
       role: 'model',
       content: aiResponse.message,
       editSuggestion: aiResponse.editSuggestion || null
-    });
+    }, userId);
 
     // Registrar uso da API
     await logApiUsageWithType({

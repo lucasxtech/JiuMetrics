@@ -1,6 +1,12 @@
 // Modelo de dados para Análise de Lutas com Supabase
+//
+// ⚠️ Desde a spec 006, TODO método deste model exige escopo de posse na
+// assinatura. Chamada sem escopo lança `MissingScopeError` — não devolve
+// `null` nem lista vazia, que seriam indistinguíveis de "não encontrado".
+// Não adicione um método que aceite `id` sem escopo.
 const { supabase } = require('../config/supabase');
 const { parseAnalysisFromDB, parseAnalysesFromDB } = require('../utils/dbParsers');
+const { requireScope } = require('../utils/scopeGuard');
 
 class FightAnalysis {
   /**
@@ -8,7 +14,7 @@ class FightAnalysis {
    * @param {string[]} allowedUserIds
    */
   static async getAll(allowedUserIds) {
-    if (!allowedUserIds || allowedUserIds.length === 0) throw new Error('allowedUserIds obrigatório');
+    requireScope(allowedUserIds, 'FightAnalysis.getAll');
 
     const { data, error } = await supabase
       .from('fight_analyses')
@@ -38,19 +44,22 @@ class FightAnalysis {
 
   /**
    * Busca análises por pessoa dentro do grupo permitido
+   *
+   * O parâmetro de escopo tinha default `null`, que desligava o filtro por
+   * completo. Nenhum chamador usava esse default (verificado na spec 006),
+   * mas ele era exatamente a armadilha que esta spec fecha.
+   *
    * @param {string} personId
-   * @param {string|string[]|null} userIdOrAllowed - userId, array de IDs, ou null (sem filtro)
+   * @param {string|string[]} allowedUserIds - userId ou array de IDs (obrigatório)
    */
-  static async getByPersonId(personId, userIdOrAllowed = null) {
-    let query = supabase
+  static async getByPersonId(personId, allowedUserIds) {
+    const ids = requireScope(allowedUserIds, 'FightAnalysis.getByPersonId');
+
+    const query = supabase
       .from('fight_analyses')
       .select('*')
-      .eq('person_id', personId);
-
-    if (userIdOrAllowed) {
-      const ids = Array.isArray(userIdOrAllowed) ? userIdOrAllowed : [userIdOrAllowed];
-      query = query.in('user_id', ids);
-    }
+      .eq('person_id', personId)
+      .in('user_id', ids);
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -62,29 +71,23 @@ class FightAnalysis {
     return parseAnalysesFromDB(data);
   }
 
-  /**
-   * Busca uma análise por ID
-   */
-  static async getById(id) {
-    const { data, error } = await supabase
-      .from('fight_analyses')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return parseAnalysisFromDB(data);
-  }
+  // NOTA (spec 006): existia aqui um `getById(id)` SEM filtro de usuário — a
+  // variante que `manual-edit` e `restore-version` usavam, e a causa direta
+  // dos vazamentos AZ-2 e AZ-4. Foi REMOVIDO, não renomeado: depois de
+  // corrigir os dois call sites, ele ficou sem nenhum uso legítimo. Use
+  // `getByIdAndUser`.
 
   /**
    * Busca análise por ID garantindo que pertence ao usuário (ou é admin)
    */
   static async getByIdAndUser(id, allowedUserIds) {
+    const ids = requireScope(allowedUserIds, 'FightAnalysis.getByIdAndUser');
+
     const { data, error } = await supabase
       .from('fight_analyses')
       .select('*')
       .eq('id', id)
-      .in('user_id', allowedUserIds)
+      .in('user_id', ids)
       .single();
 
     if (error) {
@@ -127,9 +130,21 @@ class FightAnalysis {
   }
 
   /**
-   * Atualiza uma análise
+   * Atualiza uma análise, restrita ao escopo de posse do ator.
+   *
+   * Diferente de `Athlete.update`/`Opponent.update`, que filtram pelo
+   * `user_id` do REGISTRO (`.eq`), aqui o filtro é o escopo inteiro
+   * (`.in`). Os dois preservam o acesso do admin ao dado do grupo — o
+   * escopo já contém o `user_id` do dono quando o ator pode alcançá-lo —,
+   * e usar o escopo direto dispensa buscar o registro só para descobrir o
+   * dono.
+   *
+   * @param {string} id
+   * @param {Object} analysisData
+   * @param {string|string[]} allowedUserIds - obrigatório
    */
-  static async update(id, analysisData) {
+  static async update(id, analysisData, allowedUserIds) {
+    const ids = requireScope(allowedUserIds, 'FightAnalysis.update');
     const updateData = {};
     
     if (analysisData.videoUrl !== undefined) updateData.video_url = analysisData.videoUrl;
@@ -145,31 +160,37 @@ class FightAnalysis {
 
     // Se não há nada para atualizar, apenas buscar e retornar
     if (Object.keys(updateData).length === 0) {
-      return this.getById(id);
+      return this.getByIdAndUser(id, ids);
     }
 
     const { data, error } = await supabase
       .from('fight_analyses')
       .update(updateData)
       .eq('id', id)
+      .in('user_id', ids)
       .select();
-    
+
     if (error) throw error;
-    
+
     // Retornar primeira linha ou null
     return data && data.length > 0 ? parseAnalysisFromDB(data[0]) : null;
   }
 
   /**
-   * Deleta uma análise
+   * Deleta uma análise, restrita ao escopo de posse do ator.
+   * @param {string} id
+   * @param {string|string[]} allowedUserIds - obrigatório
    */
-  static async delete(id) {
+  static async delete(id, allowedUserIds) {
+    const ids = requireScope(allowedUserIds, 'FightAnalysis.delete');
+
     const { data, error } = await supabase
       .from('fight_analyses')
       .delete()
       .eq('id', id)
+      .in('user_id', ids)
       .select();
-    
+
     if (error) throw error;
     return data && data.length > 0 ? parseAnalysisFromDB(data[0]) : null;
   }

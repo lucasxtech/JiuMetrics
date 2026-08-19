@@ -50,6 +50,21 @@ class AuthorizationError extends AppError {
   }
 }
 
+/**
+ * Erro de CONTRATO INTERNO: um método de model que exige escopo de posse foi
+ * chamado sem ele (spec 006). Não é falha do usuário — é bug de programação,
+ * e por isso 500 e não 403.
+ *
+ * Existe para que a próxima omissão de escopo seja um erro visível em vez de
+ * um vazamento silencioso: `null` ou lista vazia seriam indistinguíveis de
+ * "não encontrado" e morreriam no primeiro `catch` que só loga.
+ */
+class MissingScopeError extends AppError {
+  constructor(context = 'chamada de model') {
+    super(`Escopo de posse obrigatório ausente em ${context}`, 500);
+  }
+}
+
 // ====================================
 // ERROS ESPECÍFICOS DA API GEMINI
 // ====================================
@@ -192,6 +207,7 @@ module.exports = {
   ValidationError,
   AuthenticationError,
   AuthorizationError,
+  MissingScopeError,
   GeminiQuotaExceededError,
   GeminiContentBlockedError,
   GeminiApiKeyMissingError,

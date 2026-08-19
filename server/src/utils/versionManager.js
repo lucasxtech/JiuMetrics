@@ -7,22 +7,20 @@ const ProfileVersion = require('../models/ProfileVersion');
 
 /**
  * Garante que existe uma versão original da análise antes de criar novas versões
+ *
+ * O 3º parâmetro era `userId` e era **recebido e ignorado** — a evidência do
+ * vazamento AZ-3. A spec 006 o transformou no escopo de posse, que agora
+ * atravessa até o model e é obrigatório lá.
+ *
  * @param {string} analysisId - ID da análise
  * @param {Object} currentData - Dados atuais da análise
- * @param {string} userId - ID do usuário
+ * @param {string|string[]} allowedUserIds - escopo de posse do ator
  * @returns {number} Número da próxima versão
  */
-// DÍVIDA CONHECIDA: `userId` é recebido e IGNORADO porque a tabela
-// `analysis_versions` NÃO TEM coluna `user_id` (migration 010). É a causa
-// estrutural do vazamento AZ-3 em docs/AUTHORIZATION.md, e será resolvida pela
-// spec 006 (decisão P4: JOIN com a análise pai ou coluna denormalizada).
-// NÃO prefixe com _ : faria o parâmetro parecer descarte intencional e apagaria
-// a evidência do problema.
-// eslint-disable-next-line no-unused-vars
-async function ensureOriginalVersion(analysisId, currentData, userId) {
+async function ensureOriginalVersion(analysisId, currentData, allowedUserIds) {
   try {
-    const existingVersions = await AnalysisVersion.getByAnalysisId(analysisId, 'fight');
-    
+    const existingVersions = await AnalysisVersion.getByAnalysisId(analysisId, 'fight', allowedUserIds);
+
     if (!existingVersions || existingVersions.length === 0) {
       const versionData = {
         analysisId,
@@ -35,13 +33,14 @@ async function ensureOriginalVersion(analysisId, currentData, userId) {
         },
         editedBy: 'user',
         editReason: 'Versão original (análise de vídeo)',
-        isCurrent: false
+        isCurrent: false,
+        allowedUserIds
       };
-      
+
       await AnalysisVersion.create(versionData);
       return 2; // Próxima versão será 2
     }
-    
+
     return (existingVersions.length || 0) + 1;
   } catch (error) {
     console.error('❌ Erro ao garantir versão original:', error.message);
@@ -57,13 +56,10 @@ async function ensureOriginalVersion(analysisId, currentData, userId) {
  * @param {number} params.versionNumber - Número da versão
  * @param {Object} params.analysis - Dados da análise
  * @param {string} params.editReason - Razão da edição
- * @param {string} params.userId - ID do usuário
+ * @param {string|string[]} params.allowedUserIds - escopo de posse do ator
  * @returns {Object|null} Versão criada ou null
  */
-// DÍVIDA CONHECIDA: mesmo motivo de ensureOriginalVersion — `analysis_versions`
-// não tem coluna `user_id`. Ver spec 006.
-// eslint-disable-next-line no-unused-vars
-async function createAnalysisVersion({ analysisId, versionNumber, analysis, editReason, userId }) {
+async function createAnalysisVersion({ analysisId, versionNumber, analysis, editReason, allowedUserIds }) {
   try {
     const version = await AnalysisVersion.create({
       analysisId,
@@ -76,7 +72,8 @@ async function createAnalysisVersion({ analysisId, versionNumber, analysis, edit
       },
       editedBy: 'ai', // Edição aceita pela IA
       editReason,
-      isCurrent: false
+      isCurrent: false,
+      allowedUserIds
     });
     
     console.log(`✅ Versão ${versionNumber} da análise criada`);

@@ -2,7 +2,12 @@
  * Chat de IA — edição e versionamento de análise de luta.
  *
  * Extraído de `chatController.js` pela spec 006. É onde viviam 4 dos 6
- * vazamentos de posse do sistema (AZ-2..AZ-5 de docs/AUTHORIZATION.md).
+ * vazamentos de posse do sistema (AZ-2..AZ-5 de docs/AUTHORIZATION.md),
+ * todos fechados aqui.
+ *
+ * O padrão obrigatório destes handlers (ver CLAUDE.md § Authorization):
+ * resolver o escopo → carregar o recurso JÁ filtrado → 404 se não vier nada →
+ * só então escrever, passando o escopo adiante até o model.
  */
 const { resolveScope } = require('../services/authorization');
 const ChatSession = require('../models/ChatSession');
@@ -39,7 +44,7 @@ exports.applyEdit = async (req, res) => {
     }
 
     // Garantir versão original antes de editar
-    const newVersionNumber = await ensureOriginalVersion(analysisId, analysis, userId);
+    const newVersionNumber = await ensureOriginalVersion(analysisId, analysis, allowedUserIds);
 
     // Preparar dados de atualização baseado na sugestão
     const updateData = {};
@@ -68,7 +73,7 @@ exports.applyEdit = async (req, res) => {
     }
 
     // Atualizar análise
-    const updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
+    const updatedAnalysis = await FightAnalysis.update(analysisId, updateData, allowedUserIds);
 
     // Criar nova versão
     await createAnalysisVersion({
@@ -76,12 +81,22 @@ exports.applyEdit = async (req, res) => {
       versionNumber: newVersionNumber,
       analysis: updatedAnalysis,
       editReason: editSuggestion.reason || 'Sugestão da IA aplicada',
-      userId
+      allowedUserIds
     });
 
-    // Atualizar contexto da sessão de chat (se houver)
+    // Atualizar contexto da sessão de chat (se houver).
+    //
+    // AZ-5: este `sessionId` vem cru do corpo da requisição e antes era
+    // aplicado sem nenhuma verificação — envenenava o contexto que a IA de
+    // outro usuário receberia nos turnos seguintes. Agora o model exige o
+    // dono. Um `sessionId` alheio ou inexistente não desfaz a edição da
+    // análise, que já foi validada e aplicada: é um efeito colateral de UI,
+    // registrado e ignorado.
     if (sessionId) {
-      await ChatSession.updateContextSnapshot(sessionId, updatedAnalysis);
+      const updatedSession = await ChatSession.updateContextSnapshot(sessionId, updatedAnalysis, userId);
+      if (!updatedSession) {
+        console.warn('⚠️ context_snapshot não atualizado — sessão inexistente ou de outro usuário:', sessionId);
+      }
     }
 
     res.json({
@@ -103,7 +118,6 @@ exports.applyEdit = async (req, res) => {
 exports.manualEdit = async (req, res) => {
   try {
     const { analysisId, field, newValue, reason } = req.body;
-    const userId = req.userId;
 
     if (!analysisId || !field || newValue === undefined) {
       return res.status(400).json({
@@ -112,8 +126,11 @@ exports.manualEdit = async (req, res) => {
       });
     }
 
-    // Buscar análise atual
-    const analysis = await FightAnalysis.getById(analysisId);
+    // AZ-2: aqui era `FightAnalysis.getById(analysisId)` — a variante SEM
+    // filtro de usuário —, seguido de um `update` que também não filtrava.
+    // Qualquer usuário autenticado sobrescrevia a análise de qualquer tenant.
+    const allowedUserIds = await resolveScope(req.actor);
+    const analysis = await FightAnalysis.getByIdAndUser(analysisId, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({
         success: false,
@@ -122,7 +139,7 @@ exports.manualEdit = async (req, res) => {
     }
 
     // Garantir versão original antes de editar
-    const newVersionNumber = await ensureOriginalVersion(analysisId, analysis, userId);
+    const newVersionNumber = await ensureOriginalVersion(analysisId, analysis, allowedUserIds);
 
     // Preparar dados de atualização
     const updateData = {};
@@ -135,7 +152,7 @@ exports.manualEdit = async (req, res) => {
     }
 
     // Atualizar análise
-    const updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
+    const updatedAnalysis = await FightAnalysis.update(analysisId, updateData, allowedUserIds);
 
     // Criar nova versão
     await createAnalysisVersion({
@@ -143,7 +160,7 @@ exports.manualEdit = async (req, res) => {
       versionNumber: newVersionNumber,
       analysis: updatedAnalysis,
       editReason: reason || 'Edição manual do usuário',
-      userId
+      allowedUserIds
     });
 
     res.json({
@@ -167,7 +184,19 @@ exports.getVersions = async (req, res) => {
     const { analysisId } = req.params;
     const { type = 'fight' } = req.query;
 
-    const versions = await AnalysisVersion.getByAnalysisId(analysisId, type);
+    // AZ-3: `analysis_versions` não tem coluna `user_id`, então a posse é a
+    // da análise PAI (decisão P4 da spec 006). Verificar antes de consultar
+    // garante 404 em vez de lista vazia — 404 não vaza existência, e uma
+    // lista vazia seria indistinguível de "essa análise não tem versões".
+    const allowedUserIds = await resolveScope(req.actor);
+    if (!await AnalysisVersion.isAnalysisInScope(analysisId, type, allowedUserIds)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Análise não encontrada'
+      });
+    }
+
+    const versions = await AnalysisVersion.getByAnalysisId(analysisId, type, allowedUserIds);
 
     res.json({
       success: true,
@@ -194,8 +223,21 @@ exports.restoreVersion = async (req, res) => {
       });
     }
 
+    // AZ-4: não havia verificação de posse em ponto algum deste handler, e ele
+    // escreve duas vezes (a análise e o ponteiro de versão atual). Era o
+    // vazamento mais destrutivo: revertia o conteúdo da análise de outro
+    // usuário.
+    const allowedUserIds = await resolveScope(req.actor);
+    const analysis = await FightAnalysis.getByIdAndUser(analysisId, allowedUserIds);
+    if (!analysis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Análise não encontrada'
+      });
+    }
+
     // Buscar versão específica
-    const version = await AnalysisVersion.getByVersionNumber(analysisId, 'fight', versionNumber);
+    const version = await AnalysisVersion.getByVersionNumber(analysisId, 'fight', versionNumber, allowedUserIds);
     if (!version) {
       return res.status(404).json({
         success: false,
@@ -221,14 +263,14 @@ exports.restoreVersion = async (req, res) => {
     // Só fazer update se houver dados
     let updatedAnalysis;
     if (Object.keys(updateData).length > 0) {
-      updatedAnalysis = await FightAnalysis.update(analysisId, updateData);
+      updatedAnalysis = await FightAnalysis.update(analysisId, updateData, allowedUserIds);
     } else {
-      // Buscar análise atual se não há nada para atualizar
-      updatedAnalysis = await FightAnalysis.getById(analysisId);
+      // Nada a atualizar: devolver a análise já carregada acima
+      updatedAnalysis = analysis;
     }
 
     // Marcar esta versão como atual
-    await AnalysisVersion.setAsCurrent(version.id, analysisId, 'fight');
+    await AnalysisVersion.setAsCurrent(version.id, analysisId, 'fight', allowedUserIds);
 
     res.json({
       success: true,

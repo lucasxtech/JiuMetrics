@@ -1,5 +1,16 @@
 // Modelo de dados para Sessões de Chat com IA
+//
+// ⚠️ Sessão de chat é PESSOAL, não compartilhada com o grupo: todos os
+// métodos filtram pelo `user_id` do próprio requisitante, inclusive para
+// admin. Isso é comportamento pré-existente (`getByContext`/`getByUserId`
+// sempre filtraram assim) e a spec 006 o estendeu para os métodos de
+// escrita, que aceitavam qualquer `sessionId` — a causa do vazamento AZ-5.
+//
+// Este model usa `supabaseAdmin` (service_role), então RLS não se aplica:
+// o filtro aqui é a ÚNICA proteção.
 const { supabaseAdmin } = require('../config/supabase');
+const { requireScope } = require('../utils/scopeGuard');
+const { NotFoundError } = require('../utils/errors');
 
 class ChatSession {
   /**
@@ -94,17 +105,24 @@ class ChatSession {
    * Adiciona uma mensagem à sessão
    * @param {string} sessionId - ID da sessão
    * @param {Object} message - Mensagem a adicionar {role, content}
+   * @param {string} userId - dono da sessão (obrigatório — spec 006)
    * @returns {Promise<Object>} Sessão atualizada
    */
-  static async addMessage(sessionId, message) {
+  static async addMessage(sessionId, message, userId) {
+    const ids = requireScope(userId, 'ChatSession.addMessage');
+
     // Primeiro, buscar sessão atual para pegar mensagens existentes
     const { data: currentSession, error: fetchError } = await supabaseAdmin
       .from('ai_chat_sessions')
       .select('messages')
       .eq('id', sessionId)
+      .in('user_id', ids)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') throw new NotFoundError('Sessão de chat');
+      throw fetchError;
+    }
 
     const currentMessages = currentSession.messages || [];
     const newMessage = {
@@ -118,6 +136,7 @@ class ChatSession {
       .from('ai_chat_sessions')
       .update({ messages: updatedMessages })
       .eq('id', sessionId)
+      .in('user_id', ids)
       .select()
       .single();
 
@@ -129,17 +148,24 @@ class ChatSession {
    * Adiciona múltiplas mensagens à sessão de uma vez
    * @param {string} sessionId - ID da sessão
    * @param {Array} messages - Array de mensagens a adicionar [{role, content}, ...]
+   * @param {string} userId - dono da sessão (obrigatório — spec 006)
    * @returns {Promise<Object>} Sessão atualizada
    */
-  static async addMessages(sessionId, messages) {
+  static async addMessages(sessionId, messages, userId) {
+    const ids = requireScope(userId, 'ChatSession.addMessages');
+
     // Primeiro, buscar sessão atual para pegar mensagens existentes
     const { data: currentSession, error: fetchError } = await supabaseAdmin
       .from('ai_chat_sessions')
       .select('messages')
       .eq('id', sessionId)
+      .in('user_id', ids)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') throw new NotFoundError('Sessão de chat');
+      throw fetchError;
+    }
 
     const currentMessages = currentSession.messages || [];
     const newMessages = messages.map(msg => ({
@@ -153,6 +179,7 @@ class ChatSession {
       .from('ai_chat_sessions')
       .update({ messages: updatedMessages })
       .eq('id', sessionId)
+      .in('user_id', ids)
       .select()
       .single();
 
@@ -162,20 +189,34 @@ class ChatSession {
 
   /**
    * Atualiza o contexto snapshot (quando análise é editada)
+   *
+   * Era aqui o vazamento AZ-5: o método não recebia nem filtrava `userId`, e
+   * `applyEdit` passava um `sessionId` cru do `req.body` — envenenando o
+   * contexto que a IA de outro usuário recebia nos turnos seguintes.
+   *
+   * Devolve `null` (em vez de lançar) quando a sessão não existe ou não é do
+   * usuário: é um efeito colateral best-effort da edição, e a edição da
+   * análise — que já foi validada e aplicada — não deve ser desfeita por
+   * causa de um `sessionId` inválido. Quem chama decide o que fazer com o
+   * `null`, e `applyEdit` registra um aviso.
+   *
    * @param {string} sessionId - ID da sessão
    * @param {Object} newSnapshot - Novo snapshot do contexto
-   * @returns {Promise<Object>} Sessão atualizada
+   * @param {string} userId - dono da sessão (obrigatório — spec 006)
+   * @returns {Promise<Object|null>} Sessão atualizada, ou null se nada casou
    */
-  static async updateContextSnapshot(sessionId, newSnapshot) {
+  static async updateContextSnapshot(sessionId, newSnapshot, userId) {
+    const ids = requireScope(userId, 'ChatSession.updateContextSnapshot');
+
     const { data, error } = await supabaseAdmin
       .from('ai_chat_sessions')
       .update({ context_snapshot: newSnapshot })
       .eq('id', sessionId)
-      .select()
-      .single();
+      .in('user_id', ids)
+      .select();
 
     if (error) throw error;
-    return this.parseFromDB(data);
+    return data && data.length > 0 ? this.parseFromDB(data[0]) : null;
   }
 
   /**
