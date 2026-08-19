@@ -24,6 +24,7 @@ class QueryBuilder {
     this.payload = payload;
     this.filters = [];
     this.orderBy = null;
+    this.limitCount = null;
     this.singleFlag = false;
     this.countOpts = payload && payload.opts;
   }
@@ -40,6 +41,14 @@ class QueryBuilder {
 
   order(col, { ascending = true } = {}) {
     this.orderBy = { col, ascending };
+    return this;
+  }
+
+  // Acrescentado na spec 007: `ProfileVersion.create` usa `.limit(1).single()`
+  // para descobrir o último `version_number`. Sem isto, o fake lançava
+  // "limit is not a function" — limitação do fake, não do código sob teste.
+  limit(n) {
+    this.limitCount = n;
     return this;
   }
 
@@ -86,6 +95,9 @@ class QueryBuilder {
       }
       if (this.countOpts && this.countOpts.head) {
         return { data: null, error: null, count: result.length };
+      }
+      if (typeof this.limitCount === 'number') {
+        result = result.slice(0, this.limitCount);
       }
       if (this.singleFlag) {
         if (result.length === 0) {

@@ -29,7 +29,10 @@ async function ensureOriginalVersion(analysisId, currentData, allowedUserIds) {
         content: {
           summary: currentData.summary,
           charts: currentData.charts,
-          technical_stats: currentData.technical_stats
+          // `currentData` vem de parseAnalysisFromDB, que produz camelCase.
+          // Lia-se `technical_stats` aqui, sempre undefined — as versões
+          // salvas perdiam as estatísticas técnicas (spec 007, defeito 4).
+          technicalStats: currentData.technicalStats
         },
         editedBy: 'user',
         editReason: 'Versão original (análise de vídeo)',
@@ -68,7 +71,8 @@ async function createAnalysisVersion({ analysisId, versionNumber, analysis, edit
       content: {
         summary: analysis.summary,
         charts: analysis.charts,
-        technical_stats: analysis.technical_stats
+        // idem: `analysis` vem de FightAnalysis.update → parseAnalysisFromDB
+        technicalStats: analysis.technicalStats
       },
       editedBy: 'ai', // Edição aceita pela IA
       editReason,
@@ -95,51 +99,48 @@ async function createAnalysisVersion({ analysisId, versionNumber, analysis, edit
  * @param {string} params.editReason - Motivo da edição
  * @returns {Object|null} Versão criada ou null
  */
-// 🐛 BUG ATIVO — `editedBy` é recebido e IGNORADO.
-// Evidência DIRETA do defeito descrito na spec 007: esta função chama
+// ✅ CORRIGIDO na spec 007 (decisão P5: corrigir, não remover da UI).
+//
+// Estava quebrado desde 2026-01-16 (commit 2b13a64): esta função chamava
 // ProfileVersion.create com chaves snake_case (person_id, summary,
 // change_description, created_by) enquanto create() desestrutura camelCase
-// (personId, content, editedBy, userId). Todos os campos chegam undefined, o
-// insert viola NOT NULL e o erro morre no catch abaixo.
-// Quebrado desde 2026-01-16 (commit 2b13a64) — verificado na spec 002.
-// NÃO prefixe com _ nem remova: o parâmetro precisa continuar visível até a
-// spec 007 corrigir o contrato.
-// eslint-disable-next-line no-unused-vars
+// (personId, content, editedBy, userId). Todos os campos chegavam undefined,
+// o insert violava os NOT NULL da migration 013 e o erro morria num
+// console.warn + return null — a UI mostrava o histórico vazio e parecia
+// "nunca editei".
+//
+// Duas mudanças além do contrato:
+//  - o erro AGORA PROPAGA. Uma versão que não gravou não pode devolver 200.
+//  - `versionNumber` deixou de ser passado: quem o calcula é o próprio
+//    ProfileVersion.create (MAX + 1), e o valor daqui era ignorado.
 async function saveProfileVersion({ personId, personType, userId, currentSummary, editedBy = 'user', editReason = 'Edição manual' }) {
-  try {
-    const existingVersions = await ProfileVersion.getByPersonId(personId, personType);
-    
-    // Se não tem versões, criar a original primeiro
-    if (!existingVersions || existingVersions.length === 0) {
-      await ProfileVersion.create({
-        person_id: personId,
-        person_type: personType,
-        version_number: 1,
-        summary: currentSummary,
-        change_description: 'Versão original',
-        created_by: userId
-      });
-      console.log('✅ Versão original do perfil criada');
-      return null; // Não há versão nova a criar, só salvou a original
-    }
-    
-    const nextVersion = existingVersions.length + 1;
-    
-    const version = await ProfileVersion.create({
-      person_id: personId,
-      person_type: personType,
-      version_number: nextVersion,
-      summary: currentSummary,
-      change_description: editReason,
-      created_by: userId
-    });
-    
-    console.log(`✅ Versão ${nextVersion} do perfil criada`);
-    return version;
-  } catch (error) {
-    console.warn('⚠️ Erro ao salvar versão do perfil:', error.message);
+  // Nada a versionar: a pessoa ainda não tinha resumo. NÃO é falha — é
+  // ausência de conteúdo anterior, e `content` é NOT NULL na migration 013.
+  // Este caminho é o comum na PRIMEIRA edição de um perfil, e é justamente
+  // por isso que precisa ser explícito: sem ele, propagar o erro
+  // transformaria a primeira edição de todo perfil num 500.
+  if (!currentSummary) {
+    console.log('ℹ️ Sem resumo anterior para versionar —', personType, personId);
     return null;
   }
+
+  const existingVersions = await ProfileVersion.getByPersonId(personId, personType, userId);
+  const isFirst = !existingVersions || existingVersions.length === 0;
+
+  // `profile_versions` guarda os estados ANTERIORES; o valor vivo fica em
+  // `athletes.technical_summary`. Por isso o que se grava aqui é o resumo
+  // atual, antes de ser sobrescrito.
+  const version = await ProfileVersion.create({
+    personId,
+    personType,
+    userId,
+    content: currentSummary,
+    editedBy,
+    editReason: isFirst ? 'Versão original' : editReason
+  });
+
+  console.log(`✅ Versão ${version.versionNumber} do perfil criada —`, personType, personId);
+  return version;
 }
 
 module.exports = {
