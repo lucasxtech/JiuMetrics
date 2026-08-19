@@ -73,12 +73,14 @@ Custo aceito: **uma query extra por chamada**. Quem decide o status HTTP é o co
 
 ✅ **Feito em 4 arquivos, não 3.** A spec pedia `analysis`/`profile`/`strategy` **e** "cada um < 350 linhas", e os dois requisitos são incompatíveis: o módulo de análise sozinho passaria de 420 linhas, e mais ainda depois das correções. O subdomínio de análise foi dividido em **sessão** (genérica, usada pelos três) e **edição/versionamento**:
 
-| Arquivo | Linhas |
-|---|---|
-| `chatSessionController.js` | 204 |
-| `chatAnalysisController.js` | 243 |
-| `chatProfileController.js` | 271 |
-| `chatStrategyController.js` | 139 |
+| Arquivo | Linhas (no split) | Linhas (final, após as correções) |
+|---|---|---|
+| `chatSessionController.js` | 204 | 204 |
+| `chatAnalysisController.js` | 243 | 285 |
+| `chatProfileController.js` | 271 | 298 |
+| `chatStrategyController.js` | 139 | 139 |
+
+Todos abaixo de 350 mesmo depois das correções de segurança, que acrescentaram as verificações de posse e os comentários que apontam qual AZ cada uma fecha.
 
 ## Out of Scope
 
