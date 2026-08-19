@@ -1,4 +1,5 @@
 const { resolveScope } = require('../services/authorization');
+const { errorDetails } = require('../utils/errorHandler');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
 const StrategyService = require('../services/strategyService');
@@ -281,7 +282,7 @@ exports.updateAnalysis = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro ao atualizar análise tática',
-      details: error.message
+      ...errorDetails(error)
     });
   }
 };

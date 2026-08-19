@@ -2,7 +2,7 @@
  * Testes unitários para o errorHandler centralizado
  */
 
-const { handleError, asyncHandler } = require('../utils/errorHandler');
+const { handleError, asyncHandler, errorDetails } = require('../utils/errorHandler');
 const { NotFoundError, ValidationError } = require('../utils/errors');
 
 describe('handleError', () => {
@@ -82,6 +82,43 @@ describe('handleError', () => {
     expect(mockRes.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.any(String) })
     );
+  });
+});
+
+describe('errorDetails — R9 da spec 007: nada de error.message em produção', () => {
+  const original = process.env.NODE_ENV;
+
+  afterEach(() => {
+    process.env.NODE_ENV = original;
+  });
+
+  it('OMITE details quando NODE_ENV=production', () => {
+    process.env.NODE_ENV = 'production';
+
+    expect(errorDetails(new Error('coluna "user_id" viola not-null'))).toEqual({});
+  });
+
+  it('inclui details fora de produção, para diagnóstico local', () => {
+    process.env.NODE_ENV = 'development';
+
+    expect(errorDetails(new Error('detalhe do PostgREST'))).toEqual({
+      details: 'detalhe do PostgREST'
+    });
+  });
+
+  it('handleError não devolve a mensagem interna em produção', () => {
+    process.env.NODE_ENV = 'production';
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+    const spy = jest.spyOn(console, 'error').mockImplementation();
+
+    handleError(res, 'buscar atleta', new Error('relation "athletes" does not exist'));
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload).toEqual({ success: false, error: 'Erro ao buscar atleta' });
+    expect(JSON.stringify(payload)).not.toContain('relation');
+    // o detalhe continua no log do servidor, onde a equipe alcança
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
 

@@ -1,5 +1,6 @@
 // Controller para Versões de Estratégia Tática
 const StrategyVersion = require('../models/StrategyVersion');
+const { errorDetails } = require('../utils/errorHandler');
 
 const strategyVersionController = {
   /**
@@ -32,10 +33,10 @@ const strategyVersionController = {
       });
     } catch (error) {
       console.error('❌ [Versions] Erro ao buscar versões:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         error: 'Erro ao buscar versões',
-        details: error.message 
+        ...errorDetails(error)
       });
     }
   },
@@ -59,10 +60,10 @@ const strategyVersionController = {
       });
     } catch (error) {
       console.error('❌ [Versions] Erro ao restaurar versão:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         error: 'Erro ao restaurar versão',
-        details: error.message 
+        ...errorDetails(error)
       });
     }
   }

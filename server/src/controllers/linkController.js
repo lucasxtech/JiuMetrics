@@ -1,4 +1,5 @@
 const { resolveScope } = require('../services/authorization');
+const { errorDetails } = require('../utils/errorHandler');
 const { analyzeFrame, consolidateAnalyses, consolidateSummariesWithAI } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
@@ -256,10 +257,10 @@ exports.analyzeLink = async (req, res) => {
     });
   } catch (err) {
     console.error('❌ analyzeLink error:', err);
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       error: 'Erro interno ao analisar vídeos',
-      details: err.message,
+      ...errorDetails(err)
     });
   }
 };
