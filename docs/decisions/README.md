@@ -17,6 +17,7 @@ Registro das decisões arquiteturais do JiuMetrics. Cada ADR captura **o problem
 | [009](./009-acesso-ao-banco-exclusivamente-por-service-role.md) | Acesso ao banco exclusivamente por `service_role` | **Accepted — não implementado** |
 | [010](./010-adotar-typescript-incrementalmente.md) | Adotar TypeScript incrementalmente | **Accepted — não implementado** |
 | [011](./011-seam-de-politica-de-autorizacao.md) | Seam de política de autorização (`services/authorization.js`) | **Accepted — implementado** |
+| [012](./012-zod-para-validacao-de-entrada.md) | zod para validação de entrada | **Accepted — implementado parcialmente** (3 endpoints de IA) |
 
 ## Convenções
 
