@@ -2,7 +2,7 @@
 
 > **Para agentes de IA e desenvolvedores trabalhando neste repositório.** Leia isto antes de alterar qualquer coisa.
 >
-> **Atualizado:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [006](./specs/006-ownership-in-data-access/spec.md) executadas
+> **Atualizado:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md) e [009](./specs/009-ai-cost-and-reliability/spec.md) executadas
 
 ---
 
@@ -70,7 +70,7 @@ Regras não negociáveis:
 3. **Nunca logue PII.** O login loga o e-mail do usuário em toda tentativa — dívida conhecida.
 4. **Nunca construa HTML por string com conteúdo de LLM.** `pages/Analyses.jsx` faz `innerHTML` com saída de IA — é o sink de XSS conhecido, e o JWT fica em `localStorage`.
 5. **`ProtectedRoute` no frontend é UX, não segurança.** `isAdmin` vem do `localStorage`. A decisão real é sempre do backend.
-6. **Não confie em rate limiting.** `MemoryStore` em serverless: os limites não valem em produção.
+6. **Não confie em rate limiting.** `MemoryStore` em serverless: os limites não valem em produção. ⚠️ Isto **continua verdade** depois da spec 009 — ela resolveu o gasto de IA por outro caminho (orçamento contado no banco, não em memória), mas o limite por IP segue inoperante. Resolver depende de infraestrutura (store externo ou limite na borda).
 7. **Endpoint que recebe corpo e chama IA precisa de schema.** Os 3 de `/api/ai/*` validam com zod (`middleware/validate.js`, [ADR-012](./docs/decisions/012-zod-para-validacao-de-entrada.md)); os outros ~12 endpoints com corpo **ainda não**. Ao declarar um schema, cuidado: campo que o controller usa e o schema não declara chega `undefined` **em silêncio** — mapeie o payload real do frontend antes.
 
 ## Authorization
@@ -107,10 +107,11 @@ Regras:
 
 1. **Nunca importe `@google/genai` fora de `services/llm.js`.** É a fronteira única com o SDK; os testes mockam esse módulo.
 2. **Toda nova chamada de IA usa `responseSchema`.** Nada de regex sobre texto livre — foi a causa-raiz de uma família de bugs já corrigida ([ADR-006](./docs/decisions/006-camada-unica-de-llm-e-aposentadoria-do-multi-agente.md)). O chat é a última exceção e é dívida conhecida, **não** modelo a copiar.
-3. **Prompts vivem em `server/src/services/prompts/*.txt`**, nunca inline no código. Existe uma exceção em `strategyService.js` — dívida conhecida.
+3. **Prompts vivem em `server/src/services/prompts/*.txt`**, nunca inline no código. ✅ A última exceção (`strategyService.js`) saiu na spec 009 — **não abra outra**. Ao editar um `.txt`, saiba que `consolidate-profile.txt` tem teste de comparação **byte a byte**: se ele quebrar, a pergunta é se a mudança de texto foi intencional, não como fazer o teste passar.
 4. **Nunca coloque dado influenciável pelo usuário na `systemInstruction`.** Ver [ADR-003](./docs/decisions/003-system-instruction-fixa-no-chat.md).
 5. **Nunca altere `config/ai.js#BELT_RULES` sem o regulamento IBJJF em mãos.** Não é só texto de prompt — `getBeltLevel` alimenta lógica de decisão, e sugerir técnica ilegal para uma faixa tem consequência real em competição. Ver [ADR-005](./docs/decisions/005-belt-rules-como-tabela-deterministica.md).
-6. **Toda chamada de IA custa dinheiro e o registro de custo está quebrado.** Não adicione chamadas em laço sem limite — `analyzeLink` já tem esse problema.
+6. **Toda chamada de IA custa dinheiro, e agora existe teto.** O registro de custo **funciona** (173 linhas, US$ 3,03 medidos). Desde a spec 009 há três barreiras antes de gastar: allow-list de modelos (`resolveModel`), teto de vídeos por requisição (schema zod) e **orçamento mensal por tenant** (`services/costGuard.js`, `AI_MONTHLY_BUDGET_USD`, default 50). Ao adicionar um fluxo de IA novo: declare o `task` na chamada a `llm.js` (define retry/timeout) e ponha `requireBudget` na rota. Chamada em laço sem limite continua proibida.
+7. **Nunca repita uma chamada de IA que não vai melhorar.** `isTransientError` (`utils/errors.js`) é quem decide: quota estourada, conteúdo bloqueado e JSON malformado **não** são repetidos, porque cada retry é outra inferência paga.
 
 ## Database
 

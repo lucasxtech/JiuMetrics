@@ -1,6 +1,6 @@
 # SPEC-009 — Custo e confiabilidade de IA
 
-**Status: Proposed** · Etapa 7 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (2026-08-18) — exceto R4, bloqueado por infraestrutura** · Etapa 7 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
 
 ## Context
 
@@ -34,8 +34,8 @@ Tornar o gasto de IA **visível, limitado e resiliente**, e tornar análises his
 | **Allow-list de modelos** | `resolveModel` valida contra `AVAILABLE_MODELS`; modelo desconhecido é **rejeitado**, não silenciosamente reprecificado |
 | **Limite de `videos[]`** | teto explícito por request, validado antes de qualquer chamada |
 | **Cost guard** | `assertWithinBudget(actor, operacaoEstimada)` — barra **antes** de gastar |
-| **Quota por ator** | persistida. ⚠️ **Decisão P8**: por usuário ou por tenant |
-| **Rate limiting efetivo** | store externo, ou na borda — `MemoryStore` não funciona em serverless |
+| **Quota por ator** | ✅ persistida, **por TENANT** — decisão P8 conforme a recomendação do plano. O grupo é a unidade que compartilha dados e conta. Teto adicional por usuário depende do modelo comercial, que não está definido; não foi inventado |
+| **Rate limiting efetivo** | ⛔ **NÃO IMPLEMENTADO — bloqueado por infraestrutura.** Ver *Acceptance Criteria* |
 
 ### 2. Confiabilidade
 
@@ -98,19 +98,19 @@ Tornar o gasto de IA **visível, limitado e resiliente**, e tornar análises his
 
 ## Acceptance Criteria
 
-- [ ] Modelo fora da allow-list rejeitado (ou cai no default com log — conforme decisão)
-- [ ] `videos[]` acima do limite → 400 **sem** chamada de IA (verificado por mock não invocado)
-- [ ] Quota excedida → erro antes da chamada
-- [ ] Rate limiting funciona com múltiplas instâncias
-- [ ] Retry ocorre em 5xx/timeout; **não** ocorre em conteúdo bloqueado nem quota
-- [ ] Teto de tentativas respeitado
-- [ ] Timeout ativo; requisição pendurada é interrompida
-- [ ] Políticas de análise e estratégia são **distintas** e documentadas
-- [ ] `metadata` de novas estratégias contém a versão do prompt
-- [ ] **Prompt movido é byte-idêntico** — teste comparando o prompt montado antes/depois
-- [ ] `technical_summary` degradado é distinguível
-- [ ] `grep` não encontra prompt de produção fora de `services/prompts/`
-- [ ] As 16 suítes verdes; nenhum teste de prompt existente quebrado
+- [x] Modelo fora da allow-list **cai no default da tarefa com aviso** — decisão tomada: não rejeitar, porque a escolha vem do `localStorage` e um valor obsoleto salvo no navegador quebraria quem não fez nada errado
+- [x] `videos[]` acima do limite → 400 **sem** chamada de IA (asserção explícita de mock não invocado — spec 007)
+- [x] Quota excedida → erro antes da chamada, com teste afirmando que a IA não foi chamada
+- [ ] ⛔ **Rate limiting com múltiplas instâncias: NÃO IMPLEMENTADO.** Exige store externo (Redis/Upstash) ou limite na borda da Vercel — **infraestrutura a provisionar, decisão do proprietário**, não código. Registrado como AI-13 em `docs/AI.md`. ⚠️ Nota importante: o **gasto de IA** ficou protegido por outro caminho — o orçamento conta o gasto **persistido em `api_usage`**, que atravessa instâncias. O que continua sem valer é o limite genérico por IP (brute force no login, sobretudo)
+- [x] Retry ocorre em 5xx/timeout; **não** ocorre em conteúdo bloqueado, quota, API key ausente nem JSON malformado
+- [x] Teto de tentativas respeitado (teste conta as invocações do SDK)
+- [x] Timeout ativo; requisição pendurada é interrompida — teste com fake timers e promessa que nunca resolve
+- [x] Políticas de análise e estratégia são **distintas** e documentadas (`AI_POLICIES`), com teste afirmando a assimetria — não só a existência
+- [x] `metadata` de novas estratégias contém `promptVersions`
+- [x] **Prompt movido é byte-idêntico** — golden capturado do código anterior, sem transcrição manual. Verificado que o teste detecta a remoção de **um único espaço**
+- [x] `technical_summary` degradado é distinguível (`degraded: true` + prefixo no texto)
+- [x] `grep` não encontra prompt de produção fora de `services/prompts/` — asserção no próprio teste
+- [x] 27 suítes / 327 testes verdes (não 16 — a suíte cresceu nas specs 004–009); nenhum teste de prompt existente quebrado
 
 ## Testing Strategy
 
@@ -157,6 +157,18 @@ Tornar o gasto de IA **visível, limitado e resiliente**, e tornar análises his
 **Depende de:** ~~[spec 007](../007-silent-failures-and-input-validation/spec.md)~~ — **dependência removida em 2026-08-13.** A spec 002 verificou que o registro de custo **já funciona** (173 linhas, US$ 3,0295), então a visibilidade necessária para calibrar quota **já existe**. Esta spec pode ser executada sem esperar a 007.
 
 **Escopo acrescentado por consequência:** investigar as **55 das 173 linhas com `estimated_cost_usd = 0`** — provavelmente modelos ausentes de `PRICING`. Item que era da 007 e migrou para cá, porque é trabalho de custo.
-**Decisões pendentes:** P8 (quota por usuário ou tenant), P9 (saída estruturada no chat — fora do escopo).
+**Decisões:** ✅ **P8 — por tenant** (recomendação do plano). P9 (saída estruturada no chat) segue fora do escopo, com spec própria a ser escrita.
+
+## O que esta spec NÃO resolveu
+
+Registrado para não parecer resolvido:
+
+| Item | Por quê |
+|---|---|
+| **Rate limiting efetivo** (R4) | Exige infraestrutura: store externo ou limite na borda. Decisão do proprietário |
+| **As 55 linhas com custo zero** | Recalcular exigiria migração de dado. A spec impede que volte a acontecer, mas não corrige o histórico. ⚠️ E a causa provável registrada aqui (modelo ausente de `PRICING`) **não se sustenta na leitura do código** — modelo desconhecido era precificado como flash, não como zero |
+| **Alerta de gasto** | Só existe `console.warn` a partir de 80% do orçamento. Alerta de verdade depende de observabilidade, que é spec própria |
+| **Versão de prompt nos outros fluxos** | Só o de estratégia registra. Ver [ADR-013](../../docs/decisions/013-versionamento-de-prompt-por-hash.md) |
+| **`maxDuration` na Vercel** | Continua não configurado, e o plano da conta segue não confirmado (AI-10) |
 
 **Independente das specs 005–006, 008** — pode rodar em paralelo, coordenando arquivos com a 007.

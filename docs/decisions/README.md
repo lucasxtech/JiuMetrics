@@ -18,6 +18,7 @@ Registro das decisões arquiteturais do JiuMetrics. Cada ADR captura **o problem
 | [010](./010-adotar-typescript-incrementalmente.md) | Adotar TypeScript incrementalmente | **Accepted — não implementado** |
 | [011](./011-seam-de-politica-de-autorizacao.md) | Seam de política de autorização (`services/authorization.js`) | **Accepted — implementado** |
 | [012](./012-zod-para-validacao-de-entrada.md) | zod para validação de entrada | **Accepted — implementado parcialmente** (3 endpoints de IA) |
+| [013](./013-versionamento-de-prompt-por-hash.md) | Versionamento de prompt por hash (e o limite da reprodutibilidade) | **Accepted — implementado** (fluxo de estratégia) |
 
 ## Convenções
 

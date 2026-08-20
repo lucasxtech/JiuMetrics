@@ -11,6 +11,39 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 💸 Controle de gasto e confiabilidade de IA — 2026-08-18 · [spec 009](./specs/009-ai-cost-and-reliability/spec.md)
+
+**Um usuário autenticado podia gerar gasto ilimitado de API, e ninguém veria no painel.** O registro de custo funcionava e media certo — mas era só observação, sem nenhum ponto de decisão que barrasse. Bastava um laço de retry no cliente, ou escolher o modelo mais caro e enviar muitos vídeos.
+
+#### Adicionado — três barreiras, todas ANTES de gastar
+
+- **Allow-list de modelos.** `resolveModel` aceitava **qualquer string** vinda do cliente. Combinado com `calculateCost`, que precificava desconhecido como o modelo barato, dava para usar um modelo caro registrando o custo de outro. Modelo fora da lista agora cai no default da tarefa, com aviso — e não gera erro, porque a escolha vem do `localStorage` e um valor obsoleto salvo no navegador não deve quebrar quem não fez nada errado.
+- **Orçamento mensal por grupo** (`AI_MONTHLY_BUDGET_USD`, default 50). Conta o gasto **persistido em `api_usage`** — não um contador em memória —, e é isso que faz o limite valer em serverless. Decisão P8: **por tenant**, porque o grupo é a unidade que compartilha os dados e a conta.
+- **Teto de vídeos por requisição** já havia entrado na spec 007.
+
+O default é deliberadamente permissivo: US$ 50/mês contra um histórico medido de ~US$ 0,38/mês. Apertar depois de observar é fácil; destravar usuário legítimo bloqueado é caro.
+
+#### Adicionado — confiabilidade
+
+- **Retry com backoff e timeout, com políticas distintas por fluxo.** Repetir uma inferência de vídeo em `gemini-2.5-pro` custa muito mais que repetir uma consolidação de texto, e o chat tem alguém esperando na tela. **Nunca** repete quota estourada, conteúdo bloqueado, API key ausente ou JSON malformado — cada um seria outra inferência paga sem chance de resultado diferente.
+- **`metadata.promptVersions`** nas estratégias novas: o hash do conteúdo de cada template usado. Sem isso não havia como saber com que instrução uma estratégia de meses atrás foi gerada. Ver [ADR-013](./docs/decisions/013-versionamento-de-prompt-por-hash.md).
+
+#### Corrigido
+
+- **Resumo degradado deixou de se passar por consolidado.** Quando a consolidação por IA falhava, a concatenação dos resumos era gravada em `technical_summary` **indistinguível de um perfil consolidado real** — e alimentava a geração de estratégia como se fosse. Agora vem com `degraded: true` e prefixo visível.
+- **O último prompt de produção hardcoded saiu do código** (~53 linhas em `strategyService.js`) para `prompts/consolidate-profile.txt`, com teste de comparação **byte a byte** contra um golden capturado do código anterior. Verificado que o teste detecta a remoção de um único espaço.
+- **Bug pré-existente:** `parseGeminiError` não era idempotente. Reclassificar um erro já classificado **degradava o tipo** — uma quota estourada virava erro genérico, perdendo o 429 e a informação de "não repita", porque a mensagem em português ("Cota…") não casa com a checagem por "quota".
+
+#### Limitações declaradas
+
+- ⛔ **Rate limiting genérico continua inoperante em serverless** (`MemoryStore` conta por instância). O gasto de IA ficou protegido por outro caminho; o limite por IP — brute force no login, sobretudo — **não**. Resolver exige store externo ou limite na borda: **infraestrutura, decisão do proprietário**.
+- **O timeout interrompe a nossa espera, não a inferência do provedor.** Sem cancelamento no SDK, o custo pode já ter sido incorrido.
+- **Versão de prompt só no fluxo de estratégia.**
+- **As 55 linhas históricas com custo zero não foram recalculadas** — seria migração de dado. A spec impede que volte a acontecer.
+- **Reprodutibilidade tem limite honesto:** saber prompt e modelo dá auditabilidade, **não** replay bit-a-bit. LLM não é determinístico e o provedor deprecia modelos.
+
+---
+
 ### Falhas silenciosas e validação de entrada — 2026-08-18 · [spec 007](./specs/007-silent-failures-and-input-validation/spec.md)
 
 **As duas funcionalidades que a UI oferecia e que não funcionavam passam a funcionar.** Nenhuma era erro de lógica: as duas eram incompatibilidade de contrato na fronteira `snake_case` (banco) × `camelCase` (aplicação), e sobreviveram meses porque falhavam dentro de um `catch` que só escrevia no console.

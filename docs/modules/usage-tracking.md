@@ -12,7 +12,9 @@
 
 Registrar cada chamada à API do Gemini com tokens consumidos e custo estimado, e expor estatísticas agregadas por período, modelo e tipo de operação.
 
-**É o único controle financeiro do produto.** Ele **registra** corretamente, mas não há quota, alerta, teto de gasto nem circuit breaker em nenhum lugar do sistema — o registro é observação, não enforcement.
+**É o único controle financeiro do produto.**
+
+✅ **Desde a [spec 009](../../specs/009-ai-cost-and-reliability/spec.md) o módulo deixou de ser só observação.** O gasto registrado aqui alimenta `services/costGuard.js`, que barra a operação **antes** da chamada de IA quando o grupo atinge o orçamento do mês. Ainda não há alerta ativo (só aviso no log a partir de 80%) nem circuit breaker por modelo.
 
 ## Business Rules
 
@@ -22,7 +24,7 @@ Registrar cada chamada à API do Gemini com tokens consumidos e custo estimado, 
 2. **Falha no registro nunca derruba a operação principal.** Decisão mantida e agora **explícita**: a spec 007 auditou este `catch` e registrou TOLERAR como a decisão certa — custo não pode derrubar uma operação de IA que o usuário já pagou. O que mudou é a visibilidade: `logToleratedFailure` marca a falha de forma localizável (`grep "FALHA TOLERADA"`) em vez de um `console.warn` indistinguível de ruído. ⚠️ Continua sendo stdout, sem alerta nem agregação.
 3. **Custo é calculado por tabela de preços por modelo** (`PRICING`), em USD por 1 M de tokens, com preço separado de input e output.
 4. **Modelos `3-pro-preview` usam preço em faixas (*tiered*)** — até 200 K tokens de prompt: $2/$12; acima: $4/$18.
-5. **Modelo desconhecido cai no preço de `gemini-2.5-flash`** (`DEFAULT_MODEL`). ⚠️ Combinado com a falta de validação do modelo escolhido pelo usuário, isso significa que o custo registrado pode não ter relação com o cobrado.
+5. **Modelo desconhecido cai no preço de `gemini-2.5-flash`** (`DEFAULT_MODEL`), agora **com aviso no log** (spec 009). Registrar zero seria pior — subestimaria o gasto. E o cenário que tornava isso perigoso deixou de existir: a allow-list garante que todo modelo que chega até aqui tem preço em `PRICING`.
 6. **Escopo:** admin vê o consumo de todo o grupo; usuário comum vê só o próprio (via `resolveScope`, `services/authorization.js` — spec 005).
 7. **Períodos suportados:** `today`, `week`, `month` (default), `all`.
 8. **A resposta agrega por modelo e por operação**, e devolve os 10 registros mais recentes.
@@ -105,20 +107,20 @@ flowchart TD
 
 ## Not Responsible For
 
-- **Escolher o modelo** — é `config/ai.js#resolveModel`, e a escolha do usuário não é validada.
-- **Impor limites ou quota** — este módulo **apenas observa**. Não existe enforcement de gasto em lugar nenhum do sistema.
+- **Escolher o modelo** — é `config/ai.js#resolveModel`, que desde a spec 009 **valida contra a allow-list**.
+- **Impor limites ou quota** — a decisão vive em `services/costGuard.js` (spec 009); este módulo fornece o dado de gasto que ela consulta.
 - **Faturamento real** — os valores são **estimativas** calculadas de uma tabela mantida à mão; a fonte de verdade é o console do Google Cloud.
-- **Alertas** — não há notificação de gasto anômalo.
+- **Alertas** — não há notificação de gasto anômalo. Só um `console.warn` a partir de 80% do orçamento, que ninguém vê se ninguém procurar.
 
 ## Known Issues
 
 | Severidade | Problema |
 |---|---|
 | ~~HIGH~~ | ❌ **REFUTADO (2026-08-13).** A auditoria concluiu que a persistência nunca funcionou, porque o model usa o cliente anon contra a política `auth.uid() = user_id`. **Medição: 173 linhas, US$ 3,0295, última em 2026-08-12.** A política **não está ativa em produção** — a chave anon lê e escreve `api_usage` sem restrição. Lição registrada: as migrations descrevem um estado que o banco real não tem |
-| **MEDIUM** | **55 das 173 linhas têm `estimated_cost_usd = 0`** — custo registrado como zero. Causa provável: modelo ausente de `PRICING` (a tabela histórica inclui `multi-agents (gpt-5.4)`, `gpt-4-turbo-preview`, `gpt-4.1`, do sistema removido) ou `usage` sem tokens. **Subestima o gasto real** |
+| **MEDIUM** | **55 das 173 linhas têm `estimated_cost_usd = 0`** — custo registrado como zero, **subestimando o gasto real**. ⚠️ A causa provável registrada originalmente (modelo ausente de `PRICING`) **não se sustenta na leitura do código**: modelo desconhecido era precificado como flash, não como zero. Zero vem de `!modelName` ou de tokens zerados. É inferência, não medição. A spec 009 impede que volte a acontecer, mas **não recalcula as linhas antigas** — isso seria migração de dado |
 | **LOW** | **`operation_type` divergente:** existe `strategy_chat` em produção, fora da lista documentada (`chat_strategy`). Nomenclatura histórica inconsistente |
-| **HIGH** | **Sem quota, alerta ou teto.** Combinado com: nenhum limite de `videos[]` por request, modelo escolhido pelo cliente sem validação, e rate limiting ineficaz em serverless → **um usuário autenticado pode gerar gasto ilimitado de API, e ninguém vê no painel** |
-| **MEDIUM** | **Contabilidade incorreta para modelo desconhecido.** `calculateCost` cai silenciosamente no preço de `gemini-2.5-flash`. Como `resolveModel` aceita qualquer string do cliente, é possível usar um modelo caro e registrar o custo de um barato |
+| ~~**HIGH**~~ | ✅ **RESOLVIDO (specs 007 e 009)** — não havia quota, teto nem validação de modelo, e um usuário autenticado podia gerar gasto ilimitado sem ninguém ver. Hoje: teto de vídeos por requisição, allow-list de modelos e orçamento mensal por tenant, todos barrando antes de gastar. Sem **alerta** ainda (só log a partir de 80%) |
+| ~~**MEDIUM**~~ | ✅ **RESOLVIDO (spec 009)** — `calculateCost` caía no preço do flash em silêncio, e `resolveModel` aceitava qualquer string do cliente: dava para usar modelo caro registrando custo de barato. A allow-list fecha a entrada, e `calculateCost` passou a **avisar** em vez de reprecificar calado. Teste garante que todo modelo da allow-list tem preço em `PRICING` |
 | **MEDIUM** | **`PRICING` é mantida à mão** e pode divergir da tabela real do Google. Não há teste comparando com a fonte oficial |
 | **MEDIUM** | **A tabela `api_usage` foi criada três vezes** (`003` → `004` com `DROP CASCADE` → `006`), com políticas diferentes em cada. Estado real medido em 2026-08-13: a política **não bloqueia** (a chave anon lê e escreve). A definição nominal das políticas permanece **UNKNOWN** — só consultável no SQL Editor |
 | **LOW** | **`utils/apiUsageLogger.js#logApiUsage`** (a variante sem `operationType`) **não tem chamadores** — código morto, e chama `ApiUsage.create`, método que não existe no model |

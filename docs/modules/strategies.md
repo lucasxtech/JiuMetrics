@@ -51,7 +51,7 @@ Cruzar o perfil técnico de um **atleta** com o de um **adversário** e produzir
 | `cronologia_inteligente` | linha do tempo sugerida |
 | `checklist_tatico` | pontos de checagem, incl. "se estiver perdendo" |
 
-`metadata` (JSONB): modelo usado, tokens, contagem de análises de cada lado, se usou resumo salvo, `generatedAt`.
+`metadata` (JSONB): modelo usado, tokens, contagem de análises de cada lado, se usou resumo salvo, `generatedAt` e — desde a spec 009 — **`promptVersions`**, o hash do conteúdo de cada template usado. Linhas antigas ficam sem esse campo, e isso é correto: não sabemos qual prompt gerou aquelas. ⚠️ Isso dá **auditabilidade**, não replay bit-a-bit — ver [ADR-013](../decisions/013-versionamento-de-prompt-por-hash.md).
 
 Consumidores: `pages/Strategy.jsx` (visualização imediata), `pages/Analyses.jsx` (histórico + export PDF), módulo [`chat-and-versions`](./chat-and-versions.md) (refinamento), módulo [`usage-tracking`](./usage-tracking.md).
 
@@ -59,19 +59,22 @@ Consumidores: `pages/Strategy.jsx` (visualização imediata), `pages/Analyses.js
 
 - `services/strategyService.js` — orquestração e consolidação
 - `services/geminiService.js#generateTacticalStrategy` — montagem do prompt e chamada
+- `services/prompts/{tactical-strategy,consolidate-profile}.txt` — ✅ **nenhum prompt de produção deste módulo vive mais em código** (o de consolidação saiu de `strategyService.js` na spec 009, com teste de comparação byte a byte)
+- `services/costGuard.js` — orçamento do grupo, verificado antes de gastar
 - `services/llm.js` — fronteira com o SDK
 - `schemas/strategy.js#STRATEGY_SCHEMA` · `utils/strategyFieldSchema.js#validateStrategyField`
 - `config/ai.js` — `BELT_RULES`, `getBeltLevel`, `TASK_MODELS`, temperatura
 - `models/{Athlete,Opponent,FightAnalysis}.js` — insumos
 - `models/{TacticalAnalysis,StrategyVersion}.js` — persistência (`StrategyVersion` usa **`supabaseAdmin`**)
-- `utils/tenantScope.js`
+- `services/authorization.js#resolveScope` (spec 005)
 
 ## Flow
 
 ```mermaid
 flowchart TD
     UI["Strategy.jsx: seleciona atleta + adversário"] --> POST["POST /api/strategy/compare"]
-    POST --> SCOPE["resolveScope → Athlete/Opponent.getById<br/>✅ posse verificada"]
+    POST --> BUDGET["requireBudget: orçamento do grupo<br/>429 se esgotado (spec 009)"]
+    BUDGET --> SCOPE["resolveScope → Athlete/Opponent.getById<br/>✅ posse verificada"]
     SCOPE --> FOUND{"os dois<br/>existem?"}
     FOUND -->|não| E404["404"]
     FOUND -->|sim| FETCH["análises dos dois lados<br/>1 query cada, em paralelo"]
@@ -85,7 +88,7 @@ flowchart TD
     BELT --> AI2["llm.generateJson<br/>STRATEGY_SCHEMA · temp 0.3"]
     AI2 --> SAVE["TacticalAnalysis.create"]
     SAVE --> V1["StrategyVersion.createInitial<br/>(falha tolerada)"]
-    V1 --> USG["ApiUsage.logUsage<br/>⚠️ provavelmente falha"]
+    V1 --> USG["ApiUsage.logUsage<br/>✅ funciona (medido na spec 002)"]
     USG --> RESP["{ strategy, analysisId }"]
     RESP --> EDIT["editável via chat<br/>(módulo chat-and-versions)"]
     EDIT --> PATCH["PATCH /analyses/:id<br/>+ validateStrategyField"]

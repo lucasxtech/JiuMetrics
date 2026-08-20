@@ -30,7 +30,7 @@ Transformar **um ou mais vídeos de luta do YouTube** em uma análise estruturad
 
 ## Inputs
 
-`POST /api/ai/analyze-link` (`heavyLimiter` 30/15min, autenticado) — o caminho que **gera** a análise:
+`POST /api/ai/analyze-link` (`heavyLimiter` 30/15min, autenticado, **schema zod + orçamento** desde as specs 007/009) — o caminho que **gera** a análise:
 
 ```
 {

@@ -968,15 +968,15 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 **Documentation.** `docs/AI.md` (custo, limites, versionamento, retry), `docs/modules/usage-tracking.md`, ADR novo sobre versionamento de prompt, `CHANGELOG.md`.
 
-**Acceptance Criteria.**
-- [ ] Modelo fora da allow-list rejeitado
-- [ ] `videos[]` acima do limite rejeitado **sem** chamar a IA
-- [ ] Quota excedida rejeitada antes da chamada
-- [ ] `metadata` contém a versão do prompt
-- [ ] Prompt movido é byte-idêntico
-- [ ] Retry e timeout ativos, com políticas distintas por fluxo
-- [ ] Resumo degradado é distinguível de resumo consolidado
-- [ ] Rate limiting efetivo em serverless
+**Acceptance Criteria.** ✅ **Etapa 7 CONCLUÍDA (spec 009, 2026-08-18)** — exceto o último item
+- [x] Modelo fora da allow-list não é mais usado (cai no default da tarefa, com aviso — decisão registrada)
+- [x] `videos[]` acima do limite rejeitado **sem** chamar a IA
+- [x] Quota excedida rejeitada antes da chamada — **por tenant** (decisão P8)
+- [x] `metadata` contém a versão do prompt ([ADR-013](./docs/decisions/013-versionamento-de-prompt-por-hash.md))
+- [x] Prompt movido é byte-idêntico — golden capturado do código anterior, e o teste detecta a remoção de um único espaço
+- [x] Retry e timeout ativos, com políticas distintas por fluxo, e sem repetir o que não melhora
+- [x] Resumo degradado é distinguível de resumo consolidado
+- [ ] ⛔ **Rate limiting efetivo em serverless: NÃO IMPLEMENTADO.** Exige store externo ou limite na borda — infraestrutura, decisão do proprietário. O **gasto de IA** ficou protegido por outro caminho (orçamento contado no banco, que atravessa instâncias); o limite genérico por IP, não
 
 ---
 

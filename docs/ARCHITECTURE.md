@@ -136,8 +136,8 @@ flowchart LR
 | `routes/` (10) | montagem de endpoints, rate limit, auth | Nenhuma exceção — a query de banco que existia em `routes/fightAnalysis.js` foi removida com a rota `/debug/all` (spec 002) |
 | `controllers/` (13) | validação, orquestração, resposta | Resolvem o escopo e o passam adiante. O chat virou 4 controllers na spec 006 |
 | `models/` (10) | *data mappers* PostgREST | **Não são entidades de domínio.** Não há camada de domínio. Desde a spec 006 **exigem escopo de posse na assinatura** — chamada sem ele lança |
-| `services/` | IA, download de vídeo, **política de autorização** | `llm.js`, `geminiService.js`, `strategyService.js`, `videoDownloader.js`, `authorization.js` (ponto único de decisão — spec 005) |
-| `schemas/` | `responseSchema` do Gemini | Contrato de saída da IA |
+| `services/` | IA, download de vídeo, **política de autorização**, **orçamento** | `llm.js` (retry/timeout por fluxo), `geminiService.js`, `strategyService.js`, `videoDownloader.js`, `authorization.js` (spec 005), `costGuard.js` (spec 009) |
+| `schemas/` | `responseSchema` do Gemini **e** schemas de entrada HTTP | ⚠️ `schemas/*.js` = contrato de **saída** da IA; `schemas/requests/*.js` = contrato de **entrada** da API (zod, spec 007). Confundir os dois produz bug difícil de ver |
 | `utils/` | erros, parsers, versões, custo, **guard de escopo** | `scopeGuard.js#requireScope` (spec 006) é o que torna o escopo obrigatório nos models. `tenantScope.js#getScopeIds` é wrapper `@deprecated` — a regra mudou para `services/authorization.js` (spec 005) |
 | `config/` | `ai.js` (domínio + infra), `supabase.js` (2 clientes) | |
 

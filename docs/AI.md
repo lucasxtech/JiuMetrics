@@ -92,12 +92,43 @@ Não é apenas texto de prompt: `getBeltLevel` alimenta lógica de decisão. Ver
 
 ## Rastreamento de custo
 
-`models/ApiUsage.js` mantém `PRICING` por modelo (com faixas *tiered* para os `3-pro-preview`) e `calculateCost`. Toda operação de IA chama `logApiUsage`/`logApiUsageWithType`, que **nunca lança** — falha de registro não derruba a operação.
-⚠️ O registro provavelmente **não persiste** — ver *Known Issues*.
+`models/ApiUsage.js` mantém `PRICING` por modelo (com faixas *tiered* para os `3-pro-preview`) e `calculateCost`. Toda operação de IA chama `logApiUsage`/`logApiUsageWithType`, que **nunca lança** — falha de registro não derruba a operação, e desde a spec 007 essa tolerância é registrada de forma localizável (`grep "FALHA TOLERADA"`).
+
+✅ **O registro funciona** — 173 linhas, US$ 3,0295 medidos em 2026-08-13. A hipótese de que o RLS bloqueava foi refutada (ver *Known Issues*, AI-4).
+
+## Controle de gasto (spec 009)
+
+O registro era só **observação**: media o gasto e não impedia nada. Um usuário autenticado podia gerar gasto ilimitado. Existem agora três barreiras, todas **antes** da chamada:
+
+| Barreira | Onde | O que impede |
+|---|---|---|
+| **Allow-list de modelos** | `config/ai.js#resolveModel` | usar um modelo caro (ou uma string arbitrária) escolhido pelo cliente. Desconhecido cai no default da tarefa, com aviso |
+| **Teto de vídeos por requisição** | schema zod em `/api/ai/analyze-link` (spec 007) | um corpo com N URLs virar N inferências pagas |
+| **Orçamento mensal por tenant** | `services/costGuard.js` + `middleware/budget.js` | o grupo passar de `AI_MONTHLY_BUDGET_USD` (default 50) no mês |
+
+O orçamento conta o gasto **persistido em `api_usage`**, não um contador em memória — é o que faz o limite valer em serverless, onde cada instância tem sua própria memória. É por isso que o gasto de IA tem controle efetivo enquanto o rate limiting genérico (que usa `MemoryStore`) continua não tendo — ver AI-13.
+
+**Por tenant e não por usuário** (decisão P8): o grupo é a unidade que compartilha os dados e a conta. Um teto adicional por usuário dentro do grupo depende do modelo comercial, que não está definido.
+
+## Confiabilidade: retry e timeout (spec 009)
+
+`llm.js` aplica retry com backoff e timeout, com políticas **distintas por fluxo** (`config/ai.js#AI_POLICIES`) — repetir uma inferência de vídeo em `gemini-2.5-pro` custa muito mais que repetir uma consolidação de texto, e o chat tem alguém esperando na tela.
+
+Só é repetido o que `isTransientError` classifica como transitório. **Nunca** são repetidos: quota estourada, conteúdo bloqueado, API key ausente, JSON malformado — cada retry desses seria outra inferência paga sem chance de resultado diferente.
+
+⚠️ **Limite honesto do timeout:** ele interrompe **a nossa espera**, não a inferência do outro lado. Sem cancelamento no SDK, o provedor pode seguir processando e o custo já ter sido incorrido. O valor é não pendurar a função serverless até o `maxDuration`.
+
+## Reprodutibilidade de análise (spec 009)
+
+`metadata` das novas estratégias registra `promptVersions` — o hash do conteúdo de cada template usado. Como é derivado do conteúdo, não existe versão para esquecer de incrementar: editar o prompt muda o identificador.
+
+⚠️ **Limite honesto, para não criar expectativa falsa:** isto dá **auditabilidade** ("com que instrução e modelo isso foi gerado?"), **não replay bit-a-bit**. LLM não é determinístico, e o provedor deprecia modelos. Duas execuções com o mesmo prompt e o mesmo modelo podem divergir. Ver [ADR-013](./decisions/013-versionamento-de-prompt-por-hash.md).
+
+Linhas antigas de `tactical_analyses` ficam **sem** `promptVersions`, e isso é correto: não sabemos qual prompt foi usado nelas.
 
 ## Tratamento de erro
 
-`utils/errors.js` define 12 classes tipadas com `statusCode`: `GeminiQuotaExceededError`, `GeminiContentBlockedError`, `GeminiApiKeyMissingError`, `GeminiApiError`, `GeminiProcessingError`, `GeminiParseError`, `VideoDownloadError`, além das genéricas. `parseGeminiError` normaliza o erro cru do SDK.
+`utils/errors.js` define 14 classes tipadas com `statusCode`: `GeminiQuotaExceededError`, `GeminiContentBlockedError`, `GeminiApiKeyMissingError`, `GeminiApiError`, `GeminiProcessingError`, `GeminiParseError`, `VideoDownloadError`, `MissingScopeError`, `BudgetExceededError`, além das genéricas. `parseGeminiError` normaliza o erro cru do SDK e é **idempotente** — reclassificar um erro já classificado degradava o tipo (bug corrigido na spec 009). `isTransientError` decide o que vale repetir.
 
 `videoDownloader.classifyDownloadError` traduz 10 modos de falha do YouTube (bot detection, vídeo privado, restrição de idade, timeout, tamanho, copyright, live…) em mensagens acionáveis em pt-BR.
 
@@ -263,35 +294,37 @@ Severidade conforme [`../AUDIT.md`](../AUDIT.md) §8. **Nada foi corrigido.**
 **Impacto:** as sugestões de edição da IA — que **escrevem no banco** — dependem de regex frágil. Quando o parse falha, o usuário recebe "Preparei uma sugestão de alteração para você revisar" e a sugestão é perdida em silêncio.
 **Mitigação parcial existente:** `validateStrategyField` valida o shape antes de persistir estratégia. Não há equivalente para edição de análise.
 
-### AI-2 — `model` do usuário vai cru para o SDK
-`resolveModel` retorna `userModel` sem conferir contra `AVAILABLE_MODELS`.
-**Impacto:** (a) usuário força o modelo mais caro em toda tarefa, inclusive chat; (b) string arbitrária chega ao SDK; (c) **a contabilidade de custo quebra em silêncio** — `calculateCost` cai no preço de `gemini-2.5-flash` para modelo desconhecido, registrando custo sem relação com o cobrado.
+### ~~AI-2~~ — `model` do usuário ia cru para o SDK · ✅ **RESOLVIDO na [spec 009](../specs/009-ai-cost-and-reliability/spec.md)** (2026-08-18)
+`resolveModel` retornava `userModel` sem conferir contra a allow-list: (a) o usuário forçava o modelo mais caro em toda tarefa, inclusive chat; (b) string arbitrária chegava ao SDK; (c) a contabilidade quebrava em silêncio, porque `calculateCost` caía no preço do flash para modelo desconhecido.
+**Correção:** allow-list em `resolveModel`. Modelo desconhecido **cai no default da tarefa com aviso**, não gera erro — a escolha vem do `localStorage`, e um valor obsoleto salvo no navegador não deve quebrar quem não fez nada errado. `calculateCost` passou a avisar em vez de reprecificar calado.
 
-### AI-3 — Nenhum limite de vídeos por request
-`analyzeLink` itera `videos[]` sem teto, e cada item é uma inferência de vídeo em `gemini-2.5-pro` — a operação mais cara do sistema.
-**Impacto:** combinado com AI-2, com o rate limiting ineficaz em serverless e com o registro de custo quebrado, **não existe nenhum controle efetivo de gasto de IA**.
+### ~~AI-3~~ — Nenhum limite de vídeos por request · ✅ **RESOLVIDO nas specs 007 e 009**
+`analyzeLink` iterava `videos[]` sem teto, e cada item é uma inferência de vídeo em `gemini-2.5-pro` — a operação mais cara do sistema.
+**Correção:** teto de 5 vídeos por requisição (spec 007, schema zod, barrado **antes** de qualquer chamada) + orçamento mensal por tenant (spec 009, `services/costGuard.js`), que também barra antes de gastar e conta o gasto **persistido**, não um contador em memória.
+⚠️ **O que continua aberto:** rate limiting genérico segue inoperante em serverless — ver AI-13.
 
-### AI-4 — Registro de custo provavelmente não funciona
-`models/ApiUsage.js` usa o cliente **anon** contra política RLS `auth.uid() = user_id`, e o projeto não usa Supabase Auth → `auth.uid()` é `NULL`. O erro é engolido em `apiUsageLogger`.
-**Impacto:** o único controle financeiro do produto não funciona; as telas de custo mostram zero como dado real.
-**NEEDS_CONFIRMATION:** `SELECT count(*), max(created_at) FROM api_usage;`
+### ~~AI-4~~ — Registro de custo provavelmente não funciona · ❌ **REFUTADO na [spec 002](../specs/002-verification-baseline/spec.md)** (2026-08-13)
+A hipótese era que o cliente anon contra a política `auth.uid() = user_id` bloqueava o insert. **Medição: 173 linhas, US$ 3,0295, de 2025-12-14 a 2026-08-12.** A política **não está ativa em produção**.
+**Dívida real, menor:** 55 das 173 linhas com `estimated_cost_usd = 0`. A spec 009 impede que isso volte a acontecer (allow-list garante modelo com preço em `PRICING`), mas **não recalcula as linhas antigas** — isso seria migração de dado.
+Continua verdade que o registro funciona *por acidente*: o cliente correto seria `service_role`, e isso vem como consequência da [spec 008](../specs/008-database-access-lockdown/spec.md).
 
 ## MEDIUM
 
 | # | Problema | Impacto |
 |---|---|---|
-| AI-5 | **Prompt hardcoded fora de `services/prompts/`** (~53 linhas em `strategyService.js`) | Prompt de produção invisível para quem procura no lugar certo; fora do teste de prompts |
+| ~~AI-5~~ | ✅ **RESOLVIDO na spec 009** — as ~53 linhas de prompt em `strategyService.js` foram para `prompts/consolidate-profile.txt` | A fidelidade é garantida por comparação **byte a byte** contra um golden capturado do código anterior (`prompts/__fixtures__/`). Verificado que o teste detecta a remoção de **um único espaço** |
 | AI-6 | **Validação de host do YouTube por substring** — `hostname.includes('youtube.com')` deixa `youtube.com.attacker.net` passar. Também no frontend, que ainda aceita qualquer URL contendo "video" | SSRF limitado: o servidor busca URL de host controlado pelo atacante, e a URL vai ao Gemini como `fileData`. Mitigado por `execFile` sem shell e pelos limites de tamanho/timeout |
 | AI-7 | **Prompt injection mitigado só no chat** — `athleteName`, `matchResult` e `belt` entram crus no prompt de análise; `athleteData` inteiro do body vai serializado; e o `technical_summary`, **gerado a partir de vídeo de terceiros**, é reinjetado no prompt de estratégia | Injeção **indireta**: o payload pode vir do vídeo analisado, não do usuário. Impacto atual baixo (dado majoritariamente auto-fornecido, saída não executa nada, schema limita a forma). Sobe se o produto abrir para tenants não confiáveis |
-| AI-8 | **Sem retry e sem timeout de inferência** — nenhuma chamada a `generateContent`/`sendMessage` tem timeout próprio ou retry | Quota estourada ou 5xx transitório perde a operação inteira, **inclusive depois** de baixar o vídeo e enviá-lo à Files API. O trabalho caro já foi pago |
-| AI-9 | **Fallbacks degradam o dado em silêncio** — se a consolidação por IA falha, o retorno é `summaries.join(' ')`, persistido em `technical_summary` e **indistinguível de um resumo real** — e depois alimenta a estratégia | Dado de qualidade inferior tratado como equivalente |
+| ~~AI-8~~ | ✅ **RESOLVIDO na spec 009** — `llm.js` ganhou retry com backoff e timeout, com **políticas distintas por fluxo** (`config/ai.js#AI_POLICIES`) | Só repete falha transitória: nunca quota estourada, conteúdo bloqueado ou JSON malformado, porque cada retry é outra inferência paga sem chance de resultado diferente. ⚠️ O timeout interrompe **a nossa espera**, não a inferência do provedor — o custo pode já ter sido incorrido |
+| ~~AI-9~~ | ✅ **RESOLVIDO na spec 009** — o fallback de consolidação agora devolve `degraded: true` e prefixa o texto | Antes, `summaries.join(' ')` era persistido em `technical_summary` **indistinguível de um resumo consolidado real**, e alimentava a estratégia como se fosse |
 | AI-10 | **Trabalho longo de IA em request serverless** | Download (até 120s) + upload/polling (até 120s) + inferência, × N vídeos em série, sem `maxDuration` no `vercel.json`. Provável timeout **após** consumir tokens. **NEEDS_CONFIRMATION:** plano da Vercel |
 
 ## LOW
 
 | # | Problema |
 |---|---|
-| AI-11 | **`AVAILABLE_MODELS` duplicada** entre `config/ai.js` e `frontend/src/utils/aiConfig.js` |
+| AI-11 | **`AVAILABLE_MODELS` duplicada** entre `config/ai.js` e `frontend/src/utils/aiConfig.js`. A do backend deixou de ter uma segunda cópia interna na spec 009 (deriva da allow-list), mas a do frontend continua separada |
+| AI-13 | 🆕 **Rate limiting genérico continua inoperante em serverless** — `MemoryStore` conta por instância. A spec 009 resolveu o gasto de IA por outro caminho (orçamento contado no banco), mas o limite de requisições por IP segue sem valer em produção. **Depende de infraestrutura** (store externo ou limite na borda) — decisão do proprietário, não de código |
 | AI-12 | **`config/ai.js` mistura domínio e infra** — regras IBJJF, nomes de modelo, temperaturas, limites de download, rate limits e labels de gráfico no mesmo arquivo |
 | AI-13 | **`geminiService.js` acumula três papéis** em 845 linhas: montagem de prompt, regras de domínio e parsing |
 

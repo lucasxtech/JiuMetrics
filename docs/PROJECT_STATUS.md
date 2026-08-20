@@ -2,7 +2,7 @@
 
 > **Responde a uma pergunta:** em que estado o JiuMetrics está agora?
 >
-> **Última atualização:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs 002–006 executadas · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
+> **Última atualização:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs 002–007 e 009 executadas · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
 >
 > **Regra deste documento:** `IMPLEMENTED` significa que existe no código e funciona. `PLANNED` significa decidido e **não** implementado. Nada é promovido de `PLANNED` para `IMPLEMENTED` sem verificação no código.
 
@@ -94,18 +94,20 @@ Funcionalidades verificadas no código e em uso.
 |---|---|
 | Deploy na Vercel | Frontend e backend, separados |
 | CI no GitHub Actions | **5 portões bloqueiam** merge: testes de front e back, lint de front e back, build. Mais secrets scanning em workflow separado |
-| Testes de backend | 25 suítes Jest / 293 testes — inclui a rede de autorização (004/006) e a de persistência e validação (007) |
+| Testes de backend | 27 suítes Jest / 327 testes — inclui a rede de autorização (004/006), persistência e validação (007), e custo/retry/prompt (009) |
 | Testes de frontend | 5 arquivos Vitest |
 | Testes E2E | 6 specs Playwright com Page Objects — ⚠️ **nunca rodam no CI** |
 | Secrets scanning (TruffleHog) | ✅ **bloqueia** desde a spec 003 (escopo = diff, `--only-verified`) |
 | CodeQL, Lighthouse, `npm audit`, coverage | ⚠️ informativos — não bloqueiam (decisão consciente: podem reprovar por causa fora do controle do PR) |
-| Rate limiting | ⚠️ `MemoryStore` — **inoperante em serverless** |
+| Rate limiting | ⚠️ `MemoryStore` — **inoperante em serverless**. O gasto de IA tem freio próprio desde a spec 009 (orçamento contado no banco); o limite por IP, não |
+| Controle de gasto de IA | ✅ allow-list de modelos, teto de vídeos por requisição e **orçamento mensal por tenant** — todos barram **antes** de gastar (spec 009) |
+| Retry e timeout de IA | ✅ políticas distintas por fluxo; nunca repete quota estourada nem conteúdo bloqueado (spec 009) |
 
 ---
 
 ## Known Issues
 
-Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Itens riscados foram corrigidos nas specs 002–006 e ficam registrados como referência do que era possível.
+Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Itens riscados foram corrigidos nas specs 002–007 e 009, e ficam registrados como referência do que era possível.
 
 ### CRITICAL
 
@@ -125,8 +127,8 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Iten
 | ~~6~~ | ✅ **RESOLVIDO (spec 007, 2026-08-18)** — `technical_profile` nunca era atualizado (medido: 0 de 37 atletas). Eram **duas** causas: a chamada com 2 de 3 argumentos e, descoberto ao corrigir, o merge lendo `technical_profile` de um objeto camelCase — que descartaria o perfil existente mesmo com a aridade certa |
 | ~~7~~ | ❌ **REFUTADO (medido 2026-08-13)** — o rastreamento de custo **funciona**: 173 linhas, US$ 3,0295, de 2025-12-14 a 2026-08-12. A política RLS não está ativa em produção. Dívida real e menor: **55 das 173 linhas com custo zero** |
 | 8 | **Sink de XSS no export de PDF** + JWT em `localStorage` → roubo de sessão válida por 7–30 dias. Escopo da [spec 010](../specs/010-frontend-consolidation/spec.md) |
-| 9 | **Rate limiting inoperante em produção** — `MemoryStore` em serverless; brute force e abuso de IA sem freio efetivo |
-| 10 | **Gasto de IA sem teto** — ✅ o limite de `videos[]` existe desde a spec 007 (5 por análise, barrado **antes** de chamar a IA). Continuam abertos: modelo escolhido pelo cliente sem validação e **ausência de quota** — escopo da [spec 009](../specs/009-ai-cost-and-reliability/spec.md). A visibilidade existe: US$ 3,03 em 8 meses |
+| 9 | **Rate limiting inoperante em produção** — `MemoryStore` em serverless. ⚠️ O **abuso de IA** ganhou freio efetivo na spec 009 (orçamento por tenant contado em `api_usage`, não em memória); o **brute force no login** e o limite por IP continuam sem valer. Resolver exige infraestrutura — store externo ou limite na borda — e é decisão do proprietário |
+| ~~10~~ | ✅ **RESOLVIDO (specs 007 e 009)** — gasto de IA tem três barreiras, todas antes de gastar: teto de 5 vídeos por requisição, allow-list de modelos (a escolha do cliente já não vira o modelo usado) e **orçamento mensal por tenant** (`AI_MONTHLY_BUDGET_USD`, default 50 — ~130× o histórico de US$ 0,38/mês). O orçamento conta o gasto **persistido**, o que faz valer em serverless |
 | ~~11~~ | ✅ **RESOLVIDO (specs 006 e 007)** — `athlete-summary` aceitava corpo arbitrário direto no prompt, sem posse nem limite. Passou a receber `athleteId` e carregar os dados no servidor (006); o schema de entrada (007) faz o formato antigo ser removido antes do controller |
 | 12 | **Fallback de autenticação abre em falha do banco** — volta a confiar no `role` do token, desligando as 3 proteções de uma vez |
 | 13 | **Migrations não são a fonte de verdade** — `users` nunca é criada, falta a `020`, sem runner nem controle de estado. **Impossível reconstruir o banco a partir do repositório** |

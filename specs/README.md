@@ -14,11 +14,11 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [006](./006-ownership-in-data-access/spec.md) | Ownership obrigatório no acesso a dados | 4 | ✅ **Implemented** (E2E declarado como não executado) |
 | [007](./007-silent-failures-and-input-validation/spec.md) | Falhas silenciosas e validação de entrada | 5 | ✅ **Implemented** (validação parcial: 3 endpoints de IA) |
 | [008](./008-database-access-lockdown/spec.md) | Fechamento do acesso ao banco | 6 | Proposed |
-| [009](./009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | 7 | Proposed |
+| [009](./009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | 7 | ✅ **Implemented** (R4, rate limiting, bloqueado por infraestrutura) |
 | [010](./010-frontend-consolidation/spec.md) | Consolidação do frontend | 8 | Proposed |
 | [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | Proposed |
 
-As specs **002 a 007 foram executadas** (002 e 003 em 2026-08-13; 004 a 007 em 2026-08-18); as demais estão `Proposed`. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
+As specs **002 a 007 e a 009 foram executadas** (002 e 003 em 2026-08-13; as demais em 2026-08-18). Restam `Proposed`: **008** (bloqueada por pergunta ao proprietário), **010** e **011**. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
 
 **Com a 006, os 7 vazamentos de posse da auditoria estão fechados** e o escopo passou a ser exigido na assinatura dos models.
 
