@@ -998,14 +998,14 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 **Documentation.** `docs/ARCHITECTURE.md` §2, `docs/modules/strategies.md` (XSS resolvido), `SPEC-FRONTEND.md` (marcar itens), `CHANGELOG.md`.
 
-**Acceptance Criteria.**
-- [ ] PDF gerado sem `innerHTML`; conteúdo preservado (B16)
-- [ ] CSP ativo
-- [ ] Estatísticas técnicas aparecem **no histórico**
-- [ ] Um único padrão de fetch; invalidação funcionando entre telas
-- [ ] `processPersonAnalyses` existe em um lugar só
-- [ ] Órfãos removidos; `html2pdf.js` fora do bundle inicial
-- [ ] Página de erro de `Analyses` não derruba a tela
+**Acceptance Criteria.** ✅ **Etapa 8 CONCLUÍDA (spec 010, 2026-08-18)**, com 3 ressalvas declaradas
+- [~] **PDF ainda usa `innerHTML`** — a **vulnerabilidade** está fechada (conteúdo escapado na fonte, verificado no DOM por 16 testes), o **padrão** não. Reescrever ~230 linhas de template sem poder comparar o PDF visualmente trocaria uma falha de segurança por regressão de layout silenciosa
+- [~] **CSP ativo em Report-Only** — virar bloqueante exige observar se a política quebra Tailwind ou estilo inline, o que é verificação de navegador
+- [x] Estatísticas técnicas aparecem **no histórico** — normalização na borda dos services; ⚠️ verificado por teste, **não na tela**
+- [~] **Um padrão de fetch em 1 das 5 páginas** (`Overview`), com invalidação funcionando entre telas por compartilhamento de query key. As outras 4 não têm defeito relatado, e migrá-las sem E2E trocaria bug conhecido por risco não observável
+- [x] `processPersonAnalyses` existe em um lugar só — destravado por um **fato**: nenhuma das duas cópias tinha chamador de produção. **P7 segue sem resposta**
+- [x] Órfãos removidos (6 componentes + `athleteStats.js`); `html2pdf.js` em chunk separado, confirmado no build
+- [x] Página de erro de `Analyses` não derruba a tela — a causa era renderizar o objeto `Error` como filho JSX
 
 ---
 

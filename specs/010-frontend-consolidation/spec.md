@@ -1,6 +1,6 @@
 # SPEC-010 — Consolidação do frontend
 
-**Status: Proposed** · Etapa 8 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (2026-08-18) — parcial, com 3 itens declarados** · Etapa 8 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
 
 ## Context
 
@@ -115,17 +115,17 @@ Remover `frontend/src/utils/athleteStats.js`; backend como fonte única. ⚠️ 
 
 ## Acceptance Criteria
 
-- [ ] PDF gerado sem `innerHTML`; comparação visual antes/depois sem diferença
-- [ ] `<img src=x onerror=alert(1)>` num campo de estratégia **não executa** ao exportar
-- [ ] CSP presente; `helmet` ativo
-- [ ] Estatísticas técnicas visíveis no histórico (verificação manual + teste)
-- [ ] Criar atleta atualiza o `Overview` sem recarregar
-- [ ] `grep processPersonAnalyses` retorna um único arquivo
-- [ ] Erro simulado na API de `Analyses` mostra mensagem, não tela branca
-- [ ] Nenhum `navigate()` para rota inexistente
-- [ ] URL `youtube.com.evil.net` **rejeitada**
-- [ ] Órfãos removidos; bundle inicial sem `html2pdf.js`
-- [ ] Suíte de frontend verde; E2E verde
+- [~] ⚠️ **PDF ainda usa `innerHTML`.** A **vulnerabilidade** está fechada (conteúdo escapado na fonte, verificado no DOM), o **padrão** não. A spec exige comparação visual do PDF antes/depois, que requer rodar a aplicação — reescrever ~230 linhas de template sem poder olhar o resultado trocaria uma falha de segurança por regressão de layout silenciosa. Ver o cabeçalho de `utils/strategyReportHtml.js`
+- [x] `<img src=x onerror=alert(1)>` num campo de estratégia **não executa** — 16 testes, verificando **no DOM** que nenhum nó executável é construído (a asserção certa não é "a string contém onerror", porque o texto escapado contém)
+- [x] CSP presente (em **Report-Only**, como a própria spec recomenda) e `helmet` ativo, configurado deliberadamente e não cru
+- [x] Estatísticas técnicas visíveis no histórico — teste compara as **duas** origens; ⚠️ a verificação manual na tela não foi feita
+- [x] Criar atleta atualiza o `Overview` sem recarregar
+- [x] `grep processPersonAnalyses` retorna um único arquivo
+- [x] Erro na API de `Analyses` mostra mensagem, não tela branca
+- [x] Nenhum `navigate()` para rota inexistente
+- [x] URL `youtube.com.evil.net` **rejeitada** (14 casos, incluindo os dois bypasses e esquema não-http)
+- [x] Órfãos removidos; bundle inicial sem `html2pdf.js` (confirmado no build: chunk separado)
+- [x] Suíte de frontend verde (6 suítes / 67 testes); ⚠️ **E2E continua não executado**
 
 ## Testing Strategy
 
@@ -167,8 +167,18 @@ Remover `frontend/src/utils/athleteStats.js`; backend como fonte única. ⚠️ 
 ## Dependencies
 
 **Depende de:**
-- [spec 007](../007-silent-failures-and-input-validation/spec.md) — a normalização precisa saber qual é o shape correto
-- **Decisão P7** — qual versão de `processPersonAnalyses` está correta (bloqueio duro para o item 4)
+- [spec 007](../007-silent-failures-and-input-validation/spec.md) — a normalização precisa saber qual é o shape correto ✅
+- ~~**Decisão P7**~~ — **destravada por um fato, não por uma decisão:** nenhuma das duas cópias de `processPersonAnalyses` tinha chamador de produção. `athleteStats.js` exportava só essa função e nada o importava; a do backend só é referenciada pelo próprio teste. Apagar uma não muda número em tela nenhuma, porque nenhuma produz número em tela. **P7 segue SEM RESPOSTA** e volta a importar no momento em que alguém ligar a que sobrou a um consumidor — aí é decisão de produto
+
+## O que esta spec NÃO resolveu
+
+| Item | Por quê |
+|---|---|
+| **Remover o `innerHTML`/template-string** | Exige a comparação visual do PDF que a spec define como obrigatória. A vulnerabilidade está fechada; o padrão, não |
+| **CSP bloqueante** | Está em Report-Only. Virar bloqueante exige observar se a política quebra Tailwind ou estilo inline — verificação de navegador |
+| **Migrar as outras 4 páginas para React Query** | `Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin`. Nenhuma com defeito relatado, e a spec avisa que a migração pode expor race conditions cuja rede seria o E2E — que não roda |
+| **Verificação manual das telas** | Estatísticas no histórico e o PDF exigem rodar a aplicação |
+| **`InlineDiff` duplicado nos dois modais** | O arquivo órfão foi removido, mas cada modal declara a própria cópia local. Deduplicar é refatoração de componente, fora do escopo |
 
 **Independente das specs de backend a partir da 007** — os itens 1, 2 e 5 podem começar assim que a 007 definir o shape.
 

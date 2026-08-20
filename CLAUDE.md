@@ -2,7 +2,7 @@
 
 > **Para agentes de IA e desenvolvedores trabalhando neste repositório.** Leia isto antes de alterar qualquer coisa.
 >
-> **Atualizado:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md) e [009](./specs/009-ai-cost-and-reliability/spec.md) executadas
+> **Atualizado:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md) e [010](./specs/010-frontend-consolidation/spec.md) executadas
 
 ---
 
@@ -13,7 +13,7 @@ JiuMetrics analisa vídeos de luta de Jiu-Jitsu com IA para produzir um perfil t
 **Stack real** (confirmada no código, não inferida): SPA **React 19 + Vite** · API **Express 5** (CommonJS) · **Supabase/PostgreSQL** via PostgREST, **sem ORM** · autenticação **JWT própria** (não Supabase Auth) · IA via **Google Gemini** (`@google/genai`) · deploy na **Vercel** · **100% JavaScript** na aplicação (0 arquivos TypeScript — TS só em `playwright/`).
 
 ```
-frontend/    SPA React (11 páginas, 40 componentes, 12 services)
+frontend/    SPA React (11 páginas, 34 componentes, 13 services)
 server/      API Express (10 rotas, 13 controllers, 10 models, 22 migrations)
 playwright/  6 specs E2E em TypeScript (nunca rodam no CI)
 docs/        documentação permanente ← comece aqui
@@ -68,7 +68,7 @@ Regras não negociáveis:
    > 🔴 **Verificado em 2026-08-13:** essa chave publicável **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários** — e a escrita também está liberada. É o achado de segurança mais grave do projeto. Ver [`docs/DATABASE.md`](./docs/DATABASE.md) §4 e a [spec 008](./specs/008-database-access-lockdown/spec.md).
 2. **Nunca devolva `error.message` ao cliente** em produção. ✅ Resolvido na spec 007: use `errorDetails(error)` de `utils/errorHandler.js`, que omite o detalhe quando `NODE_ENV === 'production'` e o mantém no log do servidor. Não volte a escrever `details: error.message` à mão.
 3. **Nunca logue PII.** O login loga o e-mail do usuário em toda tentativa — dívida conhecida.
-4. **Nunca construa HTML por string com conteúdo de LLM.** `pages/Analyses.jsx` faz `innerHTML` com saída de IA — é o sink de XSS conhecido, e o JWT fica em `localStorage`.
+4. **Nunca construa HTML por string com conteúdo de LLM.** O sink conhecido (`pages/Analyses.jsx` → `innerHTML` com saída de IA) foi **fechado na spec 010**: o conteúdo passa por `escapeDeep` em `utils/strategyReportHtml.js` antes de entrar no HTML. ⚠️ O template-string **continua existindo** — ao editar aquele arquivo, leia dados só do objeto já escapado (`a`), nunca do cru. O JWT segue em `localStorage`, então um novo sink volta a valer sessão.
 5. **`ProtectedRoute` no frontend é UX, não segurança.** `isAdmin` vem do `localStorage`. A decisão real é sempre do backend.
 6. **Não confie em rate limiting.** `MemoryStore` em serverless: os limites não valem em produção. ⚠️ Isto **continua verdade** depois da spec 009 — ela resolveu o gasto de IA por outro caminho (orçamento contado no banco, não em memória), mas o limite por IP segue inoperante. Resolver depende de infraestrutura (store externo ou limite na borda).
 7. **Endpoint que recebe corpo e chama IA precisa de schema.** Os 3 de `/api/ai/*` validam com zod (`middleware/validate.js`, [ADR-012](./docs/decisions/012-zod-para-validacao-de-entrada.md)); os outros ~12 endpoints com corpo **ainda não**. Ao declarar um schema, cuidado: campo que o controller usa e o schema não declara chega `undefined` **em silêncio** — mapeie o payload real do frontend antes.
@@ -159,7 +159,7 @@ Mudanças relevantes têm spec **antes** da implementação, em `specs/NNN-nome/
 
 A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era uma spec única cobrindo 34 itens, o padrão "refatorar tudo" que o plano evita.
 
-**Specs anteriores, na raiz** (formato antigo, mantidas por serem boas e ainda válidas): [`SPEC-ANALISE-IA.md`](./SPEC-ANALISE-IA.md) — auditoria do pipeline de IA; Fase 1 implementada, fases posteriores não. [`SPEC-FRONTEND.md`](./SPEC-FRONTEND.md) — auditoria do frontend; **nenhum item implementado** (verificado em 2026-08-12).
+**Specs anteriores, na raiz** (formato antigo, mantidas por serem boas e ainda válidas): [`SPEC-ANALISE-IA.md`](./SPEC-ANALISE-IA.md) — auditoria do pipeline de IA; Fase 1 implementada, fases posteriores não. [`SPEC-FRONTEND.md`](./SPEC-FRONTEND.md) — auditoria do frontend; **F1, F2, F11 e F15 implementados na spec 010**; o resto (polish, componentes gigantes, 4 sistemas de estilo, progresso teatral) continua aberto.
 
 **Uma spec é obrigatória quando** a mudança toca arquitetura, domínio, banco, autorização, API, IA, ou responsabilidade de um módulo. Correção pontual de bug, ajuste de texto e mudança de estilo não precisam.
 
@@ -181,7 +181,7 @@ cd server && npm test          # Jest — 25 suítes / 293 testes (bloqueia merg
 ```
 
 ```bash
-cd frontend && npm test        # Vitest (bloqueia merge no CI)
+cd frontend && npm test        # Vitest — 6 suítes / 67 testes (bloqueia merge no CI)
 ```
 
 ```bash

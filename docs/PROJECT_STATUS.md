@@ -2,7 +2,7 @@
 
 > **Responde a uma pergunta:** em que estado o JiuMetrics está agora?
 >
-> **Última atualização:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs 002–007 e 009 executadas · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
+> **Última atualização:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs 002–007, 009 e 010 executadas · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
 >
 > **Regra deste documento:** `IMPLEMENTED` significa que existe no código e funciona. `PLANNED` significa decidido e **não** implementado. Nada é promovido de `PLANNED` para `IMPLEMENTED` sem verificação no código.
 
@@ -74,7 +74,7 @@ Funcionalidades verificadas no código e em uso.
 | Histórico de estratégias | Listagem com busca, filtro e paginação no backend |
 | Versionamento de estratégia | `strategy_versions`, com FK `CASCADE` — o único cascade correto do banco |
 | Validação de shape na edição | `validateStrategyField` impede gravar estratégia corrompida |
-| Exportação em PDF | ⚠️ implementação com sink de XSS — ver *Known Issues* |
+| Exportação em PDF | ✅ sink de XSS fechado na spec 010 (conteúdo escapado na fonte, verificado no DOM). O `innerHTML` segue existindo — ver *Known Issues* |
 
 ### Chat de refinamento
 
@@ -95,7 +95,7 @@ Funcionalidades verificadas no código e em uso.
 | Deploy na Vercel | Frontend e backend, separados |
 | CI no GitHub Actions | **5 portões bloqueiam** merge: testes de front e back, lint de front e back, build. Mais secrets scanning em workflow separado |
 | Testes de backend | 27 suítes Jest / 327 testes — inclui a rede de autorização (004/006), persistência e validação (007), e custo/retry/prompt (009) |
-| Testes de frontend | 5 arquivos Vitest |
+| Testes de frontend | 6 arquivos Vitest / 67 testes (spec 010 acrescentou XSS do PDF, normalização e validação de URL) |
 | Testes E2E | 6 specs Playwright com Page Objects — ⚠️ **nunca rodam no CI** |
 | Secrets scanning (TruffleHog) | ✅ **bloqueia** desde a spec 003 (escopo = diff, `--only-verified`) |
 | CodeQL, Lighthouse, `npm audit`, coverage | ⚠️ informativos — não bloqueiam (decisão consciente: podem reprovar por causa fora do controle do PR) |
@@ -107,7 +107,7 @@ Funcionalidades verificadas no código e em uso.
 
 ## Known Issues
 
-Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Itens riscados foram corrigidos nas specs 002–007 e 009, e ficam registrados como referência do que era possível.
+Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Itens riscados foram corrigidos nas specs 002–007, 009 e 010, e ficam registrados como referência do que era possível.
 
 ### CRITICAL
 
@@ -126,14 +126,14 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Iten
 | ~~5~~ | ✅ **RESOLVIDO (spec 007, 2026-08-18)** — histórico de versões de perfil, quebrado desde 2026-01-16 por contrato incompatível entre `versionManager` e `ProfileVersion`. O erro agora propaga em vez de morrer num `console.warn`. Coberto por teste que verifica a **linha no banco**, não o status HTTP |
 | ~~6~~ | ✅ **RESOLVIDO (spec 007, 2026-08-18)** — `technical_profile` nunca era atualizado (medido: 0 de 37 atletas). Eram **duas** causas: a chamada com 2 de 3 argumentos e, descoberto ao corrigir, o merge lendo `technical_profile` de um objeto camelCase — que descartaria o perfil existente mesmo com a aridade certa |
 | ~~7~~ | ❌ **REFUTADO (medido 2026-08-13)** — o rastreamento de custo **funciona**: 173 linhas, US$ 3,0295, de 2025-12-14 a 2026-08-12. A política RLS não está ativa em produção. Dívida real e menor: **55 das 173 linhas com custo zero** |
-| 8 | **Sink de XSS no export de PDF** + JWT em `localStorage` → roubo de sessão válida por 7–30 dias. Escopo da [spec 010](../specs/010-frontend-consolidation/spec.md) |
+| ~~8~~ | ✅ **RESOLVIDO (spec 010, 2026-08-18)** — o sink de XSS no export de PDF está fechado: conteúdo de estratégia é escapado na fonte, com 16 testes verificando **no DOM** que nenhum nó executável é construído. O JWT em `localStorage` **continua** — o que mudou é não haver mais caminho conhecido de XSS até ele. ⚠️ O padrão de montar HTML por string segue existindo (a remoção exige comparação visual do PDF) |
 | 9 | **Rate limiting inoperante em produção** — `MemoryStore` em serverless. ⚠️ O **abuso de IA** ganhou freio efetivo na spec 009 (orçamento por tenant contado em `api_usage`, não em memória); o **brute force no login** e o limite por IP continuam sem valer. Resolver exige infraestrutura — store externo ou limite na borda — e é decisão do proprietário |
 | ~~10~~ | ✅ **RESOLVIDO (specs 007 e 009)** — gasto de IA tem três barreiras, todas antes de gastar: teto de 5 vídeos por requisição, allow-list de modelos (a escolha do cliente já não vira o modelo usado) e **orçamento mensal por tenant** (`AI_MONTHLY_BUDGET_USD`, default 50 — ~130× o histórico de US$ 0,38/mês). O orçamento conta o gasto **persistido**, o que faz valer em serverless |
 | ~~11~~ | ✅ **RESOLVIDO (specs 006 e 007)** — `athlete-summary` aceitava corpo arbitrário direto no prompt, sem posse nem limite. Passou a receber `athleteId` e carregar os dados no servidor (006); o schema de entrada (007) faz o formato antigo ser removido antes do controller |
 | 12 | **Fallback de autenticação abre em falha do banco** — volta a confiar no `role` do token, desligando as 3 proteções de uma vez |
 | 13 | **Migrations não são a fonte de verdade** — `users` nunca é criada, falta a `020`, sem runner nem controle de estado. **Impossível reconstruir o banco a partir do repositório** |
 | 14 | **Tipos de `user_id` divergentes** — VARCHAR em 3 tabelas, UUID em 5; FKs derrubadas na `008`. Mascara bugs (o de nº 6 passa por causa disso) |
-| 15 | **Regra de negócio duplicada e já divergente** — `processPersonAnalyses` no frontend (238 linhas) e no backend (121) |
+| ~~15~~ | ✅ **RESOLVIDO (spec 010)** — a cópia do frontend foi removida. Achado que destravou a decisão P7, que a spec tratava como bloqueio duro: **nenhuma das duas cópias tinha chamador de produção**. Eram 359 linhas de código morto divergente, e apagar uma não muda número em tela nenhuma. A pergunta "qual das duas refletia a intenção" volta quando alguém ligar a que sobrou a um consumidor |
 | 16 | **Trabalho longo de IA em request serverless** — provável timeout **após** consumir tokens |
 | 17 | **6 lockfiles para 3 `package.json`** (npm + yarn); `playwright/` sem lockfile |
 | ~~18~~ | ✅ **RESOLVIDO (spec 006)** — `updateContextSnapshot` não validava posse e envenenava o contexto de IA da sessão de outro usuário. Os três métodos de escrita de `ChatSession` passaram a exigir o dono |
@@ -157,7 +157,7 @@ Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **esc
 | **Testes de autorização** | ✅ **EXISTEM desde a spec 004** — 6 testes de vazamento (`test.failing`, vermelho intencional até a spec 006 corrigir) + 5 de baseline (passam hoje, protegem o comportamento de admin). `server/src/__tests__/authorization/`. Rodam contra um **fake de PostgREST em memória** (decisão P2), não banco real — não existe projeto Supabase de teste separado da produção. **Limitação aceita:** prova que o filtro foi *pedido* na chamada, não que a query final restringiria as linhas num Postgres real; revisitar se/quando houver banco de teste dedicado. Desde a spec 005, a regra de escopo em si é testada em `server/src/services/__tests__/authorization.test.js` (sem Express); `utils/__tests__/tenantScope.test.js` cobre só o wrapper `@deprecated` |
 | **Testes inertes** | ✅ **RESOLVIDO na spec 003** — `server/tests/` removido (3 scripts com zero `describe`/`it`, confirmados como não alcançados por `jest --listTests`) |
 | **Testes E2E** | 6 specs bem construídos, com Page Objects e fixtures — **continuam não executados no CI**. A spec 003 tentou ligá-los e **diferiu**: exigem backend + banco + usuário semeado, que é ambiente de teste, não job de CI. A spec 004 resolveu a decisão de banco de teste (P2) **só para a rede de autorização** — optou por fake de PostgREST, que não serve para o Playwright (ele precisa de um backend de verdade respondendo). O pré-requisito de ambiente real para E2E continua em aberto, sem spec própria ainda |
-| **Cobertura de frontend** | 5 arquivos de teste para 79 de código (~6%); 1 teste de componente |
+| **Cobertura de frontend** | 6 arquivos de teste; 1 teste de componente. A spec 010 concentrou os novos onde o risco estava (XSS do PDF, normalização de fronteira, validação de URL), não em cobertura ampla |
 | **Tratamento de erro** | Taxonomia boa (14 classes tipadas). ✅ Os **5 `catch` que engoliam erro** foram auditados na spec 007, cada um com a decisão registrada em comentário: 1 propaga, 4 toleram por motivo explícito e registram via `logToleratedFailure` (localizável por `grep "FALHA TOLERADA"`). Dois endpoints ganharam estado explícito na resposta (`saved`, `savedToHistory`) |
 | **Logging** | `console.*` com emoji, sem níveis, sem correlação, sem redação de PII. Log por request em serverless |
 | **Dívida de lint documentada em código** | A spec 003 tornou o lint bloqueante sem corrigir o que exige decisão de comportamento. Há `eslint-disable` **com comentário apontando a spec responsável** em: `versionManager` (3× — evidência dos bugs das specs 006/007), `AthleteCard` (4 props nunca renderizadas — F7), `StrategyChatPanel` (callback nunca chamado — cluster F14/F19-F22), `VideoAnalysis` (`addVideo` sem controle na UI), `AuthContext` (`set-state-in-effect` na hidratação de sessão), `Strategy` (loading calculado e nunca renderizado). **Nenhum foi escondido com `_`** — a evidência fica visível |
@@ -229,7 +229,7 @@ A spec [001](../specs/001-refactor-foundation/spec.md) foi **substituída** pela
 
 ### Já documentado em specs anteriores, não implementado
 
-- [`../SPEC-FRONTEND.md`](../SPEC-FRONTEND.md) — verificado em 2026-08-12: **nenhum item implementado** (o commit adicionou a spec, não a implementação). Amostra de 5 achados (F1, F2, F11, F15, F16) confirmada como ainda aberta.
+- [`../SPEC-FRONTEND.md`](../SPEC-FRONTEND.md) — em 2026-08-12 **nenhum item estava implementado**. A [spec 010](../specs/010-frontend-consolidation/spec.md) fechou **F1, F2, F11 e F15** (as estatísticas do histórico, a rota inexistente, a validação de URL e o crash da tela de erro). Os demais achados — polish, componentes gigantes, 4 sistemas de estilo, `alert()` nativos, progresso teatral — continuam abertos.
 - [`../SPEC-ANALISE-IA.md`](../SPEC-ANALISE-IA.md) — a Fase 1 **foi** implementada ([ADR-006](./decisions/006-camada-unica-de-llm-e-aposentadoria-do-multi-agente.md)). As fases posteriores (event log com timestamps, A3/A4) **não**.
 
 ---

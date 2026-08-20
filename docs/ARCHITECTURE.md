@@ -55,7 +55,7 @@ frontend/src/
 ├── pages/        (11)       # 9 protegidas (lazy) + login e registro (eager)
 ├── components/   (40)       # analysis, chat, charts, common, forms, routing, video
 ├── contexts/      (3)       # Auth, AnalysisProgress, Strategy
-├── services/     (12)       # clientes HTTP (axios) — wrappers finos, sem transformação
+├── services/     (13)       # clientes HTTP (axios) + normalizers.js (spec 010)
 ├── utils/         (6)
 └── lib/queryClient.js
 ```
@@ -76,10 +76,14 @@ flowchart TD
 
 | Padrão | Páginas |
 |---|---|
-| React Query (`@tanstack/react-query`) | `Analyses`, `Athletes`, `Opponents`, `Strategy` |
-| `useEffect` + `useState` cru | `Overview`, `Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin` |
+| React Query (`@tanstack/react-query`) | `Analyses`, `Athletes`, `Opponents`, `Strategy`, **`Overview`** (spec 010) |
+| `useEffect` + `useState` cru | `Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin` |
 
-Mutação num padrão não invalida o cache do outro. Criar um atleta na tela gerida por React Query não atualiza o `Overview`, que só refaz fetch em mount.
+O defeito concreto era o `Overview`: criar um atleta invalidava `['athletes']`, mas o dashboard usava `useEffect` com dependência `[]` e só refazia fetch em mount. Migrá-lo para as **mesmas query keys** resolveu sem tocar em nenhum site de mutação.
+
+⚠️ **As 4 páginas restantes continuam no padrão antigo.** Nenhuma tem defeito de dado obsoleto relatado, e a spec 010 avisa que migrar "muda o momento do fetch e pode expor race conditions latentes" — cuja rede de proteção seria o E2E, que não roda neste projeto.
+
+⚠️ **Atenção às query keys:** `['analyses']` são as ESTRATÉGIAS (`tactical_analyses`) e `['fightAnalyses']` são as análises de vídeo. A colisão de vocabulário do domínio chegou até aqui.
 
 ### Rotas (`App.jsx`)
 
@@ -98,13 +102,13 @@ Mutação num padrão não invalida o cache do outro. Criar um atleta na tela ge
 
 ### Problemas conhecidos
 
-- **Dois padrões de fetch**, com invalidação cruzada ausente → dados obsoletos entre telas.
+- **Dois padrões de fetch**, com invalidação cruzada ausente → dados obsoletos entre telas. ✅ **Parcialmente resolvido na [spec 010](../specs/010-frontend-consolidation/spec.md):** `Overview` migrou para React Query com as mesmas query keys das outras telas, o que corrigiu o defeito relatado (criar atleta não atualizava o dashboard). Continuam com `useEffect` cru: `Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin` — nenhuma com defeito relatado, e migrá-las exigiria o E2E que não roda.
 - **Quatro sistemas de estilo simultâneos**: Tailwind, CSS Modules, CSS global (`index.css`, `App.css`), estilos inline.
 - **Componentes muito grandes**: `StrategySummaryModal.jsx` (1116 linhas), `AiStrategyBox.jsx` (1016), `Analyses.jsx` (922).
-- **Lógica de negócio na UI**: `Analyses.jsx` monta o relatório PDF inteiro como template string de HTML; `utils/athleteStats.js` (238 linhas) duplica cálculo que também existe no backend — **e já divergiram**.
-- **Sink de XSS**: `Analyses.jsx` faz `tempDiv.innerHTML = content` com conteúdo gerado por IA, e o JWT fica em `localStorage`. Ver [`AUTHORIZATION.md`](./AUTHORIZATION.md#known-issues).
+- **Lógica de negócio na UI**: `Analyses.jsx` monta o relatório PDF como template string de HTML (agora em `utils/strategyReportHtml.js`, extraído para poder ser testado). ✅ A duplicação de `athleteStats.js` (238 linhas) **foi removida** na spec 010 — as duas cópias eram código morto, sem nenhum chamador de produção.
+- ~~**Sink de XSS**~~ ✅ **fechado na spec 010.** `Analyses.jsx` interpolava conteúdo de IA num template de HTML e jogava em `tempDiv.innerHTML`. Hoje o conteúdo é escapado na fonte (`utils/strategyReportHtml.js`), com 16 testes que verificam **no DOM** que nenhum nó executável é construído. ⚠️ O `innerHTML` e o template-string **continuam existindo** — a vulnerabilidade fechou, o padrão não. Removê-lo depende da comparação visual do PDF que a spec declara pendente.
 - **`ProtectedRoute` é UX, não segurança** — `isAdmin` vem do `localStorage`. O backend reconsulta o papel no banco, então não há escalonamento real de privilégio.
-- **6 componentes órfãos**: `StatsRadarChart`, `StatsLineChart`, `StatsBarChart`, `LoadingSpinner`, `Button`, `InlineDiff`.
+- ~~**6 componentes órfãos**~~ ✅ removidos na spec 010. Achado registrado no caminho: `InlineDiff` estava **triplicado** — o arquivo órfão mais uma cópia local declarada dentro de `ProfileSummaryModal` e outra dentro de `AnalysisDetailModal`. As duas locais continuam lá (deduplicá-las é refatoração de componente, fora do escopo da 010).
 - **Progresso de análise simulado**: `AnalysisProgressContext` incrementa um percentual por `setInterval`; não reflete progresso real (o backend não expõe progresso — ver §7).
 
 ---

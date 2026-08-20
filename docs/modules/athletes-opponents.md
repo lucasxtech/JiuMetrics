@@ -82,14 +82,14 @@ flowchart TD
 - **Gerar estratégia** — módulo [`strategies`](./strategies.md).
 - **Versionar o `technical_summary`** — módulo [`chat-and-versions`](./chat-and-versions.md) (`profile_versions`).
 - **Autenticação e definição de escopo** — `middleware/auth.js` e `tenantScope`.
-- **Cálculo de atributos para gráficos de radar** — vive em `frontend/src/utils/athleteStats.js` e, duplicado, em `server/src/utils/athleteStatsUtils.js`. Nenhum dos dois pertence a este módulo, e **eles já divergiram**.
+- **Cálculo de atributos para gráficos de radar** — vive em `server/src/utils/athleteStatsUtils.js`. A cópia do frontend (`utils/athleteStats.js`) foi removida na [spec 010](../../specs/010-frontend-consolidation/spec.md) ao se verificar que **nenhuma das duas tinha chamador de produção**. A que sobrou também não tem: hoje é código sem consumidor, e ligá-la a um é escolher quais números a UI e a IA passam a ver — decisão de produto (P7).
 
 ## Known Issues
 
 | Severidade | Problema |
 |---|---|
 | ~~**HIGH**~~ | ✅ **RESOLVIDO na [spec 007](../../specs/007-silent-failures-and-input-validation/spec.md)** — `technical_profile` nunca era atualizado (medido: 0 de 37 atletas). Eram **duas** causas: a chamada com 2 de 3 argumentos, e — descoberto ao corrigir — o merge lia `athlete.technical_profile` de um objeto que `parseAthleteFromDB` entrega em camelCase, então descartava o perfil existente mesmo com a aridade certa. `updateTechnicalProfile` agora exige escopo e **lança** em vez de devolver `null` |
-| **HIGH** | **Regra de negócio duplicada e divergente.** `processPersonAnalyses` existe em `frontend/src/utils/athleteStats.js` (238 linhas) e `server/src/utils/athleteStatsUtils.js` (121 linhas), com o comentário *"Versão backend - espelhando a lógica do frontend"*. Já divergiram: o retorno quando `person` é falsy é diferente nos dois. **Decisão P7 pendente** (qual das duas é a correta) — é por isso que a spec 007 deixou `attributes` fora do prompt de `athlete-summary` em vez de escolher uma |
+| ~~**HIGH**~~ | ✅ **DUPLICAÇÃO REMOVIDA na [spec 010](../../specs/010-frontend-consolidation/spec.md); a PERGUNTA continua aberta.** `processPersonAnalyses` existia em duas versões já divergentes (238 e 121 linhas, esta com o comentário *"Versão backend - espelhando a lógica do frontend"* — o retorno com `person` falsy diferia). O que destravou a remoção foi um **fato**, não uma decisão: **nenhuma das duas tinha chamador de produção**, então apagar uma não muda número em tela nenhuma. **Decisão P7 (qual lógica reflete a intenção) segue SEM RESPOSTA** e volta a valer no momento em que alguém ligar a sobrevivente a um consumidor — por isso `attributes` continua fora do prompt de `athlete-summary` |
 | **MEDIUM** | **Defaults fabricados exibidos como fato.** Um atleta criado pelo QuickAdd com só nome+faixa aparece na tela de estratégia com "75 kg", "25 anos", "Guardeiro" — valores que ninguém informou |
 | ~~**MEDIUM**~~ | ✅ **RESOLVIDO na [spec 006](../../specs/006-ownership-in-data-access/spec.md)** — `createProfileSession`, `saveProfileSummary` e `restoreProfileVersion` chamavam `Model.getById(personId, userId)` com escalar em vez do escopo resolvido, e o **admin perdia** acesso ao dado do próprio grupo. A escrita passou a usar o `userId` do registro, para não transferir a posse |
 | **MEDIUM** | **Duas tabelas e dois models supostamente idênticos — e que JÁ DIVERGIRAM.** Descoberto na spec 007: `Athlete.updateTechnicalProfile` lia `technical_profile` (errado) enquanto `Opponent.updateTechnicalProfile` lia `technicalProfile` (certo). A mesma função, dois comportamentos. Evidência concreta para o [ADR-007](../decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) |
@@ -101,5 +101,5 @@ flowchart TD
 ## Future Considerations
 
 - **Unificação com marcação de papel** — [ADR-007](../decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md), `PLANNED`. Migração de alto risco: `person_id` é polimórfico sem FK, e `tactical_analyses` referencia `athlete_id`/`opponent_id` separadamente. Depende de unificar o tipo de `user_id` primeiro.
-- **Eliminar a duplicação de `processPersonAnalyses`** definindo o backend como fonte única.
+- ~~**Eliminar a duplicação de `processPersonAnalyses`**~~ ✅ feito na spec 010 — o backend é a única implementação. Falta o passo que importa: **decidir se a lógica está correta** (P7) e ligá-la a um consumidor, ou apagá-la também.
 - **Substituir defaults fabricados** por "não informado", tornando os campos nullable se preciso.

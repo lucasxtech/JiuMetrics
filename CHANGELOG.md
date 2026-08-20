@@ -11,6 +11,36 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 🛡️ Consolidação do frontend — 2026-08-18 · [spec 010](./specs/010-frontend-consolidation/spec.md)
+
+#### Segurança
+
+- **O sink de XSS do relatório em PDF está fechado.** `pages/Analyses.jsx` interpolava conteúdo de estratégia — **gerado por IA sobre vídeo de terceiros** — num template de HTML e jogava em `innerHTML`. `innerHTML` não executa `<script>`, mas executa handlers (`<img src=x onerror=...>`), e com o JWT em `localStorage` isso é roubo de sessão válida por 7 a 30 dias. O conteúdo agora é escapado na fonte, com 16 testes que verificam **no DOM** que nenhum nó executável é construído.
+- **Headers de segurança passam a existir.** Não havia nenhum: sem `nosniff`, sem proteção de frame, e anunciando a stack em `X-Powered-By`. `helmet` no backend + CSP, `nosniff`, `X-Frame-Options` e `Referrer-Policy` no `frontend/vercel.json`.
+- **Validação de URL de vídeo tinha duas portas abertas:** `hostname.includes('youtube.com')` aceitava `youtube.com.attacker.net`, e `url.includes('video')` aceitava qualquer URL contendo a palavra "video".
+
+#### Corrigido
+
+- **As estatísticas técnicas voltaram a aparecer no histórico.** O produto **escondia dado que possuía**: a resposta imediata da IA entregava `technical_stats` e a leitura do banco `technicalStats`, e o card do histórico lia o primeiro. O usuário analisava o vídeo, os números eram extraídos e salvos, e a tela não os mostrava. Corrigido com normalização na fronteira (`services/normalizers.js`).
+- **A tela de Análises quebrava exatamente quando a API falhava** — o objeto `Error` era renderizado como filho JSX, o que derruba o React. O tratamento de erro era a causa da tela branca.
+- **`AthleteDetail` navegava para `/video-analysis`**, rota que não existe; o catch-all do router mascarava, levando o usuário ao dashboard em silêncio.
+- **`processPersonAnalyses` existe em um lugar só.** As duas cópias (238 + 121 linhas, já divergentes) eram **código morto** — nenhuma tinha chamador de produção.
+- **6 componentes órfãos removidos.**
+
+#### Alterado
+
+- **`Overview` migrou para React Query**, usando as mesmas query keys das outras telas: criar um atleta agora atualiza o dashboard, o que antes não acontecia.
+
+#### Limitações declaradas
+
+- ⚠️ **O `innerHTML` e o template-string continuam existindo.** A vulnerabilidade está fechada e testada; remover o padrão exige a comparação visual do PDF que a spec define como obrigatória, e que depende de rodar a aplicação.
+- ⚠️ **CSP está em Report-Only** — virar bloqueante exige observar se a política quebra Tailwind ou estilo inline.
+- ⚠️ **4 páginas seguem com `useEffect` cru** (`Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin`). Nenhuma com defeito relatado, e migrá-las sem E2E trocaria um bug conhecido por riscos não observáveis.
+- ⚠️ **Nada foi verificado na tela.** Estatísticas no histórico e o PDF exigem rodar a aplicação.
+- **JWT continua em `localStorage`** — o que mudou é não haver mais caminho conhecido de XSS até ele.
+
+---
+
 ### 💸 Controle de gasto e confiabilidade de IA — 2026-08-18 · [spec 009](./specs/009-ai-cost-and-reliability/spec.md)
 
 **Um usuário autenticado podia gerar gasto ilimitado de API, e ninguém veria no painel.** O registro de custo funcionava e media certo — mas era só observação, sem nenhum ponto de decisão que barrasse. Bastava um laço de retry no cliente, ou escolher o modelo mais caro e enviar muitos vídeos.

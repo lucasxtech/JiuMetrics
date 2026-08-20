@@ -32,10 +32,10 @@
 
 ## 1. Dados enganosos/quebrados (P0/P1)
 
-### F1 (P0) — Estatísticas técnicas do histórico nunca renderizam (mismatch de chave)
+### ~~F1 (P0)~~ ✅ **RESOLVIDO na [spec 010](./specs/010-frontend-consolidation/spec.md)** — Estatísticas técnicas do histórico nunca renderizavam (mismatch de chave)
 Análises persistidas passam por `parseAnalysisFromDB` e chegam como **`technicalStats`** (camelCase), mas os componentes de histórico leem **`analysis.technical_stats`**: [VideoAnalysisCard.jsx:21-28](frontend/src/components/video/VideoAnalysisCard.jsx#L21), [AnalysisDetailModal.jsx:146,444-546](frontend/src/components/analysis/AnalysisDetailModal.jsx#L146). Só a resposta imediata do POST `/ai/analyze-link` (snake_case) renderiza — os pills "X raspagens" e o grid "Estatísticas Técnicas" jamais apareceram para dados do banco. **Correção:** normalizador único `normalizeAnalysis()` na borda (`fightAnalysisService.js`) + teste de contrato com fixture do shape real.
 
-### F2 (P0) — "+ Nova análise" navega para rota inexistente
+### ~~F2 (P0)~~ ✅ **RESOLVIDO na spec 010** — "+ Nova análise" navegava para rota inexistente
 [AthleteDetail.jsx:242](frontend/src/pages/AthleteDetail.jsx#L242) navega para `/video-analysis`, mas a rota é `/analyze-video` ([App.jsx:64](frontend/src/App.jsx#L64)). O catch-all `*`→Overview mascara: usuário clica e cai no dashboard sem erro. **Correção:** corrigir o path e trocar o catch-all por página 404 real.
 
 ### F4 (P0) — Pontos/probabilidade da estratégia exibidos como fato
@@ -58,7 +58,7 @@ Análises persistidas passam por `parseAnalysisFromDB` e chegam como **`technica
 
 ## 2. Promessas falsas (P0/P1)
 
-### F11 (P0) — Vimeo/Drive prometidos, só YouTube funciona
+### ~~F11 (P0)~~ ✅ **RESOLVIDO na spec 010** — Vimeo/Drive eram prometidos e só YouTube funcionava; a validação passou a aceitar apenas hosts exatos do YouTube
 Copy em [VideoAnalysis.jsx:159,265](frontend/src/components/video/VideoAnalysis.jsx#L159); `isValidVideoUrl` ([videoAnalysisService.js:40-49](frontend/src/services/videoAnalysisService.js#L40)) aceita vimeo, drive e **qualquer URL contendo "video"** (e `includes('youtube.com')` deixa `youtube.com.evil.io` passar). **Correção:** validação por host exato YouTube + ajustar toda a copy.
 
 ### F12 (P0) — Progresso 100% teatral
@@ -72,7 +72,7 @@ Copy em [VideoAnalysis.jsx:159,265](frontend/src/components/video/VideoAnalysis.
 
 ## 3. Estados de erro/vazio/loading (P0/P1)
 
-### F15 (P0) — Estado de erro da página Analyses crasha a página
+### ~~F15 (P0)~~ ✅ **RESOLVIDO na spec 010** — o estado de erro da página Analyses crashava a página
 [Analyses.jsx:610](frontend/src/pages/Analyses.jsx#L610) renderiza `{error}` (objeto `Error`) como filho JSX → "Objects are not valid as a React child" → tela branca exatamente quando a API falha. **Correção:** `{error.message}` + ErrorBoundary de rota no App.
 
 ### F16–F18 (P1)
