@@ -1,5 +1,6 @@
 import api from './api';
 import { getSelectedModel } from '../utils/aiConfig';
+import { normalizeAnalysisResponse } from './normalizers';
 
 /**
  * Envia links de vídeos para análise pela IA
@@ -25,7 +26,9 @@ export async function analyzeVideoLink({ videos, athleteName, personId, personTy
       matchResult,
       belt
     });
-    return response.data;
+    // Mesma normalização da leitura do banco: uma tela não deve ter que
+    // saber por qual caminho o dado chegou (spec 010, R3).
+    return normalizeAnalysisResponse(response.data);
   } catch (error) {
     console.error('Erro ao analisar vídeos:', error);
     throw error;

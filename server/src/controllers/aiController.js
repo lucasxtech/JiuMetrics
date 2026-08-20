@@ -53,10 +53,12 @@ exports.generateAthleteSummary = async (req, res) => {
 
     const analyses = await FightAnalysis.getByPersonId(athleteId, allowedUserIds);
 
-    // `attributes` é deliberadamente omitido: calculá-lo exigiria escolher
-    // entre as DUAS implementações divergentes de `processPersonAnalyses`
-    // (frontend e backend), que é a decisão pendente P7, escopo da spec 010.
-    // O prompt já trata a ausência ('Nenhum atributo calculado ainda').
+    // `attributes` é deliberadamente omitido. A spec 010 removeu a cópia do
+    // frontend, então `utils/athleteStatsUtils.js` é hoje a única
+    // implementação — mas ela nunca teve chamador de produção, e a decisão
+    // P7 (qual das duas versões refletia a intenção) segue SEM RESPOSTA.
+    // Ligar isto aqui é escolher os números que a IA vai receber, e essa é
+    // decisão de produto. O prompt já trata a ausência.
     const result = await generateAthleteSummary({ name: athlete.name, analyses }, model);
 
     // Salvar uso da API
