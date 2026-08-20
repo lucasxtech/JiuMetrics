@@ -137,6 +137,7 @@ Regras:
 | Como a IA funciona | [`docs/AI.md`](./docs/AI.md) |
 | Tabelas, FKs, RLS, migrations | [`docs/DATABASE.md`](./docs/DATABASE.md) |
 | Em que estado o projeto está | [`docs/PROJECT_STATUS.md`](./docs/PROJECT_STATUS.md) |
+| **O que ficou aberto e por quê** | [`docs/GAPS.md`](./docs/GAPS.md) |
 | Por que uma decisão foi tomada | [`docs/decisions/`](./docs/decisions/) |
 | Detalhe de um módulo | [`docs/modules/`](./docs/modules/) |
 | Evidência de um problema, em `arquivo:linha` | [`AUDIT.md`](./AUDIT.md) |

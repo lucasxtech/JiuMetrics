@@ -18,6 +18,8 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [010](./010-frontend-consolidation/spec.md) | Consolidação do frontend | 8 | ✅ **Implemented** (parcial — 3 itens dependem de verificação visual/E2E) |
 | [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | Proposed |
 
+O que **não** foi resolvido por elas — e por quê — está em [`docs/GAPS.md`](../docs/GAPS.md).
+
 As specs **002 a 007, 009 e 010 foram executadas** (002 e 003 em 2026-08-13; as demais em 2026-08-18). Restam `Proposed`: **008** (bloqueada por pergunta ao proprietário) e **011**. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
 
 **Com a 006, os 7 vazamentos de posse da auditoria estão fechados** e o escopo passou a ser exigido na assinatura dos models.
