@@ -37,12 +37,32 @@ export async function analyzeVideoLink({ videos, athleteName, personId, personTy
  * @param {string} url - URL a validar
  * @returns {boolean} True se válida
  */
+/**
+ * Hosts do YouTube aceitos — comparação EXATA, não `includes`.
+ *
+ * O backend só suporta YouTube (`extractYouTubeId`), então aceitar Vimeo e
+ * Drive aqui prometia ao usuário algo que a análise ia recusar depois.
+ */
+const YOUTUBE_HOSTS = [
+  'youtube.com',
+  'www.youtube.com',
+  'm.youtube.com',
+  'music.youtube.com',
+  'youtu.be',
+  'www.youtu.be'
+];
+
 export function isValidVideoUrl(url) {
   try {
-    const videoUrl = new URL(url);
-    // Aceita YouTube, Vimeo e URLs diretas
-    const validHosts = ['youtube.com', 'youtu.be', 'vimeo.com', 'drive.google.com'];
-    return validHosts.some(host => videoUrl.hostname.includes(host)) || url.includes('video');
+    const { protocol, hostname } = new URL(url);
+
+    // `hostname.includes('youtube.com')` deixava passar
+    // `youtube.com.attacker.net`, e `url.includes('video')` deixava passar
+    // QUALQUER URL contendo a palavra "video" (F11). Comparação exata fecha
+    // as duas portas.
+    if (protocol !== 'http:' && protocol !== 'https:') return false;
+
+    return YOUTUBE_HOSTS.includes(hostname.toLowerCase());
   } catch {
     return false;
   }

@@ -336,7 +336,11 @@ export default function Analyses() {
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-slate-900 mb-2">Erro ao carregar</h3>
-            <p className="text-slate-600 mb-4">{error}</p>
+            {/* `error` vem do useQuery e é um OBJETO Error. Renderizá-lo como
+                filho JSX derruba a página com "Objects are not valid as a React
+                child" — ou seja, a tela quebrava exatamente quando a API
+                falhava, que é quando ela mais precisava funcionar (F15). */}
+            <p className="text-slate-600 mb-4">{error?.message || 'Não foi possível carregar as análises.'}</p>
             <button onClick={loadAnalyses} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-700">
               Tentar novamente
             </button>
