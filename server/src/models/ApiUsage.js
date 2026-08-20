@@ -57,8 +57,34 @@ function calculateCost(modelName, promptTokens, completionTokens) {
     return 0;
   }
 
-  const pricing = PRICING[modelName] || PRICING[DEFAULT_MODEL];
+  const pricing = PRICING[modelName];
 
+  if (!pricing) {
+    // Antes isto caía no preço do flash EM SILÊNCIO. Combinado com
+    // `resolveModel`, que aceitava qualquer string do cliente, dava para usar
+    // um modelo caro e registrar o custo de um barato (spec 009).
+    //
+    // A allow-list fecha a porta de entrada, então isto aqui virou o que
+    // deveria ter sido desde o começo: um sinal. Continua caindo no default
+    // porque registrar custo ZERO seria pior — subestimar o gasto é o defeito
+    // que já existe em 55 das 173 linhas históricas.
+    console.warn(
+      `⚠️ Modelo sem preço em PRICING: "${modelName}" — custo estimado pelo preço de ${DEFAULT_MODEL}. O valor registrado é um piso, não o real.`
+    );
+    return computeCost(PRICING[DEFAULT_MODEL], promptTokens, completionTokens);
+  }
+
+  return computeCost(pricing, promptTokens, completionTokens);
+}
+
+/**
+ * Aplica uma entrada de PRICING (simples ou em faixas) aos tokens.
+ * @param {Object} pricing
+ * @param {number} promptTokens
+ * @param {number} completionTokens
+ * @returns {number} custo em USD
+ */
+function computeCost(pricing, promptTokens, completionTokens) {
   // Precificação em faixas (tiered) — usa a faixa baseada no total de tokens do prompt
   if (pricing.tiers) {
     const tier = pricing.tiers.find(t => promptTokens <= t.threshold);

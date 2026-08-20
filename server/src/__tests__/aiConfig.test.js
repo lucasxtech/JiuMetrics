@@ -2,6 +2,10 @@
  * Testes unitários para configuração de IA
  */
 
+// `models/ApiUsage` (usado nos testes de allow-list × preço) importa
+// config/supabase, que lança sem credenciais. Este teste é de unidade pura.
+jest.mock('../config/supabase', () => ({ supabase: {}, supabaseAdmin: {} }));
+
 const {
   DEFAULT_MODEL,
   AVAILABLE_MODELS,
@@ -9,8 +13,12 @@ const {
   RATE_LIMITS,
   CHART_TITLES,
   CHART_LABELS,
-  BELT_RULES
+  BELT_RULES,
+  TASK_MODELS,
+  resolveModel,
+  isModelAllowed
 } = require('../config/ai');
+const { calculateCost, PRICING } = require('../models/ApiUsage');
 
 describe('Configuração de IA', () => {
   describe('DEFAULT_MODEL', () => {
@@ -166,6 +174,77 @@ describe('Configuração de IA', () => {
         expect(typeof BELT_RULES[belt].extraRules).toBe('string');
       });
     });
+  });
+});
+
+describe('SPEC-009 (R1) — allow-list de modelos', () => {
+  let warnSpy;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('sem escolha do usuário, usa o default da tarefa', () => {
+    expect(resolveModel('VIDEO_ANALYSIS')).toBe(TASK_MODELS.VIDEO_ANALYSIS);
+    expect(resolveModel('CHAT')).toBe(TASK_MODELS.CHAT);
+  });
+
+  it('respeita a escolha do usuário quando está na allow-list', () => {
+    expect(resolveModel('CHAT', 'gemini-2.5-pro')).toBe('gemini-2.5-pro');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'gpt-4-turbo',
+    'gemini-9-ultra-inexistente',
+    'gemini-2.5-pro; DROP TABLE',
+    '../../etc/passwd',
+  ])('modelo fora da allow-list (%s) cai no default da tarefa, com aviso', (invalido) => {
+    // Cair no default em vez de lançar é deliberado: a escolha vem do
+    // localStorage, e um valor obsoleto salvo no navegador não deve quebrar
+    // a operação de quem nunca fez nada errado.
+    expect(resolveModel('VIDEO_ANALYSIS', invalido)).toBe(TASK_MODELS.VIDEO_ANALYSIS);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('fora da allow-list'));
+  });
+
+  it('tarefa desconhecida cai no default de TEXT', () => {
+    expect(resolveModel('TAREFA_QUE_NAO_EXISTE')).toBe(TASK_MODELS.TEXT);
+  });
+
+  it('isModelAllowed reflete AVAILABLE_MODELS', () => {
+    AVAILABLE_MODELS.forEach((m) => expect(isModelAllowed(m)).toBe(true));
+    expect(isModelAllowed('modelo-inventado')).toBe(false);
+  });
+
+  it('todo default de tarefa está na allow-list', () => {
+    Object.values(TASK_MODELS).forEach((m) => expect(AVAILABLE_MODELS).toContain(m));
+  });
+
+  it('o descasamento entre modelo usado e preço registrado deixou de ser possível', () => {
+    // Era este o defeito: `resolveModel` aceitava qualquer string e
+    // `calculateCost` precificava desconhecido como flash — usava-se um modelo
+    // caro registrando o custo de um barato. Hoje nenhum modelo que passa por
+    // `resolveModel` fica fora de PRICING.
+    AVAILABLE_MODELS.forEach((modelo) => {
+      expect(PRICING[modelo]).toBeDefined();
+    });
+
+    const usado = resolveModel('VIDEO_ANALYSIS', 'gemini-3.1-pro-preview');
+    expect(PRICING[usado]).toBeDefined();
+    expect(calculateCost(usado, 1000, 1000)).toBeGreaterThan(0);
+  });
+
+  it('calculateCost AVISA quando o modelo não tem preço, em vez de reprecificar calado', () => {
+    const custo = calculateCost('modelo-sem-preco', 1_000_000, 0);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('sem preço em PRICING'));
+    // Continua estimando (registrar zero subestimaria o gasto), mas o valor
+    // é declarado como piso, não como real.
+    expect(custo).toBeCloseTo(PRICING[DEFAULT_MODEL].input, 6);
   });
 });
 
