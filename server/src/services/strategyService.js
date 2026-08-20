@@ -307,6 +307,7 @@ OBRIGATÓRIO:
       const modelToUse = resolveModel('TEXT', customModel);
       const { text: consolidatedResumo, usage } = await llm.generateText({
         model: modelToUse,
+        task: 'TEXT',   // política de retry/timeout (spec 009)
         contents: consolidationPrompt,
         temperature: GENERATION.TEXT_TEMPERATURE,
       });

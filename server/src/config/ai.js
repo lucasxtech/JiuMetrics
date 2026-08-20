@@ -170,6 +170,29 @@ module.exports = {
     CHAT_TEMPERATURE: 0.7       // conversa
   },
 
+  /**
+   * Políticas de retry e timeout POR FLUXO (spec 009, R5–R7).
+   *
+   * Deliberadamente distintas: análise de vídeo e chat têm perfis de custo e
+   * latência incomparáveis. Uma inferência de vídeo em `gemini-2.5-pro` é a
+   * operação mais cara e mais lenta do sistema — repetir custa muito e demora
+   * muito; uma mensagem de chat é barata e o usuário está esperando na tela.
+   *
+   * `maxAttempts: 1` significa **nenhuma nova tentativa**, não "uma tentativa
+   * extra".
+   *
+   * ⚠️ O timeout limita **quanto tempo esperamos**, não necessariamente quanto
+   * o provedor processa: sem cancelamento no SDK, a inferência pode seguir do
+   * outro lado e o custo já ter sido incorrido. Serve para não pendurar a
+   * função serverless até o `maxDuration` — não como controle de gasto.
+   */
+  AI_POLICIES: {
+    VIDEO_ANALYSIS: { maxAttempts: 2, baseDelayMs: 2000, timeoutMs: 300000 },
+    STRATEGY:       { maxAttempts: 2, baseDelayMs: 1500, timeoutMs: 120000 },
+    TEXT:           { maxAttempts: 3, baseDelayMs: 800,  timeoutMs: 60000  },
+    CHAT:           { maxAttempts: 2, baseDelayMs: 500,  timeoutMs: 45000  }
+  },
+
   // Configuração de download de vídeo (YouTube → File API)
   VIDEO_DOWNLOAD: {
     MAX_HEIGHT: 720,           // Qualidade máxima (720p suficiente para análise)

@@ -169,13 +169,59 @@ class VideoDownloadError extends AppError {
 }
 
 /**
+ * O erro tem chance real de sumir numa nova tentativa? (spec 009, R5)
+ *
+ * A distinção existe porque **retry custa dinheiro**: repetir uma inferência
+ * de vídeo em `gemini-2.5-pro` é outra inferência completa. Repetir o que não
+ * vai melhorar é queimar o dobro por nada.
+ *
+ * NÃO é transitório, e por isso nunca é repetido:
+ * - **quota estourada** — a próxima tentativa também estoura;
+ * - **conteúdo bloqueado** pela política de segurança — a resposta é
+ *   determinística para o mesmo input;
+ * - **API key ausente** — configuração, não sorte;
+ * - **JSON malformado** — repetir é uma inferência inteira nova apostando no
+ *   não determinismo do modelo. Se acontecer com frequência, o problema é o
+ *   schema ou o prompt, não a rede.
+ *
+ * @param {Error} error
+ * @returns {boolean}
+ */
+function isTransientError(error) {
+  if (
+    error instanceof GeminiQuotaExceededError ||
+    error instanceof GeminiContentBlockedError ||
+    error instanceof GeminiApiKeyMissingError ||
+    error instanceof GeminiParseError ||
+    error instanceof VideoDownloadError
+  ) {
+    return false;
+  }
+
+  // Falha de rede/timeout já classificada por parseGeminiError
+  if (error instanceof GeminiApiError) return true;
+
+  // 5xx e indisponibilidade do provedor chegam como erro genérico
+  const message = error?.message?.toLowerCase() || '';
+  return /\b(500|502|503|504)\b|unavailable|overloaded|internal error|try again|temporarily/.test(message);
+}
+
+/**
  * Analisa um erro da API Gemini e retorna o erro customizado apropriado
  * @param {Error} error - Erro original
  * @returns {AppError} Erro customizado
  */
 const parseGeminiError = (error) => {
-  // Preservar VideoDownloadError e GeminiParseError sem transformar
-  if (error instanceof VideoDownloadError || error instanceof GeminiParseError) {
+  // IDEMPOTENTE: um erro já classificado passa direto.
+  //
+  // Sem isto, classificar duas vezes DEGRADA o erro — e a segunda passagem
+  // acontece de verdade, porque `llm.js` classifica dentro do retry e o
+  // `catch` externo classifica de novo. O caso concreto: um
+  // GeminiQuotaExceededError reclassificado não casa nenhum padrão, porque a
+  // mensagem dele está em português ("Cota…") e a checagem procura "quota" —
+  // e a quota estourada virava GeminiProcessingError genérico, perdendo o
+  // status 429 e a informação de que não se deve repetir.
+  if (error instanceof AppError) {
     return error;
   }
 
@@ -215,5 +261,6 @@ module.exports = {
   GeminiProcessingError,
   GeminiParseError,
   VideoDownloadError,
-  parseGeminiError
+  parseGeminiError,
+  isTransientError
 };
