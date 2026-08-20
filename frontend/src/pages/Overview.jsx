@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getAllAthletes } from '../services/athleteService';
 import { getAllOpponents } from '../services/opponentService';
@@ -60,54 +60,68 @@ const IconCost = () => (
 );
 
 export default function Overview() {
-  const [stats, setStats] = useState({ athletes: 0, opponents: 0, analyses: 0, cost: 0 });
-  const [recentAnalyses, setRecentAnalyses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // React Query com as MESMAS query keys que `Athletes`, `Opponents` e
+  // `Strategy` já usam (spec 010, R4).
+  //
+  // Era aqui o defeito relatado: esta página usava `useEffect` cru com
+  // dependência `[]`, então criar um atleta na tela de Atletas — que
+  // invalida `['athletes']` — não tinha efeito nenhum sobre o dashboard.
+  // Ele só refazia fetch em mount. Compartilhar a key faz a invalidação que
+  // já existia alcançar esta tela, sem tocar em nenhum site de mutação.
+  //
+  // Cada recurso é uma query independente de propósito: preserva a tolerância
+  // do `Promise.allSettled` anterior — um endpoint que falha deixa seu bloco
+  // zerado em vez de derrubar o dashboard inteiro.
+  const { data: athletes = [], isLoading: loadingAthletes } = useQuery({
+    queryKey: ['athletes'],
+    queryFn: async () => (await getAllAthletes())?.data || [],
+  });
 
-  useEffect(() => {
-    async function fetchAll() {
-      try {
-        const [athletesRes, opponentsRes, analysesRes, usageRes] = await Promise.allSettled([
-          getAllAthletes(),
-          getAllOpponents(),
-          getAllAnalyses(),
-          getUsageStats('month'),
-        ]);
+  const { data: opponents = [], isLoading: loadingOpponents } = useQuery({
+    queryKey: ['opponents'],
+    queryFn: async () => (await getAllOpponents())?.data || [],
+  });
 
-        const athletes = athletesRes.status === 'fulfilled' ? (athletesRes.value?.data || []) : [];
-        const opponents = opponentsRes.status === 'fulfilled' ? (opponentsRes.value?.data || []) : [];
-        const analyses = analysesRes.status === 'fulfilled' ? (analysesRes.value?.data || []) : [];
-        const cost = usageRes.status === 'fulfilled' ? (usageRes.value?.stats?.totalCost || 0) : 0;
+  // Key própria: `['analyses']` já é usada por `pages/Analyses.jsx` para
+  // ESTRATÉGIAS (`tactical_analyses`). São recursos diferentes com nome
+  // parecido — ver o aviso de vocabulário em CLAUDE.md.
+  const { data: analyses = [], isLoading: loadingAnalyses } = useQuery({
+    queryKey: ['fightAnalyses'],
+    queryFn: async () => (await getAllAnalyses())?.data || [],
+  });
 
-        // Mapa id → nome para lookup rápido
-        const nameMap = {};
-        athletes.forEach(a => { nameMap[a.id] = { name: a.name, type: 'athlete' }; });
-        opponents.forEach(o => { nameMap[o.id] = { name: o.name, type: 'opponent' }; });
+  const { data: cost = 0, isLoading: loadingCost } = useQuery({
+    queryKey: ['usage', 'month'],
+    queryFn: async () => (await getUsageStats('month'))?.stats?.totalCost || 0,
+  });
 
-        setStats({
-          athletes: athletes.length,
-          opponents: opponents.length,
-          analyses: analyses.length,
-          cost,
-        });
+  const loading = loadingAthletes || loadingOpponents || loadingAnalyses || loadingCost;
 
-        // 5 análises mais recentes, enriquecidas com nome da pessoa
-        const sorted = [...analyses].sort((a, b) =>
-          new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0)
-        );
-        const enriched = sorted.slice(0, 5).map(a => ({
-          ...a,
-          personName: nameMap[a.personId]?.name || null,
-        }));
-        setRecentAnalyses(enriched);
-      } catch (err) {
-        console.error('Erro ao carregar dashboard:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAll();
-  }, []);
+  const stats = {
+    athletes: athletes.length,
+    opponents: opponents.length,
+    analyses: analyses.length,
+    cost,
+  };
+
+  // Sem `useMemo` de propósito: o React Compiler (ligado neste projeto)
+  // memoiza sozinho, e o `useMemo` manual sobre valores de `useQuery` fazia
+  // ele DESISTIR de otimizar o componente inteiro — o lint avisa. A derivação
+  // é um sort + slice de poucas centenas de itens.
+  const nameMap = {};
+  athletes.forEach(a => { nameMap[a.id] = { name: a.name, type: 'athlete' }; });
+  opponents.forEach(o => { nameMap[o.id] = { name: o.name, type: 'opponent' }; });
+
+  // 5 análises mais recentes, enriquecidas com nome da pessoa
+  const recentAnalyses = [...analyses]
+    .sort((a, b) =>
+      new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0)
+    )
+    .slice(0, 5)
+    .map(a => ({
+      ...a,
+      personName: nameMap[a.personId]?.name || null,
+    }));
 
   return (
     <div className="dashboard-wrapper animate-fadeIn">
