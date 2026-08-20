@@ -193,6 +193,29 @@ module.exports = {
     CHAT:           { maxAttempts: 2, baseDelayMs: 500,  timeoutMs: 45000  }
   },
 
+  /**
+   * Orçamento de IA (spec 009, R3). **Por TENANT** — decisão P8, conforme a
+   * recomendação do plano de refatoração (§14).
+   *
+   * Por tenant e não por usuário porque o grupo é a unidade que compartilha os
+   * dados e, presumivelmente, a conta. Um teto adicional por usuário dentro do
+   * grupo depende do modelo comercial, que não está definido — não foi
+   * inventado aqui.
+   *
+   * ⚠️ Começa PERMISSIVO de propósito. O gasto medido é de US$ 3,03 em 8 meses
+   * (≈ US$ 0,38/mês), então US$ 50/mês é ~130× o histórico: barra abuso sem
+   * chegar perto do uso real. Apertar depois de observar é fácil; destravar
+   * usuário legítimo bloqueado é caro.
+   *
+   * `AI_MONTHLY_BUDGET_USD=0` desativa a verificação.
+   */
+  AI_BUDGET: {
+    monthlyUsdPerTenant: process.env.AI_MONTHLY_BUDGET_USD !== undefined
+      ? Number(process.env.AI_MONTHLY_BUDGET_USD)
+      : 50,
+    warnAtPercent: 80
+  },
+
   // Configuração de download de vídeo (YouTube → File API)
   VIDEO_DOWNLOAD: {
     MAX_HEIGHT: 720,           // Qualidade máxima (720p suficiente para análise)

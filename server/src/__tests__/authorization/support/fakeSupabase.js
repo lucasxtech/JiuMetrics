@@ -25,6 +25,8 @@ class QueryBuilder {
     this.filters = [];
     this.orderBy = null;
     this.limitCount = null;
+    this.rangeFrom = null;
+    this.rangeTo = null;
     this.singleFlag = false;
     this.countOpts = payload && payload.opts;
   }
@@ -41,6 +43,26 @@ class QueryBuilder {
 
   order(col, { ascending = true } = {}) {
     this.orderBy = { col, ascending };
+    return this;
+  }
+
+  // Acrescentados na spec 009: `ApiUsage.getUsageStats` filtra por período
+  // com `.gte`/`.lte` sobre `created_at`.
+  gte(col, val) {
+    this.filters.push({ col, val, kind: 'gte' });
+    return this;
+  }
+
+  lte(col, val) {
+    this.filters.push({ col, val, kind: 'lte' });
+    return this;
+  }
+
+  // `TacticalAnalysis.getAll` pagina com `.range(from, to)` — inclusivo nas
+  // duas pontas, como no PostgREST.
+  range(from, to) {
+    this.rangeFrom = from;
+    this.rangeTo = to;
     return this;
   }
 
@@ -76,6 +98,8 @@ class QueryBuilder {
     return this.filters.every((f) => {
       if (f.kind === 'eq') return row[f.col] === f.val;
       if (f.kind === 'in') return Array.isArray(f.vals) && f.vals.includes(row[f.col]);
+      if (f.kind === 'gte') return row[f.col] >= f.val;
+      if (f.kind === 'lte') return row[f.col] <= f.val;
       return true;
     });
   }
@@ -95,6 +119,9 @@ class QueryBuilder {
       }
       if (this.countOpts && this.countOpts.head) {
         return { data: null, error: null, count: result.length };
+      }
+      if (typeof this.rangeFrom === 'number') {
+        result = result.slice(this.rangeFrom, this.rangeTo + 1);
       }
       if (typeof this.limitCount === 'number') {
         result = result.slice(0, this.limitCount);

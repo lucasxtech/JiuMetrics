@@ -65,6 +65,19 @@ class MissingScopeError extends AppError {
   }
 }
 
+/**
+ * Orçamento de IA do grupo esgotado no período (spec 009, R3).
+ *
+ * 429 e não 403: não é "você não tem permissão", é "tente mais tarde / o
+ * limite do grupo foi atingido" — a mesma família semântica da quota do
+ * provedor.
+ */
+class BudgetExceededError extends AppError {
+  constructor(message = 'Orçamento de IA do grupo esgotado neste período.') {
+    super(message, 429);
+  }
+}
+
 // ====================================
 // ERROS ESPECÍFICOS DA API GEMINI
 // ====================================
@@ -254,6 +267,7 @@ module.exports = {
   AuthenticationError,
   AuthorizationError,
   MissingScopeError,
+  BudgetExceededError,
   GeminiQuotaExceededError,
   GeminiContentBlockedError,
   GeminiApiKeyMissingError,

@@ -5,12 +5,13 @@ const strategyController = require('../controllers/strategyController');
 const strategyVersionController = require('../controllers/strategyVersionController');
 const authMiddleware = require('../middleware/auth');
 const { heavyLimiter } = require('../middleware/rateLimiter');
+const { requireBudget } = require('../middleware/budget');
 
 router.use(heavyLimiter);
 router.use(authMiddleware);
 
 // Comparar atleta vs adversário e gerar estratégia
-router.post('/compare', strategyController.compareAndStrategy);
+router.post('/compare', requireBudget, strategyController.compareAndStrategy);
 
 // Listar análises táticas salvas
 router.get('/analyses', strategyController.listAnalyses);

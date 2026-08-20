@@ -5,7 +5,7 @@ const FightAnalysis = require('../models/FightAnalysis');
 const geminiService = require('./geminiService');
 const llm = require('./llm');
 const { resolveModel, GENERATION } = require('../config/ai');
-const { getPrompt } = require('./prompts');
+const { getPrompt, getPromptVersion } = require('./prompts');
 
 /**
  * Marca um `technical_summary` que NÃO passou pela consolidação por IA
@@ -555,6 +555,14 @@ class StrategyService {
         },
         strategyModel: strategyResult.usage?.modelName || customModel || null,
         usage: strategyResult.usage,
+        // Versão dos prompts usados (spec 009, R8). Sem isto, não havia como
+        // saber com que instrução uma estratégia de três meses atrás foi
+        // gerada. É ADITIVO: linhas antigas ficam sem o campo, e isso é
+        // correto — não sabemos qual prompt foi usado nelas.
+        promptVersions: {
+          'tactical-strategy': getPromptVersion('tactical-strategy'),
+          'consolidate-profile': getPromptVersion('consolidate-profile')
+        },
         generatedAt: new Date().toISOString()
       }
     };
