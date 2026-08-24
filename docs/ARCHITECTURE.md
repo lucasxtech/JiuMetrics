@@ -180,24 +180,24 @@ Detalhe parcial em [`API.md`](./API.md) (incompleto — o código é a fonte de 
 
 **Supabase / PostgreSQL**, acessado **exclusivamente via PostgREST** (`@supabase/supabase-js`). **Não há ORM nem query builder SQL.** Detalhe completo em [`DATABASE.md`](./DATABASE.md).
 
-### Dois clientes, sem regra documentada
+### Um único cliente (spec 008)
 
 ```mermaid
 flowchart TD
-    CFG["config/supabase.js"] --> AN["supabase<br/>(anon key — RLS aplica)"]
-    CFG --> AD["supabaseAdmin<br/>(service_role — RLS ignorado)"]
-    AN --> M1["Athlete, Opponent, FightAnalysis,<br/>TacticalAnalysis, AnalysisVersion,<br/>ApiUsage, userController"]
-    AD --> M2["ProfileVersion, StrategyVersion,<br/>ChatSession, User (3 métodos)"]
-    AD -.->|"fallback silencioso se<br/>SUPABASE_SERVICE_ROLE_KEY faltar"| AN
+    CFG["config/supabase.js"] --> C["supabase<br/>(service_role — único cliente)"]
+    C --> M["todos os 11 models + userController"]
+    CFG -.->|"lança no require() sem<br/>SUPABASE_SERVICE_ROLE_KEY — falha no boot"| X["processo não sobe"]
 
-    style AD fill:#8b1a1a,color:#fff
+    style C fill:#1a5f2a,color:#fff
 ```
 
-**Problema conhecido:** a divisão é arbitrária, e `supabaseAdmin` cai para `supabase` sem aviso quando a chave de serviço não está definida — o mesmo código roda com dois níveis de privilégio.
+Até a spec 008 havia dois clientes (`supabase` anon + `supabaseAdmin` service_role) sem regra documentada sobre qual model usava qual, e `supabaseAdmin` caía **silenciosamente** para o cliente anon quando a chave de serviço não estava definida. Hoje só existe `supabase`, e não há fallback: falta a chave de serviço, o processo não sobe.
+
+⚠️ **O código está pronto; o `REVOKE` do lado do banco não.** Sem ele, a chave anon **continua com GRANT** nas tabelas — unificar o cliente não fecha, sozinho, o acesso direto ao PostgREST. O `REVOKE` está escrito em [`server/migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), pendente de execução manual pelo proprietário. Ver [`DATABASE.md`](./DATABASE.md) §4.
 
 ### Migrations
 
-22 arquivos `.sql` em `server/migrations/`, aplicados **manualmente** colando no SQL Editor do Supabase. **Não há runner nem tabela de controle de estado.**
+23 arquivos `.sql` em `server/migrations/`, aplicados **manualmente** colando no SQL Editor do Supabase. **Não há runner nem tabela de controle de estado.**
 
 **Problemas conhecidos:** a tabela `users` nunca é criada por migration (só `ALTER`); falta a `020`; migrations se contradizem entre si (RLS é ligado/desligado 4 vezes); há PII (8 e-mails reais) e um `UPDATE users SET role='user'` sem `WHERE`. **É impossível reconstruir o banco a partir do repositório.**
 
@@ -305,8 +305,7 @@ Estado após a [spec 003](../specs/003-quality-gates/spec.md) (2026-08-13):
 | Variável | Obrigatória | Efeito se faltar |
 |---|---|---|
 | `JWT_SECRET` | **sim** | `throw` no boot |
-| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | **sim** | `throw` no boot |
-| `SUPABASE_SERVICE_ROLE_KEY` | não | **fallback silencioso** para o cliente anon |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | **sim** | `throw` no boot (spec 008 — não existe mais `SUPABASE_ANON_KEY` nem fallback entre clientes) |
 | `GEMINI_API_KEY` | não | avisa no boot; chamadas de IA falham com erro tipado |
 | `YOUTUBE_COOKIES` | não | downloads podem falhar por detecção de bot |
 | `ALLOW_PUBLIC_REGISTER` | não | registro público desabilitado. ⚠️ O `.env.example` traz `ALLOW_PUBLIC_REGISTER=true` — copiá-lo para `.env` **habilita** o cadastro público |

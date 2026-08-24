@@ -6,9 +6,9 @@
 // sempre filtraram assim) e a spec 006 o estendeu para os métodos de
 // escrita, que aceitavam qualquer `sessionId` — a causa do vazamento AZ-5.
 //
-// Este model usa `supabaseAdmin` (service_role), então RLS não se aplica:
+// Este model usa `supabase` (service_role), então RLS não se aplica:
 // o filtro aqui é a ÚNICA proteção.
-const { supabaseAdmin } = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const { requireScope } = require('../utils/scopeGuard');
 const { NotFoundError } = require('../utils/errors');
 
@@ -29,7 +29,7 @@ class ChatSession {
       is_active: true
     };
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('ai_chat_sessions')
       .insert([insertData])
       .select()
@@ -46,7 +46,7 @@ class ChatSession {
    * @returns {Promise<Object|null>} Sessão encontrada ou null
    */
   static async getById(id, userId = null) {
-    let query = supabaseAdmin
+    let query = supabase
       .from('ai_chat_sessions')
       .select('*')
       .eq('id', id);
@@ -72,7 +72,7 @@ class ChatSession {
    * @returns {Promise<Array>} Lista de sessões
    */
   static async getByContext(contextType, contextId, userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('ai_chat_sessions')
       .select('*')
       .eq('context_type', contextType)
@@ -90,7 +90,7 @@ class ChatSession {
    * @returns {Promise<Array>} Lista de sessões
    */
   static async getByUserId(userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('ai_chat_sessions')
       .select('*')
       .eq('user_id', userId)
@@ -112,7 +112,7 @@ class ChatSession {
     const ids = requireScope(userId, 'ChatSession.addMessage');
 
     // Primeiro, buscar sessão atual para pegar mensagens existentes
-    const { data: currentSession, error: fetchError } = await supabaseAdmin
+    const { data: currentSession, error: fetchError } = await supabase
       .from('ai_chat_sessions')
       .select('messages')
       .eq('id', sessionId)
@@ -132,7 +132,7 @@ class ChatSession {
 
     const updatedMessages = [...currentMessages, newMessage];
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('ai_chat_sessions')
       .update({ messages: updatedMessages })
       .eq('id', sessionId)
@@ -155,7 +155,7 @@ class ChatSession {
     const ids = requireScope(userId, 'ChatSession.addMessages');
 
     // Primeiro, buscar sessão atual para pegar mensagens existentes
-    const { data: currentSession, error: fetchError } = await supabaseAdmin
+    const { data: currentSession, error: fetchError } = await supabase
       .from('ai_chat_sessions')
       .select('messages')
       .eq('id', sessionId)
@@ -175,7 +175,7 @@ class ChatSession {
 
     const updatedMessages = [...currentMessages, ...newMessages];
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('ai_chat_sessions')
       .update({ messages: updatedMessages })
       .eq('id', sessionId)
@@ -208,7 +208,7 @@ class ChatSession {
   static async updateContextSnapshot(sessionId, newSnapshot, userId) {
     const ids = requireScope(userId, 'ChatSession.updateContextSnapshot');
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('ai_chat_sessions')
       .update({ context_snapshot: newSnapshot })
       .eq('id', sessionId)
@@ -226,7 +226,7 @@ class ChatSession {
    * @returns {Promise<Object>} Sessão desativada
    */
   static async deactivate(sessionId, userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('ai_chat_sessions')
       .update({ is_active: false })
       .eq('id', sessionId)
@@ -245,7 +245,7 @@ class ChatSession {
    * @returns {Promise<boolean>} true se deletado
    */
   static async delete(sessionId, userId) {
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('ai_chat_sessions')
       .delete()
       .eq('id', sessionId)

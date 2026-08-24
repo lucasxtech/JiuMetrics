@@ -1,5 +1,5 @@
 // Modelo de dados para Versões de Estratégia Tática com Supabase
-const { supabaseAdmin } = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 
 class StrategyVersion {
   /**
@@ -9,7 +9,7 @@ class StrategyVersion {
     const { analysisId, userId, content, editedField, editedBy, editReason } = versionData;
 
     // Buscar próximo número de versão
-    const { data: lastVersion } = await supabaseAdmin
+    const { data: lastVersion } = await supabase
       .from('strategy_versions')
       .select('version_number')
       .eq('analysis_id', analysisId)
@@ -20,13 +20,13 @@ class StrategyVersion {
     const nextVersionNumber = (lastVersion?.version_number || 0) + 1;
 
     // Desmarcar versões anteriores como não-atuais
-    await supabaseAdmin
+    await supabase
       .from('strategy_versions')
       .update({ is_current: false })
       .eq('analysis_id', analysisId);
 
     // Criar nova versão
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('strategy_versions')
       .insert([{
         analysis_id: analysisId,
@@ -63,7 +63,7 @@ class StrategyVersion {
    * Busca todas as versões de uma análise
    */
   static async getByAnalysisId(analysisId, userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('strategy_versions')
       .select('*')
       .eq('analysis_id', analysisId)
@@ -78,7 +78,7 @@ class StrategyVersion {
    * Busca uma versão específica pelo número
    */
   static async getByVersionNumber(analysisId, versionNumber, userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('strategy_versions')
       .select('*')
       .eq('analysis_id', analysisId)
@@ -94,7 +94,7 @@ class StrategyVersion {
    * Busca a versão atual
    */
   static async getCurrent(analysisId, userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('strategy_versions')
       .select('*')
       .eq('analysis_id', analysisId)
@@ -111,7 +111,7 @@ class StrategyVersion {
    */
   static async restore(versionId, analysisId, userId) {
     // Buscar a versão a ser restaurada
-    const { data: version, error: fetchError } = await supabaseAdmin
+    const { data: version, error: fetchError } = await supabase
       .from('strategy_versions')
       .select('*')
       .eq('id', versionId)
@@ -122,7 +122,7 @@ class StrategyVersion {
     if (!version) throw new Error('Versão não encontrada');
 
     // Desmarcar todas como não-atuais
-    await supabaseAdmin
+    await supabase
       .from('strategy_versions')
       .update({ is_current: false })
       .eq('analysis_id', analysisId)
@@ -139,7 +139,7 @@ class StrategyVersion {
     });
 
     // Atualizar a análise principal
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await supabase
       .from('tactical_analyses')
       .update({ strategy_data: version.content })
       .eq('id', analysisId);
@@ -156,7 +156,7 @@ class StrategyVersion {
    * Conta total de versões de uma análise
    */
   static async count(analysisId, userId) {
-    const { count, error } = await supabaseAdmin
+    const { count, error } = await supabase
       .from('strategy_versions')
       .select('*', { count: 'exact', head: true })
       .eq('analysis_id', analysisId)

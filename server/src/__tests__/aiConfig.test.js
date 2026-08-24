@@ -4,7 +4,7 @@
 
 // `models/ApiUsage` (usado nos testes de allow-list × preço) importa
 // config/supabase, que lança sem credenciais. Este teste é de unidade pura.
-jest.mock('../config/supabase', () => ({ supabase: {}, supabaseAdmin: {} }));
+jest.mock('../config/supabase', () => ({ supabase: {} }));
 
 const {
   DEFAULT_MODEL,

@@ -13,18 +13,18 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [005](./005-authorization-policy-seam/spec.md) | Seam de política de autorização | 3 | ✅ **Implemented** |
 | [006](./006-ownership-in-data-access/spec.md) | Ownership obrigatório no acesso a dados | 4 | ✅ **Implemented** (E2E declarado como não executado) |
 | [007](./007-silent-failures-and-input-validation/spec.md) | Falhas silenciosas e validação de entrada | 5 | ✅ **Implemented** (validação parcial: 3 endpoints de IA) |
-| [008](./008-database-access-lockdown/spec.md) | Fechamento do acesso ao banco | 6 | Proposed |
+| [008](./008-database-access-lockdown/spec.md) | Fechamento do acesso ao banco | 6 | ✅ **Implemented** (parcial — código pronto, `REVOKE` pendente de execução manual) |
 | [009](./009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | 7 | ✅ **Implemented** (R4, rate limiting, bloqueado por infraestrutura) |
 | [010](./010-frontend-consolidation/spec.md) | Consolidação do frontend | 8 | ✅ **Implemented** (parcial — 3 itens dependem de verificação visual/E2E) |
 | [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | Proposed |
 
 O que **não** foi resolvido por elas — e por quê — está em [`docs/GAPS.md`](../docs/GAPS.md).
 
-As specs **002 a 007, 009 e 010 foram executadas** (002 e 003 em 2026-08-13; as demais em 2026-08-18). Restam `Proposed`: **008** (bloqueada por pergunta ao proprietário) e **011**. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
+As specs **002 a 010 foram executadas** (002 e 003 em 2026-08-13; 004–007, 009 e 010 em 2026-08-18; 008 em 2026-08-24, com a ressalva declarada acima). Resta `Proposed`: **011**. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
 
 **Com a 006, os 7 vazamentos de posse da auditoria estão fechados** e o escopo passou a ser exigido na assinatura dos models.
 
-> ⚠️ **A execução da 002 mudou o escopo de duas specs seguintes:** o registro de custo de IA **funciona** (refutado), então o item correspondente saiu da [007](./007-silent-failures-and-input-validation/spec.md) e a [009](./009-ai-cost-and-reliability/spec.md) **deixou de depender** dela. E a exposição de `password_hash` pela chave anon sugere **antecipar a [008](./008-database-access-lockdown/spec.md)** — decisão pendente do proprietário.
+> ⚠️ **A execução da 002 mudou o escopo de duas specs seguintes:** o registro de custo de IA **funciona** (refutado), então o item correspondente saiu da [007](./007-silent-failures-and-input-validation/spec.md) e a [009](./009-ai-cost-and-reliability/spec.md) **deixou de depender** dela. E a exposição de `password_hash` pela chave anon levou a antecipar a [008](./008-database-access-lockdown/spec.md) — decisão que era pendente do proprietário e foi respondida em 2026-08-24 (não existe consumidor externo da chave anon).
 
 ### Ordem de execução e dependências
 
@@ -48,9 +48,8 @@ flowchart TD
     style S11 fill:#8b1a1a,color:#fff
 ```
 
-**✅ [002](./002-verification-baseline/spec.md) e [003](./003-quality-gates/spec.md) concluídas.** Próxima recomendada: [004](./004-authorization-safety-net/spec.md) — que agora carrega também o pré-requisito de ambiente de teste herdado da 003 (ligar o Playwright no CI). Alternativa: **[008](./008-database-access-lockdown/spec.md), se o proprietário optar por antecipar** o fechamento do banco diante da exposição de hashes de senha.
-**Spec 007 pode correr em paralelo** às 005–006 (coordenando arquivos).
-**Spec 011 é grande demais para uma unidade** e deve ser quebrada quando chegar a vez, com os números reais da 002 em mãos.
+**✅ 002 a 010 concluídas** — ver a tabela acima e [`docs/GAPS.md`](../docs/GAPS.md) para o que cada uma deixou aberto. **Falta só 011.**
+**Spec 011 é grande demais para uma unidade** e deve ser quebrada em specs próprias quando chegar a vez, com os números reais da 002 em mãos (ela mesma diz isso — ver seu `spec.md`).
 
 ### Specs sem número ainda
 

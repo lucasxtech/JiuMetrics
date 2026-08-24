@@ -941,12 +941,12 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 **Documentation.** `docs/DATABASE.md` (estado de acesso), `docs/AUTHORIZATION.md`, [ADR-009](./docs/decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md) → implementado, `docs/ARCHITECTURE.md` (variáveis obrigatórias), `CHANGELOG.md` — **segurança**.
 
-**Acceptance Criteria.**
-- [ ] Chamada ao PostgREST com chave anon **falha** para todas as tabelas de `public`
-- [ ] Backend **não inicia** sem `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] `frontend/.env.production` sem credencial de Supabase; chaves rotacionadas
-- [ ] Nenhum fallback silencioso entre clientes
-- [ ] Suíte verde
+**Acceptance Criteria.** ✅ **Etapa 6 EXECUTADA (spec 008, 2026-08-24) — parcial: código pronto, banco pendente**
+- [~] Chamada ao PostgREST com chave anon **falha** para todas as tabelas de `public` — **script escrito** (`server/migrations/024-revoke-anon-access.sql`, com rollback documentado), **não executado**: nenhuma ferramenta disponível neste ambiente conecta direto ao Postgres (a chave `service_role` fala REST via PostgREST, não SQL cru). Passo manual do proprietário
+- [x] Backend **não inicia** sem `SUPABASE_SERVICE_ROLE_KEY` — testado (`config/__tests__/supabase.test.js`)
+- [x] `frontend/.env.production` sem credencial de Supabase; arquivo retirado do controle de versão. [ ] Chaves **ainda não rotacionadas** — ação do proprietário nos dashboards do Supabase e do Google AI Studio
+- [x] Nenhum fallback silencioso entre clientes — só existe `supabase` (`service_role`)
+- [x] Suíte verde (28 suítes / 331 testes)
 
 ---
 
@@ -1019,7 +1019,7 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 **Out of Scope.** Migração completa para TypeScript. Papéis profissionais. Qualquer funcionalidade nova.
 
-**Dependencies.** Etapa 0 (contagem de órfãos e duplicatas). Etapa 6 (acesso consolidado). **TypeScript não pode ir em paralelo com as Etapas 3–4** — o diff global tornaria a revisão da correção de segurança impraticável.
+**Dependencies.** Etapa 0 (contagem de órfãos e duplicatas). Etapa 6 (acesso consolidado) — ⚠️ **parcial**: o backend já acessa por `service_role` (o que importa para trabalho de schema feito pela aplicação), mas o `REVOKE` de `anon` em produção ainda não rodou (ver Etapa 6 acima). Rodar migrations de schema antes desse `REVOKE` não é inseguro em si, mas deixa a chave anon exposta por mais tempo — vale coordenar os dois. **TypeScript não pode ir em paralelo com as Etapas 3–4** — o diff global tornaria a revisão da correção de segurança impraticável.
 
 **Risks.** **O mais alto do plano.**
 - Converter `user_id` VARCHAR → UUID **perde linhas** se houver valores não-UUID (a migration `019` filtra `user_id <> ''`, evidência de que já houve).

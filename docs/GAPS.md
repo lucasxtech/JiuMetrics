@@ -1,6 +1,6 @@
 # GAPS — o que ficou aberto depois das specs 002–010
 
-> **Atualizado:** 2026-08-20 · **Escopo:** tudo que as specs 002 a 010 **não** resolveram, com o motivo real de cada caso.
+> **Atualizado:** 2026-08-24 · **Escopo:** tudo que as specs 002 a 010 **não** resolveram — incluindo o que a 008 resolveu só em parte —, com o motivo real de cada caso.
 >
 > Este documento existe porque a alternativa é pior. Um relatório que só lista o que foi feito faz um sistema parecer mais pronto do que está — e neste repositório *parecer pronto* já foi a causa de três funcionalidades quebradas sobreviverem meses. Nada aqui é "TODO futuro": cada item tem uma razão de ainda estar aberto, e a razão importa mais que o item.
 
@@ -14,23 +14,24 @@
 
 ---
 
-## 1. As duas specs que não rodaram
+## 1. O que ainda falta nas duas últimas specs do plano
 
-### 🔴 Spec 008 — Fechamento do acesso ao banco
+### 🟡 Spec 008 — Fechamento do acesso ao banco (parcial)
 
-**É o item mais grave do projeto e não foi executado.** A chave publicável do Supabase está num arquivo **rastreado no Git** (`frontend/.env.production`) e, verificado contra produção em 2026-08-13, **lê 9 das 10 tabelas — incluindo `users`, com `email` e `password_hash` dos 25 usuários. A escrita também está liberada.**
+**A pergunta que bloqueava esta spec foi respondida em 2026-08-24: não existe consumidor externo da chave anon.** Isso destravou a execução, mas a execução em si tem dois lados, e só um deles é código.
 
-Toda a autorização construída nas specs 004–006 protege a porta da frente. Esta é a de trás, e ela está aberta.
+**✅ O lado do código está feito** (ver [`specs/008-database-access-lockdown/spec.md`](../specs/008-database-access-lockdown/spec.md)): o backend passou a ter um **único** cliente Supabase (`service_role`), sem o fallback silencioso que antes caía para o cliente anon quando a chave de serviço faltava; o processo agora **falha no boot** sem `SUPABASE_SERVICE_ROLE_KEY`; e `frontend/.env.production` — o arquivo rastreado no Git que carregava a chave publicável — foi retirado do controle de versão, com o `.gitignore` corrigido (o padrão antigo, só `.env`, nunca cobriu `.env.production`; é a causa raiz do vazamento).
 
-**Por que não foi executada:** a spec depende de uma pergunta que só o proprietário responde — **existe algum consumidor externo usando a chave anon?** Sem isso, o `REVOKE` é mudança às cegas: se houver um consumidor não mapeado, ele quebra na hora. O rollback é imediato (`GRANT` de volta), mas a quebra é imediata também.
+**🔴 O lado do banco continua aberto, e é o que importa de fato.** A chave publicável do Supabase, verificada contra produção em 2026-08-13, **lê 9 das 10 tabelas — incluindo `users`, com `email` e `password_hash` dos 25 usuários. A escrita também está liberada.** Toda a autorização construída nas specs 004–006 protege a porta da frente; esta é a de trás, e **ela continua aberta até alguém executar o `REVOKE`.**
 
-**O que fazer, na ordem:**
-1. responder se existe consumidor externo da chave anon;
+O `REVOKE` está escrito — [`server/migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), com o comando de rollback (`GRANT` de volta) comentado no mesmo arquivo — mas **não foi executado**. O motivo não é falta de autorização: é falta de ferramenta. Este ambiente tem a chave `service_role`, que fala com o banco via PostgREST (REST), e PostgREST não executa DCL (`REVOKE`/`GRANT`). Rodar esse script exige uma credencial de conexão direta ao Postgres (senha do usuário `postgres`, ausente de qualquer `.env`) ou o SQL Editor do próprio dashboard do Supabase — os dois fora do alcance deste ambiente.
+
+**O que fazer, na ordem — nenhum destes depende de mim:**
+1. colar [`server/migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql) no SQL Editor do Supabase (o cabeçalho do arquivo traz o `curl` de verificação antes/depois);
 2. **rotacionar** a chave publicável do Supabase e a chave do Gemini (esta última está no **histórico** do Git, em `.archived/SUPABASE_SETUP.md` — rotacionar é a única correção possível: o histórico não se apaga sem reescrita);
-3. trocar a senha de `contateste@teste.com`;
-4. `REVOKE` de `anon`/`authenticated`, unificar o backend em `service_role` e **falhar no boot** sem a chave (hoje há fallback silencioso entre os dois clientes).
+3. trocar a senha de `contateste@teste.com`.
 
-> ⚠️ Os passos 2 e 3 **não dependem** do passo 1 e não deveriam esperar por ele.
+> ⚠️ Os três passos **não dependem uns dos outros** e podem acontecer em qualquer ordem ou em paralelo.
 
 ### ⚪ Spec 011 — Integridade de schema
 

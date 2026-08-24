@@ -2,7 +2,7 @@
 
 > **Documenta o banco REAL, como derivado das migrations versionadas.** Nada foi alterado; nenhuma migration foi executada.
 >
-> **Fonte:** as 22 migrations em `server/migrations/`, os 10 models em `server/src/models/`, `server/src/config/supabase.js`. Verificado em 2026-08-12.
+> **Fonte:** as 23 migrations em `server/migrations/` (22 verificadas em 2026-08-12 + [`024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), da spec 008), os 10 models em `server/src/models/`, `server/src/config/supabase.js`.
 >
 > ⚠️ **Limitação crítica deste documento:** as migrations **não são a fonte de verdade** do schema (ver §6). A tabela `users` nunca é criada por uma migration, e o estado real de RLS, constraints e GRANTs em produção **não foi consultado**. Tudo que depende disso está marcado `NEEDS_CONFIRMATION`.
 
@@ -21,22 +21,21 @@
 
 **Consequência de não haver ORM:** todo o mapeamento entre banco e aplicação é manual (`utils/dbParsers.js`), e a garantia de posse é uma convenção de chamada, não um recurso da ferramenta.
 
-### Dois clientes
+### Um único cliente (spec 008)
 
 ```mermaid
 flowchart TD
-    ENV["SUPABASE_URL<br/>SUPABASE_ANON_KEY<br/>SUPABASE_SERVICE_ROLE_KEY"] --> CFG["config/supabase.js"]
-    CFG --> AN["supabase<br/>anon key — RLS aplica"]
-    CFG --> AD["supabaseAdmin<br/>service_role — RLS ignorado"]
-    AD -.->|"⚠️ fallback SILENCIOSO se a<br/>chave de serviço não existir"| AN
+    ENV["SUPABASE_URL<br/>SUPABASE_SERVICE_ROLE_KEY"] --> CFG["config/supabase.js"]
+    CFG -->|"lança no require() sem as duas<br/>variáveis — falha no BOOT, não em runtime"| BOOT["processo não sobe"]
+    CFG --> C["supabase<br/>service_role — único cliente"]
+    C --> L["todos os 11 models + userController"]
 
-    AN --> L1["Athlete · Opponent · FightAnalysis<br/>TacticalAnalysis · AnalysisVersion<br/>ApiUsage · userController"]
-    AD --> L2["ProfileVersion · StrategyVersion<br/>ChatSession · User (3 métodos)"]
-
-    style AD fill:#8b1a1a,color:#fff
+    style C fill:#1a5f2a,color:#fff
 ```
 
-**Problema conhecido:** a divisão entre os dois clientes é arbitrária e sem regra documentada. Se `SUPABASE_SERVICE_ROLE_KEY` não estiver definida, `supabaseAdmin` **se torna** o cliente anon sem aviso — e as tabelas com política `auth.uid() = user_id` passam a rejeitar as operações (`ChatSession`, `ProfileVersion`, `StrategyVersion`).
+**Até a spec 008 havia dois clientes**, sem regra documentada sobre qual model usava qual, e `supabaseAdmin` **caía silenciosamente** para o cliente anon quando a chave de serviço não estava definida — o mesmo código com dois níveis de privilégio dependendo de uma variável de ambiente, sem aviso. Isso deixou de ter sentido depois do `REVOKE` de `anon`/`authenticated` (ver §4): o cliente anon não lê nem escreve mais nada, então mantê-lo era manter um cliente que não funciona.
+
+`config/supabase.js` hoje só exporta `supabase`. Não existe mais `supabaseAdmin`, e não há fallback: sem `SUPABASE_SERVICE_ROLE_KEY`, o módulo lança no `require()` — o processo não sobe, em vez de subir com um cliente errado em silêncio.
 
 ---
 
@@ -254,26 +253,28 @@ A auditoria concluiu que o insert seria rejeitado, porque o model usa o cliente 
 
 ---
 
-## 4. Estado de RLS — visão consolidada
+## 4. Estado de RLS e acesso — visão consolidada
 
-| Tabela | RLS | Política | Cliente usado pelo código | Efeito real |
+> ⚠️ **Estado em transição (spec 008, 2026-08-24).** O lado do CÓDIGO está feito: um único cliente, `service_role`, sem fallback (§1). O lado do BANCO — o `REVOKE` de `anon`/`authenticated` — está **escrito e não executado**: [`migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql) precisa ser colado no SQL Editor do Supabase pelo proprietário, porque não há credencial de conexão direta ao Postgres neste ambiente (só a chave `service_role`, que fala REST via PostgREST — não executa DCL). **Até esse passo rodar, a tabela abaixo continua descrevendo a realidade em produção.**
+
+| Tabela | RLS | Política | Cliente usado pelo código | Efeito real (antes do `REVOKE` da migration 024) |
 |---|---|---|---|---|
-| `athletes` | **OFF** (`008`,`009`) | — | anon | acesso total com a chave anon |
-| `opponents` | **OFF** (`008`,`009`) | — | anon | acesso total com a chave anon |
-| `fight_analyses` | **OFF** (`008`,`009`) | — | anon | acesso total com a chave anon |
-| `tactical_analyses` | ON | `USING (true)` | anon | sem efeito |
-| `ai_chat_sessions` | ON | `USING (true)` | **admin** | sem efeito |
-| `analysis_versions` | ON | `USING (true)` (SELECT/INSERT) | anon | sem efeito |
-| `profile_versions` | ON | `auth.uid() = user_id` | **admin** | contornada |
-| `strategy_versions` | ON | `auth.uid() = user_id` | **admin** | contornada |
-| `api_usage` | ON nas migrations, **inativa na prática** | `auth.uid() = user_id` | anon | ❌ **não bloqueia** — verificado: grava e é lida pela chave anon |
-| `users` | UNKNOWN | UNKNOWN | anon | NEEDS_CONFIRMATION |
+| `athletes` | **OFF** (`008`,`009`) | — | service_role | acesso total com a chave anon, até o `REVOKE` rodar |
+| `opponents` | **OFF** (`008`,`009`) | — | service_role | acesso total com a chave anon, até o `REVOKE` rodar |
+| `fight_analyses` | **OFF** (`008`,`009`) | — | service_role | acesso total com a chave anon, até o `REVOKE` rodar |
+| `tactical_analyses` | ON | `USING (true)` | service_role | sem efeito — `USING (true)` não filtra nada |
+| `ai_chat_sessions` | ON | `USING (true)` | service_role | sem efeito |
+| `analysis_versions` | ON | `USING (true)` (SELECT/INSERT) | service_role | sem efeito |
+| `profile_versions` | ON | `auth.uid() = user_id` | service_role | contornada (nunca satisfeita — auth é JWT próprio) |
+| `strategy_versions` | ON | `auth.uid() = user_id` | service_role | contornada |
+| `api_usage` | ON nas migrations, **inativa na prática** | `auth.uid() = user_id` | service_role | não bloqueava — verificado: gravava e era lido pela chave anon |
+| `users` | UNKNOWN | UNKNOWN | service_role | acesso total com a chave anon, até o `REVOKE` rodar |
 
-**Conclusão (revisada após medição):** o banco **não reforça autorização em nenhuma tabela, exceto `profile_versions`** — a única onde a política de fato bloqueia a chave anon. Toda a autorização vive na aplicação. Ver [ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md) e [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
+**Conclusão:** o banco **não reforça autorização em nenhuma tabela via RLS** — nem mesmo `profile_versions`, cuja política nunca é satisfeita por `auth.uid()`. Reativar RLS não é a defesa escolhida ([ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md)); a defesa é `REVOKE` de privilégio + autorização 100% na aplicação ([ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md)). Toda a proteção de fato, hoje, é: (1) o cliente `anon` deixar de ter GRANT (pendente — migration 024) e (2) as camadas de `resolveScope`/`requireScope` na aplicação (specs 005–006, já em produção).
 
-### ✅ Estado REAL medido (2026-08-13, spec 002)
+### Estado REAL medido (2026-08-13, spec 002) — histórico, até o `REVOKE` rodar
 
-Teste empírico: tentativa de `SELECT` em cada tabela **com a chave anon**. Responde RLS e GRANTs de uma vez.
+Teste empírico: tentativa de `SELECT` em cada tabela **com a chave anon**. Responde RLS e GRANTs de uma vez. **Este é o estado que a migration 024 fecha** — reproduza o mesmo teste depois de rodá-la; o resultado esperado é 401/403 em todas as linhas abaixo, exceto `profile_versions`, que já era a única bloqueada.
 
 | Tabela | anon lê? | Linhas expostas |
 |---|---|---|
@@ -292,7 +293,7 @@ Teste empírico: tentativa de `SELECT` em cada tabela **com a chave anon**. Resp
 
 **Conclusão:** 9 de 10 tabelas estão abertas à chave publicável que está commitada no git. **`profile_versions` é a única exceção**, o que também explica por que ela é a única tabela cuja política de fato bloqueia — e por que `ProfileVersion` precisa usar `supabaseAdmin`.
 
-Isto **eleva a prioridade da [spec 008](../specs/008-database-access-lockdown/spec.md)**: a exposição de hashes de senha é materialmente mais grave do que a auditoria estimou.
+Isto foi o que elevou a prioridade da [spec 008](../specs/008-database-access-lockdown/spec.md): a exposição de hashes de senha é materialmente mais grave do que a auditoria original estimava. **O `REVOKE` que fecha isso está em [`migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), pendente de execução manual pelo proprietário.**
 
 ### Consultas de catálogo que permanecem pendentes
 
@@ -471,7 +472,7 @@ Desde a [spec 006](../specs/006-ownership-in-data-access/spec.md) o escopo é **
 
 ### Decidido (`PLANNED`)
 
-**Revogar GRANTs de `anon`/`authenticated`; backend acessa por `service_role`** — ver [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
+~~**Revogar GRANTs de `anon`/`authenticated`; backend acessa por `service_role`**~~ — não é mais "futuro": é a [spec 008](../specs/008-database-access-lockdown/spec.md), executada em 2026-08-24. O lado do código está pronto (cliente único, sem fallback — §1); o `REVOKE` em si está escrito em [`migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql) e pendente de execução manual pelo proprietário (§4). Ver [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
 
 **Unificar `athletes` e `opponents`** numa entidade com marcação de papel — ver [ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md). É a migração de **maior risco** do projeto: toca `person_id` polimórfico, `athlete_id`/`opponent_id` e `profile_versions.person_id`, todos sem FK. Depende de unificar o tipo de `user_id` antes.
 

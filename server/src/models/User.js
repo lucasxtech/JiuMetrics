@@ -1,4 +1,4 @@
-const { supabase, supabaseAdmin } = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const bcrypt = require('bcrypt');
 
 class User {
@@ -381,7 +381,7 @@ class User {
   static async transferData(fromUserId, toUserId) {
     const tables = ['athletes', 'opponents', 'fight_analyses', 'tactical_analyses'];
     for (const table of tables) {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from(table)
         .update({ user_id: toUserId })
         .eq('user_id', fromUserId);
@@ -400,7 +400,7 @@ class User {
   static async deleteAllData(userId) {
     const tables = ['fight_analyses', 'tactical_analyses', 'athletes', 'opponents'];
     for (const table of tables) {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from(table)
         .delete()
         .eq('user_id', userId);
@@ -418,7 +418,7 @@ class User {
   static async hardDelete(userId) {
     try {
       await User.invalidateTokens(userId);
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('users')
         .delete()
         .eq('id', userId);

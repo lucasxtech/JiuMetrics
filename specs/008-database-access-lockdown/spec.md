@@ -1,6 +1,6 @@
 # SPEC-008 — Fechamento do acesso ao banco
 
-**Status: Proposed** · Etapa 6 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (2026-08-24) — parcial: código pronto, execução em produção pendente** · Etapa 6 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
 
 ## Context
 
@@ -84,15 +84,15 @@ Cada passo é reversível independentemente.
 
 ## Acceptance Criteria
 
-- [ ] `curl` ao PostgREST com a chave anon **falha** (401/permissão) para `athletes`, `opponents`, `fight_analyses`, `tactical_analyses`, `ai_chat_sessions`, `analysis_versions`, `api_usage`
-- [ ] Aplicação funciona normalmente com `service_role`
-- [ ] Backend **não inicia** sem `SUPABASE_SERVICE_ROLE_KEY` (mensagem de erro clara)
-- [ ] `grep` por `supabaseAdmin` e `supabase` mostra um único cliente
-- [ ] `frontend/.env.production` sem `SUPABASE_*`; `.env.production` no `.gitignore`
-- [ ] Chaves do Supabase rotacionadas; as antigas revogadas
-- [ ] As 16 suítes verdes; E2E dos fluxos críticos verde
-- [ ] Comando de rollback (`GRANT`) documentado no PR
-- [ ] `SELECT count(*) FROM api_usage` cresce após operação de IA (confirmando o efeito colateral)
+- [~] `curl` ao PostgREST com a chave anon **falha** para `athletes`, `opponents`, `fight_analyses`, `tactical_analyses`, `ai_chat_sessions`, `analysis_versions`, `api_usage`, `users`, `profile_versions`, `strategy_versions` — **script pronto em [`migrations/024-revoke-anon-access.sql`](../../server/migrations/024-revoke-anon-access.sql), não executado.** Nenhuma ferramenta disponível neste ambiente tem credencial de conexão direta ao Postgres (a chave `service_role` fala REST via PostgREST, não SQL cru) — é passo manual do proprietário, com o comando de verificação (`curl` antes/depois) no cabeçalho do próprio arquivo
+- [x] Aplicação funciona normalmente com `service_role` — as 28 suítes de backend (331 testes) passam com o cliente unificado
+- [x] Backend **não inicia** sem `SUPABASE_SERVICE_ROLE_KEY` — `server/src/config/__tests__/supabase.test.js`, 4 casos, incluindo o de regressão que impede reintroduzir um cliente anon
+- [x] `grep` por `supabaseAdmin` mostra zero ocorrências em código; `supabase` é o único cliente
+- [x] `frontend/.env.production` sem `SUPABASE_*`; arquivo retirado do controle de versão (`git rm --cached`) e `.gitignore` corrigido para `.env.*` (o padrão anterior, só `.env`, não cobria `.env.production` — a causa raiz do vazamento)
+- [ ] **Chaves do Supabase e do Gemini rotacionadas; senha de teste trocada** — ação nos dashboards do Supabase / Google AI Studio, fora do alcance deste ambiente
+- [x] As suítes de backend verdes (28/28, 331/331) e lint sem erro; ⚠️ **E2E continua não rodando** (dívida pré-existente, não desta spec)
+- [x] Comando de rollback (`GRANT`) documentado no próprio arquivo da migration, comentado e pronto para descomentar
+- [~] `SELECT count(*) FROM api_usage` cresce após operação de IA — **já era verdade antes desta spec** (spec 002 mediu 173 linhas, US$ 3,03; a spec 007 já havia registrado o efeito). Não é um efeito colateral desta spec: a tabela nunca esteve bloqueada, ao contrário do que a auditoria original supunha
 
 ## Testing Strategy
 

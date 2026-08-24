@@ -2,10 +2,12 @@
 
 ## Status
 
-**Accepted — não implementado** (decidido em 2026-08-12).
+**Accepted — parcialmente implementado** (decidido em 2026-08-12; código executado na [spec 008](../../specs/008-database-access-lockdown/spec.md), 2026-08-24).
 **Supersedes [ADR-002](./002-rls-desligado-autorizacao-na-aplicacao.md).**
 
-⚠️ **O estado descrito em ADR-002 é o que está em produção hoje.** Este ADR registra a direção decidida; o código e o banco ainda não refletem isso.
+✅ **O lado do código está feito e é o descrito abaixo:** cliente único `service_role`, sem fallback (`server/src/config/supabase.js`); as variáveis de Supabase saíram de `frontend/.env.production`, que foi retirado do controle de versão.
+
+🟡 **O lado do banco está escrito e não executado.** O `REVOKE` de `anon`/`authenticated` está em [`server/migrations/024-revoke-anon-access.sql`](../../server/migrations/024-revoke-anon-access.sql), pronto para colar no SQL Editor do Supabase — mas não há, neste ambiente, credencial de conexão direta ao Postgres (só a chave `service_role`, que fala REST via PostgREST e não executa DCL). É um passo manual do proprietário. **Até ele rodar, a chave anon publicada continua com GRANT nas tabelas de produção** — o estado descrito em ADR-002/no AUDIT.md §4 é real até essa migration ser aplicada.
 
 ## Context
 
@@ -37,7 +39,9 @@ Implicações da decisão:
 
 **Consequência de projeto que precisa ser executada junto:** como não haverá mais nenhuma possibilidade de o banco servir de rede de segurança, **a garantia de posse deve descer do controller para o model**.
 
-✅ **Pré-requisito CUMPRIDO (2026-08-18).** A [spec 006](../../specs/006-ownership-in-data-access/spec.md) desceu a garantia: o escopo de posse é obrigatório na assinatura de todo método de model de domínio, e a chamada sem ele lança `MissingScopeError` (`utils/scopeGuard.js`). Os 6 endpoints que não verificavam posse foram corrigidos, e a armadilha estrutural — `FightAnalysis.update()`/`.delete()` aceitando qualquer ID, `AnalysisVersion` sem filtro — deixou de existir. A [spec 008](../../specs/008-database-access-lockdown/spec.md) está desbloqueada do ponto de vista de aplicação; **continua bloqueada** pela pergunta aberta ao proprietário (existe consumidor externo da chave anon?).
+✅ **Pré-requisito CUMPRIDO (2026-08-18).** A [spec 006](../../specs/006-ownership-in-data-access/spec.md) desceu a garantia: o escopo de posse é obrigatório na assinatura de todo método de model de domínio, e a chamada sem ele lança `MissingScopeError` (`utils/scopeGuard.js`). Os 6 endpoints que não verificavam posse foram corrigidos, e a armadilha estrutural — `FightAnalysis.update()`/`.delete()` aceitando qualquer ID, `AnalysisVersion` sem filtro — deixou de existir.
+
+✅ **Bloqueio de verificação RESOLVIDO (2026-08-24).** O proprietário confirmou: **não existe consumidor externo da chave anon.** A spec 008 executou os itens de código (1–4 do Decision, abaixo) sem período de migração para terceiros. Falta só o item 1 do lado do banco — o `REVOKE` em si — que é execução manual, fora do alcance deste ambiente.
 
 ## Rationale
 
@@ -65,7 +69,7 @@ Implicações da decisão:
 - **Todo o backend passa a rodar com a chave mais poderosa do projeto.** Um SSRF ou RCE no backend passa a ter acesso total ao banco. (Na prática o efeito é limitado: com RLS desligada, a chave anon já dava acesso equivalente.)
 - **Testes de autorização passam a ser infraestrutura crítica.** ✅ Existem desde a [spec 004](../../specs/004-authorization-safety-net/spec.md) e **bloqueiam merge** desde a spec 006: `server/src/__tests__/authorization/`, com fixtures de 2 tenants. Limitação declarada: rodam contra um fake de PostgREST, não contra banco real (decisão P2).
 - **Se o produto evoluir para papéis profissionais** (médico, nutricionista — ver [`../DOMAIN.md`](../DOMAIN.md#6-o-que-não-faz-parte-do-domínio-atual)), com dado sensível cruzando fronteira de organização, esta decisão precisa ser reavaliada. Nesse cenário, defesa em profundidade no banco deixa de ser luxo.
-- **A revogação de GRANTs pode quebrar acesso legítimo não mapeado.** **NEEDS_CONFIRMATION:** existe algum consumidor da chave anon fora deste repositório (script, dashboard, automação)?
+- ~~**A revogação de GRANTs pode quebrar acesso legítimo não mapeado.**~~ ✅ **RESPONDIDO (2026-08-24):** não existe consumidor da chave anon fora deste repositório. O `REVOKE` pode rodar sem período de migração.
 
 ## ✅ Verificação executada (2026-08-13, [spec 002](../../specs/002-verification-baseline/spec.md))
 
@@ -76,6 +80,10 @@ O pré-requisito desta decisão foi cumprido, por **teste empírico** em vez de 
 **A escrita também está liberada:** um `INSERT` com a chave anon é recusado por violação de `NOT NULL`, **não** por permissão.
 
 **Consequência para esta decisão:** o risco é **maior** do que o ADR estimou — não é só vazamento de dado de domínio, são hashes de senha. Isto **eleva a prioridade desta spec** acima do que o plano previa, e é a razão de a recomendação atual ser antecipá-la. A premissa da decisão (revogar em vez de reativar RLS) **não muda**.
+
+## Execução (spec 008, 2026-08-24)
+
+Itens 2–4 do *Decision* (unificar cliente, falhar no boot, remover variáveis do frontend) estão feitos no código — ver `server/src/config/supabase.js` e `frontend/.env.production`. O item 1 (`REVOKE`) está escrito em [`server/migrations/024-revoke-anon-access.sql`](../../server/migrations/024-revoke-anon-access.sql) com o rollback (`GRANT` de volta) documentado no próprio arquivo, mas **não foi executado** — nenhuma ferramenta disponível neste ambiente tem uma credencial de conexão direta ao Postgres (a chave `service_role` fala REST via PostgREST, não SQL cru). É o próximo passo manual do proprietário; o resultado esperado, e como verificá-lo, está no cabeçalho da migration. O item 5 (rotação de chaves) segue como ação do proprietário nos dashboards do Supabase e do Google AI Studio — fora do alcance deste ambiente pelo mesmo motivo.
 
 **Ainda pendente** (não bloqueia, só documenta): a definição nominal das políticas e dos GRANTs, consultável apenas no SQL Editor:
 
@@ -92,7 +100,8 @@ SELECT grantee, table_name, privilege_type
 - `server/migrations/{008,009}` — RLS desligada
 - `server/migrations/004-api-usage-final.sql` — `GRANT ALL ... TO anon, authenticated`
 - `frontend/.env.production` — credenciais rastreadas no git
-- `server/src/config/supabase.js` — os dois clientes e o fallback silencioso
+- `server/src/config/supabase.js` — antes: os dois clientes e o fallback silencioso. Depois da spec 008: cliente único, falha no `require()` sem `SUPABASE_SERVICE_ROLE_KEY`
+- `server/migrations/024-revoke-anon-access.sql` — o `REVOKE` escrito (spec 008), pendente de execução manual
 - `server/src/models/FightAnalysis.js` — `update`/`delete` sem filtro de `user_id`
 - `server/src/utils/tenantScope.js` — a regra de escopo que passa a ser a única proteção
 - [`../../AUDIT.md`](../../AUDIT.md) §6, §7, §9 — falhas e evidência em `arquivo:linha`

@@ -15,9 +15,15 @@ yarn-error.log
 Thumbs.db
 
 # Environment
+#
+# spec 008: `.env` sozinho NÃO cobre `.env.production` — é por isso que
+# `frontend/.env.production` (com credencial real do Supabase) foi
+# commitado e ficou rastreado por meses. `.env.*` cobre qualquer variante,
+# com exceção explícita para os `.env.example` que são templates sem
+# segredo e ficam versionados de propósito.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Build
 dist/

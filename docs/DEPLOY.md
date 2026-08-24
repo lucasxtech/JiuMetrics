@@ -260,16 +260,16 @@ vercel
 **✅ Já está em produção!** Supabase é cloud-native.
 
 ### Checklist:
-- [ ] Migrações executadas (migrations/*.sql)
-- [ ] RLS (Row Level Security) configurado
+- [ ] Migrações executadas (migrations/*.sql) — ver ressalva em [`docs/DATABASE.md`](./DATABASE.md) §1: elas não são a fonte de verdade
+- [ ] `anon`/`authenticated` sem GRANT nas tabelas de `public` (spec 008) — **não** RLS: [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md) escolheu revogar acesso em vez de reativar RLS, porque a autenticação é JWT próprio e `auth.uid()` nunca é satisfeita
 - [ ] Índices criados para performance
 - [ ] Backup automático ativado (Settings → Database)
 - [ ] Connection pooling configurado se necessário
 
 ### Boas Práticas:
-- Use `SUPABASE_SERVICE_KEY` apenas no backend
-- Exponha apenas `SUPABASE_ANON_KEY` no frontend
-- Configure políticas RLS para cada tabela
+- ⚠️ **O frontend não usa Supabase.** Nenhuma variável `SUPABASE_*` pertence a `frontend/.env.production` — chegou a existir uma chave publicável lá, rastreada no Git, e ela é o achado de segurança mais grave já registrado neste projeto (ver [`docs/AUTHORIZATION.md`](./AUTHORIZATION.md))
+- **Só existe `SUPABASE_SERVICE_ROLE_KEY` no backend** (spec 008) — o cliente anon foi removido, não só despriorizado
+- **Não configure RLS por tabela.** A decisão do projeto ([ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md), [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md)) é manter RLS desligada e proteger o banco por `REVOKE` + autorização na aplicação
 
 ---
 
@@ -279,21 +279,23 @@ vercel
 ```env
 VITE_API_URL=https://jiumetrics-api.vercel.app/api
 ```
+Nenhuma variável de Supabase pertence aqui — o frontend nunca falou com o Supabase. Desde a spec 008 este arquivo está fora do Git (`.gitignore` cobre `.env.*`); configure `VITE_API_URL` também como variável de ambiente no painel da Vercel, para o build funcionar a partir de um checkout limpo.
 
 ### Backend (configurar no painel de deploy)
 ```env
 NODE_ENV=production
 PORT=5050
 SUPABASE_URL=https://seu-projeto.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 JWT_SECRET=seu-secret-super-seguro-min-32-chars
 JWT_EXPIRES_IN=7d
 GEMINI_API_KEY=AIzaSy...
 CORS_ORIGIN=https://jiumetrics.vercel.app
 ```
+Desde a spec 008 o backend **não inicia** sem `SUPABASE_SERVICE_ROLE_KEY` — não há mais `SUPABASE_ANON_KEY` nem fallback entre clientes.
 
 **⚠️ Segurança:**
-- NUNCA commitar arquivos `.env` ao Git
+- NUNCA commitar arquivos `.env` ao Git — `frontend/.env.production` foi o exemplo real disso acontecendo, por um `.gitignore` que só cobria `.env` e não `.env.*`
 - Usar `.env.example` como template
 - Rotacionar secrets regularmente
 

@@ -1,7 +1,7 @@
 /**
  * SPEC-005 — testes de unidade do seam de política, sem Express (R1).
  */
-jest.mock('../../config/supabase', () => ({ supabase: {}, supabaseAdmin: {} }));
+jest.mock('../../config/supabase', () => ({ supabase: {} }));
 jest.mock('../../models/User');
 
 const User = require('../../models/User');

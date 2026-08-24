@@ -2,9 +2,9 @@
 
 ## Status
 
-**Superseded by [ADR-009](./009-acesso-ao-banco-exclusivamente-por-service-role.md)** (2026-08-12).
+**Superseded by [ADR-009](./009-acesso-ao-banco-exclusivamente-por-service-role.md)** (2026-08-12; ADR-009 parcialmente executado na spec 008, 2026-08-24).
 
-⚠️ **O estado descrito aqui é o que está em produção hoje.** O ADR-009 decide substituí-lo, mas **ainda não foi implementado**. Até lá, este documento descreve o comportamento real do sistema.
+⚠️ **A parte de RLS descrita aqui continua valendo — e vai continuar.** O ADR-009 não reativa RLS; ele revoga o GRANT da chave anon (defesa diferente, mesmo RLS desligado). A parte que muda é o acesso: os dois clientes viraram um (`service_role`), e o `REVOKE` de `anon`/`authenticated` está escrito em [`server/migrations/024-revoke-anon-access.sql`](../../server/migrations/024-revoke-anon-access.sql), pendente de execução manual pelo proprietário. Até ele rodar, a chave anon publicada **ainda tem GRANT** nas tabelas — a seção *Consequences* abaixo continua descrevendo o risco real.
 
 ## Context
 
@@ -61,7 +61,7 @@ Vale registrar o que **não** foi decidido junto: nada nas migrations menciona r
 
 - **Não existe defesa em profundidade.** Há exatamente **uma** camada de proteção de dados: o filtro no controller. Onde ela falha, o dado fica exposto sem nenhuma rede abaixo. A auditoria encontrou **6 endpoints** sem essa verificação, com leitura **e escrita** cross-tenant. Ver [`../AUTHORIZATION.md`](../AUTHORIZATION.md#known-issues).
 - **A segurança depende de disciplina, não de estrutura.** `FightAnalysis.update()` e `.delete()` aceitam qualquer ID; nenhum método de `AnalysisVersion` filtra por usuário (e a tabela nem tem `user_id`). O sistema é seguro só enquanto todo controller lembrar de filtrar.
-- **O banco fica alcançável sem passar pela aplicação.** Com RLS desligada e GRANTs de `anon` presumivelmente intactos, quem tiver a chave publicável fala direto com o PostgREST — sem JWT, sem rate limit, sem filtro de tenant. A chave está em `frontend/.env.production`, arquivo **rastreado pelo git**. **NEEDS_CONFIRMATION:** estado real dos GRANTs.
+- **O banco fica alcançável sem passar pela aplicação.** Com RLS desligada e GRANTs de `anon` intactos, quem tiver a chave publicável fala direto com o PostgREST — sem JWT, sem rate limit, sem filtro de tenant. ✅ **Medido, não mais hipótese** (spec 002, 2026-08-13): a chave lia 9 das 10 tabelas, incluindo `users` com `password_hash` e `email` de 25 usuários; a chave estava em `frontend/.env.production`, **rastreada pelo git** até a spec 008 remover o arquivo do controle de versão. O `REVOKE` que fecha isso está escrito (spec 008) e pendente de execução — ver ADR-009.
 - **`api_usage` foi o efeito colateral não previsto.** A única tabela cuja política *não* foi neutralizada é justamente a que o código acessa com a chave anon — então a política bloqueia, e o rastreamento de custo provavelmente **nunca funcionou**. Ver [`../modules/usage-tracking.md`](../modules/usage-tracking.md).
 - **Migrations contraditórias** dificultam saber o estado real: RLS foi ligada e desligada 4 vezes, e não há controle de quais migrations foram aplicadas em produção.
 

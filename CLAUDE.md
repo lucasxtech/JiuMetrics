@@ -2,7 +2,7 @@
 
 > **Para agentes de IA e desenvolvedores trabalhando neste repositório.** Leia isto antes de alterar qualquer coisa.
 >
-> **Atualizado:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md) e [010](./specs/010-frontend-consolidation/spec.md) executadas
+> **Atualizado:** 2026-08-24 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md) e [010](./specs/010-frontend-consolidation/spec.md) executadas · [008](./specs/008-database-access-lockdown/spec.md) parcialmente executada (código pronto, `REVOKE` pendente de execução manual)
 
 ---
 
@@ -14,7 +14,7 @@ JiuMetrics analisa vídeos de luta de Jiu-Jitsu com IA para produzir um perfil t
 
 ```
 frontend/    SPA React (11 páginas, 34 componentes, 13 services)
-server/      API Express (10 rotas, 13 controllers, 10 models, 22 migrations)
+server/      API Express (10 rotas, 13 controllers, 10 models, 23 migrations)
 playwright/  6 specs E2E em TypeScript (nunca rodam no CI)
 docs/        documentação permanente ← comece aqui
 specs/       histórico versionado de mudanças planejadas
@@ -64,8 +64,8 @@ Regra de porta do produto: **não é possível gerar estratégia sem ≥1 análi
 
 Regras não negociáveis:
 
-1. **Nunca commite segredo.** Já aconteceu, e o dano é real e medido: há uma chave da API do Gemini no histórico do git (`.archived/SUPABASE_SETUP.md`) e a chave publicável do Supabase em `frontend/.env.production`, arquivo rastreado. O scanner do CI só passou a bloquear na spec 003, e mesmo assim **cobre apenas o diff** — não expurga o que já está no histórico, e não pega senha genérica (ver o achado em `playwright/.env.example`).
-   > 🔴 **Verificado em 2026-08-13:** essa chave publicável **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários** — e a escrita também está liberada. É o achado de segurança mais grave do projeto. Ver [`docs/DATABASE.md`](./docs/DATABASE.md) §4 e a [spec 008](./specs/008-database-access-lockdown/spec.md).
+1. **Nunca commite segredo.** Já aconteceu, e o dano é real e medido: há uma chave da API do Gemini no histórico do git (`.archived/SUPABASE_SETUP.md` — **rotação pendente**, expurgar do histórico é operação separada, de maior risco) e havia a chave publicável do Supabase em `frontend/.env.production`, arquivo rastreado — **removido do controle de versão na spec 008**, mas ela **precisa ser rotacionada**: sair do Git não invalida uma chave já exposta. O scanner do CI só passou a bloquear na spec 003, e mesmo assim **cobre apenas o diff** — não expurga o que já está no histórico, e não pega senha genérica (ver o achado em `playwright/.env.example`).
+   > 🔴 **Verificado em 2026-08-13, ainda o achado mais grave do projeto:** essa chave publicável **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários** — e a escrita também está liberada. A spec 008 fechou o lado do código (cliente único `service_role`) e escreveu o `REVOKE` que fecha o acesso (`server/migrations/024-revoke-anon-access.sql`), mas **não o executou** — falta o proprietário rodá-lo no SQL Editor do Supabase, e só depois disso a chave antiga para de funcionar de fato. Ver [`docs/DATABASE.md`](./docs/DATABASE.md) §4.
 2. **Nunca devolva `error.message` ao cliente** em produção. ✅ Resolvido na spec 007: use `errorDetails(error)` de `utils/errorHandler.js`, que omite o detalhe quando `NODE_ENV === 'production'` e o mantém no log do servidor. Não volte a escrever `details: error.message` à mão.
 3. **Nunca logue PII.** O login loga o e-mail do usuário em toda tentativa — dívida conhecida.
 4. **Nunca construa HTML por string com conteúdo de LLM.** O sink conhecido (`pages/Analyses.jsx` → `innerHTML` com saída de IA) foi **fechado na spec 010**: o conteúdo passa por `escapeDeep` em `utils/strategyReportHtml.js` antes de entrar no HTML. ⚠️ O template-string **continua existindo** — ao editar aquele arquivo, leia dados só do objeto já escapado (`a`), nunca do cru. O JWT segue em `localStorage`, então um novo sink volta a valer sessão.
@@ -125,7 +125,7 @@ Regras:
 3. **Nunca versione PII em migration.** As `017`, `019` e `022` contêm e-mails reais — dívida conhecida, não padrão.
 4. **`user_id` tem tipos divergentes**: `VARCHAR(255)` em `athletes`/`opponents`/`fight_analyses`, `UUID` nas demais. Não presuma o tipo.
 5. **Apenas 4 foreign keys reais existem** em todo o banco. Não presuma integridade referencial — `person_id` é polimórfico sem constraint.
-6. **Dois clientes Supabase** (`supabase` anon × `supabaseAdmin` service_role), com divisão arbitrária e **fallback silencioso** entre eles. Verifique qual o model usa antes de assumir se RLS se aplica.
+6. ✅ **RESOLVIDO na [spec 008](./specs/008-database-access-lockdown/spec.md)** — os dois clientes viraram um (`supabase`, `service_role`), sem fallback: `config/supabase.js` lança no boot sem `SUPABASE_SERVICE_ROLE_KEY`. ⚠️ **O `REVOKE` de `anon`/`authenticated` está escrito (`server/migrations/024-revoke-anon-access.sql`) e não executado** — pendente de o proprietário colar no SQL Editor do Supabase. Até lá, a chave anon publicada continua com GRANT nas tabelas de produção.
 
 ## Documentation
 

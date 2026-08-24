@@ -11,6 +11,29 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 🔒 Fechamento do acesso ao banco — 2026-08-24 · [spec 008](./specs/008-database-access-lockdown/spec.md)
+
+**Parcial: o código está pronto, a execução em produção não.** A chave publicável do Supabase estava num arquivo **rastreado no Git** (`frontend/.env.production`) e, medida contra produção na spec 002, lia 9 das 10 tabelas — incluindo `users`, com `email` e `password_hash` (bcrypt) dos 25 usuários, com escrita também liberada. Era o achado de segurança mais grave do projeto, e continua sendo até o passo pendente abaixo ser executado.
+
+#### Segurança
+
+- **Backend unificado num único cliente Supabase (`service_role`).** Havia dois clientes sem regra documentada sobre qual model usava qual, e o cliente privilegiado **caía silenciosamente** para o cliente anon quando a chave de serviço não estava definida — o mesmo código rodando com dois níveis de privilégio dependendo de uma variável de ambiente, sem aviso. Hoje só existe `supabase`, e o processo **falha no boot** sem `SUPABASE_SERVICE_ROLE_KEY`, em vez do fallback silencioso.
+- **`frontend/.env.production` retirado do controle de versão.** O `.gitignore` tinha `.env`, que nunca cobriu `.env.production` — padrão *glob* diferente, não um prefixo. É a causa raiz de a chave ter ficado exposta no histórico do repositório. Corrigido para `.env.*` com exceção para os `.env.example` (templates sem segredo, versionados de propósito).
+- **`REVOKE` de `anon`/`authenticated` escrito e pronto** em [`server/migrations/024-revoke-anon-access.sql`](./server/migrations/024-revoke-anon-access.sql), por tabela (não `ON ALL TABLES IN SCHEMA public`, para não arriscar atingir função ou view interna do Supabase), com o comando de rollback (`GRANT` de volta) comentado no mesmo arquivo.
+
+#### ⛔ Pendente — ação manual do proprietário, fora do alcance deste ambiente
+
+- **O `REVOKE` acima não foi executado.** Este ambiente só tem a chave `service_role`, que fala com o banco via PostgREST (REST) — e PostgREST não executa DCL. Faltando uma credencial de conexão direta ao Postgres, o único caminho é colar o arquivo no SQL Editor do dashboard do Supabase. **Até isso rodar, a chave anon antiga continua com GRANT nas tabelas de produção.**
+- **Chaves não rotacionadas.** A chave publicável do Supabase e a chave do Gemini (esta no *histórico* do Git, em `.archived/SUPABASE_SETUP.md`) precisam ser trocadas nos respectivos dashboards. Sair do controle de versão não invalida uma chave já exposta.
+- **Senha de `contateste@teste.com` não trocada.**
+
+#### Resolvido por consequência
+
+- **A pergunta que bloqueava esta spec desde a spec 002 foi respondida:** não existe consumidor externo da chave anon. Isso permitiu executar sem período de migração para terceiros.
+- **`api_usage` deixa de depender da política RLS estar inativa.** `ApiUsage.js` já usava o nome `supabase` — o que mudou é o que esse nome aponta. O registro de custo **já funcionava** (medido: 173 linhas, US$ 3,03), mas por acidente; agora é robusto a uma eventual reativação de política.
+
+---
+
 ### 🛡️ Consolidação do frontend — 2026-08-18 · [spec 010](./specs/010-frontend-consolidation/spec.md)
 
 #### Segurança

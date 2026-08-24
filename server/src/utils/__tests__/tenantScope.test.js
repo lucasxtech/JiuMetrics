@@ -7,7 +7,7 @@
 // importa no topo do arquivo, e jest.mock('../../models/User') sem factory
 // carrega o módulo real uma vez (para gerar o automock), o que executaria o
 // throw de "Supabase credentials not configured" sem isto.
-jest.mock('../../config/supabase', () => ({ supabase: {}, supabaseAdmin: {} }));
+jest.mock('../../config/supabase', () => ({ supabase: {} }));
 jest.mock('../../models/User');
 
 const User = require('../../models/User');

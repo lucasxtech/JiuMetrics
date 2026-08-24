@@ -155,10 +155,11 @@ Quem decide o **status HTTP** é o controller (via `AnalysisVersion.isAnalysisIn
 | **API — papel** | `adminMiddleware` em `/admin` e `/debug` | ✅ |
 | **API — posse do dado** | `resolveScope` (`services/authorization.js`, spec 005) no controller | ✅ **os 6 endpoints que faltavam foram corrigidos na spec 006** |
 | **Model** | escopo **obrigatório na assinatura** (`requireScope`), spec 006 | ✅ chamada sem escopo lança `MissingScopeError`. `analysis_versions` autoriza pela análise pai |
-| **Banco (RLS)** | — | ❌ **desligado** em `athletes`/`opponents`/`fight_analyses`; `USING (true)` em outras 3 tabelas |
+| **Banco (RLS)** | — | ❌ **desligado** em `athletes`/`opponents`/`fight_analyses`; `USING (true)` em outras 3 tabelas — decisão deliberada ([ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md)), não vai mudar |
+| **Banco (GRANT da chave anon)** | `REVOKE` de `anon`/`authenticated` (spec 008) | 🟡 **código pronto, execução pendente** — o backend já é um único cliente `service_role` sem fallback; o `REVOKE` está escrito em [`server/migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql) e precisa ser colado no SQL Editor do Supabase pelo proprietário (sem credencial de conexão direta ao Postgres neste ambiente, não há como executá-lo por aqui) |
 | **Rate limiting** | `express-rate-limit` | ❌ **`MemoryStore` em serverless** — contador por instância |
 
-**A leitura importante desta tabela:** desde a spec 006 existem **duas** camadas de aplicação — o controller resolve o escopo e o model o **exige**. Continua não havendo defesa no banco (RLS desligado, e a [spec 008](../specs/008-database-access-lockdown/spec.md) vai remover até essa possibilidade ao revogar os GRANTs de `anon`). A diferença prática é que um endpoint novo que esqueça o escopo agora **falha** em vez de vazar — antes, a omissão era silenciosa.
+**A leitura importante desta tabela:** desde a spec 006 existem **duas** camadas de aplicação — o controller resolve o escopo e o model o **exige**. RLS continua desligada de propósito — a defesa de banco escolhida não é reativá-la, é revogar o GRANT da chave anon (spec 008, linha acima). Até essa migration rodar, **quem tiver a chave publicável ainda fala direto com o PostgREST**, contornando as duas camadas de aplicação inteiras. A diferença prática das specs 005/006, independente disso, é que um endpoint novo que esqueça o escopo agora **falha** em vez de vazar — antes, a omissão era silenciosa.
 
 ## 7. Fluxo de autorização completo
 
@@ -271,9 +272,9 @@ Investigados e **descartados**, para não desperdiçar esforço futuro:
 
 O **Estágio 2** (relacionamento profissional↔atleta) só faz sentido quando o primeiro papel profissional entrar no produto, e tem endereço pronto: `authorize(actor, action, resource)`.
 
-**Acesso ao banco exclusivamente por `service_role`** — revogar todo GRANT de `anon`/`authenticated` nas tabelas; o backend passa a ser o único caminho até o dado. Ver [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
+~~**Acesso ao banco exclusivamente por `service_role`**~~ — 🟡 **spec 008, parcialmente executada (2026-08-24).** O código já é o descrito: cliente único, `service_role`, sem fallback (§6). O `REVOKE` de `anon`/`authenticated` está escrito em [`server/migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), mas **não foi executado** — falta o proprietário colá-lo no SQL Editor do Supabase. Ver [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
 
-Consequência que precisa ficar explícita: **isso remove qualquer possibilidade de o banco servir como rede de segurança.** Torna obrigatório que a garantia de posse desça do controller para o model, porque um endpoint esquecido passa a não ter nenhuma defesa abaixo dele.
+Consequência que precisa ficar explícita, e que **já vale mesmo antes do `REVOKE` rodar**: com a aplicação corrigida (specs 005–006), o banco deixou de ser necessário como rede de segurança — a garantia de posse já desceu do controller para o model. O `REVOKE` fecha o último caminho que ainda contorna as duas camadas por inteiro: falar direto com o PostgREST usando a chave anon.
 
 ## Em consideração (sem decisão)
 

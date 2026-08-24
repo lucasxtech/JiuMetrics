@@ -16,7 +16,7 @@
  * "a mudança de texto foi intencional?". Se foi, o golden precisa ser
  * recapturado deliberadamente, não ajustado até passar.
  */
-jest.mock('../../config/supabase', () => ({ supabase: {}, supabaseAdmin: {} }));
+jest.mock('../../config/supabase', () => ({ supabase: {} }));
 jest.mock('../../models/FightAnalysis');
 jest.mock('../llm');
 

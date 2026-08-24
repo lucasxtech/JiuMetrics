@@ -76,8 +76,8 @@ O objeto `usage` vem sempre de `services/llm.js#extractUsage`, que normaliza o `
 
 - `models/ApiUsage.js` — cálculo, persistência e agregação
 - `services/authorization.js#resolveScope` — escopo admin/usuário (spec 005; `utils/tenantScope.js#getScopeIds` é wrapper `@deprecated`)
-- **`supabase` (cliente anon)** — funciona porque a política RLS de `api_usage` **não está ativa** em produção (verificado 2026-08-13). Frágil por depender disso: se a política for reativada, o registro para de gravar em silêncio
-- Tabela `api_usage` — RLS ligada nas migrations, **inativa na prática**
+- ~~`supabase` (cliente anon)~~ ✅ **RESOLVIDO na spec 008** — `config/supabase.js` unificou num único cliente `service_role`; `ApiUsage.js` importa o mesmo `supabase` de sempre (nenhuma linha mudou neste arquivo), mas o que esse nome aponta mudou. O registro deixou de depender da política RLS estar inativa
+- Tabela `api_usage` — RLS ligada nas migrations, **sem efeito para o código, que agora acessa por `service_role`**
 - `services/llm.js#extractUsage` — origem de todo `usage`
 
 ## Flow
@@ -88,9 +88,9 @@ flowchart TD
         OP["análise · estratégia · resumo · chat"] --> LLM["llm.js#extractUsage<br/>modelo real + tokens"]
         LLM --> LOG["logApiUsageWithType"]
         LOG --> CALC["calculateCost(modelo, tokens)<br/>PRICING, com faixas"]
-        CALC --> INS["INSERT em api_usage<br/>via cliente ANON"]
+        CALC --> INS["INSERT em api_usage<br/>via cliente service_role (spec 008)"]
         INS --> OK["✅ gravado<br/>(173 linhas, verificado 2026-08-13)"]
-        INS -.->|"se a política RLS for reativada"| REJ["❌ rejeitado"]
+        INS -.->|"erro do PostgREST, qualquer causa"| REJ["❌ rejeitado"]
         REJ --> WARN["logToleratedFailure (spec 007)<br/>falha TOLERADA por decisão,<br/>mas localizável no log"]
     end
 
@@ -130,7 +130,7 @@ flowchart TD
 
 ## Future Considerations
 
-- **Migrar para `supabaseAdmin`** — a persistência **já funciona**, mas por acidente: depende de a política RLS estar inativa. `service_role` é o cliente correto para escrita de sistema e torna o registro robusto a uma reativação da política. Também é consequência natural da [spec 008](../../specs/008-database-access-lockdown/spec.md).
+- ~~**Migrar para `supabaseAdmin`**~~ ✅ feito na spec 008 — não como migração pontual deste model, mas porque o backend inteiro passou a ter um único cliente (`service_role`). O registro deixou de depender de a política RLS estar inativa.
 - **Investigar as 55 linhas com custo zero** — provavelmente modelos ausentes de `PRICING`. É o que hoje subestima o gasto real, e **a visibilidade já existe** (ao contrário do que a auditoria supunha).
 - **Quota por usuário/tenant** persistida no banco, com enforcement antes da chamada de IA.
 - **Allow-list de modelos**, encerrando tanto o abuso de custo quanto a contabilidade incorreta.
