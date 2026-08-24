@@ -1,6 +1,6 @@
-# GAPS — o que ficou aberto depois das specs 002–010
+# GAPS — o que ficou aberto depois das specs 002–011
 
-> **Atualizado:** 2026-08-24 · **Escopo:** tudo que as specs 002 a 010 **não** resolveram — incluindo o que a 008 resolveu só em parte —, com o motivo real de cada caso.
+> **Atualizado:** 2026-08-24 · **Escopo:** tudo que as specs 002 a 011 **não** resolveram — incluindo o que as specs 008 e 011 resolveram só em parte —, com o motivo real de cada caso.
 >
 > Este documento existe porque a alternativa é pior. Um relatório que só lista o que foi feito faz um sistema parecer mais pronto do que está — e neste repositório *parecer pronto* já foi a causa de três funcionalidades quebradas sobreviverem meses. Nada aqui é "TODO futuro": cada item tem uma razão de ainda estar aberto, e a razão importa mais que o item.
 
@@ -109,8 +109,8 @@ Nenhuma destas é técnica. Todas mudam o que o usuário vê, e por isso não fo
 
 ## 5. O estado do trabalho em si
 
-**Nada foi enviado. Não existe PR.** São **36 commits** locais na branch `chore/spec-002-verification-baseline`, cobrindo as specs 002 a 010 — o nome da branch deixou de descrever o conteúdo dela desde a terceira spec.
+**Nada foi enviado. Não existe PR.** São **39 commits** locais na branch `chore/spec-002-verification-baseline`, cobrindo as specs 002 a 011 (008 e 011 parciais, como registrado acima) — o nome da branch deixou de descrever o conteúdo dela desde a terceira spec.
 
-Portões verdes na última execução: **327 testes de backend**, **67 de frontend**, lint de backend e de frontend sem erro. E2E, como registrado acima, não roda.
+Portões verdes na última execução: **331 testes de backend** (28 suítes), **67 de frontend** (28 suítes), lint de backend e de frontend sem erro, `npm run typecheck` (novo, `server/`) sem erro. E2E, como registrado acima, não roda.
 
-**Antes de abrir PR**, duas coisas valem a pena: renomear a branch para algo que descreva o que ela contém, e decidir se 36 commits entram como um PR só (revisão difícil, história completa) ou fatiados por spec (revisão possível, mais trabalho de organização).
+**Antes de abrir PR**, duas coisas valem a pena: renomear a branch para algo que descreva o que ela contém, e decidir se 39 commits entram como um PR só (revisão difícil, história completa) ou fatiados por spec (revisão possível, mais trabalho de organização).
