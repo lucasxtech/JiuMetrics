@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Classes de erro customizadas para a aplicação
  */
@@ -148,10 +149,10 @@ class GeminiParseError extends AppError {
 class VideoDownloadError extends AppError {
   /**
    * @param {string} userMessage - Mensagem amigável para o usuário
-   * @param {object} debugInfo - Informações técnicas para debug
-   * @param {string} debugInfo.method - Método usado (yt-dlp, ytdl-core, ambos)
-   * @param {string} debugInfo.url - URL do vídeo
-   * @param {string} debugInfo.technicalError - Mensagem técnica do erro
+   * @param {object} [debugInfo] - Informações técnicas para debug
+   * @param {string} [debugInfo.method] - Método usado (yt-dlp, ytdl-core, ambos)
+   * @param {string} [debugInfo.url] - URL do vídeo
+   * @param {string} [debugInfo.technicalError] - Mensagem técnica do erro
    * @param {string} [debugInfo.phase] - Fase onde falhou (download, validation, upload)
    * @param {number} [statusCode=502] - HTTP status code
    */

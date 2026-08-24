@@ -16,11 +16,11 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [008](./008-database-access-lockdown/spec.md) | Fechamento do acesso ao banco | 6 | ✅ **Implemented** (parcial — código pronto, `REVOKE` pendente de execução manual) |
 | [009](./009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | 7 | ✅ **Implemented** (R4, rate limiting, bloqueado por infraestrutura) |
 | [010](./010-frontend-consolidation/spec.md) | Consolidação do frontend | 8 | ✅ **Implemented** (parcial — 3 itens dependem de verificação visual/E2E) |
-| [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | Proposed |
+| [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | 🟡 **Implemented** (parcial — só o item 5, TypeScript; itens 1–4 não iniciados) |
 
 O que **não** foi resolvido por elas — e por quê — está em [`docs/GAPS.md`](../docs/GAPS.md).
 
-As specs **002 a 010 foram executadas** (002 e 003 em 2026-08-13; 004–007, 009 e 010 em 2026-08-18; 008 em 2026-08-24, com a ressalva declarada acima). Resta `Proposed`: **011**. O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
+As specs **002 a 011 foram todas executadas ao menos parcialmente** (002 e 003 em 2026-08-13; 004–007, 009 e 010 em 2026-08-18; 008 e 011 em 2026-08-24, ambas com ressalva declarada acima). O plano que as origina e justifica a ordem é [`JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md).
 
 **Com a 006, os 7 vazamentos de posse da auditoria estão fechados** e o escopo passou a ser exigido na assinatura dos models.
 
@@ -48,8 +48,8 @@ flowchart TD
     style S11 fill:#8b1a1a,color:#fff
 ```
 
-**✅ 002 a 010 concluídas** — ver a tabela acima e [`docs/GAPS.md`](../docs/GAPS.md) para o que cada uma deixou aberto. **Falta só 011.**
-**Spec 011 é grande demais para uma unidade** e deve ser quebrada em specs próprias quando chegar a vez, com os números reais da 002 em mãos (ela mesma diz isso — ver seu `spec.md`).
+**✅ 002 a 011 executadas** — ver a tabela acima e [`docs/GAPS.md`](../docs/GAPS.md) para o que cada uma deixou aberto.
+**Spec 011 continua grande demais para o resto dela ir como uma unidade** — só o item 5 (TypeScript) foi executado; os itens 1–4 (baseline/runner, tipo de `user_id`, constraints, unificação `athletes`/`opponents`) precisam virar specs próprias quando chegar a vez, com backup testado e acesso direto ao Postgres como pré-requisitos (nenhum dos dois disponível neste ambiente).
 
 ### Specs sem número ainda
 
@@ -67,7 +67,7 @@ Mantidas porque continuam válidas e são de boa qualidade.
 | Spec | Escopo | Status |
 |---|---|---|
 | [`../SPEC-ANALISE-IA.md`](../SPEC-ANALISE-IA.md) | Pipeline de análise com IA | **Fase 1 implementada** ([ADR-006](../docs/decisions/006-camada-unica-de-llm-e-aposentadoria-do-multi-agente.md)); fases posteriores não |
-| [`../SPEC-FRONTEND.md`](../SPEC-FRONTEND.md) | Frontend | **Nenhum item implementado** — verificado em 2026-08-12. A spec 010 recorta dela o que é segurança e dado corrompido |
+| [`../SPEC-FRONTEND.md`](../SPEC-FRONTEND.md) | Frontend | Nenhum item implementado em 2026-08-12; **F1, F2, F11 e F15 resolvidos na spec 010** (segurança e dado corrompido). O resto (polish, componentes gigantes, 4 sistemas de estilo) segue aberto |
 
 ## Quando uma spec é obrigatória
 

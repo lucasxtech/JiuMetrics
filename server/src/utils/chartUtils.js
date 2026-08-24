@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Utilitários de gráficos.
  *

@@ -2,7 +2,7 @@
 
 > **Responde a uma pergunta:** em que estado o JiuMetrics está agora?
 >
-> **Última atualização:** 2026-08-18 · **Baseline:** `main` (`895066f`) + specs 002–007, 009 e 010 executadas · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
+> **Última atualização:** 2026-08-24 · **Baseline:** `main` (`895066f`) + specs 002–007, 009 e 010 executadas; 008 e 011 **parciais** (ver notas abaixo) · **Origem:** [`../AUDIT.md`](../AUDIT.md) + [spec 002](../specs/002-verification-baseline/spec.md) (verificação contra produção)
 >
 > **Regra deste documento:** `IMPLEMENTED` significa que existe no código e funciona. `PLANNED` significa decidido e **não** implementado. Nada é promovido de `PLANNED` para `IMPLEMENTED` sem verificação no código.
 
@@ -131,8 +131,8 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Iten
 | ~~10~~ | ✅ **RESOLVIDO (specs 007 e 009)** — gasto de IA tem três barreiras, todas antes de gastar: teto de 5 vídeos por requisição, allow-list de modelos (a escolha do cliente já não vira o modelo usado) e **orçamento mensal por tenant** (`AI_MONTHLY_BUDGET_USD`, default 50 — ~130× o histórico de US$ 0,38/mês). O orçamento conta o gasto **persistido**, o que faz valer em serverless |
 | ~~11~~ | ✅ **RESOLVIDO (specs 006 e 007)** — `athlete-summary` aceitava corpo arbitrário direto no prompt, sem posse nem limite. Passou a receber `athleteId` e carregar os dados no servidor (006); o schema de entrada (007) faz o formato antigo ser removido antes do controller |
 | 12 | **Fallback de autenticação abre em falha do banco** — volta a confiar no `role` do token, desligando as 3 proteções de uma vez |
-| 13 | **Migrations não são a fonte de verdade** — `users` nunca é criada, falta a `020`, sem runner nem controle de estado. **Impossível reconstruir o banco a partir do repositório** |
-| 14 | **Tipos de `user_id` divergentes** — VARCHAR em 3 tabelas, UUID em 5; FKs derrubadas na `008`. Mascara bugs (o de nº 6 passa por causa disso) |
+| 13 | **Migrations não são a fonte de verdade** — `users` nunca é criada, falta a `020`, sem runner nem controle de estado. **Impossível reconstruir o banco a partir do repositório.** ⚠️ A [spec 011](../specs/011-schema-integrity/spec.md) só executou o item de TypeScript (2026-08-24) — este continua **sem tocar**, porque exige `pg_dump` com acesso de superusuário ao Postgres |
+| 14 | **Tipos de `user_id` divergentes** — VARCHAR em 3 tabelas, UUID em 5; FKs derrubadas na `008`. Mascara bugs (o de nº 6 passa por causa disso). ⚠️ Também **sem tocar** — é o item de maior risco de perda de dado da spec 011, não iniciado |
 | ~~15~~ | ✅ **RESOLVIDO (spec 010)** — a cópia do frontend foi removida. Achado que destravou a decisão P7, que a spec tratava como bloqueio duro: **nenhuma das duas cópias tinha chamador de produção**. Eram 359 linhas de código morto divergente, e apagar uma não muda número em tela nenhuma. A pergunta "qual das duas refletia a intenção" volta quando alguém ligar a que sobrou a um consumidor |
 | 16 | **Trabalho longo de IA em request serverless** — provável timeout **após** consumir tokens |
 | 17 | **6 lockfiles para 3 `package.json`** (npm + yarn); `playwright/` sem lockfile |
@@ -140,7 +140,7 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Iten
 
 ### MEDIUM (resumo)
 
-Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **escreve no banco**) · ~~`handleError` vaza `error.message`~~ ✅ **resolvido na spec 007** (omitido em produção; o detalhe fica só no log do servidor) · enumeração de usuários no login · PII em log · sem `helmet`/CSP · CORS aceita qualquer `*.vercel.app` · validação de host do YouTube por substring (SSRF limitado) · nenhum validador de schema de entrada · sem `UNIQUE` em nenhuma migration · dois clientes Supabase com divisão arbitrária e fallback silencioso · prompt de produção hardcoded fora de `services/prompts/` · dois padrões de fetch no frontend sem invalidação cruzada · dashboard carrega 3 tabelas para exibir 4 números · sem paginação nas listagens · `athletes` e `opponents` duplicados · migrations com PII e `UPDATE` destrutivo sem `WHERE` · dois destinos de deploy simultâneos.
+Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **escreve no banco**) · ~~`handleError` vaza `error.message`~~ ✅ **resolvido na spec 007** (omitido em produção; o detalhe fica só no log do servidor) · enumeração de usuários no login · PII em log · ~~sem `helmet`/CSP~~ ✅ **resolvido na spec 010** (`helmet` deliberado; CSP no frontend em Report-Only) · CORS aceita qualquer `*.vercel.app` · validação de host do YouTube por substring no **backend** (frontend corrigido na spec 010; SSRF limitado continua no backend) · nenhum validador de schema de entrada nos ~12 endpoints fora de `/api/ai/*` · sem `UNIQUE` em nenhuma migration · ~~dois clientes Supabase com divisão arbitrária e fallback silencioso~~ ✅ **resolvido na spec 008** (cliente único `service_role`; o `REVOKE` de acesso segue pendente — ver HIGH acima) · prompt de produção hardcoded fora de `services/prompts/` · dois padrões de fetch no frontend sem invalidação cruzada (1 das 5 páginas migrada na spec 010) · dashboard carrega 3 tabelas para exibir 4 números · sem paginação nas listagens · `athletes` e `opponents` duplicados · migrations com PII e `UPDATE` destrutivo sem `WHERE` · dois destinos de deploy simultâneos.
 
 ### LOW (resumo)
 
@@ -152,7 +152,7 @@ Chat é o único caminho de IA sem `responseSchema` (parsing por regex que **esc
 
 | Categoria | Estado |
 |---|---|
-| **Tipagem** | **Ausente na aplicação** — 148 arquivos JS, 0 TS. As 3 falhas silenciosas seriam erro de compilação. Decisão de adotar: [ADR-010](./decisions/010-adotar-typescript-incrementalmente.md) (`PLANNED`) |
+| **Tipagem** | 🟡 **Etapa 1 no backend (spec 011, 2026-08-24)** — `// @ts-check` em `models/` e `utils/` (21 arquivos, zero erro), pegou 12 divergências reais de JSDoc na primeira passagem. **O resto continua sem tipagem**: ~48 arquivos de `server/src/` fora desses 2 diretórios, e os 79 arquivos do frontend inteiro. Nenhum `.ts`/`.tsx` foi criado — não é migração, é JSDoc virando contrato verificado. Ver [ADR-010](./decisions/010-adotar-typescript-incrementalmente.md) |
 | **Lint** | ✅ **RESOLVIDO na spec 003** — lint de frontend **e** backend bloqueiam merge. O do backend usa conjunto mínimo (só erro real, não estilo). Dívida remanescente: sem Prettier, `.editorconfig` nem pre-commit; ampliar o conjunto de regras é spec futura |
 | **Testes de autorização** | ✅ **EXISTEM desde a spec 004** — 6 testes de vazamento (`test.failing`, vermelho intencional até a spec 006 corrigir) + 5 de baseline (passam hoje, protegem o comportamento de admin). `server/src/__tests__/authorization/`. Rodam contra um **fake de PostgREST em memória** (decisão P2), não banco real — não existe projeto Supabase de teste separado da produção. **Limitação aceita:** prova que o filtro foi *pedido* na chamada, não que a query final restringiria as linhas num Postgres real; revisitar se/quando houver banco de teste dedicado. Desde a spec 005, a regra de escopo em si é testada em `server/src/services/__tests__/authorization.test.js` (sem Express); `utils/__tests__/tenantScope.test.js` cobre só o wrapper `@deprecated` |
 | **Testes inertes** | ✅ **RESOLVIDO na spec 003** — `server/tests/` removido (3 scripts com zero `describe`/`it`, confirmados como não alcançados por `jest --listTests`) |
@@ -187,9 +187,9 @@ Monólito de duas peças: **SPA React 19 + Vite** e **API Express 5**, ambos na 
 
 | # | Item | ADR |
 |---|---|---|
-| P1 | **Acesso ao banco exclusivamente por `service_role`** — revogar GRANTs de `anon`; a autorização passa a ser explicitamente 100% da aplicação | [009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md) |
+| ~~P1~~ | 🟡 **spec 008, parcial (2026-08-24)** — o backend já é um único cliente `service_role`, sem fallback. O `REVOKE` de `anon` está escrito (`server/migrations/024-revoke-anon-access.sql`) e **não executado**: exige o SQL Editor do Supabase, fora do alcance deste ambiente | [009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md) |
 | P2 | **Vercel como único destino de deploy** — remover o workflow do GitHub Pages, a detecção de `github.io` em `App.jsx` e a origem do CORS | [008](./decisions/008-vercel-como-unico-destino-de-deploy.md) |
-| P3 | **TypeScript incremental** — `checkJs` + `@ts-check` opt-in primeiro; **não** na mesma rodada das correções de autorização | [010](./decisions/010-adotar-typescript-incrementalmente.md) |
+| ~~P3~~ | ✅ **spec 011, etapa 1 (2026-08-24)** — `checkJs` opt-in via `// @ts-check` em `models/` e `utils/` do backend (21 arquivos, zero erro). Etapas 2–3 (migração de fato) e o frontend inteiro continuam sem tipagem | [010](./decisions/010-adotar-typescript-incrementalmente.md) |
 | P4 | **`BELT_RULES` validada contra o regulamento oficial IBJJF**, mantida determinística em código (não RAG) | [005](./decisions/005-belt-rules-como-tabela-deterministica.md) |
 | P5 | **Unificar `athletes` e `opponents`** numa entidade com marcação de papel — **última** etapa estrutural, depende de P6 | [007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) |
 | P6 | **Unificar `user_id` em UUID e recriar FKs** para `public.users(id)`; baseline de schema real | — |

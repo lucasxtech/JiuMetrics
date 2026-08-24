@@ -1,3 +1,4 @@
+// @ts-check
 // Modelo de dados para Versões de Estratégia Tática com Supabase
 const { supabase } = require('../config/supabase');
 

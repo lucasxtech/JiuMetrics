@@ -10,7 +10,7 @@
 
 JiuMetrics analisa vídeos de luta de Jiu-Jitsu com IA para produzir um perfil técnico de cada lutador e, cruzando dois perfis, gerar um plano tático de como vencer um adversário específico.
 
-**Stack real** (confirmada no código, não inferida): SPA **React 19 + Vite** · API **Express 5** (CommonJS) · **Supabase/PostgreSQL** via PostgREST, **sem ORM** · autenticação **JWT própria** (não Supabase Auth) · IA via **Google Gemini** (`@google/genai`) · deploy na **Vercel** · **100% JavaScript** na aplicação (0 arquivos TypeScript — TS só em `playwright/`).
+**Stack real** (confirmada no código, não inferida): SPA **React 19 + Vite** · API **Express 5** (CommonJS) · **Supabase/PostgreSQL** via PostgREST, **sem ORM** · autenticação **JWT própria** (não Supabase Auth) · IA via **Google Gemini** (`@google/genai`) · deploy na **Vercel** · **0 arquivos `.ts`/`.tsx` na aplicação** (TS pleno só em `playwright/`), mas desde a spec 011 (etapa 1, [ADR-010](./docs/decisions/010-adotar-typescript-incrementalmente.md)) `server/src/models/` e `server/src/utils/` são checados por `tsc` via `// @ts-check` por arquivo (`npm run typecheck` em `server/`) — JSDoc vira contrato verificado, sem migrar nenhum arquivo para `.ts`.
 
 ```
 frontend/    SPA React (11 páginas, 34 componentes, 13 services)

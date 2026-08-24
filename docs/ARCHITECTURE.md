@@ -45,7 +45,7 @@ Ver [ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md) e [ADR-
 
 **Local:** `frontend/` · **Stack:** React 19.2, Vite 7.2, react-router-dom 6.30, TailwindCSS 4.1, JavaScript (JSX)
 
-**Não há TypeScript na aplicação** — 0 arquivos `.ts`/`.tsx` em `frontend/src`. `typescript` e `@types/*` estão em `devDependencies` sem uso. TS existe apenas em `playwright/`. Ver [ADR-010](./decisions/010-adotar-typescript-incrementalmente.md) (`PLANNED`).
+**Não há TypeScript no frontend** — 0 arquivos `.ts`/`.tsx` em `frontend/src`. `typescript` e `@types/*` estão em `devDependencies` sem uso. TS existe apenas em `playwright/`. A etapa 1 do [ADR-010](./decisions/010-adotar-typescript-incrementalmente.md) (`checkJs` opt-in) foi implementada na spec 011, mas **só no backend** (`server/src/models/` e `server/src/utils/`, ver §3) — aqui continua `PLANNED`.
 
 ### Estrutura
 
@@ -169,10 +169,11 @@ Detalhe parcial em [`API.md`](./API.md) (incompleto — o código é a fonte de 
 - **Rate limiting inoperante em produção**: `MemoryStore` em function serverless — cada instância tem seu contador.
 - **Validação de entrada: parcial.** A [spec 007](../specs/007-silent-failures-and-input-validation/spec.md) introduziu `zod` ([ADR-012](./decisions/012-zod-para-validacao-de-entrada.md)) via `middleware/validate.js`, aplicado aos **3 endpoints de IA** — os únicos onde corpo não validado custa dinheiro. Os demais ~12 endpoints que recebem corpo seguem com `if (!campo)` ad hoc. ⚠️ Não leia "a API valida entrada" como verdadeiro: vale só para `/api/ai/*`.
 - ~~**Sem lint no backend**~~ ✅ resolvido na spec 003 (conjunto mínimo, bloqueia merge).
-- **Sem `helmet`** nem headers de segurança; CORS aceita qualquer `*.vercel.app`.
-- **`handleError` devolve `error.message` ao cliente**, vazando mensagens do PostgREST/Postgres.
+- ~~**Sem `helmet` nem headers de segurança**~~ ✅ resolvido na [spec 010](../specs/010-frontend-consolidation/spec.md): `helmet` configurado deliberadamente (CSP e CORP desligados de propósito — API só devolve JSON). CORS **continua** aceitando qualquer `*.vercel.app`.
+- ~~**`handleError` devolve `error.message` ao cliente**~~ ✅ resolvido na [spec 007](../specs/007-silent-failures-and-input-validation/spec.md): `errorDetails()` omite o detalhe em produção.
 - **Controller obeso**: `linkController.analyzeLink` orquestra IA + persistência + efeitos colaterais numa única função. (`chatController.js`, que tinha 818 linhas, foi dividido em 4 na spec 006.)
-- **Cinco `catch` que engolem erro** — causa de três funcionalidades que nunca funcionaram. Ver [`PROJECT_STATUS.md`](./PROJECT_STATUS.md#known-issues).
+- **Cinco `catch` que engolem erro** — causa de três funcionalidades que nunca funcionaram, corrigidas na spec 007. Ver [`PROJECT_STATUS.md`](./PROJECT_STATUS.md#known-issues).
+- **Sem tipagem, exceto por `checkJs` em 2 diretórios.** A [spec 011](../specs/011-schema-integrity/spec.md) (etapa 1 do [ADR-010](./decisions/010-adotar-typescript-incrementalmente.md)) ligou `// @ts-check` em `models/` e `utils/` (21 arquivos, zero erro; `npm run typecheck`). Os outros ~48 arquivos de `server/src/` (`controllers/`, `services/`, `routes/`, `middleware/`, `schemas/`) e todo o `frontend/` continuam sem verificação de tipo alguma.
 
 ---
 

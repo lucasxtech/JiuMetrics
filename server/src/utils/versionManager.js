@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Utilitário para gerenciamento de versões de análises e perfis
  */
@@ -15,7 +16,7 @@ const ProfileVersion = require('../models/ProfileVersion');
  * @param {string} analysisId - ID da análise
  * @param {Object} currentData - Dados atuais da análise
  * @param {string|string[]} allowedUserIds - escopo de posse do ator
- * @returns {number} Número da próxima versão
+ * @returns {Promise<number>} Número da próxima versão
  */
 async function ensureOriginalVersion(analysisId, currentData, allowedUserIds) {
   try {
@@ -60,7 +61,7 @@ async function ensureOriginalVersion(analysisId, currentData, allowedUserIds) {
  * @param {Object} params.analysis - Dados da análise
  * @param {string} params.editReason - Razão da edição
  * @param {string|string[]} params.allowedUserIds - escopo de posse do ator
- * @returns {Object|null} Versão criada ou null
+ * @returns {Promise<Object|null>} Versão criada ou null
  */
 async function createAnalysisVersion({ analysisId, versionNumber, analysis, editReason, allowedUserIds }) {
   try {
@@ -97,7 +98,7 @@ async function createAnalysisVersion({ analysisId, versionNumber, analysis, edit
  * @param {string} params.currentSummary - Resumo atual (será salvo como versão)
  * @param {string} params.editedBy - Quem editou ('user' ou 'ai')
  * @param {string} params.editReason - Motivo da edição
- * @returns {Object|null} Versão criada ou null
+ * @returns {Promise<Object|null>} Versão criada ou null
  */
 // ✅ CORRIGIDO na spec 007 (decisão P5: corrigir, não remover da UI).
 //

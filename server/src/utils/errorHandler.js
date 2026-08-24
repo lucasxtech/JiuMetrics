@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Utilitário centralizado para tratamento de erros em controllers
  */
@@ -6,8 +7,8 @@
  * Trata erros de forma padronizada em controllers
  * @param {Object} res - Objeto response do Express
  * @param {string} operation - Descrição da operação que falhou
- * @param {Error} error - Erro capturado
- * @param {number} statusCode - Código HTTP (opcional, usa error.statusCode ou 500)
+ * @param {Error & {statusCode?: number}} error - Erro capturado (AppError tem `statusCode`; erro cru não)
+ * @param {number} [statusCode] - Código HTTP (opcional, usa error.statusCode ou 500)
  */
 function handleError(res, operation, error, statusCode = null) {
   const status = statusCode || error.statusCode || 500;

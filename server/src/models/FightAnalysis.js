@@ -1,3 +1,4 @@
+// @ts-check
 // Modelo de dados para Análise de Lutas com Supabase
 //
 // ⚠️ Desde a spec 006, TODO método deste model exige escopo de posse na

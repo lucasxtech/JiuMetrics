@@ -1031,14 +1031,16 @@ Nove etapas. Cada uma é revisável de forma independente. **Ordem justificada e
 
 **Documentation.** `docs/DATABASE.md` (reescrita substancial), `docs/DOMAIN.md` (entidade unificada), ADRs 007 e 010 → implementados, `docs/modules/athletes-opponents.md`, `CHANGELOG.md` — **banco**.
 
-**Acceptance Criteria.**
-- [ ] Schema reconstruível do repositório; runner em uso
-- [ ] `user_id` UUID em todas as tabelas, com FK para `public.users(id)`
-- [ ] Contagem de linhas idêntica antes/depois de cada migration
-- [ ] Invariantes 1, 3, 7, 8 garantidas pelo banco
-- [ ] `checkJs` ativo em `models/` e `utils/` sem erro
-- [ ] Uma entidade de lutador, com papel; histórico preservado
-- [ ] Análise de vídeo assíncrona; progresso real na UI
+**Acceptance Criteria.** 🟡 **Etapa 9 parcial (spec 011, 2026-08-24) — só o item de TypeScript**
+- [ ] Schema reconstruível do repositório; runner em uso — **não iniciado**: exige `pg_dump` com acesso de superusuário ao Postgres, indisponível neste ambiente
+- [ ] `user_id` UUID em todas as tabelas, com FK para `public.users(id)` — **não iniciado**: o item de maior risco de perda de dado da etapa
+- [ ] Contagem de linhas idêntica antes/depois de cada migration — não se aplica ainda
+- [ ] Invariantes 1, 3, 7, 8 garantidas pelo banco — **não iniciado**
+- [x] `checkJs` ativo em `models/` e `utils/` sem erro — **feito.** `server/tsconfig.json` + `// @ts-check` em 21 arquivos (10 models + 11 utils), zero erro; 12 divergências JSDoc-vs-código corrigidas na primeira passagem (nenhuma de lógica). `npm run typecheck`
+- [ ] Uma entidade de lutador, com papel; histórico preservado — **não iniciado**: exige decisão manual de deduplicação, que a própria etapa marca como não automatizável
+- [ ] Análise de vídeo assíncrona; progresso real na UI — **fora do escopo desta execução** (já era `Out of Scope` da spec 011)
+
+**Por que só um item:** os quatro itens de banco exigem, cada um, um backup **com restauração testada** (gate que só o proprietário cumpre no dashboard do Supabase) e uma credencial de conexão direta ao Postgres para executar DDL/backfill — nenhuma das duas coisas está disponível neste ambiente (a chave `service_role` disponível fala REST via PostgREST, que não executa SQL cru). O item de TypeScript não tem nenhuma das duas dependências, por isso foi o único executado.
 
 ---
 

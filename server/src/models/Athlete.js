@@ -1,3 +1,4 @@
+// @ts-check
 // Modelo de dados para Atleta com Supabase
 const { supabase } = require('../config/supabase');
 const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers');

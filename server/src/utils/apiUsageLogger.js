@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Utilitário para registrar uso da API de forma centralizada
  */

@@ -1,3 +1,4 @@
+// @ts-check
 // Modelo de dados para Versões de Perfil Técnico com Supabase
 const { supabase } = require('../config/supabase');
 

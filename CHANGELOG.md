@@ -11,6 +11,30 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 📐 Tipagem incremental no backend — 2026-08-24 · [spec 011](./specs/011-schema-integrity/spec.md) (item 5 apenas)
+
+**Parcial, e deliberadamente: só o item sem risco de dado.** A spec 011 cobre cinco frentes — baseline de schema, unificação de tipo de `user_id`, constraints, unificação de `athletes`/`opponents` e adoção de TypeScript. As quatro primeiras são trabalho de banco de produção que a própria spec diz precisar virar specs próprias antes de executar, e que exige um backup com restauração testada — gate que só o proprietário cumpre. Só a quinta (TypeScript, etapa 1 do [ADR-010](./docs/decisions/010-adotar-typescript-incrementalmente.md)) foi executada.
+
+#### Adicionado
+
+- **`server/tsconfig.json`** (`allowJs`, `strict: false`, sem `checkJs` global) e **`// @ts-check`** em todos os 10 models e nos 11 utilitários de topo de `server/src/utils/`. `npm run typecheck` roda `tsc --noEmit` sobre eles.
+
+#### Corrigido
+
+- **12 divergências entre JSDoc e código, em 5 arquivos**, encontradas na primeira passagem do `tsc` — nenhuma de lógica:
+  - `ApiUsage.js` e `TacticalAnalysis.js`: `@param` documentava `userId`, a assinatura real (desde as specs 005–006) é escopo (`userIdOrIds`);
+  - `errorHandler.js`: `handleError` lê `error.statusCode`, que só existe em `AppError`, não em `Error` puro;
+  - `errors.js`: `VideoDownloadError` documentava `debugInfo.method`/`.url`/`.technicalError` como obrigatórios; o construtor já os tratava como opcionais;
+  - `versionManager.js` (3 funções): `@returns` de função `async` documentado sem `Promise<...>` — exatamente a classe de erro que `checkJs` existe para pegar.
+
+#### Limitações declaradas
+
+- **Só backend, só 2 diretórios.** Os ~48 arquivos restantes de `server/src/` e os 79 do frontend continuam sem qualquer verificação de tipo.
+- **Nenhum arquivo virou `.ts`.** Etapas 2 (arquivo novo nasce `.ts`) e 3 (migração módulo a módulo) do ADR-010 não começaram.
+- **Os quatro itens de banco da spec 011 (baseline, tipo de `user_id`, constraints, unificação `athletes`/`opponents`) não foram tocados.**
+
+---
+
 ### 🔒 Fechamento do acesso ao banco — 2026-08-24 · [spec 008](./specs/008-database-access-lockdown/spec.md)
 
 **Parcial: o código está pronto, a execução em produção não.** A chave publicável do Supabase estava num arquivo **rastreado no Git** (`frontend/.env.production`) e, medida contra produção na spec 002, lia 9 das 10 tabelas — incluindo `users`, com `email` e `password_hash` (bcrypt) dos 25 usuários, com escrita também liberada. Era o achado de segurança mais grave do projeto, e continua sendo até o passo pendente abaixo ser executado.

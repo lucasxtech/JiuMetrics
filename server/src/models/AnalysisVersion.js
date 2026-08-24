@@ -1,3 +1,4 @@
+// @ts-check
 // Modelo de dados para Versões de Análises
 //
 // ⚠️ ESTA TABELA NÃO TEM DONO. `analysis_versions` (migration 010) não tem

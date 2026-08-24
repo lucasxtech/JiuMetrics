@@ -1,3 +1,4 @@
+// @ts-check
 // Modelo de dados para Sessões de Chat com IA
 //
 // ⚠️ Sessão de chat é PESSOAL, não compartilhada com o grupo: todos os

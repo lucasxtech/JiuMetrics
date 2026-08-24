@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Utilitário para processar análises e calcular atributos
  * Versão backend - espelhando a lógica do frontend

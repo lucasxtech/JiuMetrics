@@ -1,10 +1,11 @@
+// @ts-check
 // Modelo de dados para Análises Táticas com Supabase
 const { supabase } = require('../config/supabase');
 
 class TacticalAnalysis {
   /**
    * Lista todas as análises táticas do usuário
-   * @param {string} userId - ID do usuário
+   * @param {string|string[]} userIdOrIds - ID(s) do usuário (escopo de posse)
    * @param {Object} options - Opções de filtro e paginação
    * @returns {Promise<Array>} Lista de análises
    */
@@ -57,7 +58,7 @@ class TacticalAnalysis {
   /**
    * Busca uma análise tática por ID
    * @param {string} id - ID da análise
-   * @param {string} userId - ID do usuário (para verificação de segurança)
+   * @param {string|string[]} userIdOrIds - ID(s) do usuário (escopo de posse)
    * @returns {Promise<Object>} Análise tática
    */
   static async getById(id, userIdOrIds) {
@@ -108,7 +109,7 @@ class TacticalAnalysis {
   /**
    * Deleta uma análise tática
    * @param {string} id - ID da análise
-   * @param {string} userId - ID do usuário (para verificação de segurança)
+   * @param {string|string[]} userIdOrIds - ID(s) do usuário (escopo de posse)
    * @returns {Promise<boolean>} Sucesso
    */
   static async delete(id, userIdOrIds) {
@@ -126,7 +127,7 @@ class TacticalAnalysis {
   /**
    * Atualiza uma análise tática
    * @param {string} id - ID da análise
-   * @param {string} userId - ID do usuário (para verificação de segurança)
+   * @param {string|string[]} userIdOrIds - ID(s) do usuário (escopo de posse)
    * @param {Object} updateData - Dados a atualizar
    * @returns {Promise<Object>} Análise atualizada
    */
@@ -155,7 +156,7 @@ class TacticalAnalysis {
 
   /**
    * Conta o total de análises do usuário
-   * @param {string} userId - ID do usuário
+   * @param {string|string[]} userIdOrIds - ID(s) do usuário (escopo de posse)
    * @returns {Promise<number>} Total de análises
    */
   static async count(userIdOrIds) {
@@ -172,7 +173,7 @@ class TacticalAnalysis {
 
   /**
    * Busca análises recentes (últimas N)
-   * @param {string} userId - ID do usuário
+   * @param {string|string[]} userIdOrIds - ID(s) do usuário (escopo de posse)
    * @param {number} limit - Quantidade de análises
    * @returns {Promise<Array>} Análises recentes
    */

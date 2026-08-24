@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Utilitário para extrair perfil técnico de dados de gráficos da análise Gemini
  */

@@ -33,16 +33,18 @@ O `REVOKE` está escrito — [`server/migrations/024-revoke-anon-access.sql`](..
 
 > ⚠️ Os três passos **não dependem uns dos outros** e podem acontecer em qualquer ordem ou em paralelo.
 
-### ⚪ Spec 011 — Integridade de schema
+### 🟡 Spec 011 — Integridade de schema (parcial: 1 de 5 itens)
 
-**Não iniciada, e deliberadamente.** É a spec de maior risco do plano: converter `user_id` de `VARCHAR` para `UUID` em três tabelas, recriar FKs, adicionar `UNIQUE` e, no fim, unificar `athletes` e `opponents`.
+**Só o item sem risco de dado foi executado.** A spec cobre cinco frentes: (1) baseline de schema + runner, (2) converter `user_id` de `VARCHAR` para `UUID` em três tabelas + recriar FKs, (3) adicionar `UNIQUE`/índices, (4) unificar `athletes` e `opponents`, (5) adotar TypeScript incrementalmente (etapa 1 do [ADR-010](../docs/decisions/010-adotar-typescript-incrementalmente.md)).
 
-Dois motivos concretos para não ter começado:
+**✅ Item 5 — feito (2026-08-24).** `server/tsconfig.json` + `// @ts-check` nos 10 models e nos 11 utilitários de topo de `server/src/utils/` (21 arquivos, zero erro; `npm run typecheck`). Achado real: `tsc` encontrou **12 divergências entre JSDoc e código** na primeira passagem — nenhuma de lógica, todas contrato desatualizado (parâmetro renomeado sem atualizar o `@param`, `@returns` de função `async` sem `Promise<...>`). Corrigidas.
 
-1. **É trabalho de banco, e migration não se executa sem pedido explícito** (regra deste repositório — a migration `018` contém `UPDATE users SET role='user'` **sem `WHERE`**, e reexecutá-la rebaixa todos os admins).
+**⚪ Itens 1–4 — não iniciados.** Dois motivos concretos, os mesmos que bloqueiam o `REVOKE` da spec 008:
+
+1. **É trabalho de banco de produção**, e a própria spec exige, para qualquer sub-item destrutivo: backup **com restauração testada** (gate que só o proprietário cumpre no dashboard do Supabase) e execução em cópia antes de produção. Nenhuma ferramenta disponível aqui tem credencial de conexão direta ao Postgres — só a chave `service_role`, que fala REST via PostgREST e não executa DDL/backfill.
 2. **A própria spec diz que precisa ser dividida.** Fazer baseline + runner é uma coisa; converter tipo de coluna com dual-read é outra; unificar duas entidades é outra ainda. Tratá-las como uma spec só é exatamente o padrão que a spec 001 (`Superseded`) provou não funcionar aqui.
 
-**Efeito colateral que vale registrar:** o bug de `Athlete.updateTechnicalProfile` só passou silencioso **porque `user_id` é VARCHAR** — comparar com a string `'undefined'` devolve zero linhas em vez de estourar erro de tipo. O banco não só deixa de garantir invariantes: ele **mascara bugs**.
+**Efeito colateral que vale registrar:** o bug de `Athlete.updateTechnicalProfile` só passou silencioso **porque `user_id` é VARCHAR** — comparar com a string `'undefined'` devolve zero linhas em vez de estourar erro de tipo. O banco não só deixa de garantir invariantes: ele **mascara bugs**. Isto continua verdade até o item 2 ser executado.
 
 ---
 
@@ -60,7 +62,7 @@ Resolver exige store externo (Redis/Upstash) ou limite na borda (Vercel/Cloudfla
 
 Não há `maxDuration` em nenhum `vercel.json`. Uma análise faz download (até 120s) + upload/polling (até 120s) + inferência, **por vídeo, em série**, até 5 vídeos. O provável é timeout **depois** de os tokens já terem sido consumidos.
 
-Depende de confirmar o **plano da Vercel** (o teto de duração varia por plano) — e a solução de verdade é job assíncrono, que é a Etapa 9.
+Depende de confirmar o **plano da Vercel** (o teto de duração varia por plano) — e a solução de verdade é job assíncrono, que a própria spec 011 lista como **fora do seu escopo** ("valioso, mas é mudança de arquitetura de execução e merece spec própria"). Sem spec numerada ainda.
 
 ### 🔴 O timeout de IA não cancela a inferência
 

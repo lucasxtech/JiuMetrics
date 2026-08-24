@@ -1,3 +1,4 @@
+// @ts-check
 // Modelo de dados para Adversário com Supabase
 const { supabase } = require('../config/supabase');
 const { parseOpponentFromDB, parseOpponentsFromDB } = require('../utils/dbParsers');

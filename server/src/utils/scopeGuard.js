@@ -1,3 +1,4 @@
+// @ts-check
 const { MissingScopeError } = require('./errors');
 
 /**

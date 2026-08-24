@@ -1,7 +1,9 @@
 # SPEC-011 — Integridade de schema
 
-**Status: Proposed** · Etapa 9 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
+**Status: Implemented (parcial, 2026-08-24) — só o item 5 (TypeScript etapa 1); itens 1–4 NÃO iniciados** · Etapa 9 do [plano de refatoração](../../JIU_METRICS_REFACTORING_PLAN.md)
 **É a spec de maior risco do plano — e a de menor urgência. Por isso vem por último.**
+
+> ⚠️ **Por que só um item, e não a spec inteira.** Este documento diz explicitamente, em *Technical Considerations*, que a spec "é grande demais para ser executada como uma unidade" e "deve ser quebrada em specs próprias" antes de implementar. Os itens 1–4 são, além disso, trabalho de banco de produção (`pg_dump`, `ALTER TABLE`, backfill, `DROP`/`RENAME`) que exige: (a) um backup **com restauração testada** — gate que só o proprietário pode cumprir, no dashboard do Supabase; e (b) uma credencial de conexão direta ao Postgres, que este ambiente não tem (a única chave disponível fala REST via PostgREST, que não executa DDL). Executá-los sem os dois seria romper a própria regra de risco que a spec define. **O item 5 (TypeScript) não tem nenhuma dessas duas dependências** — é código puro, sem tocar o banco — e por isso foi o único executado.
 
 ## Context
 
@@ -61,7 +63,7 @@ Tornar o banco reconstruível a partir do repositório e fazer o próprio banco 
 
 ### 5. Adoção de TypeScript
 
-[ADR-010](../../docs/decisions/010-adotar-typescript-incrementalmente.md) — etapa 1 apenas: `tsconfig.json` com `checkJs`, `strict: false`, e `// @ts-check` **opt-in por arquivo**, começando por `server/src/models/` e `server/src/utils/`.
+[ADR-010](../../docs/decisions/010-adotar-typescript-incrementalmente.md) — etapa 1 apenas: `tsconfig.json` com `checkJs`, `strict: false`, e `// @ts-check` **opt-in por arquivo**, começando por `server/src/models/` e `server/src/utils/`. ✅ **FEITO (2026-08-24)** — o único item desta spec executado.
 
 ## Out of Scope
 
@@ -75,16 +77,16 @@ Tornar o banco reconstruível a partir do repositório e fazer o próprio banco 
 
 ## Requirements
 
-| # | Requisito |
-|---|---|
-| R1 | O schema é reconstruível a partir do repositório |
-| R2 | Runner em uso, com controle de estado |
-| R3 | `user_id` é UUID em todas as tabelas, com FK para `public.users(id)` |
-| R4 | Contagem de linhas **idêntica** antes e depois de cada migration |
-| R5 | Invariantes 1, 3, 7 e 8 de [`docs/DOMAIN.md`](../../docs/DOMAIN.md) garantidas pelo banco |
-| R6 | Uma entidade de lutador, com marcação de papel; histórico preservado |
-| R7 | `checkJs` ativo em `models/` e `utils/` sem erro |
-| R8 | Nenhum comportamento de API mudou, exceto o previsto pela unificação |
+| # | Requisito | Status |
+|---|---|---|
+| R1 | O schema é reconstruível a partir do repositório | ⚪ não iniciado |
+| R2 | Runner em uso, com controle de estado | ⚪ não iniciado |
+| R3 | `user_id` é UUID em todas as tabelas, com FK para `public.users(id)` | ⚪ não iniciado |
+| R4 | Contagem de linhas **idêntica** antes e depois de cada migration | ⚪ não se aplica ainda |
+| R5 | Invariantes 1, 3, 7 e 8 de [`docs/DOMAIN.md`](../../docs/DOMAIN.md) garantidas pelo banco | ⚪ não iniciado |
+| R6 | Uma entidade de lutador, com marcação de papel; histórico preservado | ⚪ não iniciado |
+| R7 | `checkJs` ativo em `models/` e `utils/` sem erro | ✅ **feito** |
+| R8 | Nenhum comportamento de API mudou, exceto o previsto pela unificação | ✅ verificado (suíte verde, único item executado é código puro) |
 
 ## Technical Considerations
 
@@ -126,19 +128,19 @@ Os passos 1–5 são reversíveis. Só o 6 não é — e só acontece depois de 
 
 ## Acceptance Criteria
 
-- [ ] `pg_dump --schema-only` commitado; schema reconstruível numa base vazia
-- [ ] Runner em uso; estado das migrations rastreado
-- [ ] Migrations destrutivas marcadas como históricas
-- [ ] Zero órfãos de `user_id`
-- [ ] `user_id` UUID em todas as tabelas, com FK para `public.users(id)`
-- [ ] **Contagem de linhas idêntica** antes/depois de cada migration, registrada no PR
-- [ ] `UNIQUE(users.email)` ativo
-- [ ] `UNIQUE(analysis_id, version_number)` ativo nas três tabelas de versão
-- [ ] Índice único parcial em `is_current` ativo
-- [ ] Uma entidade de lutador; `fight_analyses` com FK real; nenhum histórico perdido
-- [ ] `checkJs` ativo em `models/` e `utils/` sem erro
-- [ ] As 16 suítes verdes; E2E verde
-- [ ] Rollback de cada migration documentado e **testado em cópia**
+- [ ] `pg_dump --schema-only` commitado; schema reconstruível numa base vazia — **não iniciado**, exige acesso de superusuário ao Postgres para o dump
+- [ ] Runner em uso; estado das migrations rastreado — **não iniciado**
+- [ ] Migrations destrutivas marcadas como históricas — **não iniciado**
+- [ ] Zero órfãos de `user_id` — **não iniciado**, depende da contagem real (spec 002) e é limpeza de dado em produção
+- [ ] `user_id` UUID em todas as tabelas, com FK para `public.users(id)` — **não iniciado** (item de maior risco da spec: dual-read + backfill + corte, ver *Technical Considerations*)
+- [ ] **Contagem de linhas idêntica** antes/depois de cada migration, registrada no PR — não se aplica ainda; nenhuma migration de dado foi executada
+- [ ] `UNIQUE(users.email)` ativo — **não iniciado**
+- [ ] `UNIQUE(analysis_id, version_number)` ativo nas três tabelas de versão — **não iniciado**
+- [ ] Índice único parcial em `is_current` ativo — **não iniciado**
+- [ ] Uma entidade de lutador; `fight_analyses` com FK real; nenhum histórico perdido — **não iniciado** (o item que a própria spec chama de mais perigoso: exige decisão manual de deduplicação, "nome igual não é prova")
+- [x] `checkJs` ativo em `models/` e `utils/` sem erro — **feito.** `server/tsconfig.json` + `// @ts-check` nos 10 models e 11 utilitários de topo; `npm run typecheck`. 12 erros de JSDoc-desatualizado corrigidos na primeira passagem (ver ADR-010), zero de lógica
+- [x] As suítes de backend verdes (28/28, 331/331) — nenhum arquivo de execução mudou, só comentários e JSDoc; ⚠️ **E2E continua não rodando** (dívida pré-existente)
+- [ ] Rollback de cada migration documentado e **testado em cópia** — não se aplica ainda
 
 ## Testing Strategy
 
@@ -162,7 +164,7 @@ Os passos 1–5 são reversíveis. Só o 6 não é — e só acontece depois de 
 | `docs/modules/athletes-opponents.md` | **reescrita** — uma entidade com papel |
 | `docs/ARCHITECTURE.md` | §4 — migrations com runner; tipagem |
 | `docs/decisions/007` | Status → implementado; registrar o resultado da deduplicação |
-| `docs/decisions/010` | Status → etapa 1 implementada |
+| `docs/decisions/010` | Status → etapa 1 implementada | ✅ feito |
 | `docs/PROJECT_STATUS.md` | *Known Issues* HIGH 13 e 14; *Planned* P5 e P6 |
 | `CLAUDE.md` | *Database* regras 1 e 4 — migrations passam a ser fonte de verdade; tipo unificado |
 | `server/migrations/README.md` | reescrever com o novo processo |
@@ -177,9 +179,9 @@ Os passos 1–5 são reversíveis. Só o 6 não é — e só acontece depois de 
 | **Deduplicação incorreta funde pessoas diferentes** | **Alta** | Nome igual **não** é critério; decisão manual, caso a caso, com o proprietário |
 | `UNIQUE` falha por duplicatas existentes | Média | Contagem na spec 002; limpeza antes; decisão de produto sobre e-mails duplicados |
 | Migration manual aplicada fora de ordem | Média | Runner com controle de estado (item 1) |
-| `checkJs` revela muitos erros | Média | `@ts-check` opt-in por arquivo; começar por 2 diretórios |
+| `checkJs` revela muitos erros | Média | ✅ **Materializado, mitigado.** 12 erros na primeira passagem, todos JSDoc desatualizado (nenhum de lógica) — corrigidos, zero erro restante. Ver ADR-010 |
 | Contrato de API muda com a unificação | **Alta** | Camada de compatibilidade para `/api/athletes` e `/api/opponents`; período de coexistência |
-| Spec grande demais para uma unidade | **Alta** | **Quebrar em specs próprias** quando chegar a vez |
+| Spec grande demais para uma unidade | **Alta** | ✅ **Aplicado nesta própria execução:** só o item 5 (TypeScript, sem risco de dado) foi implementado. Os itens 1–4 permanecem como estavam — precisam virar specs próprias quando chegar a vez, com backup testado e acesso direto ao Postgres como pré-requisitos |
 
 ## Dependencies
 

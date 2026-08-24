@@ -2,9 +2,11 @@
 
 ## Status
 
-**Accepted — não implementado** (decidido em 2026-08-12).
+**Accepted — etapa 1 implementada** (decidido em 2026-08-12; etapa 1 executada na [spec 011](../../specs/011-schema-integrity/spec.md), 2026-08-24).
 
-⚠️ **O código da aplicação é 100% JavaScript hoje** — 0 arquivos `.ts`/`.tsx` em `frontend/src` e `server/src`.
+✅ **Etapa 1:** `server/tsconfig.json` (`allowJs`, `strict: false`, sem `checkJs` global) + `// @ts-check` em todos os 10 models e nos 11 utilitários de topo de `server/src/utils/` (21 arquivos, zero erro). `npm run typecheck` em `server/` roda `tsc --noEmit`. Nenhum arquivo virou `.ts` — a etapa é JSDoc-como-contrato, não migração.
+
+⚠️ **Etapas 2 e 3 (arquivo novo nasce `.ts`; migração módulo a módulo) continuam não implementadas.** O código da aplicação segue 100% `.js`/`.jsx` — 0 arquivos `.ts`/`.tsx` em `frontend/src` e `server/src`.
 
 ## Context
 
@@ -30,7 +32,7 @@ Fator agravante estrutural: a fronteira `snake_case` (banco) × `camelCase` (apl
 
 Ordem decidida:
 
-1. **Passo imediato, custo quase zero:** `tsconfig.json` com `checkJs`, `strict: false`, e **`// @ts-check` opt-in arquivo por arquivo**, começando por `server/src/models/` e `server/src/utils/` — os módulos onde as três falhas vivem. Sem migrar nada, sem renomear nada, sem ruído nos arquivos que não optaram.
+1. ✅ **Passo imediato, custo quase zero — FEITO.** `tsconfig.json` com `allowJs`/`strict: false` (sem `checkJs` global — é isso que torna `// @ts-check` opt-in de verdade: com `checkJs: true` a exceção seria o inverso, `@ts-nocheck`) e **`// @ts-check` em todo arquivo de `server/src/models/` e `server/src/utils/`** (topo do diretório; `__tests__/` excluído do `tsconfig.json` de propósito, para não exigir tipos de Jest). Zero erro nos 21 arquivos, sem migrar nada, sem renomear nada.
 2. **Arquivo novo nasce `.ts`.**
 3. **Migração módulo a módulo**, depois de o trabalho estrutural de autorização estar concluído.
 
@@ -78,3 +80,11 @@ Confirmado pelo proprietário em 2026-08-12 (*"adotar é o melhor caminho"*), co
 - `playwright/tsconfig.json` — a configuração TS existente
 - Decisão: conversa com o proprietário, 2026-08-12 (registrada em [`../../AUDIT.md`](../../AUDIT.md), seção "Decisões — RESPONDIDAS", D6)
 - [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md#known-issues) — as três falhas silenciosas
+
+**Etapa 1 (spec 011, 2026-08-24):** `tsc --noEmit` sobre os 21 arquivos encontrou **12 erros reais em 5 arquivos** na primeira passagem — todos divergência entre JSDoc e código, nenhum bug de lógica:
+- `ApiUsage.js` e `TacticalAnalysis.js` (6×): `@param` documentava `userId`, a assinatura real (desde as specs 005–006) é `userIdOrIds`/escopo — doc não acompanhou o refactor de autorização
+- `errorHandler.js`: `handleError` lê `error.statusCode`, propriedade que só existe em `AppError`, não em `Error` — o tipo documentado era mais estreito que o uso real
+- `errors.js`: `VideoDownloadError` documentava `debugInfo.method`/`.url`/`.technicalError` como obrigatórios, mas o construtor já os tratava como opcionais (`|| 'desconhecido'` etc.) — a documentação era mais rígida que o código
+- `versionManager.js` (3×): três funções `async` documentadas com `@returns {number}`/`{Object|null}` em vez de `Promise<...>` — o erro que `checkJs` existe para pegar
+
+Nenhuma correção mudou comportamento — só o texto do JSDoc, para bater com o que o código já fazia.

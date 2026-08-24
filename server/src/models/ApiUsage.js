@@ -1,3 +1,4 @@
+// @ts-check
 const { supabase } = require('../config/supabase');
 
 // Constantes
@@ -147,7 +148,7 @@ async function logUsage({ userId, modelName, operationType, promptTokens, comple
 
 /**
  * Busca estatísticas de uso por período
- * @param {string} userId - ID do usuário
+ * @param {string|string[]} userIdOrIds - ID do usuário ou array de IDs (escopo do grupo)
  * @param {string|null} startDate - Data inicial (ISO string)
  * @param {string|null} endDate - Data final (ISO string)
  * @returns {Promise<Array|null>} Registros de uso ou null em caso de erro
