@@ -70,12 +70,16 @@ jobs:
       # A base é o SHA da base DA PR, não o nome do branch default: numa PR
       # que mire outro branch (`develop`), diffar contra `main` compara o
       # intervalo errado — varre commits que não são da PR e pode perder os
-      # que são. Em `push` cai para o branch default, que é o certo ali.
+      # que são. Em `push` (após merge) a base precisa ser o SHA ANTERIOR ao
+      # push (`github.event.before`), não o nome do branch: nesse momento o
+      # branch já aponta para o mesmo commit do HEAD, e usar o nome do branch
+      # faz base==head, o que o TruffleHog trata como erro fatal em vez de
+      # "nada para escanear" (visto na prática após o merge da PR #30).
       - name: TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+          base: ${{ github.event.pull_request.base.sha || github.event.before }}
           head: ${{ github.event.pull_request.head.sha || 'HEAD' }}
           extra_args: --only-verified
 
