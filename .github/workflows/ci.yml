@@ -163,6 +163,35 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+  # Backend Typecheck — introduzido pela spec 011 (etapa 1 do ADR-010).
+  # BLOQUEANTE. Cobre só os arquivos com `// @ts-check` (models/ e utils/);
+  # o `tsconfig.json` não liga `checkJs` global, então o resto de `src/` não
+  # é verificado. Sem este job, o `npm run typecheck` que a spec criou só
+  # existiria na máquina de quem lembrasse de rodar.
+  backend-typecheck:
+    name: Backend Typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tsc
+        run: npm run typecheck
+
   backend-security:
     name: Backend Security Audit
     runs-on: ubuntu-latest
@@ -189,7 +218,7 @@ jobs:
     runs-on: ubuntu-latest
     # spec 003: o gate de integração passa a exigir também os dois jobs de lint,
     # para que um único check reflita o estado real de todos os portões.
-    needs: [frontend-tests, frontend-lint, frontend-build, backend-tests, backend-lint]
+    needs: [frontend-tests, frontend-lint, frontend-build, backend-tests, backend-lint, backend-typecheck]
     
     steps:
       - name: Integration summary
@@ -197,7 +226,7 @@ jobs:
           echo "## ✅ Integration Check Passed" >> $GITHUB_STEP_SUMMARY
           echo "Todos os portões bloqueantes passaram." >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Frontend: testes + lint + build" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Backend: testes + lint" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Backend: testes + lint + typecheck" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Portões informativos (não bloqueiam): coverage, npm audit, CodeQL, Lighthouse." >> $GITHUB_STEP_SUMMARY
           echo "Secrets scanning bloqueia em job separado (code-quality.yml)." >> $GITHUB_STEP_SUMMARY

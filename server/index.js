@@ -47,18 +47,31 @@ const corsOptions = {
 // Headers de segurança (spec 010). Não havia nenhum: sem nosniff, sem
 // frameguard, sem HSTS, e com `X-Powered-By: Express` anunciando a stack.
 //
-// A configuração é DELIBERADA, não `helmet()` cru, por dois motivos:
+// A configuração é DELIBERADA, não `helmet()` cru:
 //
-// 1. **CSP fica desligada aqui.** Esta API só devolve JSON — CSP protege
-//    documento, e o documento é servido pela Vercel a partir de `frontend/`.
-//    É lá que a política tem efeito (ver `frontend/vercel.json`). Ligar CSP
-//    numa resposta JSON dá sensação de proteção sem proteger nada.
+// 1. **CSP máximamente restritiva.** Esta API nunca devolve documento —
+//    verificado: zero `res.send` de HTML, zero `express.static`, zero
+//    `sendFile`. A primeira versão desta config DESLIGAVA a CSP com o
+//    argumento de que "CSP protege documento e aqui não há documento".
+//    O CodeQL apontou (`js/insecure-helmet-configuration`, high) e estava
+//    certo: o argumento justifica não precisar de uma política elaborada,
+//    não justifica desligar. `default-src 'none'` + `frame-ancestors 'none'`
+//    é a recomendação da OWASP para API — custa nada e neutraliza o caso em
+//    que uma resposta é renderizada como documento (o `nosniff` do helmet
+//    cobre o mesmo risco por outro lado; os dois juntos são defesa em
+//    profundidade de graça).
 // 2. **Cross-Origin-Resource-Policy fica desligada.** O frontend roda em
 //    outro domínio Vercel, e quem governa esse acesso é a config de CORS
 //    acima. Ligar CORP aqui é mexer em comportamento cross-origin que já tem
-//    dono, sem eu conseguir verificar no navegador.
+//    dono, sem conseguir verificar no navegador.
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      frameAncestors: ["'none'"]
+    }
+  },
   crossOriginResourcePolicy: false,
   crossOriginEmbedderPolicy: false
 }));
