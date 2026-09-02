@@ -4,7 +4,13 @@
 
 **Accepted — não implementado** (decidido em 2026-08-12).
 
-⚠️ O workflow do GitHub Pages **ainda está no repositório e ativo**. Até ser removido, os dois destinos coexistem.
+🟡 **Parcialmente implementado (2026-09-02).** O item 1 está feito: `.github/workflows/deploy.yml` foi **removido**, então nenhum push para `main` publica mais no Pages.
+
+⚠️ **Mas o site do Pages continua no ar.** Verificado em 2026-09-02: `https://lucasxtech.github.io/JiuMetrics/` responde **HTTP 200**, e o bundle publicado fala com o backend de produção (`https://jiu-metrics-backend.vercel.app/api`) — ou seja, é uma **segunda superfície de login pública contra o banco de produção**.
+
+🔴 **Remover o workflow, isoladamente, PIORA a situação em vez de melhorar.** Antes, o Pages era uma cópia redundante que acompanhava a `main`. Agora ele fica **congelado para sempre** no último build — servindo JS antigo, com os defeitos que as specs seguintes corrigiram (incluindo o sink de XSS fechado na spec 010), contra dado atual e com JWT em `localStorage`. **Desativar o Pages em Settings → Pages é ação obrigatória do proprietário**, não opcional.
+
+Itens 2 e 3 (a detecção de `github.io` em `App.jsx` e a origem no CORS) **continuam pendentes** — mexem em comportamento de build/deploy e merecem verificação própria.
 
 ## Context
 

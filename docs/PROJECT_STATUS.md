@@ -188,7 +188,7 @@ Monólito de duas peças: **SPA React 19 + Vite** e **API Express 5**, ambos na 
 | # | Item | ADR |
 |---|---|---|
 | ~~P1~~ | 🟡 **spec 008, parcial (2026-08-24)** — o backend já é um único cliente `service_role`, sem fallback. O `REVOKE` de `anon` está escrito (`server/migrations/024-revoke-anon-access.sql`) e **não executado**: exige o SQL Editor do Supabase, fora do alcance deste ambiente | [009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md) |
-| P2 | **Vercel como único destino de deploy** — remover o workflow do GitHub Pages, a detecção de `github.io` em `App.jsx` e a origem do CORS | [008](./decisions/008-vercel-como-unico-destino-de-deploy.md) |
+| ~~P2~~ | 🟡 **parcial (2026-09-02)** — `deploy.yml` removido. ⚠️ O site do Pages **continua no ar** (verificado: HTTP 200, apontando para o backend de produção) e agora congelado: desativar o Pages no painel é ação do proprietário. `App.jsx` e a origem do CORS seguem pendentes | [008](./decisions/008-vercel-como-unico-destino-de-deploy.md) |
 | ~~P3~~ | ✅ **spec 011, etapa 1 (2026-08-24)** — `checkJs` opt-in via `// @ts-check` em `models/` e `utils/` do backend (21 arquivos, zero erro). Etapas 2–3 (migração de fato) e o frontend inteiro continuam sem tipagem | [010](./decisions/010-adotar-typescript-incrementalmente.md) |
 | P4 | **`BELT_RULES` validada contra o regulamento oficial IBJJF**, mantida determinística em código (não RAG) | [005](./decisions/005-belt-rules-como-tabela-deterministica.md) |
 | P5 | **Unificar `athletes` e `opponents`** numa entidade com marcação de papel — **última** etapa estrutural, depende de P6 | [007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) |
@@ -260,7 +260,7 @@ Dependem do proprietário ou de consulta ao banco. **Nada aqui foi presumido na 
 | 11 | Existem órfãos (`user_id IS NULL`)? | ✅ **SIM: 67.** `athletes` 4/37 · `opponents` 1/38 · `fight_analyses` 62/285. **Zero valores não-UUID** → conversão de tipo viável sem perda |
 | 12 | Plano da Vercel e `maxDuration` efetivo? | ⏳ **PENDENTE — proprietário** |
 | 13 | `VITE_API_URL` está configurado como secret? | ⏳ **PENDENTE — proprietário** |
-| 14 | O GitHub Pages está publicado e acessado hoje? | ⏳ **PENDENTE — proprietário** |
+| 14 | O GitHub Pages está publicado e acessado hoje? | 🔴 **PUBLICADO E NO AR — confirmado em 2026-09-02.** `https://lucasxtech.github.io/JiuMetrics/` devolve HTTP 200, e o bundle aponta para `https://jiu-metrics-backend.vercel.app/api` — o backend **de produção**. "Acessado por quem" continua indeterminável (sem analytics), mas a superfície existe e é pública |
 | 15 | `uuid@13` é realmente usado? | ⏳ pendente (baixa prioridade) |
 | 16 | Os testes passam hoje? | ✅ **SIM.** 16 suítes, **180 testes**, todos verdes (executados em 2026-08-13) |
 | 17 | `npm audit` reporta vulnerabilidades? | ⏳ pendente |

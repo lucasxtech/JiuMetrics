@@ -6,11 +6,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Lighthouse CI
-  lighthouse:
-    name: Lighthouse Performance Audit
+  # Lighthouse + bundle size num único job.
+  #
+  # Eram dois jobs, cada um com seu `npm ci` e seu `npm run build` — três
+  # builds do mesmo commit por PR, contando o `Frontend Build Check` do
+  # ci.yml. Aqui o build acontece UMA vez e serve às duas análises.
+  #
+  # Os dois passos seguem informativos (`continue-on-error` no Lighthouse,
+  # e o relatório de bundle é só sumário): não existe orçamento de
+  # performance definido para este projeto, e inventar um limite arbitrário
+  # que bloqueia PR seria pior que não medir.
+  performance:
+    name: Performance & Bundle Analysis
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,6 +28,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         working-directory: frontend
@@ -30,6 +41,15 @@ jobs:
         env:
           VITE_API_URL: https://jiu-metrics-backend.vercel.app/api
 
+      - name: Bundle size report
+        working-directory: frontend
+        run: |
+          echo "## 📦 Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          du -sh dist/ >> $GITHUB_STEP_SUMMARY
+          find dist/assets -name "*.js" -exec du -h {} \; | sort -hr | head -10 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v11
         with:
@@ -37,33 +57,3 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
         continue-on-error: true
-
-  # Bundle Size Check
-  bundle-size:
-    name: Bundle Size Analysis
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build and analyze
-        working-directory: frontend
-        run: |
-          npm run build
-          echo "## 📦 Bundle Size Report" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          du -sh dist/ >> $GITHUB_STEP_SUMMARY
-          find dist/assets -name "*.js" -exec du -h {} \; | sort -hr | head -10 >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        env:
-          VITE_API_URL: https://jiu-metrics-backend.vercel.app/api

@@ -5,7 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // `coverage` entrou junto com o relatório de coverage passar a funcionar
+  // (CI): o reporter do v8 gera JS próprio ali, e sem isto ele vira ruído no
+  // lint de quem rodar as duas coisas na mesma árvore.
+  globalIgnores(['dist', 'coverage']),
   {
     // Arquivos de configuração rodam em Node, não no browser.
     // Sem isto, `process` em vite.config.js é reportado como no-undef —

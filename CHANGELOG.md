@@ -11,6 +11,28 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 🔧 CI: portões corrigidos e GitHub Pages desligado — 2026-09-02
+
+#### Segurança
+
+- **CSP restritiva no backend em vez de desligada.** O CodeQL apontou `js/insecure-helmet-configuration` (high) em `contentSecurityPolicy: false`, e estava certo: "esta API não serve documento" justifica não precisar de política elaborada, não justifica desligar. Agora `default-src 'none'` + `frame-ancestors 'none'` — recomendação da OWASP para API, verificada como inofensiva (o backend não tem `res.send` de HTML, `express.static` nem `sendFile`).
+- **Workflow do GitHub Pages removido**, executando o item 1 do [ADR-008](./docs/decisions/008-vercel-como-unico-destino-de-deploy.md). ⚠️ **O site continua no ar e agora congelado** — ver *Pendente*.
+
+#### Corrigido
+
+- **O portão de coverage nunca funcionou.** `@vitest/coverage-v8` não estava instalado, então o step falhava em toda execução, escondido por `continue-on-error: true` — e a suíte rodava **duas vezes** por PR para produzir nada. Dependência instalada, execução unificada (`--coverage` já roda os testes), relatório saindo de verdade (6,15% de statements, número honesto).
+- **`npm run typecheck` não rodava em lugar nenhum** — a spec 011 criou o script e não o ligou. Agora é o job `Backend Typecheck`, dentro do `needs` do Integration Check.
+- **`npm audit --production`** → `--omit=dev` (a flag antiga foi renomeada no npm 9 e quebra em silêncio numa atualização de runner).
+- **Base do TruffleHog** passa a ser o SHA da base da PR, não o nome do branch default — numa PR que mire outro branch, o diff era calculado contra o intervalo errado.
+- **Três builds do frontend por PR viraram dois:** Lighthouse e bundle-size eram dois jobs com `npm ci` e `npm run build` cada; agora é um job que builda uma vez.
+
+#### ⛔ Pendente — ação do proprietário
+
+- 🔴 **Nenhum check é obrigatório.** `main` não tem branch protection nem ruleset (verificado: `404 Branch not protected`, `rulesets: []`). Toda a afirmação de que os portões "bloqueiam merge" — inclusive nesta documentação — **era falsa**: a spec 003 mudou se o check aparece vermelho, não se o merge é possível. Exigir `Integration Check` + `Secrets Scanning` em Settings → Branches é configuração de painel.
+- 🔴 **Desativar o GitHub Pages.** Remover o workflow para de publicar, mas `https://lucasxtech.github.io/JiuMetrics/` **continua respondendo 200**, apontando para o backend de produção. Sem o workflow ele fica **congelado** no último build — servindo JS antigo, com os defeitos que as specs seguintes corrigiram, contra dado atual. Nesse estado, remover o workflow sem desativar o Pages é pior que não ter removido.
+
+---
+
 ### 📐 Tipagem incremental no backend — 2026-08-24 · [spec 011](./specs/011-schema-integrity/spec.md) (item 5 apenas)
 
 **Parcial, e deliberadamente: só o item sem risco de dado.** A spec 011 cobre cinco frentes — baseline de schema, unificação de tipo de `user_id`, constraints, unificação de `athletes`/`opponents` e adoção de TypeScript. As quatro primeiras são trabalho de banco de produção que a própria spec diz precisar virar specs próprias antes de executar, e que exige um backup com restauração testada — gate que só o proprietário cumpre. Só a quinta (TypeScript, etapa 1 do [ADR-010](./docs/decisions/010-adotar-typescript-incrementalmente.md)) foi executada.

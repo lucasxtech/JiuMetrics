@@ -29,6 +29,9 @@ Thumbs.db
 dist/
 build/
 
+# Relatórios de coverage (gerados por vitest/jest, nunca versionados)
+coverage/
+
 # Dependencies lock files (opcional - incluir para produção)
 # package-lock.json
 # yarn.lock

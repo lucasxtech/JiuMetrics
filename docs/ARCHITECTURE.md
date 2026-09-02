@@ -265,7 +265,7 @@ O sistema multi-agentes foi **removido** na Fase 1 — ver [ADR-006](./decisions
 |---|---|---|
 | Frontend | `frontend/vercel.json` (SPA rewrites) | `IMPLEMENTED` |
 | Backend | `server/vercel.json` (`@vercel/node`, todas as rotas → `index.js`) | `IMPLEMENTED` |
-| GitHub Pages | `.github/workflows/deploy.yml` | `IMPLEMENTED` — **a ser removido** (decisão 2026-08-12, ainda no repo) |
+| ~~GitHub Pages~~ | ~~`.github/workflows/deploy.yml`~~ | 🟡 **workflow REMOVIDO** (2026-09-02, executando [ADR-008](./decisions/008-vercel-como-unico-destino-de-deploy.md)). ⚠️ **O site continua publicado e no ar** em `lucasxtech.github.io/JiuMetrics/` — remover o workflow para de atualizá-lo, não o tira do ar. Desativar o Pages é ação de painel, do proprietário |
 
 O backend roda como **function serverless**. Isso tem três consequências arquiteturais reais:
 
@@ -284,8 +284,9 @@ Estado após a [spec 003](../specs/003-quality-gates/spec.md) (2026-08-13):
 | Frontend Build | `ci.yml` | ✅ **sim** |
 | Backend Tests (Jest) | `ci.yml` | ✅ **sim** |
 | **Backend Lint** (ESLint) | `ci.yml` | ✅ **sim** — job **novo** na spec 003 |
+| **Backend Typecheck** (`tsc --noEmit`) | `ci.yml` | ✅ **sim** — job **novo** na spec 011; cobre só os arquivos com `// @ts-check` |
 | **Secrets Scanning** (TruffleHog) | `code-quality.yml` | ✅ **sim** — passou a bloquear na spec 003 |
-| Integration Check | `ci.yml` | ✅ agrega os 5 portões acima |
+| Integration Check | `ci.yml` | ✅ agrega os 6 portões acima |
 | Coverage report | `ci.yml` | ❌ informativo |
 | `npm audit` | `ci.yml` | ❌ informativo — pode reprovar por vulnerabilidade transitiva sem correção |
 | CodeQL | `code-quality.yml` | ❌ informativo |

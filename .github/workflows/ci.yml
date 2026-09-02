@@ -29,14 +29,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test -- --run --reporter=verbose
+      # Uma única execução: `--coverage` já roda a suíte. Antes eram DUAS
+      # execuções, e a segunda falhava sempre — `@vitest/coverage-v8` nunca
+      # tinha sido instalado, e o `continue-on-error: true` escondia isso.
+      # O portão "coverage informativo" que a spec 003 documenta nunca havia
+      # produzido um relatório.
+      - name: Run tests with coverage
+        run: npm test -- --run --reporter=verbose --coverage
         env:
           CI: true
-
-      - name: Generate coverage report
-        run: npm test -- --run --coverage
-        continue-on-error: true
 
       - name: Upload coverage to artifacts
         uses: actions/upload-artifact@v4
@@ -208,8 +209,11 @@ jobs:
         with:
           node-version: 20
 
+      # `--production` foi renomeada para `--omit=dev` no npm 9; a antiga
+      # ainda funciona com aviso, e é o tipo de coisa que quebra em silêncio
+      # numa atualização de runner.
       - name: Run npm audit
-        run: npm audit --production
+        run: npm audit --omit=dev
         continue-on-error: true
 
   # Integration Check
