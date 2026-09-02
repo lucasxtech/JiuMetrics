@@ -95,12 +95,16 @@ const authMiddleware = (req, res, next) => {
         // Usar role do banco (não do token) para evitar role stale no JWT
         req.user = { id: decoded.userId, role: authInfo.role };
         req.userId = decoded.userId;
+        // req.actor — SPEC-005: shape estável para server/src/services/authorization.js.
+        // tenantId fica reservado (não resolvido aqui) até uma dimensão futura precisar dele.
+        req.actor = { id: decoded.userId, role: authInfo.role, tenantId: null };
         return next();
       } catch (dbError) {
         console.error('⚠️ Falha ao verificar usuário no DB — usando dados do token como fallback:', dbError.message);
         // Fallback seguro: continua com dados do token se o banco estiver indisponível
         req.user = { id: decoded.userId, role: decoded.role || 'user' };
         req.userId = decoded.userId;
+        req.actor = { id: decoded.userId, role: decoded.role || 'user', tenantId: null };
         return next();
       }
     });

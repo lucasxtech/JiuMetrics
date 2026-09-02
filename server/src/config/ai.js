@@ -96,15 +96,59 @@ const TASK_MODELS = {
 };
 
 /**
+ * Modelos que o sistema aceita usar. Fonte única — `AVAILABLE_MODELS` no
+ * export abaixo deriva desta constante, para não existirem duas listas.
+ */
+const ALLOWED_MODELS = [
+  'gemini-3.1-pro-preview', // Mais recente e preciso ($2/$12 por 1M até 200K tokens)
+  'gemini-3-pro-preview',   // Versão anterior do 3 Pro
+  'gemini-2.5-pro',         // Forte em vídeo/raciocínio (default de análise e estratégia)
+  'gemini-2.5-flash',       // Rápido e barato (default de texto/chat)
+  'gemini-2.0-flash'        // Legado — mantido para comparação
+];
+
+/**
  * Resolve o modelo a usar para uma tarefa: a escolha explícita do usuário
- * sempre vence; sem escolha, cai no default da tarefa.
+ * vence, **desde que esteja na allow-list**; sem escolha (ou com escolha
+ * inválida), cai no default da tarefa.
+ *
+ * Antes da spec 009 isto era `if (userModel) return userModel` — **qualquer
+ * string vinda do cliente virava o modelo usado**. Combinado com
+ * `calculateCost`, que caía no preço do flash para modelo desconhecido, dava
+ * para usar um modelo caro e registrar o custo de um barato.
+ *
+ * ⚠️ Modelo desconhecido **cai no default, não gera erro** — decisão
+ * deliberada. A escolha do usuário vem do `localStorage` (`ai_model`), então
+ * um valor obsoleto salvo no navegador passaria a quebrar a operação de quem
+ * nunca fez nada errado. Cair no default resolve o risco de custo (o default
+ * é o modelo barato) sem quebrar ninguém, e o aviso no log dá o rastro.
+ *
  * @param {'VIDEO_ANALYSIS'|'STRATEGY'|'TEXT'|'CHAT'} task
  * @param {string|null} [userModel] - Modelo escolhido pelo usuário (opcional)
  * @returns {string}
  */
 function resolveModel(task, userModel = null) {
-  if (userModel) return userModel;
-  return TASK_MODELS[task] || TASK_MODELS.TEXT;
+  const taskDefault = TASK_MODELS[task] || TASK_MODELS.TEXT;
+
+  if (!userModel) return taskDefault;
+
+  if (!ALLOWED_MODELS.includes(userModel)) {
+    console.warn(
+      `⚠️ Modelo fora da allow-list ignorado: "${userModel}" — usando o default da tarefa (${taskDefault}).`
+    );
+    return taskDefault;
+  }
+
+  return userModel;
+}
+
+/**
+ * O modelo está na allow-list?
+ * @param {string} modelName
+ * @returns {boolean}
+ */
+function isModelAllowed(modelName) {
+  return ALLOWED_MODELS.includes(modelName);
 }
 
 module.exports = {
@@ -112,13 +156,10 @@ module.exports = {
   DEFAULT_MODEL: 'gemini-2.5-flash',
   TASK_MODELS,
   resolveModel,
-  AVAILABLE_MODELS: [
-    'gemini-3.1-pro-preview', // Mais recente e preciso ($2/$12 por 1M até 200K tokens)
-    'gemini-3-pro-preview',   // Versão anterior do 3 Pro
-    'gemini-2.5-pro',         // Forte em vídeo/raciocínio (default de análise e estratégia)
-    'gemini-2.5-flash',       // Rápido e barato (default de texto/chat)
-    'gemini-2.0-flash'        // Legado — mantido para comparação
-  ],
+  isModelAllowed,
+  // Mesma lista que a allow-list — deriva dela, para não haver duas fontes
+  // de verdade sobre quais modelos existem (spec 009).
+  AVAILABLE_MODELS: ALLOWED_MODELS,
 
   // Temperaturas por tipo de tarefa (antes definidas em AGENT_CONFIG e
   // nunca aplicadas — agora usadas de fato pela camada llm.js)
@@ -127,6 +168,52 @@ module.exports = {
     STRATEGY_TEMPERATURE: 0.3,  // estratégia (um pouco de variação criativa)
     TEXT_TEMPERATURE: 0.4,      // resumos/consolidações
     CHAT_TEMPERATURE: 0.7       // conversa
+  },
+
+  /**
+   * Políticas de retry e timeout POR FLUXO (spec 009, R5–R7).
+   *
+   * Deliberadamente distintas: análise de vídeo e chat têm perfis de custo e
+   * latência incomparáveis. Uma inferência de vídeo em `gemini-2.5-pro` é a
+   * operação mais cara e mais lenta do sistema — repetir custa muito e demora
+   * muito; uma mensagem de chat é barata e o usuário está esperando na tela.
+   *
+   * `maxAttempts: 1` significa **nenhuma nova tentativa**, não "uma tentativa
+   * extra".
+   *
+   * ⚠️ O timeout limita **quanto tempo esperamos**, não necessariamente quanto
+   * o provedor processa: sem cancelamento no SDK, a inferência pode seguir do
+   * outro lado e o custo já ter sido incorrido. Serve para não pendurar a
+   * função serverless até o `maxDuration` — não como controle de gasto.
+   */
+  AI_POLICIES: {
+    VIDEO_ANALYSIS: { maxAttempts: 2, baseDelayMs: 2000, timeoutMs: 300000 },
+    STRATEGY:       { maxAttempts: 2, baseDelayMs: 1500, timeoutMs: 120000 },
+    TEXT:           { maxAttempts: 3, baseDelayMs: 800,  timeoutMs: 60000  },
+    CHAT:           { maxAttempts: 2, baseDelayMs: 500,  timeoutMs: 45000  }
+  },
+
+  /**
+   * Orçamento de IA (spec 009, R3). **Por TENANT** — decisão P8, conforme a
+   * recomendação do plano de refatoração (§14).
+   *
+   * Por tenant e não por usuário porque o grupo é a unidade que compartilha os
+   * dados e, presumivelmente, a conta. Um teto adicional por usuário dentro do
+   * grupo depende do modelo comercial, que não está definido — não foi
+   * inventado aqui.
+   *
+   * ⚠️ Começa PERMISSIVO de propósito. O gasto medido é de US$ 3,03 em 8 meses
+   * (≈ US$ 0,38/mês), então US$ 50/mês é ~130× o histórico: barra abuso sem
+   * chegar perto do uso real. Apertar depois de observar é fácil; destravar
+   * usuário legítimo bloqueado é caro.
+   *
+   * `AI_MONTHLY_BUDGET_USD=0` desativa a verificação.
+   */
+  AI_BUDGET: {
+    monthlyUsdPerTenant: process.env.AI_MONTHLY_BUDGET_USD !== undefined
+      ? Number(process.env.AI_MONTHLY_BUDGET_USD)
+      : 50,
+    warnAtPercent: 80
   },
 
   // Configuração de download de vídeo (YouTube → File API)

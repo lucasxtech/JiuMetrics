@@ -16,7 +16,14 @@
 
 const fs = require('fs');
 const { GoogleGenAI } = require('@google/genai');
-const { GeminiApiKeyMissingError, GeminiParseError, parseGeminiError } = require('../utils/errors');
+const {
+  GeminiApiKeyMissingError,
+  GeminiParseError,
+  GeminiApiError,
+  parseGeminiError,
+  isTransientError
+} = require('../utils/errors');
+const { AI_POLICIES } = require('../config/ai');
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -30,6 +37,79 @@ function assertAvailable() {
   if (!client) {
     throw new GeminiApiKeyMissingError();
   }
+}
+
+const DEFAULT_POLICY = { maxAttempts: 1, baseDelayMs: 0, timeoutMs: 60000 };
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Aborta a espera de uma promessa que passou do tempo (spec 009, R6).
+ *
+ * ⚠️ Limite honesto: isto interrompe **a nossa espera**, não a inferência do
+ * outro lado. O SDK não expõe cancelamento aqui, então o provedor pode
+ * continuar processando e o custo já ter sido incorrido. O valor real é não
+ * pendurar a função serverless até o `maxDuration` e devolver um erro
+ * classificável.
+ */
+async function withTimeout(promise, timeoutMs, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new GeminiApiError(`Timeout de ${timeoutMs}ms em ${label} — a espera foi interrompida`)),
+      timeoutMs
+    );
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Executa uma chamada de IA com timeout e retry conforme a política do fluxo
+ * (spec 009, R5–R7).
+ *
+ * Só repete o que `isTransientError` classifica como transitório: retry custa
+ * outra inferência completa, e repetir quota estourada ou conteúdo bloqueado
+ * é queimar o dobro por nada.
+ *
+ * @param {string} task - chave de AI_POLICIES ('VIDEO_ANALYSIS'|'STRATEGY'|'TEXT'|'CHAT')
+ * @param {string} label - identificação para log
+ * @param {() => Promise<any>} call - a chamada ao SDK
+ */
+async function withRetry(task, label, call) {
+  const policy = AI_POLICIES[task] || DEFAULT_POLICY;
+  let lastError;
+
+  for (let attempt = 1; attempt <= policy.maxAttempts; attempt++) {
+    try {
+      return await withTimeout(call(), policy.timeoutMs, label);
+    } catch (rawError) {
+      const error = parseGeminiError(rawError);
+      lastError = error;
+
+      const podeRepetir = attempt < policy.maxAttempts && isTransientError(error);
+      if (!podeRepetir) {
+        if (attempt > 1) {
+          console.error(`❌ ${label}: falhou após ${attempt} tentativa(s) — ${error.message}`);
+        }
+        throw error;
+      }
+
+      // Backoff exponencial simples. Sem jitter: o volume aqui é de uma
+      // requisição de usuário por vez, não de um enxame de workers.
+      const delay = policy.baseDelayMs * Math.pow(2, attempt - 1);
+      console.warn(
+        `⚠️ ${label}: falha transitória na tentativa ${attempt}/${policy.maxAttempts} (${error.message}). Repetindo em ${delay}ms.`
+      );
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
 }
 
 /**
@@ -59,20 +139,22 @@ function extractUsage(response, modelName) {
  * @returns {Promise<{data: Object, usage: Object}>}
  * @throws {GeminiParseError} Se a resposta não for JSON válido (raro com schema, mas possível)
  */
-async function generateJson({ model, contents, schema, temperature = 0.2, systemInstruction }) {
+async function generateJson({ model, contents, schema, temperature = 0.2, systemInstruction, task }) {
   assertAvailable();
 
   try {
-    const response = await client.models.generateContent({
-      model,
-      contents,
-      config: {
-        temperature,
-        responseMimeType: 'application/json',
-        responseSchema: schema,
-        ...(systemInstruction ? { systemInstruction } : {}),
-      },
-    });
+    const response = await withRetry(task, `generateJson(${model})`, () =>
+      client.models.generateContent({
+        model,
+        contents,
+        config: {
+          temperature,
+          responseMimeType: 'application/json',
+          responseSchema: schema,
+          ...(systemInstruction ? { systemInstruction } : {}),
+        },
+      })
+    );
 
     const text = response.text;
     if (!text) {
@@ -102,18 +184,20 @@ async function generateJson({ model, contents, schema, temperature = 0.2, system
  * @param {string} [params.systemInstruction]
  * @returns {Promise<{text: string, usage: Object}>}
  */
-async function generateText({ model, contents, temperature = 0.4, systemInstruction }) {
+async function generateText({ model, contents, temperature = 0.4, systemInstruction, task }) {
   assertAvailable();
 
   try {
-    const response = await client.models.generateContent({
-      model,
-      contents,
-      config: {
-        temperature,
-        ...(systemInstruction ? { systemInstruction } : {}),
-      },
-    });
+    const response = await withRetry(task, `generateText(${model})`, () =>
+      client.models.generateContent({
+        model,
+        contents,
+        config: {
+          temperature,
+          ...(systemInstruction ? { systemInstruction } : {}),
+        },
+      })
+    );
 
     return { text: (response.text || '').trim(), usage: extractUsage(response, model) };
   } catch (error) {
@@ -131,20 +215,25 @@ async function generateText({ model, contents, temperature = 0.4, systemInstruct
  * @param {number} [params.temperature=0.7]
  * @returns {Promise<{text: string, usage: Object}>}
  */
-async function sendChatMessage({ model, systemInstruction, history = [], message, temperature = 0.7 }) {
+async function sendChatMessage({ model, systemInstruction, history = [], message, temperature = 0.7, task }) {
   assertAvailable();
 
   try {
-    const chatSession = client.chats.create({
-      model,
-      history,
-      config: {
-        temperature,
-        ...(systemInstruction ? { systemInstruction } : {}),
-      },
+    const response = await withRetry(task, `sendChatMessage(${model})`, () => {
+      // A sessão é recriada a cada tentativa de propósito: reusar uma sessão
+      // que acabou de falhar arriscaria enviar a mensagem duas vezes no mesmo
+      // histórico.
+      const chatSession = client.chats.create({
+        model,
+        history,
+        config: {
+          temperature,
+          ...(systemInstruction ? { systemInstruction } : {}),
+        },
+      });
+      return chatSession.sendMessage({ message });
     });
 
-    const response = await chatSession.sendMessage({ message });
     return { text: response.text || '', usage: extractUsage(response, model) };
   } catch (error) {
     throw parseGeminiError(error);

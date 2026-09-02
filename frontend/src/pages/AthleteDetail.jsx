@@ -239,7 +239,7 @@ export default function AthleteDetail({ isOpponent = false }) {
   };
 
   const handleNavigateToVideoAnalysis = () => {
-    navigate('/video-analysis');
+    navigate('/analyze-video');   // a rota é /analyze-video; /video-analysis não existe e o catch-all mascarava (F2)
   };
 
   if (loading) {

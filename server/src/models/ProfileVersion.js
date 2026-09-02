@@ -1,5 +1,6 @@
+// @ts-check
 // Modelo de dados para Versões de Perfil Técnico com Supabase
-const { supabaseAdmin } = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 
 class ProfileVersion {
   /**
@@ -9,7 +10,7 @@ class ProfileVersion {
     const { personId, personType, userId, content, editedBy, editReason } = versionData;
 
     // Buscar próximo número de versão
-    const { data: lastVersion } = await supabaseAdmin
+    const { data: lastVersion } = await supabase
       .from('profile_versions')
       .select('version_number')
       .eq('person_id', personId)
@@ -21,14 +22,14 @@ class ProfileVersion {
     const nextVersionNumber = (lastVersion?.version_number || 0) + 1;
 
     // Desmarcar versões anteriores como não-atuais
-    await supabaseAdmin
+    await supabase
       .from('profile_versions')
       .update({ is_current: false })
       .eq('person_id', personId)
       .eq('person_type', personType);
 
     // Criar nova versão
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('profile_versions')
       .insert([{
         person_id: personId,
@@ -51,7 +52,7 @@ class ProfileVersion {
    * Busca todas as versões de um perfil
    */
   static async getByPersonId(personId, personType, userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('profile_versions')
       .select('*')
       .eq('person_id', personId)
@@ -67,7 +68,7 @@ class ProfileVersion {
    * Busca uma versão específica pelo número
    */
   static async getByVersionNumber(personId, personType, versionNumber, userId) {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('profile_versions')
       .select('*')
       .eq('person_id', personId)
@@ -85,7 +86,7 @@ class ProfileVersion {
    */
   static async setAsCurrent(versionId, personId, personType, userId) {
     // Desmarcar todas como não-atuais
-    await supabaseAdmin
+    await supabase
       .from('profile_versions')
       .update({ is_current: false })
       .eq('person_id', personId)
@@ -93,7 +94,7 @@ class ProfileVersion {
       .eq('user_id', userId);
 
     // Marcar a versão específica como atual
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('profile_versions')
       .update({ is_current: true })
       .eq('id', versionId);

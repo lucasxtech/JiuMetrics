@@ -101,6 +101,11 @@ export default function VideoAnalysisComponent() {
     }
   };
 
+  // DÍVIDA CONHECIDA (spec 010): `addVideo` existe e NÃO está ligada a nenhum
+  // controle da UI, enquanto `removeVideo` está — o par está incompleto. Ou
+  // falta o botão de adicionar, ou a função é morta. É decisão de produto:
+  // o backend aceita N vídeos por análise (ver docs/modules/fight-analysis.md).
+  // eslint-disable-next-line no-unused-vars
   const addVideo = () => {
     setVideos([...videos, { id: Date.now(), url: '', file: null, giColor: 'preto' }]);
   };

@@ -14,7 +14,7 @@ jest.mock('../../models/FightAnalysis');
 jest.mock('../../models/Athlete');
 jest.mock('../../models/Opponent');
 jest.mock('../../models/User');
-jest.mock('../../utils/tenantScope');
+jest.mock('../../services/authorization');
 jest.mock('../../services/strategyService');
 
 const fightAnalysisController = require('../fightAnalysisController');
@@ -22,7 +22,7 @@ const FightAnalysis = require('../../models/FightAnalysis');
 const Athlete = require('../../models/Athlete');
 const User = require('../../models/User');
 const StrategyService = require('../../services/strategyService');
-const { getScopeIds } = require('../../utils/tenantScope');
+const { resolveScope } = require('../../services/authorization');
 
 describe('fightAnalysisController.createAnalysis', () => {
   let req, res;
@@ -34,7 +34,7 @@ describe('fightAnalysisController.createAnalysis', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
-    getScopeIds.mockResolvedValue(['user-1']);
+    resolveScope.mockResolvedValue(['user-1']);
     Athlete.getById.mockResolvedValue({ id: 'athlete-1', name: 'Atleta X', userId: 'user-1' });
     Athlete.updateTechnicalProfile.mockResolvedValue({});
     Athlete.update.mockResolvedValue({});

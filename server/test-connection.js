@@ -6,19 +6,18 @@
  */
 
 require('dotenv').config();
-const { supabase, supabaseAdmin } = require('./src/config/supabase');
+const { supabase } = require('./src/config/supabase');
 
 async function testConnection() {
   console.log('\n🔍 Testando conexão com Supabase...\n');
   console.log('URL:', process.env.SUPABASE_URL);
-  console.log('Anon Key:', process.env.SUPABASE_ANON_KEY ? '✅ Configurada' : '❌ Não configurada');
   console.log('Service Key:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Configurada' : '❌ Não configurada');
   console.log('\n' + '='.repeat(60) + '\n');
 
   try {
     // Teste 1: Verificar se o Supabase responde
     console.log('📡 Teste 1: Verificando resposta do Supabase...');
-    const { data: healthCheck, error: healthError } = await supabaseAdmin
+    const { data: healthCheck, error: healthError } = await supabase
       .from('users')
       .select('count', { count: 'exact', head: true });
 
@@ -32,12 +31,12 @@ async function testConnection() {
 
     // Teste 2: Verificar tabelas existentes
     console.log('📋 Teste 2: Verificando tabelas no banco...');
-    const { data: tables, error: tablesError } = await supabaseAdmin
+    const { data: tables, error: tablesError } = await supabase
       .rpc('get_tables')
       .catch(() => null);
 
     // Se não tiver a function, tenta listar users
-    const { data: usersData, error: usersError } = await supabaseAdmin
+    const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('id')
       .limit(1);
@@ -55,7 +54,7 @@ async function testConnection() {
 
     // Teste 3: Verificar se existem usuários
     console.log('\n👥 Teste 3: Verificando usuários cadastrados...');
-    const { data: users, error: usersListError } = await supabaseAdmin
+    const { data: users, error: usersListError } = await supabase
       .from('users')
       .select('id, email, name, created_at')
       .limit(5);

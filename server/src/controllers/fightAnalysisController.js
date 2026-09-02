@@ -1,4 +1,4 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 // Controlador para Análises de Lutas
 const FightAnalysis = require('../models/FightAnalysis');
 const Athlete = require('../models/Athlete');
@@ -6,7 +6,7 @@ const Opponent = require('../models/Opponent');
 const User = require('../models/User');
 const StrategyService = require('../services/strategyService');
 const { extractTechnicalProfile } = require('../utils/profileUtils');
-const { handleError } = require('../utils/errorHandler');
+const { handleError, logToleratedFailure } = require('../utils/errorHandler');
 
 /**
  * Regenera o resumo técnico de um atleta/adversário em background.
@@ -20,7 +20,11 @@ async function refreshTechnicalSummary(personId, personType, userId) {
       : await Opponent.getById(personId, allowedUserIds);
 
     if (!person) {
-      console.warn('⚠️ [auto] Pessoa não encontrada para refreshTechnicalSummary —', personType, personId);
+      logToleratedFailure(
+        'regenerar resumo técnico: pessoa não encontrada no escopo',
+        new Error('pessoa fora do escopo ou inexistente'),
+        { personType, personId }
+      );
       return;
     }
 
@@ -36,7 +40,10 @@ async function refreshTechnicalSummary(personId, personType, userId) {
     }
     console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
   } catch (err) {
-    console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, err.message);
+    // DECISÃO (spec 007, item 3): TOLERAR. Roda em fire-and-forget DEPOIS do
+    // res.json() — lançar aqui não teria a quem responder, e a análise em si
+    // já foi persistida com sucesso. O resumo é derivado e regenerável.
+    logToleratedFailure('regenerar resumo técnico', err, { personType, personId });
   }
 }
 
@@ -45,7 +52,7 @@ async function refreshTechnicalSummary(personId, personType, userId) {
  */
 exports.getAllAnalyses = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analyses = await FightAnalysis.getAll(allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
@@ -58,7 +65,7 @@ exports.getAllAnalyses = async (req, res) => {
  */
 exports.getAnalysisById = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analysis = await FightAnalysis.getByIdAndUser(req.params.id, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
@@ -74,7 +81,7 @@ exports.getAnalysisById = async (req, res) => {
  */
 exports.getAnalysesByPerson = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analyses = await FightAnalysis.getByPersonId(req.params.personId, allowedUserIds);
     res.json({ success: true, data: analyses });
   } catch (error) {
@@ -105,7 +112,7 @@ exports.createAnalysis = async (req, res) => {
     }
 
     // Validar se pessoa existe (dentro do grupo do usuário)
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     if (personType === 'athlete') {
       const athlete = await Athlete.getById(personId, allowedUserIds);
       if (!athlete) {
@@ -135,12 +142,14 @@ exports.createAnalysis = async (req, res) => {
       userId: req.userId,
     });
 
-    // Atualizar perfil técnico da pessoa
-    if (personType === 'athlete') {
-      await Athlete.updateTechnicalProfile(personId, technicalProfile);
-    } else if (personType === 'opponent') {
-      await Opponent.updateTechnicalProfile(personId, technicalProfile);
-    }
+    // Atualizar perfil técnico da pessoa.
+    //
+    // O escopo era OMITIDO aqui — chamada com 2 de 3 argumentos. Dentro do
+    // model, `getById(id, undefined)` filtrava `.in('user_id', [undefined])`,
+    // não achava nada e devolvia null: no-op silencioso. Medido na spec 002:
+    // 0 de 37 atletas com o campo preenchido. (spec 007, defeito 3)
+    const Model = personType === 'athlete' ? Athlete : Opponent;
+    await Model.updateTechnicalProfile(personId, technicalProfile, allowedUserIds);
 
     res.status(201).json({
       success: true,
@@ -150,7 +159,7 @@ exports.createAnalysis = async (req, res) => {
 
     // Fire-and-forget: regenera o resumo técnico em background após salvar a análise
     refreshTechnicalSummary(personId, personType, req.userId).catch(err =>
-      console.error('❌ [auto] Falha no refreshTechnicalSummary:', err.message)
+      logToleratedFailure('refreshTechnicalSummary (fire-and-forget)', err, { personType, personId })
     );
   } catch (error) {
     handleError(res, 'criar análise', error);
@@ -162,13 +171,13 @@ exports.createAnalysis = async (req, res) => {
  */
 exports.deleteAnalysis = async (req, res) => {
   try {
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const existing = await FightAnalysis.getByIdAndUser(req.params.id, allowedUserIds);
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }
 
-    const deleted = await FightAnalysis.delete(req.params.id);
+    const deleted = await FightAnalysis.delete(req.params.id, allowedUserIds);
     if (!deleted) {
       return res.status(404).json({ success: false, error: 'Análise não encontrada' });
     }

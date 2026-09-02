@@ -23,6 +23,9 @@ Execute os arquivos SQL na ordem numérica no **Supabase SQL Editor**:
 ### 4️⃣ Features Específicas
 - **007-tactical-analyses.sql** - Tabela de análises táticas
 
+### 5️⃣ Acesso (spec 008)
+- **024-revoke-anon-access.sql** — `REVOKE` de `anon`/`authenticated` em todas as tabelas de domínio. ⚠️ Rodar **depois** de validar que o backend já funciona com `service_role` (unificação de cliente feita no código desta mesma spec) — senão a aplicação perde acesso junto com a chave anon. Rollback (`GRANT` de volta) documentado no próprio arquivo.
+
 ## ⚠️ Importante
 
 - Execute sempre na ordem numérica (001 → 009)

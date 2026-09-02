@@ -4,12 +4,19 @@ import { getSelectedModel } from '../utils/aiConfig';
 
 /**
  * Gera resumo técnico de um atleta usando IA
+ *
+ * O contrato mudou na spec 006 (AZ-7): antes esta função enviava o objeto
+ * `athleteData` inteiro, que ia direto para o prompt sem verificação de posse.
+ * Agora envia só o `athleteId` e o servidor carrega os dados dentro do escopo
+ * do usuário.
+ *
+ * @param {string} athleteId - ID do atleta
  */
-export const generateAthleteSummary = async (athleteData) => {
+export const generateAthleteSummary = async (athleteId) => {
   const model = getSelectedModel();
-  const response = await api.post('/ai/athlete-summary', { 
-    athleteData,
-    model 
+  const response = await api.post('/ai/athlete-summary', {
+    athleteId,
+    model
   });
   return response.data;
 };

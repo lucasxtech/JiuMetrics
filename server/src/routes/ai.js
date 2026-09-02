@@ -4,6 +4,14 @@ const aiController = require('../controllers/aiController');
 const authMiddleware = require('../middleware/auth');
 const { heavyLimiter } = require('../middleware/rateLimiter');
 
+const { validateBody } = require('../middleware/validate');
+const { requireBudget } = require('../middleware/budget');
+const {
+  analyzeLinkSchema,
+  athleteSummarySchema,
+  consolidateProfileSchema
+} = require('../schemas/requests/ai');
+
 const router = express.Router();
 
 router.use(heavyLimiter);
@@ -18,12 +26,12 @@ router.post('/analyze-video', aiController.analyzeVideo);
 
 // POST /api/ai/analyze-link - Analisar link de vídeo (YouTube)
 const linkController = require('../controllers/linkController');
-router.post('/analyze-link', linkController.analyzeLink);
+router.post('/analyze-link', validateBody(analyzeLinkSchema), requireBudget, linkController.analyzeLink);
 
 // POST /api/ai/athlete-summary - Gerar resumo técnico do atleta
-router.post('/athlete-summary', aiController.generateAthleteSummary);
+router.post('/athlete-summary', validateBody(athleteSummarySchema), requireBudget, aiController.generateAthleteSummary);
 
 // POST /api/ai/consolidate-profile - Consolida todas as análises e salva no perfil
-router.post('/consolidate-profile', aiController.consolidateProfile);
+router.post('/consolidate-profile', validateBody(consolidateProfileSchema), requireBudget, aiController.consolidateProfile);
 
 module.exports = router;

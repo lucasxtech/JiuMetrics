@@ -174,6 +174,11 @@ export default function StrategyChatPanel({
   onAcceptEdit,
   onRejectEdit,
   isApplyingEdit,
+  // DÍVIDA CONHECIDA (spec 010): `onStrategyUpdated` é recebido e NUNCA
+  // chamado. Provável evidência do cluster F14/F19-F22 da SPEC-FRONTEND —
+  // edições de estratégia que o pai espera receber de volta e não recebe.
+  // Investigar junto da unificação do pipeline de estratégia, não aqui.
+  // eslint-disable-next-line no-unused-vars
   onStrategyUpdated 
 }) {
   const [messages, setMessages] = useState([]);

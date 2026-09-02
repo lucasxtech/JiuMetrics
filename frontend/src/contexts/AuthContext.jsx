@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getCurrentUser, isAuthenticated, logout as authLogout } from '../services/authService';
 import { queryClient } from '../lib/queryClient';
-import api from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -10,6 +9,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // Load user from localStorage on mount
+  // DÍVIDA CONHECIDA: `setState` sincronamente dentro de effect pode causar
+  // render em cascata. A correção toca a HIDRATAÇÃO DA SESSÃO — mexer nisso
+  // numa spec de portões de CI seria exatamente o escopo crescente que o
+  // processo proíbe. Tratar em spec própria de auth/frontend.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isAuthenticated()) {
       const stored = getCurrentUser();
@@ -17,6 +21,7 @@ export function AuthProvider({ children }) {
     }
     setLoading(false);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Ouvir evento de logout forçado por token inválido (ex: 401 no interceptor da API)
   useEffect(() => {

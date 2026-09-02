@@ -1,9 +1,9 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
 const { generateAthleteSummary } = require('../services/geminiService');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
+const FightAnalysis = require('../models/FightAnalysis');
 const { handleError } = require('../utils/errorHandler');
 const { logApiUsageWithType } = require('../utils/apiUsageLogger');
 
@@ -21,28 +21,52 @@ exports.analyzeVideo = async (req, res) => {
 /**
  * POST /api/ai/athlete-summary
  * Gera resumo técnico profissional do atleta via Gemini
- * @param {Object} req.body.athleteData - Dados do atleta
+ *
+ * AZ-7 (spec 006): este endpoint aceitava `athleteData` INTEIRO do corpo e o
+ * serializava direto no prompt — sem noção de posse, sem validação de schema
+ * e sem limite além do `express.json` de 10 MB. Era abuso de custo de IA e
+ * prompt injection direta, e não havia "dado alheio" a proteger porque o
+ * endpoint não buscava nada: o próprio contrato era o problema.
+ *
+ * Agora recebe `athleteId` e carrega tudo no servidor, dentro do escopo de
+ * posse do ator.
+ *
+ * @param {string} req.body.athleteId - ID do atleta (obrigatório)
  * @param {string} req.body.model - Modelo Gemini (opcional)
  */
 exports.generateAthleteSummary = async (req, res) => {
   try {
-    const { athleteData, model } = req.body;
+    const { athleteId, model } = req.body;
 
-    if (!athleteData) {
+    if (!athleteId) {
       return res.status(400).json({
         success: false,
-        error: 'Dados do atleta são obrigatórios'
+        error: 'athleteId é obrigatório. Este endpoint não aceita mais athleteData no corpo — os dados do atleta são carregados no servidor, dentro do escopo do usuário.'
       });
     }
 
-    const result = await generateAthleteSummary(athleteData, model);
-    
+    const allowedUserIds = await resolveScope(req.actor);
+    const athlete = await Athlete.getById(athleteId, allowedUserIds);
+    if (!athlete) {
+      return res.status(404).json({ success: false, error: 'Atleta não encontrado' });
+    }
+
+    const analyses = await FightAnalysis.getByPersonId(athleteId, allowedUserIds);
+
+    // `attributes` é deliberadamente omitido. A spec 010 removeu a cópia do
+    // frontend, então `utils/athleteStatsUtils.js` é hoje a única
+    // implementação — mas ela nunca teve chamador de produção, e a decisão
+    // P7 (qual das duas versões refletia a intenção) segue SEM RESPOSTA.
+    // Ligar isto aqui é escolher os números que a IA vai receber, e essa é
+    // decisão de produto. O prompt já trata a ausência.
+    const result = await generateAthleteSummary({ name: athlete.name, analyses }, model);
+
     // Salvar uso da API
     await logApiUsageWithType({
       userId: req.userId,
       operationType: 'summary',
       usage: result.usage,
-      metadata: { athleteName: athleteData.name }
+      metadata: { athleteId, athleteName: athlete.name }
     });
 
     res.json({
@@ -75,7 +99,7 @@ exports.consolidateProfile = async (req, res) => {
     }
 
     // Consolidar análises usando StrategyService (com gráficos e stats)
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, model);
 
     // Salvar o resumo consolidado no perfil do atleta/adversário

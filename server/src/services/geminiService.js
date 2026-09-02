@@ -186,6 +186,7 @@ async function analyzeFrame(url, context = {}, customModel = null) {
 
   const callWithMediaPart = async (mediaPart) => {
     const { data, usage } = await llm.generateJson({
+      task: 'VIDEO_ANALYSIS',   // política de retry/timeout (spec 009)
       model,
       contents: [{ text: textPrompt }, mediaPart],
       schema: VIDEO_ANALYSIS_SCHEMA,
@@ -416,6 +417,7 @@ async function consolidateSummariesWithAI(summaries, athleteName, customModel = 
 
   try {
     const { text } = await llm.generateText({
+      task: 'TEXT',   // política de retry/timeout (spec 009)
       model: resolveModel('TEXT', customModel),
       contents: prompt,
       temperature: GENERATION.TEXT_TEMPERATURE,
@@ -538,6 +540,7 @@ Se sugerir leg lock, verifique se é permitido para a faixa.`;
 
   try {
     const { data: strategy, usage } = await llm.generateJson({
+      task: 'STRATEGY',   // política de retry/timeout (spec 009)
       model,
       contents: prompt,
       schema: STRATEGY_SCHEMA,
@@ -576,6 +579,7 @@ async function generateAthleteSummary(athleteData, customModel = null) {
 
   try {
     const { text: summary, usage } = await llm.generateText({
+      task: 'TEXT',   // política de retry/timeout (spec 009)
       model: resolveModel('TEXT', customModel),
       contents: prompt,
       temperature: GENERATION.TEXT_TEMPERATURE,
@@ -790,6 +794,7 @@ async function chat({ contextType, contextData, history = [], userMessage, custo
 
   try {
     const { text: responseText, usage } = await llm.sendChatMessage({
+      task: 'CHAT',   // política de retry/timeout (spec 009)
       model,
       systemInstruction: CHAT_SYSTEM_INSTRUCTION,
       history: geminiHistory,

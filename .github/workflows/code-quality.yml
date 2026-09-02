@@ -53,13 +53,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      # BLOQUEANTE desde a spec 003. O continue-on-error anterior é o motivo
+      # de uma chave da API do Gemini ter entrado no repositório e sobrevivido
+      # meses sem ninguém ver (ver AUDIT.md §9 SEC-C1).
+      #
+      # O escopo é o DIFF (base..head), não o histórico — então segredo que já
+      # está no histórico não bloqueia PR nova; o que este portão impede é a
+      # entrada de segredo NOVO.
+      #
+      # --only-verified: só bloqueia segredo que o TruffleHog confirmou como
+      # ativo, reduzindo falso positivo em fixture e arquivo de exemplo.
+      #
+      # ⚠️ LIMITAÇÃO CONHECIDA: detecta segredo por padrão reconhecível (chave
+      # de API com formato verificável). NÃO pega senha genérica em variável de
+      # ambiente — ver o achado em specs/003-quality-gates/spec.md.
+      # A base é o SHA da base DA PR, não o nome do branch default: numa PR
+      # que mire outro branch (`develop`), diffar contra `main` compara o
+      # intervalo errado — varre commits que não são da PR e pode perder os
+      # que são. Em `push` cai para o branch default, que é o certo ali.
       - name: TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-        continue-on-error: true
+          base: ${{ github.event.pull_request.base.sha || github.event.repository.default_branch }}
+          head: ${{ github.event.pull_request.head.sha || 'HEAD' }}
+          extra_args: --only-verified
 
   # Check package versions
   outdated-dependencies:

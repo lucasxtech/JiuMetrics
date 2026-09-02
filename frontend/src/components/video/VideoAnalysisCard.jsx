@@ -18,14 +18,14 @@ export default function VideoAnalysisCard({ analysis, onDelete, onViewDetails })
 
   // Extrair estatísticas rápidas
   const quickStats = {
-    sweeps: analysis.technical_stats?.sweeps?.quantidade || 0,
-    submissions: analysis.technical_stats?.submissions?.tentativas || 0,
-    backTakes: analysis.technical_stats?.back_takes?.quantidade || 0,
+    sweeps: analysis.technicalStats?.sweeps?.quantidade || 0,
+    submissions: analysis.technicalStats?.submissions?.tentativas || 0,
+    backTakes: analysis.technicalStats?.back_takes?.quantidade || 0,
     frames: analysis.framesAnalyzed || 0
   };
 
   const hasCharts = analysis.charts && analysis.charts.length > 0;
-  const hasTechnicalStats = analysis.technical_stats && Object.keys(analysis.technical_stats).length > 0;
+  const hasTechnicalStats = analysis.technicalStats && Object.keys(analysis.technicalStats).length > 0;
 
   return (
     <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white transition-all duration-300 hover:shadow-lg hover:border-blue-300">
@@ -125,39 +125,39 @@ export default function VideoAnalysisCard({ analysis, onDelete, onViewDetails })
             {/* Technical Stats Preview */}
             {hasTechnicalStats && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {analysis.technical_stats.sweeps && (
+                {analysis.technicalStats.sweeps && (
                   <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200">
                     <p className="text-xs font-semibold text-emerald-600 mb-1">Raspagens</p>
                     <p className="text-2xl font-bold text-emerald-900">
-                      {analysis.technical_stats.sweeps.quantidade}
+                      {analysis.technicalStats.sweeps.quantidade}
                     </p>
                     <p className="text-xs text-emerald-600 mt-1">
-                      {analysis.technical_stats.sweeps.concluidas} concluídas
+                      {analysis.technicalStats.sweeps.concluidas} concluídas
                     </p>
                   </div>
                 )}
 
-                {analysis.technical_stats.submissions && (
+                {analysis.technicalStats.submissions && (
                   <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-200">
                     <p className="text-xs font-semibold text-purple-600 mb-1">Finalizações</p>
                     <p className="text-2xl font-bold text-purple-900">
-                      {analysis.technical_stats.submissions.tentativas}
+                      {analysis.technicalStats.submissions.tentativas}
                     </p>
                     <p className="text-xs text-purple-600 mt-1">
-                      {analysis.technical_stats.submissions.concluidas} finalizadas
+                      {analysis.technicalStats.submissions.concluidas} finalizadas
                     </p>
                   </div>
                 )}
 
-                {analysis.technical_stats.back_takes && (
+                {analysis.technicalStats.back_takes && (
                   <div className="p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200">
                     <p className="text-xs font-semibold text-blue-600 mb-1">Pegadas de Costas</p>
                     <p className="text-2xl font-bold text-blue-900">
-                      {analysis.technical_stats.back_takes.quantidade}
+                      {analysis.technicalStats.back_takes.quantidade}
                     </p>
-                    {analysis.technical_stats.back_takes.tempo_medio_segundos && (
+                    {analysis.technicalStats.back_takes.tempo_medio_segundos && (
                       <p className="text-xs text-blue-600 mt-1">
-                        {analysis.technical_stats.back_takes.tempo_medio_segundos}s médio
+                        {analysis.technicalStats.back_takes.tempo_medio_segundos}s médio
                       </p>
                     )}
                   </div>

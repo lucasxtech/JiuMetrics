@@ -1,7 +1,7 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
+const { errorDetails, logToleratedFailure } = require('../utils/errorHandler');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
 const StrategyService = require('../services/strategyService');
 const TacticalAnalysis = require('../models/TacticalAnalysis');
 const ApiUsage = require('../models/ApiUsage');
@@ -29,7 +29,7 @@ exports.compareAndStrategy = async (req, res) => {
     }
 
     // Buscar dados básicos (escopo do grupo)
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const [athlete, opponent] = await Promise.all([
       Athlete.getById(athleteId, allowedUserIds),
       Opponent.getById(opponentId, allowedUserIds)
@@ -63,13 +63,20 @@ exports.compareAndStrategy = async (req, res) => {
         try {
           await StrategyVersion.createInitial(savedAnalysis.id, userId, result.strategy);
         } catch (versionError) {
-          console.error('⚠️ Erro ao criar versão inicial:', versionError.message);
+          // DECISÃO (spec 007, item 3): TOLERAR. A invariante B10 do plano
+          // exige que a estratégia seja entregue ao usuário — ela custou uma
+          // chamada de IA. O histórico é secundário.
+          logToleratedFailure('criar versão inicial da estratégia', versionError, {
+            analysisId: savedAnalysis.id
+          });
         }
       } catch (saveError) {
-        console.error('⚠️ Erro ao salvar análise tática:', saveError);
-        console.error('Detalhes do erro:', saveError.message);
-        console.error('Stack:', saveError.stack);
-        // Não falhar a request se salvar no histórico falhar
+        // DECISÃO (spec 007, item 3): TOLERAR, pelo mesmo motivo — a
+        // estratégia gerada vai na resposta mesmo sem ir para o histórico.
+        // O cliente é avisado por `savedToHistory: false` na resposta.
+        logToleratedFailure('salvar análise tática no histórico', saveError, {
+          userId, athleteId, opponentId
+        });
       }
     }
     
@@ -111,7 +118,10 @@ exports.compareAndStrategy = async (req, res) => {
         },
         strategy: result.strategy,
         generatedAt: result.metadata.generatedAt,
-        analysisId: savedAnalysis?.id // ID para acessar depois
+        analysisId: savedAnalysis?.id, // ID para acessar depois
+        // Estado explícito em vez de silêncio (spec 007, R5/R6): sem isto, uma
+        // estratégia não persistida era indistinguível de uma persistida.
+        savedToHistory: Boolean(savedAnalysis)
       }
     });
 
@@ -130,10 +140,9 @@ exports.compareAndStrategy = async (req, res) => {
  */
 exports.listAnalyses = async (req, res) => {
   try {
-    const userId = req.userId;
     const { athleteId, opponentId, limit, offset } = req.query;
 
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analyses = await TacticalAnalysis.getAll(allowedUserIds, {
       athleteId,
       opponentId,
@@ -166,9 +175,8 @@ exports.listAnalyses = async (req, res) => {
 exports.getAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.userId;
 
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analysis = await TacticalAnalysis.getById(id, allowedUserIds);
 
     if (!analysis) {
@@ -199,9 +207,8 @@ exports.getAnalysis = async (req, res) => {
 exports.deleteAnalysis = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.userId;
 
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     await TacticalAnalysis.delete(id, allowedUserIds);
 
     res.json({
@@ -247,7 +254,7 @@ exports.updateAnalysis = async (req, res) => {
     }
 
     // Verificar se a análise existe e pertence ao grupo
-    const allowedUserIds = await getScopeIds(req, User);
+    const allowedUserIds = await resolveScope(req.actor);
     const analysis = await TacticalAnalysis.getById(id, allowedUserIds);
     if (!analysis) {
       return res.status(404).json({
@@ -285,7 +292,7 @@ exports.updateAnalysis = async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erro ao atualizar análise tática',
-      details: error.message
+      ...errorDetails(error)
     });
   }
 };

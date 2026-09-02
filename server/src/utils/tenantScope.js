@@ -1,17 +1,20 @@
+// @ts-check
+const { resolveScope } = require('../services/authorization');
+
 /**
- * Retorna os IDs de escopo de dados para o request:
- * - Admin: todos os IDs do grupo (vê dados de todos os membros)
- * - Usuário comum: apenas o próprio ID (vê só o que criou)
+ * @deprecated Use `resolveScope(actor)` de `../services/authorization.js`.
+ * Mantido como wrapper de transição (SPEC-005) — nenhum call site interno
+ * usa mais esta função; remoção prevista numa limpeza posterior.
+ *
+ * O segundo parâmetro (`User`) não é mais necessário — `resolveScope`
+ * importa o model diretamente — e é ignorado se algum chamador antigo
+ * ainda o passar.
  *
  * @param {Object} req - Request do Express (requer req.user e req.userId)
- * @param {Object} User - Model User (para getGroupUserIds)
  * @returns {Promise<string[]>} Array de user IDs para filtrar queries
  */
-async function getScopeIds(req, User) {
-  if (req.user?.role === 'admin') {
-    return User.getGroupUserIds(req.userId);
-  }
-  return [req.userId];
+async function getScopeIds(req) {
+  return resolveScope({ id: req.userId, role: req.user?.role, tenantId: null });
 }
 
 module.exports = { getScopeIds };

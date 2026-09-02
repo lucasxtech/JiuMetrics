@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const authRoutes = require('./src/routes/auth');
 const athleteRoutes = require('./src/routes/athletes');
 const opponentRoutes = require('./src/routes/opponents');
@@ -43,6 +44,38 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
+// Headers de segurança (spec 010). Não havia nenhum: sem nosniff, sem
+// frameguard, sem HSTS, e com `X-Powered-By: Express` anunciando a stack.
+//
+// A configuração é DELIBERADA, não `helmet()` cru:
+//
+// 1. **CSP máximamente restritiva.** Esta API nunca devolve documento —
+//    verificado: zero `res.send` de HTML, zero `express.static`, zero
+//    `sendFile`. A primeira versão desta config DESLIGAVA a CSP com o
+//    argumento de que "CSP protege documento e aqui não há documento".
+//    O CodeQL apontou (`js/insecure-helmet-configuration`, high) e estava
+//    certo: o argumento justifica não precisar de uma política elaborada,
+//    não justifica desligar. `default-src 'none'` + `frame-ancestors 'none'`
+//    é a recomendação da OWASP para API — custa nada e neutraliza o caso em
+//    que uma resposta é renderizada como documento (o `nosniff` do helmet
+//    cobre o mesmo risco por outro lado; os dois juntos são defesa em
+//    profundidade de graça).
+// 2. **Cross-Origin-Resource-Policy fica desligada.** O frontend roda em
+//    outro domínio Vercel, e quem governa esse acesso é a config de CORS
+//    acima. Ligar CORP aqui é mexer em comportamento cross-origin que já tem
+//    dono, sem conseguir verificar no navegador.
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'none'"],
+      frameAncestors: ["'none'"]
+    }
+  },
+  crossOriginResourcePolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
@@ -79,7 +112,10 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err, req, res, next) => {
+// O 4º parâmetro é OBRIGATÓRIO: o Express identifica error handler por
+// fn.length === 4. Prefixado com _ para satisfazer o lint sem alterar a
+// aridade — renomear é seguro, remover quebraria o handler.
+app.use((err, req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: 'Erro interno do servidor' });
 });

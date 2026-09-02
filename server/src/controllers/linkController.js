@@ -1,11 +1,11 @@
-const { getScopeIds } = require('../utils/tenantScope');
+const { resolveScope } = require('../services/authorization');
+const { errorDetails, logToleratedFailure } = require('../utils/errorHandler');
 const { analyzeFrame, consolidateAnalyses, consolidateSummariesWithAI } = require('../services/geminiService');
 const FightAnalysis = require('../models/FightAnalysis');
 const ApiUsage = require('../models/ApiUsage');
 const StrategyService = require('../services/strategyService');
 const Athlete = require('../models/Athlete');
 const Opponent = require('../models/Opponent');
-const User = require('../models/User');
 
 function extractYouTubeId(url) {
   try {
@@ -36,6 +36,39 @@ exports.analyzeLink = async (req, res) => {
         success: false, 
         error: 'Array de vídeos é obrigatório (mínimo 1 vídeo)' 
       });
+    }
+
+    // AZ-6: `personId`/`personType` vinham crus do corpo e eram usados para
+    // criar a análise sem NENHUMA verificação de posse, criando vínculo
+    // cross-tenant que também polui as consolidações de perfil (que agregam
+    // por `person_id`). É a mesma validação que POST /api/fight-analysis já
+    // fazia.
+    //
+    // A verificação acontece AQUI, antes das chamadas de IA, e não no momento
+    // de salvar: um pedido que vai terminar em 404 não deve queimar tokens
+    // pagos primeiro.
+    let person = null;
+    let allowedUserIds = null;
+    if (personId && personType) {
+      const VALID_PERSON_TYPES = ['athlete', 'opponent'];
+      if (!VALID_PERSON_TYPES.includes(personType)) {
+        return res.status(400).json({
+          success: false,
+          error: 'personType deve ser "athlete" ou "opponent"'
+        });
+      }
+
+      allowedUserIds = await resolveScope(req.actor);
+      person = personType === 'athlete'
+        ? await Athlete.getById(personId, allowedUserIds)
+        : await Opponent.getById(personId, allowedUserIds);
+
+      if (!person) {
+        return res.status(404).json({
+          success: false,
+          error: personType === 'athlete' ? 'Atleta não encontrado' : 'Adversário não encontrado'
+        });
+      }
     }
 
     // Log do modelo selecionado
@@ -174,8 +207,15 @@ exports.analyzeLink = async (req, res) => {
       });
     }
     
-    // Salvar análise se personId for fornecido
-    if (personId && personType) {
+    // Salvar análise — `person` só é não-nulo se a posse foi validada acima
+    //
+    // DECISÃO (spec 007, item 3): TOLERAR a falha de persistência, mas
+    // **devolver estado explícito**. Propagar aqui jogaria fora uma análise de
+    // IA já paga e já concluída; ficar em silêncio era pior — o usuário via
+    // 200 com a análise na tela e ela não estava no banco. O cliente agora
+    // recebe `saved: false`.
+    let saved = false;
+    if (person) {
       try {
         console.log('💾 Salvando análise com userId:', req.userId);
         await FightAnalysis.create({
@@ -188,49 +228,55 @@ exports.analyzeLink = async (req, res) => {
           framesAnalyzed: videos.length,
           userId: req.userId, // ⚠️ CRÍTICO: Adicionar userId
         });
+        saved = true;
         console.log(`✅ Análise salva com sucesso para ${personType} ${personId}`);
 
         // Gera o resumo técnico consolidado de forma síncrona
         // (o usuário já esperou a análise — segundos extras não fazem diferença)
         try {
-          const allowedUserIds = await getScopeIds(req, User);
           const consolidation = await StrategyService.consolidateAnalyses(personId, allowedUserIds, null);
           const updateData = {
             technicalSummary: consolidation.resumo,
             technicalSummaryUpdatedAt: new Date().toISOString()
           };
-          if (personType === 'athlete') {
-            const person = await Athlete.getById(personId, allowedUserIds);
-            if (person) await Athlete.update(personId, updateData, person.userId);
-          } else {
-            const person = await Opponent.getById(personId, allowedUserIds);
-            if (person) await Opponent.update(personId, updateData, person.userId);
-          }
+          // Escopo e pessoa já resolvidos na validação de posse acima — a
+          // escrita usa o owner REAL do registro, permitindo que um admin
+          // atualize o dado de um membro do grupo.
+          const Model = personType === 'athlete' ? Athlete : Opponent;
+          await Model.update(personId, updateData, person.userId);
           console.log('✅ [auto] Resumo técnico atualizado —', personType, personId);
         } catch (summaryErr) {
-          console.error('❌ [auto] Falha ao atualizar resumo técnico —', personType, personId, summaryErr.message);
+          // TOLERAR: o resumo é derivado e regenerável; a análise, que é o
+          // dado primário, já foi persistida acima.
+          logToleratedFailure('atualizar resumo técnico após análise', summaryErr, {
+            personType, personId
+          });
         }
       } catch (saveError) {
-        console.error('❌ Erro ao salvar análise:', saveError);
-        // Não retornar erro, apenas logar
+        logToleratedFailure('salvar análise de vídeo', saveError, {
+          personType, personId, userId: req.userId
+        });
       }
     }
     
     console.log('✅ Análise concluída com sucesso!\n');
     
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       data: {
         ...consolidated,
         videosAnalyzed: videos.length,
+        // Estado explícito: `false` significa que a análise foi gerada mas NÃO
+        // persistida. `null` quando não havia personId — nada a salvar.
+        saved: person ? saved : null,
       }
     });
   } catch (err) {
     console.error('❌ analyzeLink error:', err);
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       error: 'Erro interno ao analisar vídeos',
-      details: err.message,
+      ...errorDetails(err)
     });
   }
 };

@@ -5,6 +5,16 @@ const FightAnalysis = require('../models/FightAnalysis');
 const geminiService = require('./geminiService');
 const llm = require('./llm');
 const { resolveModel, GENERATION } = require('../config/ai');
+const { getPrompt, getPromptVersion } = require('./prompts');
+
+/**
+ * Marca um `technical_summary` que NÃO passou pela consolidação por IA
+ * (spec 009, R10). O fallback produz uma colagem dos resumos individuais, e
+ * antes disso ela era gravada de forma indistinguível de um perfil
+ * consolidado de verdade — e alimentava a geração de estratégia como se
+ * fosse. Quem consome precisa poder saber a diferença.
+ */
+const DEGRADED_PREFIX = '[RESUMO NÃO CONSOLIDADO — falha na consolidação por IA; texto abaixo é a concatenação dos resumos individuais]\n\n';
 
 class StrategyService {
 
@@ -248,65 +258,26 @@ class StrategyService {
       };
     }
 
-    // Preparar prompt de consolidação ENRIQUECIDO
-    const consolidationPrompt = `Você é um Analista Tático de Jiu-Jitsu de alto nível.
-
-Você recebeu ${summaries.length} análises técnicas de um mesmo lutador, coletadas em diferentes lutas.
-Além disso, você tem dados comportamentais e quantitativos consolidados.
-
-Sua tarefa é criar um PERFIL TÉCNICO COMPLETO E UNIFICADO que será usado para gerar estratégias de luta.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 ANÁLISES INDIVIDUAIS (${summaries.length} lutas)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${summaries.map((s, i) => `LUTA ${i + 1}:\n${s}\n`).join('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')}
-
-${chartsNarrative}
-
-${statsNarrative}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 INSTRUÇÕES PARA O RESUMO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Crie um PERFIL TÉCNICO COMPLETO que inclua:
-
-1. ESTILO DE LUTA: Guardeiro ou passador? Agressivo ou estratégico? Explosivo ou grinder?
-2. COMPORTAMENTO INICIAL: O que ele faz logo após o "combate"? Puxa guarda? Busca queda?
-3. JOGO DE GUARDA: Quais guardas ele usa? Como ele ataca de baixo?
-4. JOGO DE PASSAGEM: Como ele passa? Pressão? Velocidade? Se não passa, diga isso.
-5. FINALIZAÇÕES: Quais são as armas dele? Onde ele é perigoso?
-6. PONTOS FORTES: O que ele faz muito bem?
-7. PONTOS FRACOS: Onde ele pode ser explorado?
-8. COMO VENCÊ-LO: Resumo tático de como um adversário deveria lutar contra ele.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 FORMATO DE SAÍDA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Retorne APENAS texto puro, SEM formatação markdown, SEM JSON.
-
-Escreva um texto técnico em PARÁGRAFOS (pode ter múltiplos parágrafos para organização).
-Entre 250-400 palavras.
-
-Seja específico, use os dados fornecidos, e foque no que é ÚTIL para criar estratégias.
-
-PROIBIDO: 
-- Usar markdown (**negrito**, \`code\`, listas numeradas, cabeçalhos #)
-- Mencionar "Luta 1", "Luta 2" explicitamente
-- Generalizações vazias como "é um bom lutador"
-
-OBRIGATÓRIO:
-- Texto corrido em parágrafos
-- Informações concretas baseadas nos dados
-- Linguagem técnica de Jiu-Jitsu
-- Incluir os dados quantitativos quando relevantes`;
+    // Preparar prompt de consolidação ENRIQUECIDO.
+    //
+    // O texto vivia aqui, hardcoded (~53 linhas), fora de `services/prompts/`
+    // e fora do teste de prompts — a única exceção à regra do projeto. A spec
+    // 009 o moveu para `prompts/consolidate-profile.txt`, e a fidelidade é
+    // garantida por comparação BYTE A BYTE contra um golden capturado do
+    // código anterior (`prompts/__fixtures__/`). Qualquer diferença de espaço
+    // ou quebra de linha mudaria a saída da IA em silêncio.
+    const consolidationPrompt = getPrompt('consolidate-profile', {
+      SUMMARIES_COUNT: summaries.length,
+      ANALISES: summaries.map((s, i) => `LUTA ${i + 1}:\n${s}\n`).join('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'),
+      CHARTS_NARRATIVE: chartsNarrative,
+      STATS_NARRATIVE: statsNarrative
+    });
 
     try {
       const modelToUse = resolveModel('TEXT', customModel);
       const { text: consolidatedResumo, usage } = await llm.generateText({
         model: modelToUse,
+        task: 'TEXT',   // política de retry/timeout (spec 009)
         contents: consolidationPrompt,
         temperature: GENERATION.TEXT_TEMPERATURE,
       });
@@ -321,14 +292,22 @@ OBRIGATÓRIO:
       };
     } catch (error) {
       console.error('❌ Erro ao consolidar análises:', error);
-      
-      // Fallback em caso de erro: concatenar resumos + narrativas
+
+      // Fallback: concatenar resumos + narrativas.
+      //
+      // ⚠️ O resultado NÃO é um perfil consolidado — é uma colagem. Antes da
+      // spec 009 ele era gravado em `technical_summary` **indistinguível** de
+      // um consolidado real, e alimentava a geração de estratégia como se
+      // fosse. `degraded: true` existe para que quem consome saiba a
+      // diferença; o prefixo torna a degradação visível também para quem lê o
+      // texto na tela (R10).
       return {
-        resumo: summaries.join(' ') + chartsNarrative + statsNarrative,
+        resumo: DEGRADED_PREFIX + summaries.join(' ') + chartsNarrative + statsNarrative,
         technical_stats: consolidatedStats,
         charts: consolidatedCharts,
         analysesCount: summaries.length,
         model: null,
+        degraded: true,
         error: error.message
       };
     }
@@ -576,6 +555,14 @@ OBRIGATÓRIO:
         },
         strategyModel: strategyResult.usage?.modelName || customModel || null,
         usage: strategyResult.usage,
+        // Versão dos prompts usados (spec 009, R8). Sem isto, não havia como
+        // saber com que instrução uma estratégia de três meses atrás foi
+        // gerada. É ADITIVO: linhas antigas ficam sem o campo, e isso é
+        // correto — não sabemos qual prompt foi usado nelas.
+        promptVersions: {
+          'tactical-strategy': getPromptVersion('tactical-strategy'),
+          'consolidate-profile': getPromptVersion('consolidate-profile')
+        },
         generatedAt: new Date().toISOString()
       }
     };

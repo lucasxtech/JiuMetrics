@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const PROMPTS_DIR = __dirname;
 
@@ -64,6 +65,26 @@ function getPrompt(name, variables = {}) {
 }
 
 /**
+ * Identificador de versão de um prompt (spec 009, R8).
+ *
+ * Hash curto do conteúdo do arquivo. Deliberadamente simples: o requisito é
+ * saber **qual texto** gerou **qual saída**, não construir gestão de prompts.
+ * Como é derivado do conteúdo, não há versão para esquecer de incrementar —
+ * editar o prompt muda o identificador.
+ *
+ * ⚠️ Limite honesto da reprodutibilidade: saber o prompt e o modelo dá
+ * **auditabilidade** ("com que instrução isso foi gerado?"), não replay
+ * bit-a-bit. LLM não é determinístico e o provedor deprecia modelos.
+ *
+ * @param {string} name - Nome do prompt (sem extensão)
+ * @returns {string} hash de 12 caracteres
+ */
+function getPromptVersion(name) {
+  const content = loadPrompt(name);
+  return crypto.createHash('sha256').update(content, 'utf-8').digest('hex').slice(0, 12);
+}
+
+/**
  * Limpa o cache de prompts (útil para desenvolvimento)
  */
 function clearCache() {
@@ -85,6 +106,7 @@ module.exports = {
   loadPrompt,
   fillPrompt,
   getPrompt,
+  getPromptVersion,
   clearCache,
   listPrompts
 };

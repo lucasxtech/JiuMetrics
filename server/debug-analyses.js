@@ -1,16 +1,8 @@
 // Script para debugar análises no Supabase
 require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ SUPABASE_URL ou SUPABASE_ANON_KEY não configurados');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+// spec 008: usa o cliente único (service_role) em vez de criar um cliente
+// anon próprio — o anon deixou de ter GRANT nestas tabelas.
+const { supabase } = require('./src/config/supabase');
 
 async function debugAnalyses() {
   console.log('🔍 Iniciando debug de análises...\n');

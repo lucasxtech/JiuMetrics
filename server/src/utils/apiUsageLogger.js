@@ -1,8 +1,10 @@
+// @ts-check
 /**
  * Utilitário para registrar uso da API de forma centralizada
  */
 
 const ApiUsage = require('../models/ApiUsage');
+const { logToleratedFailure } = require('./errorHandler');
 
 /**
  * Registra uso da API de IA de forma segura (não lança erro se falhar)
@@ -26,7 +28,10 @@ async function logApiUsage({ userId, endpoint, usage, metadata = {} }) {
       ...metadata
     });
   } catch (error) {
-    console.warn('⚠️ Erro ao registrar uso da API:', error.message);
+    // DECISÃO (spec 007, item 3): TOLERAR. Falha no registro de custo não pode
+    // derrubar a operação de IA que o usuário já pagou. O que mudou é que a
+    // falha deixou de ser invisível.
+    logToleratedFailure('registrar uso da API', error, { userId, endpoint });
   }
 }
 
@@ -51,7 +56,8 @@ async function logApiUsageWithType({ userId, operationType, usage, metadata = {}
       metadata
     });
   } catch (error) {
-    console.warn('⚠️ Erro ao registrar uso da API:', error.message);
+    // DECISÃO (spec 007, item 3): TOLERAR — mesmo motivo acima.
+    logToleratedFailure('registrar uso da API', error, { userId, operationType });
   }
 }
 

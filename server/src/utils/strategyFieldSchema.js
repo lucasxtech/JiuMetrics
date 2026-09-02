@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Validação de shape para edições de estratégia aplicadas via chat
  * (prompt chat-strategy.txt) ou edição manual.
