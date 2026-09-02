@@ -72,15 +72,21 @@ Tornar a aplicação o **único caminho** até o dado, e eliminar a ambiguidade 
 
 **Ordem em relação à spec 006:** esta vem **depois**. Fechar o banco quando a aplicação ainda tem 6 vazamentos cria uma janela em que a única camada de proteção é a que sabemos estar furada.
 
-**Sequência de execução recomendada:**
+**Sequência de execução — OBRIGATÓRIA, não recomendada. Verificada na prática.**
 
-1. criar a nova chave `service_role`; configurar na Vercel; validar que a aplicação funciona
-2. unificar o cliente no código; validar
-3. fazer o `REVOKE` (com o `GRANT` de rollback pronto)
-4. validar que a aplicação continua funcionando e que a chave anon falha
-5. rotacionar a chave publicável; remover do `.env.production`
+> 🔴 **Incidente de 2026-09-02: esta ordem foi violada e o login caiu em produção.**
+> O `REVOKE` foi executado **antes** de o código desta spec ser mergeado e deployado. O backend em produção ainda rodava `main`, onde `models/User.js#findByEmail` — o método que **todo login** chama — lê a tabela `users` com o cliente **anon** (`config/supabase.js` em `main` cria `supabase` a partir de `SUPABASE_ANON_KEY`). Sem GRANT, o login passou a falhar para todos os usuários.
+> **O rollback funcionou na primeira tentativa** e restaurou o acesso. Isso deixou de ser promessa e passou a ser fato medido — é a propriedade que torna esta spec aceitável apesar do risco.
+> **Lição registrada:** o passo 3 abaixo não é burocracia. Ele existe para provar que a aplicação **já não precisa** do anon, antes de o anon ser removido.
 
-Cada passo é reversível independentemente.
+1. **Configurar `SUPABASE_SERVICE_ROLE_KEY` nas variáveis de ambiente de produção** (Vercel, projeto do backend). Isoladamente não muda comportamento: o código de `main` só usa a chave se ela existir.
+2. **Mergear e deployar o código desta spec.** A partir daqui o backend fala com o banco **só** por `service_role`. ⚠️ Deployar sem o passo 1 faz o backend **não subir** — `config/supabase.js` lança no boot, de propósito.
+3. **Validar em produção com os dois caminhos abertos** — login, listar atleta, gerar análise, chat. Neste momento o app usa `service_role` e o `anon` **ainda tem GRANT**: é a única janela em que dá para confirmar que nada depende mais do anon **sem** risco de indisponibilidade.
+4. **Só então executar o `REVOKE`** (`server/migrations/024-revoke-anon-access.sql`), com o `GRANT` de rollback já aberto em outra aba.
+5. **Validar de novo** e confirmar que a chave anon passou a falhar (`curl` no cabeçalho da migration).
+6. **Rotacionar** a chave publicável do Supabase e a do Gemini. 🔴 O repositório é **público** (confirmado em 2026-09-02), então as duas foram expostas publicamente — rotacionar não é higiene, é contenção.
+
+Cada passo é reversível independentemente. **A ordem entre 2 e 4 não é.**
 
 ## Acceptance Criteria
 

@@ -2,7 +2,7 @@
 
 > **Para agentes de IA e desenvolvedores trabalhando neste repositório.** Leia isto antes de alterar qualquer coisa.
 >
-> **Atualizado:** 2026-08-24 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md) e [010](./specs/010-frontend-consolidation/spec.md) executadas · [008](./specs/008-database-access-lockdown/spec.md) parcialmente executada (código pronto, `REVOKE` pendente de execução manual)
+> **Atualizado:** 2026-09-02 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md) e [010](./specs/010-frontend-consolidation/spec.md) executadas · [008](./specs/008-database-access-lockdown/spec.md) parcialmente executada (código pronto, `REVOKE` pendente de execução manual)
 
 ---
 
@@ -65,6 +65,7 @@ Regra de porta do produto: **não é possível gerar estratégia sem ≥1 análi
 Regras não negociáveis:
 
 1. **Nunca commite segredo.** Já aconteceu, e o dano é real e medido: há uma chave da API do Gemini no histórico do git (`.archived/SUPABASE_SETUP.md` — **rotação pendente**, expurgar do histórico é operação separada, de maior risco) e havia a chave publicável do Supabase em `frontend/.env.production`, arquivo rastreado — **removido do controle de versão na spec 008**, mas ela **precisa ser rotacionada**: sair do Git não invalida uma chave já exposta. O scanner do CI só passou a bloquear na spec 003, e mesmo assim **cobre apenas o diff** — não expurga o que já está no histórico, e não pega senha genérica (ver o achado em `playwright/.env.example`).
+   > 🔴 **O repositório é PÚBLICO** (confirmado 2026-09-02). As duas chaves acima estiveram legíveis por qualquer pessoa na internet — trate-as como **comprometidas** e rotacione antes de qualquer outra coisa.
    > 🔴 **Verificado em 2026-08-13, ainda o achado mais grave do projeto:** essa chave publicável **lê 9 das 10 tabelas, incluindo `users` com `password_hash` (bcrypt) e `email` dos 25 usuários** — e a escrita também está liberada. A spec 008 fechou o lado do código (cliente único `service_role`) e escreveu o `REVOKE` que fecha o acesso (`server/migrations/024-revoke-anon-access.sql`), mas **não o executou** — falta o proprietário rodá-lo no SQL Editor do Supabase, e só depois disso a chave antiga para de funcionar de fato. Ver [`docs/DATABASE.md`](./docs/DATABASE.md) §4.
 2. **Nunca devolva `error.message` ao cliente** em produção. ✅ Resolvido na spec 007: use `errorDetails(error)` de `utils/errorHandler.js`, que omite o detalhe quando `NODE_ENV === 'production'` e o mantém no log do servidor. Não volte a escrever `details: error.message` à mão.
 3. **Nunca logue PII.** O login loga o e-mail do usuário em toda tentativa — dívida conhecida.

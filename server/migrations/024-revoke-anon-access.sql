@@ -22,9 +22,16 @@
 -- interna do Supabase que também viva em `public`. Reduz o comando a
 -- exatamente o que a spec 008 pede.
 --
--- PRÉ-REQUISITO: a nova chave `service_role` já precisa estar configurada
--- e validada no backend (unificação de cliente da spec 008) ANTES de
--- rodar isto — senão a aplicação para de funcionar junto com a chave anon.
+-- 🔴 PRÉ-REQUISITO — VIOLÁ-LO JÁ DERRUBOU O LOGIN EM PRODUÇÃO (2026-09-02).
+-- O código da spec 008 (cliente único `service_role`) precisa estar
+-- MERGEADO E DEPLOYADO, e validado em produção, ANTES de rodar isto.
+-- Enquanto o backend roda o código antigo, `models/User.js#findByEmail` —
+-- o método que TODO login chama — lê a tabela `users` com o cliente ANON.
+-- Revogar o GRANT antes do deploy tira o acesso do próprio app: o login
+-- falha para todos os usuários. Foi exatamente o que aconteceu, e o
+-- rollback no fim deste arquivo restaurou na primeira tentativa.
+-- A sequência completa e obrigatória está em
+-- specs/008-database-access-lockdown/spec.md (Technical Considerations).
 --
 -- ROLLBACK (imediato e completo — testado e documentado, não apenas
 -- planejado): execute o bloco GRANT no fim deste arquivo.

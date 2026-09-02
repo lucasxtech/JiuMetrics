@@ -242,11 +242,11 @@ Dependem do proprietário ou de consulta ao banco. **Nada aqui foi presumido na 
 
 | # | Pergunta | Estado |
 |---|---|---|
-| 1 | O repositório é público? | ⏳ **PENDENTE — proprietário.** Determina se as credenciais commitadas são exposição pública. Dado o item 3, é a pergunta mais urgente do projeto |
+| 1 | O repositório é público? | 🔴 **SIM — confirmado em 2026-09-02** (`gh repo view`: `visibility: PUBLIC`, `github.com/lucasxtech/JiuMetrics`). Era "a pergunta mais urgente do projeto" e veio a **pior** resposta possível: combinada com o item 3, significa que a chave publicável do Supabase esteve **legível por qualquer pessoa na internet** enquanto `frontend/.env.production` estava rastreado em `main` — e a chave do Gemini está no histórico de 4 commits públicos. Chave em repo público não é "exposta em teoria": é raspada por bot automatizado. **A rotação das duas deixa de ser recomendação e passa a ser a ação mais urgente do projeto** |
 | 2 | Estado real de RLS e políticas? | ✅ **RESPONDIDO empiricamente (2026-08-13).** 9 de 10 tabelas legíveis pela chave anon; só `profile_versions` protegida. A definição *nominal* das políticas continua pendente (só no SQL Editor), mas **não bloqueia nada** |
 | 3 | `anon`/`authenticated` ainda têm GRANT? | 🔴 **SIM — confirmado.** Leitura em 9 tabelas, incl. `users` com `password_hash`. **Escrita também liberada** (o `INSERT` falha por `NOT NULL`, não por permissão) |
-| 4 | A chave do Gemini commitada ainda é válida? | ⏳ **PENDENTE — proprietário** (Console do Google Cloud). A rotação também é dele |
-| 5 | `SUPABASE_SERVICE_ROLE_KEY` está definida em produção? | ⚠️ **Parcial:** está definida no `.env` local e **funciona** (validado). Em produção (Vercel) permanece pendente |
+| 4 | A chave do Gemini commitada ainda é válida? | ⏳ **PENDENTE — proprietário** (Console do Google Cloud). A rotação também é dele. ⚠️ Reclassificada para **urgente** pelo item 1: ela está no histórico de um repositório **público** (4 commits contêm o padrão `AIzaSy`) |
+| 5 | `SUPABASE_SERVICE_ROLE_KEY` está definida em produção? | 🔴 **NÃO — descoberto da pior maneira em 2026-09-02.** O `REVOKE` da spec 008 foi executado antes de a spec 008 ser mergeada/deployada, e **o login quebrou**: o código em produção (`main`) lê `users` com o cliente **anon** (`models/User.js#findByEmail`), que acabara de perder o GRANT. O rollback (`GRANT` de volta) restaurou na primeira tentativa. Ver a sequência obrigatória em [`../specs/008-database-access-lockdown/spec.md`](../specs/008-database-access-lockdown/spec.md) |
 
 ### Bloqueiam entendimento do estado atual
 
