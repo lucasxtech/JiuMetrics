@@ -113,6 +113,8 @@ Regras:
 5. **Nunca altere `config/ai.js#BELT_RULES` sem o regulamento IBJJF em mãos.** Não é só texto de prompt — `getBeltLevel` alimenta lógica de decisão, e sugerir técnica ilegal para uma faixa tem consequência real em competição. Ver [ADR-005](./docs/decisions/005-belt-rules-como-tabela-deterministica.md).
 6. **Toda chamada de IA custa dinheiro, e agora existe teto.** O registro de custo **funciona** (173 linhas, US$ 3,03 medidos). Desde a spec 009 há três barreiras antes de gastar: allow-list de modelos (`resolveModel`), teto de vídeos por requisição (schema zod) e **orçamento mensal por tenant** (`services/costGuard.js`, `AI_MONTHLY_BUDGET_USD`, default 50). Ao adicionar um fluxo de IA novo: declare o `task` na chamada a `llm.js` (define retry/timeout) e ponha `requireBudget` na rota. Chamada em laço sem limite continua proibida.
 7. **Nunca repita uma chamada de IA que não vai melhorar.** `isTransientError` (`utils/errors.js`) é quem decide: quota estourada, conteúdo bloqueado e JSON malformado **não** são repetidos, porque cada retry é outra inferência paga.
+8. **Antes de mudar prompt, schema ou modelo, MEÇA.** Existem duas ferramentas, e usá-las é obrigatório para qualquer afirmação sobre qualidade: `scripts/audit-analysis-quality.js` (regras determinísticas sobre o que já está no banco — custo zero, roda sempre) e `scripts/eval-video-analysis.js` (variância entre execuções, concordância entre modelos, leitura do placar — **gasta inferência paga**, roda sob demanda, nunca no CI). Sem uma delas, "melhorou" é opinião. As regras vivem em `utils/analysisQuality.js` e medem **coerência e contrato, não acerto** — nenhuma delas sabe se a análise descreve o vídeo corretamente.
+9. **Cuidado com o fallback que troca a causa do erro.** Em `analyzeFrame`, a falha da ingestão direta é engolida e o fallback de download reporta "atualize os cookies" — o que já mandou o operador para o lugar errado durante uma suspensão de faturamento do Gemini. Ao escrever fallback, **preserve o erro original**; ver [spec 012](./specs/012-youtube-ingestion-lockdown/spec.md).
 
 ## Database
 
@@ -193,6 +195,18 @@ cd frontend && npm run lint    # ESLint (bloqueia merge no CI)
 ```bash
 cd server && npm run lint      # ESLint (bloqueia merge no CI) — spec 003
 ```
+
+Fora do CI, sob demanda — qualidade da saída de IA (ver regra 8 de *AI*):
+
+```bash
+cd server && node scripts/audit-analysis-quality.js --por-mes
+```
+
+```bash
+cd server && node scripts/eval-video-analysis.js --modo variancia --dry-run
+```
+
+⚠️ O `eval-video-analysis.js` **sem** `--dry-run` gasta inferência paga — a rodada padrão custa ≈ US$ 3,37, mais que todo o gasto histórico do projeto. Ele estima e pede confirmação antes; não o coloque no CI.
 
 **Portões que bloqueiam merge:** testes de frontend e backend, lint de frontend e backend, build, e **secrets scanning**. Informativos (não bloqueiam): coverage, `npm audit`, CodeQL, Lighthouse. **E2E não roda no CI** — ver [spec 003](./specs/003-quality-gates/spec.md).
 
