@@ -246,6 +246,42 @@ describe('SPEC-009 (R1) — allow-list de modelos', () => {
     // é declarado como piso, não como real.
     expect(custo).toBeCloseTo(PRICING[DEFAULT_MODEL].input, 6);
   });
+
+  it('não oferece modelo que o provedor já descontinuou', () => {
+    // `gemini-3-pro-preview` consta como descontinuado na página de modelos do
+    // Gemini (verificado 2026-09-02). Deixá-lo na allow-list entrega ao
+    // usuário uma opção que falha na hora de usar. Sai da allow-list, mas
+    // CONTINUA em PRICING: as linhas históricas de `api_usage` referenciam o
+    // nome e precisam continuar precificáveis.
+    expect(AVAILABLE_MODELS).not.toContain('gemini-3-pro-preview');
+    expect(PRICING['gemini-3-pro-preview']).toBeDefined();
+  });
+});
+
+describe('Preço do gemini-2.5-pro acima de 200K tokens', () => {
+  // Auditoria 2026-09-02: 3 das 9 análises de vídeo mais recentes passaram de
+  // 200K tokens de entrada (198K–227K). Nessa faixa o 2.5-pro cobra o DOBRO
+  // ($2.50/$15.00 contra $1.25/$10.00), e PRICING só conhecia a faixa barata —
+  // o custo registrado dessas análises é menor que o real.
+  const ABAIXO = 100_000;
+  const ACIMA = 250_000;
+
+  it('cobra a faixa barata até 200K', () => {
+    const custo = calculateCost('gemini-2.5-pro', ABAIXO, 0);
+    expect(custo).toBeCloseTo((ABAIXO / 1_000_000) * 1.25, 6);
+  });
+
+  it('cobra a faixa cara acima de 200K — entrada E saída', () => {
+    const custo = calculateCost('gemini-2.5-pro', ACIMA, 1_000);
+    const esperado = (ACIMA / 1_000_000) * 2.50 + (1_000 / 1_000_000) * 15.00;
+    expect(custo).toBeCloseTo(esperado, 6);
+  });
+
+  it('a faixa cara é mais cara que a barata para o mesmo volume', () => {
+    // Guarda contra a regressão de alguém "simplificar" as faixas de volta.
+    const porToken = (t) => calculateCost('gemini-2.5-pro', t, 0) / t;
+    expect(porToken(ACIMA)).toBeGreaterThan(porToken(ABAIXO));
+  });
 });
 
 describe('Consistência entre configurações', () => {

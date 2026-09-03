@@ -137,9 +137,12 @@ describe('StrategyService.consolidateTechnicalStats', () => {
 
     const result = StrategyService.consolidateTechnicalStats(analyses);
 
+    // `variantes` é aditivo (2026-09-02): a contagem passou a agrupar por
+    // família canônica, e o array registra quais nomes específicos a IA
+    // escreveu. Vazio aqui porque ambos os nomes já são canônicos.
     expect(result.submissions.finalizacoes_mais_usadas).toEqual([
-      { tecnica: 'arm lock', quantidade: 2 },
-      { tecnica: 'triângulo', quantidade: 1 }
+      { tecnica: 'arm lock', quantidade: 2, variantes: [] },
+      { tecnica: 'triângulo', quantidade: 1, variantes: [] }
     ]);
   });
 
@@ -164,7 +167,7 @@ describe('StrategyService.consolidateTechnicalStats', () => {
     const result = StrategyService.consolidateTechnicalStats(analyses);
 
     expect(result.submissions.finalizacoes_mais_usadas).toEqual([
-      { tecnica: 'arm lock', quantidade: 1 }
+      { tecnica: 'arm lock', quantidade: 1, variantes: [] }
     ]);
   });
 });

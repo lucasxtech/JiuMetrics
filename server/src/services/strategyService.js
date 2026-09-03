@@ -6,6 +6,7 @@ const geminiService = require('./geminiService');
 const llm = require('./llm');
 const { resolveModel, GENERATION } = require('../config/ai');
 const { getPrompt, getPromptVersion } = require('./prompts');
+const { groupSubmissions } = require('../utils/submissionTaxonomy');
 
 /**
  * Marca um `technical_summary` que NÃO passou pela consolidação por IA
@@ -15,6 +16,26 @@ const { getPrompt, getPromptVersion } = require('./prompts');
  * fosse. Quem consome precisa poder saber a diferença.
  */
 const DEGRADED_PREFIX = '[RESUMO NÃO CONSOLIDADO — falha na consolidação por IA; texto abaixo é a concatenação dos resumos individuais]\n\n';
+
+/**
+ * Os stats consolidados carregam ALGUM evento observado?
+ *
+ * `null` (nenhuma análise tem `technical_stats`) e "tudo zero" (as análises
+ * têm stats, e o atleta de fato não raspou, não passou, não atacou) são
+ * situações diferentes para quem lê a estratégia, mas as duas produzem um
+ * prompt sem números. Aqui as duas contam como "sem dado quantitativo" —
+ * o que interessa a quem consome é se houve número, não por quê.
+ *
+ * @param {Object|null} stats - Saída de `consolidateTechnicalStats`
+ * @returns {boolean}
+ */
+function hasQuantitativeData(stats) {
+  if (!stats) return false;
+  return (stats.sweeps?.quantidade_total || 0) > 0
+    || (stats.guard_passes?.quantidade_total || 0) > 0
+    || (stats.submissions?.tentativas_total || 0) > 0
+    || (stats.back_takes?.quantidade_total || 0) > 0;
+}
 
 class StrategyService {
 
@@ -407,21 +428,18 @@ class StrategyService {
       (consolidated.back_takes.percentual_com_finalizacao / count) * 100
     );
 
-    // Contar finalizações mais usadas.
-    // 'sub' pode vir como string solta (formato legado) ou como objeto
-    // { tecnica, resultado } (formato canônico definido em video-analysis.txt) —
-    // aceitar os dois evita colapsar tudo na chave "[object Object]".
-    const submissionCount = {};
-    consolidated.submissions.finalizacoes_mais_usadas.forEach(sub => {
-      const tecnica = typeof sub === 'string' ? sub : sub?.tecnica;
-      if (!tecnica) return;
-      submissionCount[tecnica] = (submissionCount[tecnica] || 0) + 1;
-    });
+    // Contar finalizações mais usadas, AGRUPANDO POR FAMÍLIA.
+    //
+    // `groupSubmissions` (utils/submissionTaxonomy.js) aceita tanto string
+    // solta (formato legado) quanto `{ tecnica, resultado }` (canônico), o que
+    // evita a chave "[object Object]" do histórico, e ainda soma variantes da
+    // mesma família: "triângulo voador" + "triângulo invertido" + "triângulo"
+    // viram uma entrada de 3×, não três de 1×. Antes disso, a lista
+    // "Preferidas" que chega no prompt de estratégia saía fragmentada — a
+    // arma preferida do adversário aparecia empatada com tudo o mais.
     
-    consolidated.submissions.finalizacoes_mais_usadas = Object.entries(submissionCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, count]) => ({ tecnica: name, quantidade: count }));
+    consolidated.submissions.finalizacoes_mais_usadas =
+      groupSubmissions(consolidated.submissions.finalizacoes_mais_usadas).slice(0, 5);
 
     return consolidated;
   }
@@ -555,6 +573,20 @@ class StrategyService {
         },
         strategyModel: strategyResult.usage?.modelName || customModel || null,
         usage: strategyResult.usage,
+        // Estado EXPLÍCITO de quanto dado quantitativo entrou nesta estratégia.
+        //
+        // Medido em 2026-09-02: 52 das 54 pessoas com análise não têm UMA
+        // única análise com `technical_stats` (a coluna só passou a ser
+        // preenchida em ago/2026). Para elas, `formatTechnicalStats` manda ao
+        // modelo "Dados técnicos não disponíveis ainda" e a estratégia sai
+        // apenas de texto — o que é uma decisão defensável, mas até aqui era
+        // INVISÍVEL: nada na resposta, no banco ou na tela distinguia uma
+        // estratégia lastreada em números de uma que não viu nenhum.
+        // Mesmo princípio do `saved: false` da spec 007.
+        quantitativeData: {
+          athlete: hasQuantitativeData(athleteStats),
+          opponent: hasQuantitativeData(opponentStats)
+        },
         // Versão dos prompts usados (spec 009, R8). Sem isto, não havia como
         // saber com que instrução uma estratégia de três meses atrás foi
         // gerada. É ADITIVO: linhas antigas ficam sem o campo, e isso é

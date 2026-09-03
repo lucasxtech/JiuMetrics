@@ -17,6 +17,9 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [009](./009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | 7 | ✅ **Implemented** (R4, rate limiting, bloqueado por infraestrutura) |
 | [010](./010-frontend-consolidation/spec.md) | Consolidação do frontend | 8 | ✅ **Implemented** (parcial — 3 itens dependem de verificação visual/E2E) |
 | [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | 🟡 **Implemented** (parcial — só o item 5, TypeScript; itens 1–4 não iniciados) |
+| [012](./012-youtube-ingestion-lockdown/spec.md) | Ingestão de vídeo sem cookies do YouTube | — | 📋 **Proposed** |
+
+A **012 não vem do plano de refatoração** — nasceu de um incidente em produção (2026-09-02) em que um erro de faturamento da API do Gemini chegou ao usuário como "atualize os cookies do YouTube". É a primeira spec originada de operação, não de auditoria.
 
 O que **não** foi resolvido por elas — e por quê — está em [`docs/GAPS.md`](../docs/GAPS.md).
 

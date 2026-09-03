@@ -101,11 +101,15 @@ const TASK_MODELS = {
  */
 const ALLOWED_MODELS = [
   'gemini-3.1-pro-preview', // Mais recente e preciso ($2/$12 por 1M até 200K tokens)
-  'gemini-3-pro-preview',   // Versão anterior do 3 Pro
   'gemini-2.5-pro',         // Forte em vídeo/raciocínio (default de análise e estratégia)
   'gemini-2.5-flash',       // Rápido e barato (default de texto/chat)
   'gemini-2.0-flash'        // Legado — mantido para comparação
 ];
+// REMOVIDO em 2026-09-02: 'gemini-3-pro-preview' — o provedor marcou como
+// descontinuado. Oferecer na tela de Ajustes um modelo que falha ao ser usado
+// transfere para o usuário um erro que é nosso. Quem tiver o valor antigo no
+// localStorage cai no default da tarefa, com aviso (ver `resolveModel`).
+// O preço continua em models/ApiUsage.js#PRICING, para as linhas históricas.
 
 /**
  * Resolve o modelo a usar para uma tarefa: a escolha explícita do usuário

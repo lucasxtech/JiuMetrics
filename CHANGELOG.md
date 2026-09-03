@@ -11,6 +11,35 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 🔬 Primeira medida de qualidade da análise de IA — 2026-09-03
+
+O projeto nunca teve como dizer se uma análise de luta é boa. Agora tem duas ferramentas, e a primeira já produziu números sobre as 285 análises que existem em produção.
+
+**Adicionado**
+- `server/src/utils/analysisQuality.js` — 10 regras determinísticas que checam **coerência interna e contrato** de uma análise (gráfico de passagem sem passagem, aritmética impossível, rótulo fora do vocabulário, fatia única em 100%, contagem disfarçada de percentual, linguagem que o prompt proíbe). Sem IA, sem custo, sem gabarito.
+- `server/scripts/audit-analysis-quality.js` — roda essas regras sobre o banco (`--por-mes`, `--desde`, `--exemplos`). Só leitura.
+- `server/scripts/eval-video-analysis.js` + fixtures — avaliação **sem gabarito humano** em três modos: variância entre execuções do mesmo vídeo, concordância entre modelos, e leitura do placar do broadcast como verdade de chão. Gasta inferência paga: estima o custo e pede confirmação antes. Roda sob demanda, nunca no CI.
+
+**O que foi medido** (285 análises, nenhuma editada por usuário):
+- 76,5% têm ao menos um gráfico com **um único rótulo em 100%** — e 8 de 8 no pipeline atual. Uma "distribuição" de um elemento só não distribui nada.
+- 17,5% têm valores equidistantes (50/50, 33/33/34): contagem renormalizada, não distribuição.
+- O `responseSchema` **funcionou**: rótulo fora do vocabulário caiu de 58% (dez/2025) para 0%, e gráfico que não soma 100 de 33% para 0%.
+- Coerência aritmética sai quase limpa. O problema medido não é o modelo se contradizer — é o formato exigir número onde não houve evento.
+
+### 🐛 Correções na camada de IA — 2026-09-03
+
+**Corrigido**
+- **Custo do `gemini-2.5-pro` era subestimado acima de 200K tokens.** O modelo cobra o dobro nessa faixa ($2,50/$15,00 contra $1,25/$10,00) e `PRICING` só conhecia a faixa barata. 3 das 9 análises mais recentes estavam nela (198K–227K tokens), então o custo registrado dessas linhas — e o consumo do orçamento mensal por tenant — estava pela metade.
+- **A preferência de finalização chegava fragmentada na estratégia.** `finalizacoes_mais_usadas` agrupava por string exata, então "triângulo", "triângulo invertido" e "triângulo voador" contavam como três técnicas de 1× cada. Novo `utils/submissionTaxonomy.js` agrupa por família canônica **preservando o nome específico** em `variantes` — que agora também vai para o prompt de estratégia.
+
+**Alterado**
+- `gemini-3-pro-preview` saiu da allow-list e da tela de Ajustes: o provedor marcou o modelo como descontinuado. Quem tiver o valor salvo no navegador cai no default da tarefa, com aviso. O preço continua em `PRICING` para as linhas históricas.
+- Estratégia passa a registrar `metadata.quantitativeData` — quais lados tinham dado quantitativo. **52 das 54 pessoas com análise não têm nenhum**, e as 41 estratégias já geradas saíram só com texto. O comportamento não mudou; deixou de ser invisível.
+
+### 📋 Spec 012 proposta — ingestão de vídeo sem cookies do YouTube — 2026-09-03
+
+Um erro de faturamento da API do Gemini (`403 PERMISSION_DENIED`) chegava ao usuário como "os cookies do YouTube podem ter expirado", porque o fallback de download dispara para qualquer falha da ingestão direta e sua mensagem substitui a causa real. A [spec 012](./specs/012-youtube-ingestion-lockdown/spec.md) propõe classificar o erro da tentativa direta e remover o fallback, `YOUTUBE_COOKIES` e `@distube/ytdl-core`. Ainda não implementada.
+
 ### 🔧 CI: portões corrigidos e GitHub Pages desligado — 2026-09-02
 
 #### Segurança

@@ -474,7 +474,13 @@ function formatTechnicalStats(stats, name) {
       section += `\n  • Concluídas: ${stats.submissions.concluidas_total} (${stats.submissions.taxa_sucesso_percentual}% sucesso)`;
     }
     if (stats.submissions.finalizacoes_mais_usadas?.length > 0) {
-      section += `\n  • Preferidas: ${stats.submissions.finalizacoes_mais_usadas.map(f => `${f.tecnica} (${f.quantidade}x)`).join(', ')}`;
+      // As variantes vêm de `utils/submissionTaxonomy.js`: a contagem agrupa
+      // por família ("triângulo"), mas o nome específico que a IA observou
+      // ("voador", "invertido") é informação tática que vale carregar até aqui.
+      section += `\n  • Preferidas: ${stats.submissions.finalizacoes_mais_usadas.map(f => {
+        const variantes = f.variantes?.length ? ` — ${f.variantes.join(', ')}` : '';
+        return `${f.tecnica} (${f.quantidade}x${variantes})`;
+      }).join(', ')}`;
     }
     sections.push(section);
   }

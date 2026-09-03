@@ -323,7 +323,8 @@ Continua verdade que o registro funciona *por acidente*: o cliente correto seria
 
 | # | Problema |
 |---|---|
-| AI-11 | **`AVAILABLE_MODELS` duplicada** entre `config/ai.js` e `frontend/src/utils/aiConfig.js`. A do backend deixou de ter uma segunda cópia interna na spec 009 (deriva da allow-list), mas a do frontend continua separada |
+| AI-11 | **`AVAILABLE_MODELS` duplicada** entre `config/ai.js` e `frontend/src/utils/aiConfig.js`. A do backend deixou de ter uma segunda cópia interna na spec 009 (deriva da allow-list), mas a do frontend continua separada. ⚠️ **Nenhum teste guarda a sincronia** — em 2026-09-02 as duas precisaram ser editadas à mão para remover o mesmo modelo descontinuado. É a próxima que vai divergir |
+| AI-14 | 🆕 **A análise não é idempotente.** `api_usage` registra duas chamadas idênticas (126.173 tokens, 100 s de intervalo, 2026-08-12): um duplo envio paga duas inferências de `gemini-2.5-pro` pela mesma luta. Não há chave de idempotência nem trava por `(personId, videoUrl)` em janela curta |
 | AI-13 | 🆕 **Rate limiting genérico continua inoperante em serverless** — `MemoryStore` conta por instância. A spec 009 resolveu o gasto de IA por outro caminho (orçamento contado no banco), mas o limite de requisições por IP segue sem valer em produção. **Depende de infraestrutura** (store externo ou limite na borda) — decisão do proprietário, não de código |
 | AI-12 | **`config/ai.js` mistura domínio e infra** — regras IBJJF, nomes de modelo, temperaturas, limites de download, rate limits e labels de gráfico no mesmo arquivo |
 | AI-13 | **`geminiService.js` acumula três papéis** em 845 linhas: montagem de prompt, regras de domínio e parsing |
@@ -335,8 +336,10 @@ Continua verdade que o registro funciona *por acidente*: o cliente correto seria
 Limites reais, que qualquer proposta de evolução precisa respeitar.
 
 1. **Só YouTube.** Não há upload de arquivo. Depende de `@distube/ytdl-core` e do binário `yt-dlp` — **dependência de sistema não declarada em nenhum manifesto**. Ambos quebram rotineiramente quando o YouTube muda, e são as dependências mais frágeis do projeto. Em produção (Vercel) `yt-dlp` não existe, então o caminho real é sempre `ytdl-core`.
+   ⚠️ **Isto é o FALLBACK, não o caminho principal.** A tentativa 1 manda a URL direto ao Gemini, sem download e sem cookie. A [spec 012](../specs/012-youtube-ingestion-lockdown/spec.md) propõe tornar o caminho direto o único.
 
 2. **YouTube pode bloquear por detecção de bot.** Mitigado por `YOUTUBE_COOKIES`, que **expira** e precisa de renovação manual.
+   🔴 **Esta mensagem já enganou em produção.** Em 2026-09-02 a tentativa 1 falhava com `403 PERMISSION_DENIED` ("Lightning dunning decision is deny") — a API do Gemini suspensa por faturamento. O erro é engolido por um `console.warn` em `geminiService.js:217`, o fallback dispara para **qualquer** falha, e o usuário recebia "os cookies podem ter expirado". Reproduzido também em chamada de **texto puro, sem vídeo**, o que descartou o YouTube como causa. Ver [spec 012](../specs/012-youtube-ingestion-lockdown/spec.md).
 
 3. **Limites de vídeo:** 200 MB, 720p, timeout de download 120 s, processamento na Files API 120 s.
 
@@ -344,11 +347,20 @@ Limites reais, que qualquer proposta de evolução precisa respeitar.
 
 5. **Os gráficos não são auditáveis.** Percentuais forçados a somar 100%, sem timestamps nem eventos verificáveis. É interpretação do modelo apresentada como distribuição. `frames_analyzed` é resquício de um caminho de análise por frames estáticos que **já foi removido** do código.
 
-6. **Cadeia de compressão lossy até a estratégia:** vídeo → análise estruturada → resumo narrativo → consolidação de N resumos → prompt de estratégia. Cada etapa perde informação, e a estratégia final vê apenas texto mais alguns números agregados.
+   📊 **Agora medido** (auditoria de 2026-09-02, `server/scripts/audit-analysis-quality.js` sobre 285 análises, nenhuma editada): **76,5% das análises têm ao menos um gráfico com um único rótulo em 100%** — e **8 de 8** no pipeline atual. Outras 17,5% têm valores equidistantes (50/50, 33/33/34), que é contagem renormalizada, não distribuição. Em compensação, o `responseSchema` **funcionou**: rótulo fora do vocabulário canônico (58% em dez/2025) e gráfico que não soma 100 (33%) estão em **0% desde jan/2026**. As regras de coerência aritmética saem quase limpas — o problema medido não é o modelo se contradizer, é o formato exigir número onde não há evento.
 
-7. **`analysis_versions` não tem `user_id`** — restrição de schema que impede autorizar versões por dono sem alterar a tabela.
+6. **Não existe avaliação de qualidade da saída de IA.** Os 357 testes do backend verificam contrato e autorização; nenhum olha o que a IA respondeu sobre um vídeo. `SPEC-ANALISE-IA.md` (F4) registrou isso em 2026-07-23 e continua valendo. **Consequência prática:** trocar de modelo, mudar `mediaResolution` ou reescrever o prompt não tem como ser avaliado — só opinado.
+   - `server/src/utils/analysisQuality.js` + `scripts/audit-analysis-quality.js` são o **primeiro degrau**: regras determinísticas, custo zero, sem gabarito. Medem **coerência e contrato**, não acerto.
+   - `scripts/eval-video-analysis.js` é o segundo: variância entre execuções, concordância entre modelos e leitura do placar do broadcast — **também sem gabarito humano**, mas com custo real de inferência (≈ US$ 3,37 para 4 vídeos × 3 execuções, mais que todo o gasto histórico do projeto). Roda sob demanda, nunca no CI.
+   - O que nenhum dos dois faz: dizer se a análise descreve corretamente o que aconteceu no vídeo. Isso exige gabarito anotado.
 
-8. **Não há job assíncrono, fila ou canal de tempo real.** O progresso mostrado na UI é simulado no cliente.
+7. **`technical_stats` existe em 8 das 285 análises.** A coluna só passou a ser preenchida em ago/2026. Consequência medida em 2026-09-02: **52 das 54 pessoas com análise não têm nenhum dado quantitativo**, e as 41 estratégias já geradas saíram sem número algum — só texto. `formatTechnicalStats` informa isso ao modelo ("Dados técnicos não disponíveis ainda"), e desde 2026-09-03 o `metadata.quantitativeData` da estratégia registra explicitamente quais lados tinham número. Análises antigas **não podem ser retroalimentadas sem reprocessar o vídeo**, o que custa inferência.
+
+8. **Cadeia de compressão lossy até a estratégia:** vídeo → análise estruturada → resumo narrativo → consolidação de N resumos → prompt de estratégia. Cada etapa perde informação, e a estratégia final vê apenas texto mais alguns números agregados. A consolidação acontece em **duas camadas com semânticas diferentes**: `geminiService.consolidateAnalyses` (entre os vídeos de uma requisição) tira **média** de percentuais e de contagens; `StrategyService.consolidateTechnicalStats` (entre as análises de uma pessoa) soma **totais** e depois converte em adjetivo ("tendência agressivo") via `formatChartsAsNarrative`.
+
+9. **`analysis_versions` não tem `user_id`** — restrição de schema que impede autorizar versões por dono sem alterar a tabela.
+
+10. **Não há job assíncrono, fila ou canal de tempo real.** O progresso mostrado na UI é simulado no cliente.
 
 ---
 

@@ -10,7 +10,7 @@ const DEFAULT_MODEL = 'gemini-2.5-flash';
  * Fonte: https://ai.google.dev/pricing
  * @constant {Object}
  */
-// Limite para faixa de preço do gemini-3-pro-preview / 3.1-pro-preview
+// Limite de faixa de preço, comum ao 2.5-pro e aos 3.x-pro-preview
 const TIER_THRESHOLD = 200000;
 
 /**
@@ -27,11 +27,22 @@ const PRICING = {
     input: 0.30,    // $0.30 por 1M tokens
     output: 2.50    // $2.50 por 1M tokens
   },
+  // O 2.5-pro TAMBÉM cobra por faixa, e isso passou despercebido até a
+  // auditoria de 2026-09-02: 3 das 9 análises de vídeo mais recentes tinham
+  // 198K–227K tokens de entrada, ou seja, caíam na faixa cara. Enquanto só a
+  // faixa barata existia aqui, o custo dessas análises foi registrado pela
+  // metade — subestimando o gasto real e, por tabela, o consumo do orçamento
+  // mensal por tenant (services/costGuard.js).
   'gemini-2.5-pro': {
-    input: 1.25,    // $1.25 por 1M tokens (até 200K de contexto)
-    output: 10.00   // $10.00 por 1M tokens
+    tiers: [
+      { threshold: TIER_THRESHOLD, input: 1.25, output: 10.00 },  // até 200K tokens
+      { threshold: Infinity,       input: 2.50, output: 15.00 }   // acima de 200K tokens
+    ]
   },
-  // Gemini 3 Pro Preview e 3.1 Pro Preview — mesmo preço, faixas por contexto
+  // Gemini 3 Pro Preview e 3.1 Pro Preview — mesmo preço, faixas por contexto.
+  // O 3-pro-preview saiu da allow-list (descontinuado pelo provedor), mas o
+  // preço FICA: linhas históricas de api_usage referenciam este nome e
+  // precisam continuar precificáveis.
   'gemini-3-pro-preview': {
     tiers: [
       { threshold: TIER_THRESHOLD, input: 2.00, output: 12.00 },  // até 200K tokens
