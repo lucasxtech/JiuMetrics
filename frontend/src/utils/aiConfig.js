@@ -20,11 +20,9 @@ export const AVAILABLE_MODELS = [
     name: 'Gemini 3.1 Pro (Preview)',
     description: 'Máxima precisão para análises avançadas'
   },
-  {
-    id: 'gemini-3-pro-preview',
-    name: 'Gemini 3 Pro (Preview)',
-    description: 'Versão anterior do 3 Pro'
-  },
+  // REMOVIDO em 2026-09-02: 'gemini-3-pro-preview' — descontinuado pelo
+  // provedor. Precisa sair daqui E de ALLOWED_MODELS no backend: esta lista é
+  // só o rótulo na tela, a decisão real é do backend.
   {
     id: 'gemini-2.5-pro',
     name: 'Gemini 2.5 Pro',
