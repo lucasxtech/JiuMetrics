@@ -1,0 +1,63 @@
+{
+  "_leiaMe": [
+    "Vídeos de referência para scripts/eval-video-analysis.js.",
+    "",
+    "Critério de escolha: lutas PÚBLICAS do canal oficial da IBJJF, com placar",
+    "visível na tela e resultado registrado publicamente. São as mesmas quatro",
+    "lutas já analisadas pelo sistema em produção em 2026-08-12, o que permite",
+    "comparar qualquer execução nova contra o que o pipeline de fato gravou.",
+    "",
+    "`placarEsperado` está NULO de propósito: preencher exige olhar o placar",
+    "final na tela do vídeo — 10 segundos por luta, sem precisar entender de",
+    "Jiu-Jitsu. Enquanto estiver nulo, o modo `placar` apenas reporta o que leu,",
+    "sem julgar. Preenchido, ele vira uma verificação objetiva de acerto.",
+    "",
+    "`duracaoSegundos` é só para estimar custo antes de gastar. Aproximado."
+  ],
+  "videos": [
+    {
+      "id": "sodre-doederlein-euro-2022",
+      "titulo": "Diego Sodre × Isaac Doederlein — European 2022",
+      "url": "https://www.youtube.com/watch?v=0SIDoe6bDfA",
+      "atleta": "Diego Sodre",
+      "giColor": "azul",
+      "faixa": "preta",
+      "duracaoSegundos": 660,
+      "placarEsperado": null,
+      "notas": "Análise de produção descreveu 8+ minutos por cima sem tentativa de passagem, e mesmo assim gravou 'Jogo de Passagem: pressão de quadril 100%'. Caso-teste do gráfico fantasma."
+    },
+    {
+      "id": "maciel-sodre-brasileiro-2024",
+      "titulo": "Kennedy Maciel × Diego Sodre — Brasileiro 2024",
+      "url": "https://www.youtube.com/watch?v=avJkuLGwDl0",
+      "atleta": "Diego Sodre",
+      "giColor": "azul",
+      "faixa": "preta",
+      "duracaoSegundos": 720,
+      "placarEsperado": null,
+      "notas": "Única das quatro sem contradição visível entre texto e números. Serve de controle."
+    },
+    {
+      "id": "sodre-maira-pan-2022",
+      "titulo": "Diego Sodre × Daniel Maira — Pan Championship 2022",
+      "url": "https://www.youtube.com/watch?v=2GXCSqxjKM4",
+      "atleta": "Diego Sodre",
+      "giColor": "azul",
+      "faixa": "preta",
+      "duracaoSegundos": 130,
+      "placarEsperado": null,
+      "notas": "Luta curta terminada em finalização (tarikoplata). A mais barata de rodar — boa para iterar. Gerou o gráfico 33/33/34, que é contagem disfarçada de percentual."
+    },
+    {
+      "id": "sodre-maciel-mundial-2025",
+      "titulo": "Diego Sodre × Kennedy Maciel — World Championship 2025",
+      "url": "https://www.youtube.com/watch?v=UhDSZOW6dLc",
+      "atleta": "Diego Sodre",
+      "giColor": "azul",
+      "faixa": "preta",
+      "duracaoSegundos": 640,
+      "placarEsperado": null,
+      "notas": "Texto afirma que o atleta não jogou por baixo; os números registram 1 raspagem e 'scramble 100%' no jogo de guarda. Caso-teste de coerência entre prosa e número."
+    }
+  ]
+}
