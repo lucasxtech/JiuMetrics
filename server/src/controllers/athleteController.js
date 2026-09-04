@@ -1,4 +1,4 @@
-// Controlador de Atletas — implementação em `personController.js` (spec 012).
+// Controlador de Atletas — implementação em `personController.js` (spec 013).
 const Athlete = require('../models/Athlete');
 const { createPersonController } = require('./personController');
 

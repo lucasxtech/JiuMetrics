@@ -1,5 +1,5 @@
 /**
- * Controller ÚNICO de atletas e adversários (spec 012).
+ * Controller ÚNICO de atletas e adversários (spec 013).
  *
  * `athleteController.js` e `opponentController.js` eram cópias de 138 linhas
  * cuja única diferença eram os rótulos das mensagens. O corpo já chega

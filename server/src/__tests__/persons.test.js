@@ -1,5 +1,5 @@
 /**
- * SPEC-012 — contrato HTTP de atletas e adversários.
+ * SPEC-013 — contrato HTTP de atletas e adversários.
  *
  * Nível: API real (supertest) + fake de PostgREST + models REAIS (nada de
  * mock em `models/*`), no mesmo harness da spec 004. Cada teste roda para as
@@ -22,7 +22,7 @@ const ROTAS = [
   { path: '/api/opponents', table: 'opponents', personType: 'opponent', fixture: 'opponent' },
 ];
 
-describe.each(ROTAS)('SPEC-012 — $path', ({ path, table, personType, fixture }) => {
+describe.each(ROTAS)('SPEC-013 — $path', ({ path, table, personType, fixture }) => {
   let fx;
   let fake;
   let auth;

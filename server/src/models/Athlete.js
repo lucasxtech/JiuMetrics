@@ -1,5 +1,5 @@
 // @ts-check
-// Modelo de dados para Atleta — implementação em `personModel.js` (spec 012).
+// Modelo de dados para Atleta — implementação em `personModel.js` (spec 013).
 const { createPersonModel } = require('./personModel');
 
 module.exports = createPersonModel({

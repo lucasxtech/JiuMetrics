@@ -98,7 +98,7 @@ Authorization: Bearer {token}
 
 ## 👤 Atletas
 
-Contrato atualizado na [spec 012](../specs/012-athletes-opponents-consolidation/spec.md): **toda resposta é `camelCase`** (inclusive `POST`), o corpo de `POST`/`PUT` é validado por zod (`server/src/schemas/requests/person.js`) e campo omitido é `null` — não há mais defaults fabricados.
+Contrato atualizado na [spec 013](../specs/013-athletes-opponents-consolidation/spec.md): **toda resposta é `camelCase`** (inclusive `POST`), o corpo de `POST`/`PUT` é validado por zod (`server/src/schemas/requests/person.js`) e campo omitido é `null` — não há mais defaults fabricados.
 
 ### GET /athletes
 Listar os atletas do escopo do usuário (admin vê todo o tenant).

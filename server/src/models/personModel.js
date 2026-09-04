@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Implementação ÚNICA de acesso a dados para atletas e adversários (spec 012).
+ * Implementação ÚNICA de acesso a dados para atletas e adversários (spec 013).
  *
  * `models/Athlete.js` e `models/Opponent.js` eram cópias de ~195 linhas com
  * duas únicas diferenças: o nome da tabela e o rótulo nas mensagens. Toda

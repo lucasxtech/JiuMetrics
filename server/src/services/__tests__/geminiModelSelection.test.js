@@ -35,13 +35,13 @@ describe('Seleção Dinâmica de Modelo (via llm.js)', () => {
 
   describe('generateTacticalStrategy', () => {
     it('usa o modelo escolhido pelo usuário quando informado', async () => {
-      llm.generateJson.mockResolvedValue({ data: FAKE_STRATEGY, usage: usageFor('gemini-3-pro-preview') });
+      llm.generateJson.mockResolvedValue({ data: FAKE_STRATEGY, usage: usageFor('gemini-3.1-pro-preview') });
 
-      const result = await generateTacticalStrategy(mockAthleteData, mockOpponentData, 'gemini-3-pro-preview');
+      const result = await generateTacticalStrategy(mockAthleteData, mockOpponentData, 'gemini-3.1-pro-preview');
 
-      expect(llm.generateJson).toHaveBeenCalledWith(expect.objectContaining({ model: 'gemini-3-pro-preview' }));
+      expect(llm.generateJson).toHaveBeenCalledWith(expect.objectContaining({ model: 'gemini-3.1-pro-preview' }));
       expect(result.strategy).toEqual(FAKE_STRATEGY);
-      expect(result.usage.modelName).toBe('gemini-3-pro-preview');
+      expect(result.usage.modelName).toBe('gemini-3.1-pro-preview');
     });
 
     it('usa o default de STRATEGY quando nenhum modelo é informado', async () => {

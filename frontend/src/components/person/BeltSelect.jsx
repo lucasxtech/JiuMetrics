@@ -1,4 +1,4 @@
-// Seletor de faixa da página de detalhe (spec 012). Era um dropdown
+// Seletor de faixa da página de detalhe (spec 013). Era um dropdown
 // artesanal de ~70 linhas com overlay próprio; um `<select>` nativo faz o
 // mesmo, com teclado e leitor de tela de graça.
 import { BELTS, BELT_COLORS } from '../../constants/persons';

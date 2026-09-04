@@ -1,5 +1,5 @@
 /**
- * Fonte única do vocabulário de atletas/adversários no frontend (spec 012).
+ * Fonte única do vocabulário de atletas/adversários no frontend (spec 013).
  *
  * Antes, a lista de faixas estava copiada em 3 arquivos e as cores em 2; e
  * cada tela decidia sozinha rótulo, rota e query key. Tudo o que difere entre

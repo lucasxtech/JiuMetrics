@@ -107,7 +107,7 @@ export const minhaAcao = async () => {
 
 ### Adicionar Campo em Atleta / Adversário
 
-Desde a [spec 012](../specs/012-athletes-opponents-consolidation/spec.md) a implementação é uma só para as duas entidades — o campo é adicionado **uma vez** em cada camada:
+Desde a [spec 013](../specs/013-athletes-opponents-consolidation/spec.md) a implementação é uma só para as duas entidades — o campo é adicionado **uma vez** em cada camada:
 
 1. **Migration** — a coluna nas **duas** tabelas (`athletes` e `opponents` continuam separadas no banco). Migrations são aplicadas à mão; ver `docs/DATABASE.md`.
 2. **Schema de entrada** — `server/src/schemas/requests/person.js` (`camposOpcionais`). Campo que o model usa e o schema não declara chega `undefined` **em silêncio**.

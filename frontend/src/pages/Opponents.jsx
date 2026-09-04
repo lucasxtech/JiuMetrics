@@ -1,4 +1,4 @@
-// Página de Adversários — implementação em `PersonList` (spec 012).
+// Página de Adversários — implementação em `PersonList` (spec 013).
 import PersonList from './PersonList';
 
 export default function Opponents() {

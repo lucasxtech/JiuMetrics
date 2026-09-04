@@ -1,4 +1,4 @@
-# SPEC-012 — Consolidação de atletas e adversários
+# SPEC-013 — Consolidação de atletas e adversários
 
 **Status: Implemented (2026-09-04)** · Fora do plano de refatoração original; nasce do mapeamento do módulo feito em 2026-09-04.
 

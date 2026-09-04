@@ -1,4 +1,4 @@
-// Detalhe de atleta OU adversário (spec 012). Substitui `AthleteDetail.jsx`
+// Detalhe de atleta OU adversário (spec 013). Substitui `AthleteDetail.jsx`
 // (697 linhas, 15 `useState`, `useEffect` cru sem invalidação de cache).
 //
 // Toda leitura passa por React Query e toda escrita invalida o que leu —

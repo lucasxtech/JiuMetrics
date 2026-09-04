@@ -1,5 +1,5 @@
 // Cadastro rápido de atleta/adversário — agora sobre o `Modal` comum e o
-// `PersonForm` único (spec 012). Antes tinha overlay e formulário próprios.
+// `PersonForm` único (spec 013). Antes tinha overlay e formulário próprios.
 import Modal from './Modal';
 import PersonForm from '../forms/PersonForm';
 import { personLabels } from '../../constants/persons';

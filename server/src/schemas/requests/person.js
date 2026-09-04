@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 /**
- * Schemas de ENTRADA HTTP dos endpoints de atletas e adversários (spec 012).
+ * Schemas de ENTRADA HTTP dos endpoints de atletas e adversários (spec 013).
  *
  * Antes desta spec os quatro endpoints de escrita não tinham schema: o
  * controller fazia `Number(age)` (que vira `NaN` e estoura 500 no Postgres),

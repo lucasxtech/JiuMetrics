@@ -1,4 +1,4 @@
-// Fachada nomeada sobre `personService('opponent')` (spec 012).
+// Fachada nomeada sobre `personService('opponent')` (spec 013).
 import { personService } from './personService';
 
 const svc = personService('opponent');

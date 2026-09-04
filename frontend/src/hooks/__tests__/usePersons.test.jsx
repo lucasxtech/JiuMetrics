@@ -7,7 +7,7 @@ import { usePersons, usePerson, usePersonMutations, personListKey, personKey } f
 vi.mock('../../services/api');
 
 /**
- * O bug que estes testes fecham (spec 012): a página de detalhe trocava a
+ * O bug que estes testes fecham (spec 013): a página de detalhe trocava a
  * faixa e apagava registros sem invalidar `['athletes']`. Com `staleTime` de
  * 5 minutos, o atleta apagado continuava na lista e no Overview.
  */

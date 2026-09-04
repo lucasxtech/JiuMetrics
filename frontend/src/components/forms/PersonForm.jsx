@@ -1,4 +1,4 @@
-// Formulário único de atleta/adversário (spec 012) — substitui `AthleteForm`
+// Formulário único de atleta/adversário (spec 013) — substitui `AthleteForm`
 // e o formulário embutido em `QuickAddModal`, que eram o mesmo par nome+faixa
 // escrito duas vezes.
 //

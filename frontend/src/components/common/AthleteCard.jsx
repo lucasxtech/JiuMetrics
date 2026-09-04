@@ -1,6 +1,6 @@
 // Card de atleta/adversário nas listas.
 // `weight`, `age`, `style` e `technicalProfile` eram recebidos e nunca
-// renderizados (F7 da SPEC-FRONTEND) — removidos na spec 012.
+// renderizados (F7 da SPEC-FRONTEND) — removidos na spec 013.
 import CreatorBadge from './CreatorBadge';
 import { BELT_BADGE_CLASSES } from '../../constants/persons';
 

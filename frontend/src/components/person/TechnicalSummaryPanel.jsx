@@ -1,4 +1,4 @@
-// Painel ÚNICO do resumo técnico (spec 012).
+// Painel ÚNICO do resumo técnico (spec 013).
 //
 // A página anterior tinha dois painéis com o mesmo texto ("Perfil Técnico
 // Completo" lia `aiSummary`, "Resumo técnico" lia `athlete.technicalSummary`

@@ -1,6 +1,6 @@
 # Módulo: Atletas e Adversários
 
-> **Um único documento para os dois** porque, no código, são a mesma coisa: colunas idênticas e, desde a [spec 012](../../specs/012-athletes-opponents-consolidation/spec.md), **uma única implementação** parametrizada pela tabela — `models/personModel.js` e `controllers/personController.js`. `Athlete.js`/`Opponent.js` e `athleteController.js`/`opponentController.js` são wrappers de poucas linhas que só informam tabela, `person_type` e rótulos.
+> **Um único documento para os dois** porque, no código, são a mesma coisa: colunas idênticas e, desde a [spec 013](../../specs/013-athletes-opponents-consolidation/spec.md), **uma única implementação** parametrizada pela tabela — `models/personModel.js` e `controllers/personController.js`. `Athlete.js`/`Opponent.js` e `athleteController.js`/`opponentController.js` são wrappers de poucas linhas que só informam tabela, `person_type` e rótulos.
 >
 > **Código:** `server/src/models/personModel.js`, `server/src/controllers/personController.js`, `server/src/schemas/requests/person.js`, `server/src/utils/dbParsers.js` · **Tabelas:** `athletes`, `opponents` · **Frontend:** `pages/{PersonList,PersonDetail}.jsx` (e os wrappers `Athletes`, `Opponents`), `components/person/*`, `components/forms/PersonForm.jsx`, `components/common/QuickAddModal.jsx`, `hooks/usePersons.js`, `constants/persons.js`, `services/personService.js`
 
@@ -17,21 +17,21 @@ A única diferença entre as duas entidades é **semântica**:
 | **Athlete** | o lutador que o usuário treina ou representa |
 | **Opponent** | o lutador que vai ser enfrentado |
 
-O motivo original da separação, segundo o proprietário (2026-08-12): permitir distinguir os dois lados ao montar uma estratégia. Decisão de unificar **as tabelas** registrada em [ADR-007](../decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) (`PLANNED`, último item da spec 011). A spec 012 unificou **o código**, não o banco.
+O motivo original da separação, segundo o proprietário (2026-08-12): permitir distinguir os dois lados ao montar uma estratégia. Decisão de unificar **as tabelas** registrada em [ADR-007](../decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) (`PLANNED`, último item da spec 011). A spec 013 unificou **o código**, não o banco.
 
 ## Business Rules
 
 `IMPLEMENTED`, verificadas no código:
 
 1. **`name` e `belt` são obrigatórios na criação.** `belt` é um enum fechado (`Branca`, `Azul`, `Roxa`, `Marrom`, `Preta`), validado por zod na borda (`schemas/requests/person.js`). No `PUT` qualquer subconjunto é aceito, mas o corpo não pode ser vazio.
-2. **Campo omitido é `null`, nunca default inventado.** ✅ Spec 012 — antes o controller fabricava `age: 25`, `weight: 75`, `style: 'Guarda'`, `cardio: 50` e a tela de estratégia exibia isso como fato. A UI mostra apenas o que foi informado (`describePerson` em `constants/persons.js`).
+2. **Campo omitido é `null`, nunca default inventado.** ✅ Spec 013 — antes o controller fabricava `age: 25`, `weight: 75`, `style: 'Guarda'`, `cardio: 50` e a tela de estratégia exibia isso como fato. A UI mostra apenas o que foi informado (`describePerson` em `constants/persons.js`).
 3. **`technical_summary` é gerado por IA**, não pelo usuário. É regenerado automaticamente sempre que uma análise da pessoa é criada ou deletada (fire-and-forget, tolerante a falha — módulo `fight-analysis`). O cliente HTTP **não** pode escrevê-lo por `PUT /api/athletes/:id`: o schema remove o campo. Quem o grava é o módulo de análise, o de chat e o botão "Gerar com IA" (`POST /api/ai/consolidate-profile`), sempre pelo model.
 4. **Se a pessoa fica com zero análises, o `technical_summary` é limpo.**
 5. **`belt` alimenta as regras IBJJF** na geração de estratégia. ⚠️ **Correção da doc anterior:** faixa desconhecida ou vazia **não** cai em branca — `getBeltLevel` devolve 5 (preta) e o aviso de restrição só é montado para nível < 5, ou seja, a restrição é **desligada**. Por isso a faixa é enum obrigatória na entrada: a porta foi fechada na borda, não na saída. Registros antigos com valor fora do enum mantêm o comportamento histórico.
 6. **`update` no model usa allow-list explícita de colunas** — não há mass assignment. Preservar ao refatorar.
 7. **Exclusão é hard delete.** As `fight_analyses`, `tactical_analyses` e `profile_versions` da pessoa **não** são apagadas em cascata — não há FK. O modal de confirmação diz isso ao usuário.
 8. **Leitura respeita escopo de tenant**, escrita usa o `user_id` real do registro (permite admin editar dado de membro do grupo sem transferir posse).
-9. **Contrato de saída é `camelCase` em todos os endpoints**, inclusive `POST` (✅ spec 012 — antes devolvia a linha crua do banco).
+9. **Contrato de saída é `camelCase` em todos os endpoints**, inclusive `POST` (✅ spec 013 — antes devolvia a linha crua do banco).
 
 ## Inputs
 
@@ -90,18 +90,18 @@ flowchart TD
 
 | Severidade | Problema |
 |---|---|
-| **MEDIUM** | **`technical_profile` é escrito e ninguém lê.** A spec 007 corrigiu a escrita (uma query extra por análise); o único leitor era uma prop ignorada de `AthleteCard`, removida na spec 012. Decisão pendente: parar de gravar ou ligar a um consumidor — ver P7/P12 em [`GAPS.md`](../GAPS.md) |
+| **MEDIUM** | **`technical_profile` é escrito e ninguém lê.** A spec 007 corrigiu a escrita (uma query extra por análise); o único leitor era uma prop ignorada de `AthleteCard`, removida na spec 013. Decisão pendente: parar de gravar ou ligar a um consumidor — ver P7/P12 em [`GAPS.md`](../GAPS.md) |
 | **MEDIUM** | **Sem FK e sem cascade.** Deletar a pessoa deixa `fight_analyses`, `tactical_analyses` e `profile_versions` órfãos |
 | **MEDIUM** | **RLS desligado** nas duas tabelas; o `REVOKE` da chave anon segue pendente — ver [`../DATABASE.md`](../DATABASE.md#4-estado-de-rls--visão-consolidada) |
 | **LOW** | `PersonForm` só coleta nome e faixa; os demais campos só entram por API |
 | **LOW** | Sem paginação nem busca em `getAll` |
 | **LOW** | A regeneração do resumo é fire-and-forget sem sinal de conclusão; a tela recarrega com `setTimeout` de 1 s / 3 s (F18 da SPEC-FRONTEND) |
 | ~~**HIGH**~~ | ✅ Spec 007 — `technical_profile` nunca era atualizado |
-| ~~**MEDIUM**~~ | ✅ Spec 012 — defaults fabricados exibidos como fato |
-| ~~**MEDIUM**~~ | ✅ Spec 012 — models e controllers duplicados (e já divergentes) |
-| ~~**MEDIUM**~~ | ✅ Spec 012 — lista desatualizada por 5 min após apagar/trocar faixa (sem invalidação de cache) |
-| ~~**MEDIUM**~~ | ✅ Spec 012 — `PUT` com o objeto inteiro sobrescrevia o resumo regenerado em background |
-| ~~**LOW**~~ | ✅ Spec 012 — `POST` devolvia `snake_case`; `created_at` lido onde a API entrega `createdAt`; `cardio: 0` virava 50; `age: 'abc'` era 500 |
+| ~~**MEDIUM**~~ | ✅ Spec 013 — defaults fabricados exibidos como fato |
+| ~~**MEDIUM**~~ | ✅ Spec 013 — models e controllers duplicados (e já divergentes) |
+| ~~**MEDIUM**~~ | ✅ Spec 013 — lista desatualizada por 5 min após apagar/trocar faixa (sem invalidação de cache) |
+| ~~**MEDIUM**~~ | ✅ Spec 013 — `PUT` com o objeto inteiro sobrescrevia o resumo regenerado em background |
+| ~~**LOW**~~ | ✅ Spec 013 — `POST` devolvia `snake_case`; `created_at` lido onde a API entrega `createdAt`; `cardio: 0` virava 50; `age: 'abc'` era 500 |
 
 ## Future Considerations
 

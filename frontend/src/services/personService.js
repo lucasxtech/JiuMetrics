@@ -1,4 +1,4 @@
-// Serviço único de atletas/adversários (spec 012). `athleteService.js` e
+// Serviço único de atletas/adversários (spec 013). `athleteService.js` e
 // `opponentService.js` eram cópias que só diferiam no path; continuam
 // existindo como fachadas nomeadas para não quebrar quem as importa.
 import api from './api';

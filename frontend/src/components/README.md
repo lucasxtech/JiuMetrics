@@ -69,7 +69,7 @@ Formulários de cadastro e edição.
 **Usado em:** `PersonList.jsx`, `PersonDetail.jsx`, `QuickAddModal.jsx`
 
 ### person/
-Peças da página de detalhe (`pages/PersonDetail.jsx`, spec 012).
+Peças da página de detalhe (`pages/PersonDetail.jsx`, spec 013).
 
 - **PersonHeader.jsx** - Nome, seletor de faixa, ações
 - **BeltSelect.jsx** - `<select>` nativo com as cores de `constants/persons.js`

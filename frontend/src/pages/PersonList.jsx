@@ -1,4 +1,4 @@
-// Lista de atletas OU adversários (spec 012). `Athletes.jsx` e
+// Lista de atletas OU adversários (spec 013). `Athletes.jsx` e
 // `Opponents.jsx` eram a mesma página com textos e cores trocados.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

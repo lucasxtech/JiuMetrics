@@ -16,7 +16,7 @@ export default function VideoAnalysisComponent() {
   // Novos estados para vincular análise
   const [personType, setPersonType] = useState('athlete'); // 'athlete' ou 'opponent'
   const [personId, setPersonId] = useState('');
-  // Listas via React Query (spec 012): mesmas chaves das telas de cadastro,
+  // Listas via React Query (spec 013): mesmas chaves das telas de cadastro,
   // então um cadastro rápido aqui aparece lá sem refetch manual.
   const { data: athletes = [], isLoading: loadingAthletes } = usePersons('athlete');
   const { data: opponents = [], isLoading: loadingOpponents } = usePersons('opponent');

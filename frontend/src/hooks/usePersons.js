@@ -1,5 +1,5 @@
 /**
- * Leitura e escrita de atletas/adversários via React Query (spec 012).
+ * Leitura e escrita de atletas/adversários via React Query (spec 013).
  *
  * O motivo de existir: a página de detalhe fazia `useEffect` cru e nunca
  * invalidava as queries das listas. Com `staleTime` de 5 minutos, um atleta
