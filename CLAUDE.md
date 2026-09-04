@@ -181,7 +181,7 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 ### Comandos
 
 ```bash
-cd server && npm test          # Jest — 29 suítes / 359 testes (bloqueia merge no CI)
+cd server && npm test          # Jest — 32 suítes / 406 testes (bloqueia merge no CI)
 ```
 
 ```bash

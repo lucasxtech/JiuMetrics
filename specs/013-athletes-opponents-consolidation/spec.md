@@ -77,7 +77,7 @@ Uma implementação por camada, contrato de API consistente, validação na bord
 
 ## Acceptance Criteria
 
-- [x] `cd server && npm test` — 29 suítes / 359 testes
+- [x] `cd server && npm test` — 32 suítes / 406 testes (após merge com a `main` de 2026-09-03)
 - [x] `cd server && npm run typecheck` e `npm run lint`
 - [x] `cd frontend && npm test` — 8 suítes / 76 testes
 - [x] `cd frontend && npm run lint` (0 erros; os 4 avisos são anteriores) e `npm run build`
