@@ -17,6 +17,7 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [009](./009-ai-cost-and-reliability/spec.md) | Custo e confiabilidade de IA | 7 | ✅ **Implemented** (R4, rate limiting, bloqueado por infraestrutura) |
 | [010](./010-frontend-consolidation/spec.md) | Consolidação do frontend | 8 | ✅ **Implemented** (parcial — 3 itens dependem de verificação visual/E2E) |
 | [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | 🟡 **Implemented** (parcial — só o item 5, TypeScript; itens 1–4 não iniciados) |
+| [012](./012-athletes-opponents-consolidation/spec.md) | Consolidação de atletas e adversários | — | ✅ **Implemented** (2026-09-04; fora do plano original — código unificado, banco intocado) |
 
 O que **não** foi resolvido por elas — e por quê — está em [`docs/GAPS.md`](../docs/GAPS.md).
 

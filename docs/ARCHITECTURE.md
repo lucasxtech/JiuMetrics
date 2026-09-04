@@ -76,12 +76,12 @@ flowchart TD
 
 | Padrão | Páginas |
 |---|---|
-| React Query (`@tanstack/react-query`) | `Analyses`, `Athletes`, `Opponents`, `Strategy`, **`Overview`** (spec 010) |
-| `useEffect` + `useState` cru | `Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin` |
+| React Query (`@tanstack/react-query`) | `Analyses`, `PersonList` (`Athletes`/`Opponents`), `PersonDetail` (spec 012, via `hooks/usePersons.js`), `Strategy`, **`Overview`** (spec 010) |
+| `useEffect` + `useState` cru | `Settings`, `AdminUsers`, `ModernLogin` |
 
 O defeito concreto era o `Overview`: criar um atleta invalidava `['athletes']`, mas o dashboard usava `useEffect` com dependência `[]` e só refazia fetch em mount. Migrá-lo para as **mesmas query keys** resolveu sem tocar em nenhum site de mutação.
 
-⚠️ **As 4 páginas restantes continuam no padrão antigo.** Nenhuma tem defeito de dado obsoleto relatado, e a spec 010 avisa que migrar "muda o momento do fetch e pode expor race conditions latentes" — cuja rede de proteção seria o E2E, que não roda neste projeto.
+⚠️ **As 3 páginas restantes continuam no padrão antigo.** `AthleteDetail` migrou na spec 012 — e **tinha** defeito: apagar ou trocar a faixa não invalidava `['athletes']`, e a lista ficava obsoleta por 5 minutos. Nas outras nenhum defeito de dado obsoleto foi relatado, e a spec 010 avisa que migrar "muda o momento do fetch e pode expor race conditions latentes" — cuja rede de proteção seria o E2E, que não roda neste projeto.
 
 ⚠️ **Atenção às query keys:** `['analyses']` são as ESTRATÉGIAS (`tactical_analyses`) e `['fightAnalyses']` são as análises de vídeo. A colisão de vocabulário do domínio chegou até aqui.
 
@@ -91,8 +91,8 @@ O defeito concreto era o `Overview`: criar um atleta invalidava `['athletes']`, 
 |---|---|---|
 | `/login`, `/register` | `ModernLogin`, `Register` | pública |
 | `/` | `Overview` | autenticado |
-| `/athletes`, `/athletes/:id` | `Athletes`, `AthleteDetail` | autenticado |
-| `/opponents`, `/opponents/:id` | `Opponents`, `AthleteDetail isOpponent` | autenticado |
+| `/athletes`, `/athletes/:id` | `PersonList type="athlete"`, `PersonDetail type="athlete"` | autenticado |
+| `/opponents`, `/opponents/:id` | `PersonList type="opponent"`, `PersonDetail type="opponent"` | autenticado |
 | `/strategy` | `Strategy` | autenticado |
 | `/analyze-video` | `VideoAnalysis` | autenticado |
 | `/analyses` | `Analyses` | autenticado |
@@ -102,7 +102,7 @@ O defeito concreto era o `Overview`: criar um atleta invalidava `['athletes']`, 
 
 ### Problemas conhecidos
 
-- **Dois padrões de fetch**, com invalidação cruzada ausente → dados obsoletos entre telas. ✅ **Parcialmente resolvido na [spec 010](../specs/010-frontend-consolidation/spec.md):** `Overview` migrou para React Query com as mesmas query keys das outras telas, o que corrigiu o defeito relatado (criar atleta não atualizava o dashboard). Continuam com `useEffect` cru: `Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin` — nenhuma com defeito relatado, e migrá-las exigiria o E2E que não roda.
+- **Dois padrões de fetch**, com invalidação cruzada ausente → dados obsoletos entre telas. ✅ **Parcialmente resolvido na [spec 010](../specs/010-frontend-consolidation/spec.md):** `Overview` migrou para React Query com as mesmas query keys das outras telas, o que corrigiu o defeito relatado (criar atleta não atualizava o dashboard). `AthleteDetail` migrou na spec 012 (`PersonDetail` + `usePersons`), fechando o defeito de lista obsoleta. Continuam com `useEffect` cru: `Settings`, `AdminUsers`, `ModernLogin` — nenhuma com defeito relatado.
 - **Quatro sistemas de estilo simultâneos**: Tailwind, CSS Modules, CSS global (`index.css`, `App.css`), estilos inline.
 - **Componentes muito grandes**: `StrategySummaryModal.jsx` (1116 linhas), `AiStrategyBox.jsx` (1016), `Analyses.jsx` (922).
 - **Lógica de negócio na UI**: `Analyses.jsx` monta o relatório PDF como template string de HTML (agora em `utils/strategyReportHtml.js`, extraído para poder ser testado). ✅ A duplicação de `athleteStats.js` (238 linhas) **foi removida** na spec 010 — as duas cópias eram código morto, sem nenhum chamador de produção.

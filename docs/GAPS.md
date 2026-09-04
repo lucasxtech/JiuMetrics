@@ -84,8 +84,8 @@ Isso não é detalhe de cobertura: é o que fez três itens da spec 010 ficarem 
 |---|---|---|---|
 | 🟡 | **O `innerHTML` do export de PDF continua lá** | 010 | A **vulnerabilidade** está fechada: o conteúdo é escapado na fonte, com 16 testes que verificam **no DOM** que nenhum nó executável é construído. O **padrão** não. Reescrever ~230 linhas de template sem poder olhar o PDF resultante trocaria uma falha de segurança por regressão de layout silenciosa |
 | 🟡 | **CSP em Report-Only** | 010 | Virar bloqueante exige observar se a política quebra Tailwind ou estilo inline — verificação de navegador |
-| 🟡 | **4 das 5 páginas seguem com `useEffect` cru** | 010 | `Settings`, `AdminUsers`, `AthleteDetail`, `ModernLogin`. Nenhuma com defeito relatado; migrar sem E2E troca bug conhecido por risco não observável |
-| 🟡 | **Validação de schema em 3 endpoints** | 007 | Só os de `/api/ai/*` (os que gastam dinheiro). Há 30 rotas `POST`/`PUT`/`PATCH`. O risco de declarar schema às pressas é real e específico: **campo que o controller usa e o schema não declara chega `undefined` em silêncio** — mapear o payload real do frontend vem antes |
+| 🟡 | **3 das 5 páginas seguem com `useEffect` cru** | 010 | `Settings`, `AdminUsers`, `ModernLogin`. `AthleteDetail` migrou na [spec 012](../specs/012-athletes-opponents-consolidation/spec.md) — e tinha defeito (lista obsoleta por 5 min). Nas restantes nenhum foi relatado |
+| 🟡 | **Validação de schema em 7 endpoints** | 007, 012 | Os 3 de `/api/ai/*` (007) e os 4 de escrita de atletas/adversários (012).  Só os de `/api/ai/*` (os que gastam dinheiro). Há 30 rotas `POST`/`PUT`/`PATCH`. O risco de declarar schema às pressas é real e específico: **campo que o controller usa e o schema não declara chega `undefined` em silêncio** — mapear o payload real do frontend vem antes |
 | 🟡 | **Validação de host por substring no backend** | 010 | `linkController.js:13` ainda faz `hostname.includes('youtube.com')`, e `youtube.com.attacker.net` passa. O frontend foi corrigido; **é o backend que decide** |
 | 🟡 | **JWT continua em `localStorage`** | 010 | O que mudou é não haver mais caminho conhecido de XSS até ele. Mover para cookie `httpOnly` é mudança de contrato de autenticação inteira |
 | 🟡 | **55 linhas de `api_usage` com custo zero não foram recalculadas** | 009 | Seria migração de dado. A spec impede que volte a acontecer. ⚠️ E corrige o registro: a causa **não** era a que a auditoria afirmava (modelo desconhecido era precificado como flash, não como zero — o zero vem de `!modelName` ou de contagem zero de tokens) |
@@ -105,7 +105,9 @@ Nenhuma destas é técnica. Todas mudam o que o usuário vê, e por isso não fo
 | # | Pergunta | Consequência de continuar sem resposta |
 |---|---|---|
 | **P7** | Qual das duas versões de `processPersonAnalyses` refletia a intenção? | A duplicação foi removida **por um fato, não por uma decisão**: nenhuma das duas cópias tinha chamador de produção. A sobrevivente (`server/src/utils/athleteStatsUtils.js`) também não tem — é código sem consumidor. Ligá-la a um é escolher os números que a UI e a IA passam a ver, e é aí que P7 volta a valer. Enquanto isso, `attributes` fica **fora** do prompt de `athlete-summary` |
-| **P6/P9/P11** | Defaults fabricados, unificação `athlete`/`opponent` e ciclo de vida de dado | Registradas no plano. A unificação já tem [ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) e é o **último item** da spec 011 |
+| ~~**P6**~~ | ✅ Defaults fabricados — resolvido na [spec 012](../specs/012-athletes-opponents-consolidation/spec.md): campo omitido é `null`, `belt` é enum obrigatória | — |
+| **P9/P11** | Unificação `athlete`/`opponent` (de **tabelas**; o código já é um só desde a spec 012) e ciclo de vida de dado | A unificação tem [ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) e é o **último item** da spec 011 |
+| **P12** | `technical_profile` é gravado a cada análise e **ninguém lê** | A spec 007 corrigiu a escrita; a spec 012 removeu o único "leitor" (uma prop ignorada de `AthleteCard`). Parar de gravar economiza uma query por análise mas remove uma funcionalidade documentada como corrigida — decisão do proprietário |
 
 ---
 

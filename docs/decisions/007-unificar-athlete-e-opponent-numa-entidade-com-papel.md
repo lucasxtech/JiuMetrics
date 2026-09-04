@@ -71,7 +71,9 @@ Escopo da decisão: unificar tabela, model, controller e rotas. A distinção at
 
 ### Alternativa considerada e não escolhida
 
-Manter as duas tabelas e apenas extrair a lógica comum para um model base compartilhado. Reduziria a duplicação de código sem migração de dados e sem risco. **Rejeitada** porque não resolve os problemas de modelagem que mais custam: a FK polimórfica sem constraint e a fragmentação do histórico do mesmo lutador.
+Manter as duas tabelas e apenas extrair a lógica comum para um model base compartilhado. Reduziria a duplicação de código sem migração de dados e sem risco. **Rejeitada como solução final** porque não resolve os problemas de modelagem que mais custam: a FK polimórfica sem constraint e a fragmentação do histórico do mesmo lutador.
+
+> **Nota (2026-09-04, [spec 012](../../specs/012-athletes-opponents-consolidation/spec.md)):** essa alternativa foi adotada como **passo intermediário**. `models/personModel.js` e `controllers/personController.js` são a única implementação; `Athlete.js`/`Opponent.js` são wrappers. Isso **não** altera a decisão acima: as duas tabelas continuam existindo, e a unificação de dado segue como último item da spec 011. O que muda é que, quando ela vier, o trabalho é só de banco, rotas e frontend — o código de acesso já é um.
 
 ## Evidence
 

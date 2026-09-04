@@ -3,25 +3,18 @@ const express = require('express');
 const opponentController = require('../controllers/opponentController');
 const authMiddleware = require('../middleware/auth');
 const { generalLimiter } = require('../middleware/rateLimiter');
+const { validateBody } = require('../middleware/validate');
+const { createPersonSchema, updatePersonSchema } = require('../schemas/requests/person');
 
 const router = express.Router();
 
 router.use(generalLimiter);
 router.use(authMiddleware);
 
-// GET /api/opponents - Listar todos
 router.get('/', opponentController.getAll);
-
-// GET /api/opponents/:id - Detalhes de um adversário
 router.get('/:id', opponentController.getById);
-
-// POST /api/opponents - Criar novo
-router.post('/', opponentController.create);
-
-// PUT /api/opponents/:id - Atualizar
-router.put('/:id', opponentController.update);
-
-// DELETE /api/opponents/:id - Deletar
+router.post('/', validateBody(createPersonSchema), opponentController.create);
+router.put('/:id', validateBody(updatePersonSchema), opponentController.update);
 router.delete('/:id', opponentController.delete);
 
 module.exports = router;

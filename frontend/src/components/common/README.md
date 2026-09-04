@@ -22,7 +22,7 @@ Esta pasta contém componentes reutilizáveis e estilizados para uso em toda a a
 - **Header** - Cabeçalho da aplicação
 - **InlineDiff** - Diff inline
 - **Modal** - Modal reutilizável
-- **QuickAddModal** - Modal de adição rápida
+- **QuickAddModal** - Cadastro rápido de atleta/adversário (usa `Modal` + `forms/PersonForm`)
 
 ## 🚀 Uso Rápido
 

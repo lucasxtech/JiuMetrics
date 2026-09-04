@@ -1,10 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { isValidVideoUrl } from '../../services/videoAnalysisService';
 import { useAnalysisProgress } from '../../contexts/AnalysisProgressContext';
-import { getAllAthletes } from '../../services/athleteService';
-import { getAllOpponents } from '../../services/opponentService';
-import { createAthlete } from '../../services/athleteService';
-import { createOpponent } from '../../services/opponentService';
+import { usePersons, usePersonMutations } from '../../hooks/usePersons';
 import PieChartSection from '../charts/PieChartSection';
 import CustomSelect from '../common/CustomSelect';
 import QuickAddModal from '../common/QuickAddModal';
@@ -14,15 +11,17 @@ export default function VideoAnalysisComponent() {
     { id: 1, url: '', giColor: 'preto' }
   ]);
   const [error, setError] = useState(null);
-  const [athleteName, setAthleteName] = useState('');
   const [matchResult, setMatchResult] = useState('');
 
   // Novos estados para vincular análise
   const [personType, setPersonType] = useState('athlete'); // 'athlete' ou 'opponent'
   const [personId, setPersonId] = useState('');
-  const [athletes, setAthletes] = useState([]);
-  const [opponents, setOpponents] = useState([]);
-  const [loadingPeople, setLoadingPeople] = useState(true);
+  // Listas via React Query (spec 012): mesmas chaves das telas de cadastro,
+  // então um cadastro rápido aqui aparece lá sem refetch manual.
+  const { data: athletes = [], isLoading: loadingAthletes } = usePersons('athlete');
+  const { data: opponents = [], isLoading: loadingOpponents } = usePersons('opponent');
+  const loadingPeople = loadingAthletes || loadingOpponents;
+  const { create: createPerson } = usePersonMutations(personType);
 
   // Estado para modal de cadastro rápido
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
@@ -35,70 +34,21 @@ export default function VideoAnalysisComponent() {
     { value: 'azul', label: 'Azul' },
   ];
 
-  // Carregar atletas e adversários
-  useEffect(() => {
-    const loadPeople = async () => {
-      try {
-        const [athletesData, opponentsData] = await Promise.all([
-          getAllAthletes(),
-          getAllOpponents()
-        ]);
-        setAthletes(athletesData?.data || []);
-        setOpponents(opponentsData?.data || []);
-      } catch (err) {
-        console.error('Erro ao carregar atletas/adversários:', err);
-        setAthletes([]);
-        setOpponents([]);
-      } finally {
-        setLoadingPeople(false);
-      }
-    };
-    loadPeople();
-  }, []);
-
-  // Atualizar athleteName quando personId mudar
-  const selectedPerson = personId 
-    ? (personType === 'athlete' 
+  // Nome derivado da pessoa selecionada — era um estado sincronizado por
+  // `useEffect`, que só existia para copiar `selectedPerson.name`.
+  const selectedPerson = personId
+    ? (personType === 'athlete'
         ? athletes.find(a => a.id === personId)
         : opponents.find(o => o.id === personId))
     : null;
-    
-  useEffect(() => {
-    if (selectedPerson) {
-      setAthleteName(selectedPerson.name);
-    } else {
-      setAthleteName('');
-    }
-  }, [selectedPerson]);
+  const athleteName = selectedPerson?.name ?? '';
 
-  // Função para criar atleta/adversário via Quick Add
-  const handleQuickAdd = async (formData) => {
-    const createFn = personType === 'athlete' ? createAthlete : createOpponent;
-    
-    // Adicionar campos padrão que o backend espera
-    const dataToSend = {
-      ...formData,
-      age: 25, // valor padrão
-      weight: 75, // valor padrão
-      style: 'Guardeiro' // valor padrão
-    };
-    
-    const response = await createFn(dataToSend);
-    
-    if (response.success) {
-      // Recarregar lista
-      const fetchFn = personType === 'athlete' ? getAllAthletes : getAllOpponents;
-      const updatedData = await fetchFn();
-      
-      if (personType === 'athlete') {
-        setAthletes(updatedData.data || []);
-      } else {
-        setOpponents(updatedData.data || []);
-      }
-      
-      // Selecionar automaticamente o novo item
-      setPersonId(response.data.id);
-    }
+  // Cadastro rápido: só nome e faixa. A versão anterior injetava
+  // `age: 25, weight: 75, style: 'Guardeiro'` — valores que ninguém informou
+  // (e 'Guardeiro' nem batia com o default 'Guarda' do backend).
+  const handleQuickAdd = async (values) => {
+    const response = await createPerson.mutateAsync(values);
+    if (response?.data?.id) setPersonId(response.data.id);
   };
 
   // DÍVIDA CONHECIDA (spec 010): `addVideo` existe e NÃO está ligada a nenhum

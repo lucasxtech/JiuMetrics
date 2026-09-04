@@ -2,7 +2,7 @@
 
 > **Para agentes de IA e desenvolvedores trabalhando neste repositório.** Leia isto antes de alterar qualquer coisa.
 >
-> **Atualizado:** 2026-09-02 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md) e [010](./specs/010-frontend-consolidation/spec.md) executadas · [008](./specs/008-database-access-lockdown/spec.md) parcialmente executada (código pronto, `REVOKE` pendente de execução manual)
+> **Atualizado:** 2026-09-04 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md), [010](./specs/010-frontend-consolidation/spec.md) e [012](./specs/012-athletes-opponents-consolidation/spec.md) executadas · [008](./specs/008-database-access-lockdown/spec.md) parcialmente executada (código pronto, `REVOKE` pendente de execução manual)
 
 ---
 
@@ -13,7 +13,7 @@ JiuMetrics analisa vídeos de luta de Jiu-Jitsu com IA para produzir um perfil t
 **Stack real** (confirmada no código, não inferida): SPA **React 19 + Vite** · API **Express 5** (CommonJS) · **Supabase/PostgreSQL** via PostgREST, **sem ORM** · autenticação **JWT própria** (não Supabase Auth) · IA via **Google Gemini** (`@google/genai`) · deploy na **Vercel** · **0 arquivos `.ts`/`.tsx` na aplicação** (TS pleno só em `playwright/`), mas desde a spec 011 (etapa 1, [ADR-010](./docs/decisions/010-adotar-typescript-incrementalmente.md)) `server/src/models/` e `server/src/utils/` são checados por `tsc` via `// @ts-check` por arquivo (`npm run typecheck` em `server/`) — JSDoc vira contrato verificado, sem migrar nenhum arquivo para `.ts`.
 
 ```
-frontend/    SPA React (11 páginas, 34 componentes, 13 services)
+frontend/    SPA React (12 páginas, 38 componentes, 14 services)
 server/      API Express (10 rotas, 13 controllers, 10 models, 23 migrations)
 playwright/  6 specs E2E em TypeScript (nunca rodam no CI)
 docs/        documentação permanente ← comece aqui
@@ -72,7 +72,7 @@ Regras não negociáveis:
 4. **Nunca construa HTML por string com conteúdo de LLM.** O sink conhecido (`pages/Analyses.jsx` → `innerHTML` com saída de IA) foi **fechado na spec 010**: o conteúdo passa por `escapeDeep` em `utils/strategyReportHtml.js` antes de entrar no HTML. ⚠️ O template-string **continua existindo** — ao editar aquele arquivo, leia dados só do objeto já escapado (`a`), nunca do cru. O JWT segue em `localStorage`, então um novo sink volta a valer sessão.
 5. **`ProtectedRoute` no frontend é UX, não segurança.** `isAdmin` vem do `localStorage`. A decisão real é sempre do backend.
 6. **Não confie em rate limiting.** `MemoryStore` em serverless: os limites não valem em produção. ⚠️ Isto **continua verdade** depois da spec 009 — ela resolveu o gasto de IA por outro caminho (orçamento contado no banco, não em memória), mas o limite por IP segue inoperante. Resolver depende de infraestrutura (store externo ou limite na borda).
-7. **Endpoint que recebe corpo e chama IA precisa de schema.** Os 3 de `/api/ai/*` validam com zod (`middleware/validate.js`, [ADR-012](./docs/decisions/012-zod-para-validacao-de-entrada.md)); os outros ~12 endpoints com corpo **ainda não**. Ao declarar um schema, cuidado: campo que o controller usa e o schema não declara chega `undefined` **em silêncio** — mapeie o payload real do frontend antes.
+7. **Endpoint que recebe corpo e chama IA precisa de schema.** Os 3 de `/api/ai/*` e os 4 de escrita de atletas/adversários validam com zod (`middleware/validate.js`, [ADR-012](./docs/decisions/012-zod-para-validacao-de-entrada.md), `schemas/requests/`); os outros ~8 endpoints com corpo **ainda não**. Ao declarar um schema, cuidado: campo que o controller usa e o schema não declara chega `undefined` **em silêncio** — mapeie o payload real do frontend antes.
 
 ## Authorization
 
@@ -179,11 +179,11 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 ### Comandos
 
 ```bash
-cd server && npm test          # Jest — 25 suítes / 293 testes (bloqueia merge no CI)
+cd server && npm test          # Jest — 29 suítes / 359 testes (bloqueia merge no CI)
 ```
 
 ```bash
-cd frontend && npm test        # Vitest — 6 suítes / 67 testes (bloqueia merge no CI)
+cd frontend && npm test        # Vitest — 8 suítes / 76 testes (bloqueia merge no CI)
 ```
 
 ```bash
