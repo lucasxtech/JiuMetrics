@@ -11,6 +11,39 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 🥋 Atletas e adversários: uma implementação, validação na borda, fim dos defaults inventados — 2026-09-04
+
+[Spec 013](./specs/013-athletes-opponents-consolidation/spec.md). Nasceu de um mapeamento do módulo; o banco não foi tocado.
+
+#### Mudanças de comportamento (API)
+
+- **`POST /api/athletes` e `/api/opponents` devolvem `camelCase`**, como os demais endpoints. Antes devolviam a linha crua do banco (`user_id`, `technical_profile`).
+- **`belt` passou a ser obrigatória na criação**, enum fechado (`Branca`…`Preta`). Uma faixa ausente ou desconhecida **desligava** as regras IBJJF na geração de estratégia (o código devolve nível 5, o de preta; a doc dizia que caía em branca — a doc estava errada e foi corrigida).
+- **Campo omitido é `null`.** Fim de `age: 25`, `weight: 75`, `style: 'Guarda'`, `cardio: 50` fabricados e exibidos como fato na tela de estratégia. `cardio: 0` deixa de virar 50; `age: "abc"` é 400, não 500.
+- **`PUT` não aceita mais `technicalSummary`/`technicalProfile`** do cliente. A tela de detalhe mandava o objeto inteiro ao trocar a faixa, e se a regeneração em background tivesse terminado nesse intervalo, o resumo novo era sobrescrito pelo velho.
+- **`analysesCount` filtra por `person_type`.**
+- **Prompt de consolidação encurtado** para 150–220 palavras em no máximo 2 parágrafos (era 250–400 em 8 seções). Golden do teste byte a byte recapturado pela mesma substituição.
+
+#### Corrigido (frontend)
+
+- **Lista e Overview mostravam um registro apagado por até 5 minutos**: a página de detalhe não invalidava as queries. Toda mutação passa por `hooks/usePersons.js` e invalida lista e registro.
+- **O resumo técnico aparecia duas vezes** na página de detalhe (dois painéis com a mesma string, mais o modal). Agora é um painel, recolhido por padrão.
+- `created_at` lido onde a API entrega `createdAt` ("Última atualização" caía em N/A) · cadastro rápido injetava `style: 'Guardeiro'` enquanto o backend usava `'Guarda'` · `alert()` na geração de resumo · `setTimeout` de 1 s antes de fechar o formulário.
+
+#### Refatorado
+
+- **Backend:** `models/personModel.js` e `controllers/personController.js` substituem 4 arquivos copiados (~330 linhas duplicadas, que já tinham divergido — spec 007). `Athlete.js`/`Opponent.js` e os dois controllers são wrappers.
+- **Frontend:** `PersonList`, `PersonDetail` (+ `components/person/*`), `PersonForm`, `personService(type)`, `constants/persons.js`. `AthleteForm.jsx` e `AthleteDetail.jsx` (697 linhas) foram removidos; `AthleteCard` perdeu 4 props nunca renderizadas.
+
+#### Testes
+
+- `server/src/__tests__/persons.test.js` — 28 testes de contrato rodando nas duas rotas (supertest + fake de PostgREST, models reais).
+- `frontend/src/hooks/__tests__/usePersons.test.jsx` e `components/forms/__tests__/PersonForm.test.jsx`.
+
+#### Pendente (decisão do proprietário)
+
+- `technical_profile` continua sendo gravado a cada análise e ninguém lê — ver P12 em [`docs/GAPS.md`](./docs/GAPS.md).
+
 ### 🔬 Primeira medida de qualidade da análise de IA — 2026-09-03
 
 O projeto nunca teve como dizer se uma análise de luta é boa. Agora tem duas ferramentas, e a primeira já produziu números sobre as 285 análises que existem em produção.

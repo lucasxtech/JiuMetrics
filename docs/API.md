@@ -98,8 +98,10 @@ Authorization: Bearer {token}
 
 ## 👤 Atletas
 
+Contrato atualizado na [spec 013](../specs/013-athletes-opponents-consolidation/spec.md): **toda resposta é `camelCase`** (inclusive `POST`), o corpo de `POST`/`PUT` é validado por zod (`server/src/schemas/requests/person.js`) e campo omitido é `null` — não há mais defaults fabricados.
+
 ### GET /athletes
-Listar todos os atletas do usuário autenticado.
+Listar os atletas do escopo do usuário (admin vê todo o tenant).
 
 **Resposta (200 OK):**
 ```json
@@ -108,39 +110,36 @@ Listar todos os atletas do usuário autenticado.
   "data": [
     {
       "id": "uuid",
-      "user_id": "uuid",
+      "userId": "uuid",
       "name": "João Silva",
+      "belt": "Roxa",
       "age": 28,
       "weight": 85,
-      "belt": "roxa",
-      "technical_summary": "Guarda forte, bom em raspagens...",
-      "created_at": "2024-01-15T10:30:00Z"
+      "height": null,
+      "style": null,
+      "strongAttacks": null,
+      "weaknesses": null,
+      "videoUrl": null,
+      "cardio": null,
+      "technicalProfile": {},
+      "technicalSummary": "Guarda forte, bom em raspagens...",
+      "technicalSummaryUpdatedAt": "2024-01-15T10:30:00Z",
+      "analysesCount": 2,
+      "creatorName": "Maria",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z"
     }
   ],
   "count": 1
 }
 ```
 
+`analysesCount` conta só `fight_analyses` com `person_type` da própria entidade. `creatorName` só vem preenchido quando o escopo tem mais de um usuário (admin); no `GET /:id` é sempre `null`.
+
 ---
 
 ### GET /athletes/:id
-Buscar atleta específico por ID.
-
-**Resposta (200 OK):**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "name": "João Silva",
-    "age": 28,
-    "weight": 85,
-    "belt": "roxa",
-    "technical_summary": "...",
-    "created_at": "2024-01-15T10:30:00Z"
-  }
-}
-```
+Buscar atleta por ID. Fora do escopo devolve **404** (não 403 — não vaza existência).
 
 ---
 
@@ -151,80 +150,58 @@ Criar novo atleta.
 ```json
 {
   "name": "João Silva",
+  "belt": "Roxa",
   "age": 28,
-  "weight": 85,
-  "belt": "roxa",
-  "technical_summary": "Opcional"
+  "weight": 85
 }
 ```
 
-**Resposta (201 Created):**
+| Campo | Regra |
+|---|---|
+| `name` | **obrigatório**, 1–255 caracteres (trim) |
+| `belt` | **obrigatório**, um de `Branca`, `Azul`, `Roxa`, `Marrom`, `Preta` — alimenta as regras IBJJF da estratégia; faixa ausente desligaria a restrição |
+| `age` | opcional, inteiro 4–100 |
+| `weight` | opcional, 20–250 |
+| `height` | opcional, 100–250 |
+| `cardio` | opcional, inteiro 0–100 |
+| `style`, `strongAttacks`, `weaknesses`, `videoUrl` | opcionais, texto |
+
+Strings numéricas (`"28"`) são coerçadas; `""`, `null` e ausência viram `null`. Campos não declarados (ex.: `technicalSummary`, `userId`) são **removidos** antes do controller.
+
+**Resposta (201 Created):** `{ "success": true, "message": "Atleta criado com sucesso", "data": { ...mesmo formato do GET... } }`
+
+**Resposta (400):**
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "uuid",
-    "name": "João Silva",
-    "age": 28,
-    "weight": 85,
-    "belt": "roxa",
-    "technical_summary": null,
-    "user_id": "uuid",
-    "created_at": "2024-01-15T10:30:00Z"
-  }
+  "success": false,
+  "error": "Dados inválidos",
+  "issues": [{ "campo": "belt", "mensagem": "belt deve ser uma de: Branca, Azul, Roxa, Marrom, Preta" }]
 }
 ```
 
 ---
 
 ### PUT /athletes/:id
-Atualizar atleta existente.
+Atualizar atleta. Qualquer subconjunto dos campos do `POST`; corpo vazio é 400. Campo ausente não é tocado; `null` explícito apaga.
 
-**Body (todos os campos opcionais):**
-```json
-{
-  "name": "João Silva Jr.",
-  "age": 29,
-  "weight": 83,
-  "belt": "marrom",
-  "technical_summary": "Novo resumo técnico..."
-}
-```
+`technicalSummary` e `technicalProfile` **não** são aceitos aqui — são escritos pelos módulos de análise, chat e `POST /ai/consolidate-profile`.
 
-**Resposta (200 OK):**
-```json
-{
-  "success": true,
-  "data": { /* atleta atualizado */ }
-}
-```
+**Resposta (200 OK):** `{ "success": true, "message": "Atleta atualizado com sucesso", "data": { ...atleta... } }`
 
 ---
 
 ### DELETE /athletes/:id
-Deletar atleta.
+Hard delete. As análises de vídeo, estratégias e versões da pessoa **não** são apagadas em cascata (não há FK).
 
-**Resposta (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Atleta deletado com sucesso"
-}
-```
+**Resposta (200 OK):** `{ "success": true, "message": "Atleta deletado com sucesso", "data": { ...atleta removido... } }`
 
 ---
 
 ## 🥋 Adversários
 
-Os endpoints de adversários seguem a mesma estrutura dos atletas:
+Mesma implementação (`personController` / `personModel`), mesmo schema, mesmas respostas — só mudam o path e os rótulos das mensagens (`Adversário ...`):
 
-- `GET /opponents` - Listar adversários
-- `GET /opponents/:id` - Buscar adversário
-- `POST /opponents` - Criar adversário
-- `PUT /opponents/:id` - Atualizar adversário
-- `DELETE /opponents/:id` - Deletar adversário
-
-**Body** e **Responses** são idênticos aos de atletas.
+- `GET /opponents` · `GET /opponents/:id` · `POST /opponents` · `PUT /opponents/:id` · `DELETE /opponents/:id`
 
 ---
 

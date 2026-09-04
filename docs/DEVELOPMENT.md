@@ -105,32 +105,16 @@ export const minhaAcao = async () => {
 
 ## Modificando o Modelo de Dados
 
-### Adicionar Campo em Atleta
+### Adicionar Campo em Atleta / Adversário
 
-1. **Backend** - `server/src/models/Athlete.js`
-   ```javascript
-   // Adicionar campo na criação
-   const newAthlete = {
-     ...dados,
-     novocampo: valor,
-   }
-   ```
+Desde a [spec 013](../specs/013-athletes-opponents-consolidation/spec.md) a implementação é uma só para as duas entidades — o campo é adicionado **uma vez** em cada camada:
 
-2. **Frontend** - `frontend/src/components/forms/AthleteForm.jsx`
-   ```javascript
-   // Adicionar no estado
-   const [formData, setFormData] = useState({
-     ...outros,
-     novoField: '',
-   })
-
-   // Adicionar input
-   <input
-     name="novoField"
-     value={formData.novoField}
-     onChange={handleChange}
-   />
-   ```
+1. **Migration** — a coluna nas **duas** tabelas (`athletes` e `opponents` continuam separadas no banco). Migrations são aplicadas à mão; ver `docs/DATABASE.md`.
+2. **Schema de entrada** — `server/src/schemas/requests/person.js` (`camposOpcionais`). Campo que o model usa e o schema não declara chega `undefined` **em silêncio**.
+3. **Model** — `server/src/models/personModel.js`: `create` (insert) e a allow-list de `update`.
+4. **Parser** — `server/src/utils/dbParsers.js#parseAthleteFromDB` (`snake_case` → `camelCase`).
+5. **Teste de contrato** — `server/src/__tests__/persons.test.js` roda nas duas rotas.
+6. **Frontend** — `frontend/src/components/forms/PersonForm.jsx` (hoje coleta só nome e faixa; envia só `{ name, belt }`) e, se o campo for exibido, `constants/persons.js#describePerson`.
 
 ---
 

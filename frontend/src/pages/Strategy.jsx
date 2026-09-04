@@ -9,6 +9,7 @@ import StrategySummaryModal from '../components/analysis/StrategySummaryModal';
 
 import ErrorMessage from '../components/common/ErrorMessage';
 import CustomSelect from '../components/common/CustomSelect';
+import { describePerson } from '../constants/persons';
 
 export default function Strategy() {
   const [showChat, setShowChat] = useState(false);
@@ -103,7 +104,7 @@ export default function Strategy() {
                   options={athletes.map(athlete => ({
                     value: athlete.id,
                     label: athlete.name,
-                    subtitle: `${athlete.belt || 'N/A'} • ${athlete.weight || 'N/A'}kg${athlete.cardio ? ` • Cond: ${athlete.cardio}%` : ''}`
+                    subtitle: describePerson(athlete)
                   }))}
                   placeholder="Selecione um atleta"
                 />
@@ -118,8 +119,7 @@ export default function Strategy() {
                       <div className="flex-1">
                         <p className="font-semibold text-slate-900">{selectedAthlete.name}</p>
                         <p className="text-sm text-slate-600">
-                          {selectedAthlete.belt || 'N/A'} • {selectedAthlete.weight || 'N/A'}kg
-                          {selectedAthlete.cardio ? ` • Condicionamento: ${selectedAthlete.cardio}%` : ''}
+                          {describePerson(selectedAthlete)}
                         </p>
                       </div>
                     </div>
@@ -153,7 +153,7 @@ export default function Strategy() {
                   options={opponents.map(opponent => ({
                     value: opponent.id,
                     label: opponent.name,
-                    subtitle: `${opponent.belt || 'N/A'} • ${opponent.style || 'N/A'} • ${opponent.weight ? `${opponent.weight}kg` : 'N/A'}`
+                    subtitle: describePerson(opponent)
                   }))}
                   placeholder="Selecione um adversário"
                 />
@@ -168,7 +168,7 @@ export default function Strategy() {
                       <div className="flex-1">
                         <p className="font-semibold text-slate-900">{selectedOpponent.name}</p>
                         <p className="text-sm text-slate-600">
-                          {selectedOpponent.belt || 'N/A'} • {selectedOpponent.style || 'N/A'} • {selectedOpponent.weight ? `${selectedOpponent.weight}kg` : 'N/A'}
+                          {describePerson(selectedOpponent)}
                         </p>
                       </div>
                     </div>

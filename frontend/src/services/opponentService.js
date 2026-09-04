@@ -1,42 +1,10 @@
-// Serviço para gerenciar adversários
-import api from './api';
+// Fachada nomeada sobre `personService('opponent')` (spec 013).
+import { personService } from './personService';
 
-/**
- * Busca lista de todos os adversários
- */
-export const getAllOpponents = async () => {
-  const response = await api.get('/opponents');
-  return response.data;
-};
+const svc = personService('opponent');
 
-/**
- * Busca um adversário pelo ID
- */
-export const getOpponentById = async (id) => {
-  const response = await api.get(`/opponents/${id}`);
-  return response.data;
-};
-
-/**
- * Cria um novo adversário
- */
-export const createOpponent = async (data) => {
-  const response = await api.post('/opponents', data);
-  return response.data;
-};
-
-/**
- * Atualiza um adversário existente
- */
-export const updateOpponent = async (id, data) => {
-  const response = await api.put(`/opponents/${id}`, data);
-  return response.data;
-};
-
-/**
- * Deleta um adversário
- */
-export const deleteOpponent = async (id) => {
-  const response = await api.delete(`/opponents/${id}`);
-  return response.data;
-};
+export const getAllOpponents = svc.getAll;
+export const getOpponentById = svc.getById;
+export const createOpponent = svc.create;
+export const updateOpponent = svc.update;
+export const deleteOpponent = svc.remove;
