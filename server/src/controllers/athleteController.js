@@ -2,4 +2,4 @@
 const Athlete = require('../models/Athlete');
 const { createPersonController } = require('./personController');
 
-module.exports = createPersonController(Athlete, { singular: 'Atleta', plural: 'atletas' });
+module.exports = createPersonController(Athlete, { singular: 'Atleta', plural: 'atletas', personType: 'athlete' });

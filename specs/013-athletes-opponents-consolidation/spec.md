@@ -37,6 +37,9 @@ Uma implementação por camada, contrato de API consistente, validação na bord
 | Factory de controller; `athleteController.js` e `opponentController.js` viram 5 linhas cada | `controllers/personController.js` |
 | Schemas zod para `POST` e `PUT`: `name` obrigatório, `belt` enum **obrigatória no POST**, numéricos coerçados com faixa e `null` quando omitidos, `technicalSummary`/`technicalProfile` **removidos** do corpo (fecha o defeito 3 por construção) | `schemas/requests/person.js`, `routes/{athletes,opponents}.js` |
 | `create` devolve `camelCase`; `analyses_count` filtra por `person_type` | `models/personModel.js` |
+| **Para de gravar `technical_profile` na pessoa** e remove `updateTechnicalProfile` (P12) | `models/personModel.js`, `controllers/fightAnalysisController.js` |
+| **Exclusão em cascata na aplicação**: análises, versões dessas análises e histórico de perfil. Estratégias preservadas. A resposta declara as contagens e sinaliza `cascadeFailed` | `controllers/personController.js`, `models/{FightAnalysis,AnalysisVersion,ProfileVersion}.js` |
+| **Faixa desconhecida vale como branca** em `getBeltLevel` (era preta, e isso desligava o aviso de técnica ilegal); rótulo canônico no aviso da estratégia | `config/ai.js`, `services/geminiService.js` |
 | Prompt de consolidação: 150–220 palavras, no máximo 2 parágrafos. Golden recapturado pela **mesma substituição de texto** aplicada ao `.txt` — o teste byte a byte continua valendo | `prompts/consolidate-profile.txt`, `__fixtures__/consolidate-profile.golden.txt` |
 
 ### Frontend
@@ -51,14 +54,18 @@ Uma implementação por camada, contrato de API consistente, validação na bord
 | `PersonForm` único (substitui `AthleteForm` e o formulário embutido em `QuickAddModal`); envia só `{ name, belt }`; sem `setTimeout` de 1 s; erros da API (issues do zod) na tela, sem `alert()` | `components/forms/PersonForm.jsx` |
 | `QuickAddModal` sobre o `Modal` comum; `VideoAnalysis` usa os hooks e não injeta mais `age/weight/style` | `components/common/QuickAddModal.jsx`, `components/video/VideoAnalysis.jsx` |
 | `AthleteCard` perde as 4 props nunca renderizadas (F7) e o `eslint-disable` | `components/common/AthleteCard.jsx` |
+| **Campos opcionais no formulário** (idade, peso, altura, condicionamento, estilo, pontos fortes/fracos) em seção recolhida; vazio envia `null` explícito para poder limpar. Cadastro rápido fica `compact` | `components/forms/PersonForm.jsx` |
+| **Ficha do lutador** na tela de detalhe, exibindo só o que foi informado | `components/person/PersonAttributes.jsx` |
+| **Busca e ordenação** na lista (nome, mais análises, mais recentes), no cliente | `hooks/usePersonFilters.js`, `pages/PersonList.jsx` |
 | `Strategy` mostra só os atributos informados (sem "N/A" por campo) | `pages/Strategy.jsx` |
 
 ## Out of Scope
 
 - **Unificação de tabelas** (ADR-007, spec 011 item 4).
-- **`technical_profile`**: continua sendo gravado a cada análise e **ninguém lê** (o único consumidor era uma prop ignorada de `AthleteCard`). Parar de gravar remove uma funcionalidade que a spec 007 documentou como corrigida; é decisão do proprietário, registrada em `docs/GAPS.md`.
-- **Fallback de faixa desconhecida em `getBeltLevel`**: o comportamento (nível 5) não mudou. A porta foi fechada na **entrada** (enum), e a doc do módulo foi corrigida para descrever o que o código faz. Registros antigos com faixa fora do enum continuam com o comportamento histórico.
-- **Paginação e busca** nas listas.
+- **Dropar a coluna `technical_profile`** de `athletes`/`opponents`. A escrita parou; remover a coluna é trabalho de banco (spec 011).
+- **Apagar `tactical_analyses`** junto com a pessoa — decisão de produto, e a estratégia guarda os nomes desnormalizados, então continua legível.
+- **FK real e cascata no banco.** A cascata desta spec é da aplicação: um `DELETE` por SQL direto continua deixando órfãos.
+- **Paginação de API.** Busca e ordenação são do cliente, sobre a lista completa que o endpoint já devolve.
 
 ## Requirements
 
@@ -74,12 +81,17 @@ Uma implementação por camada, contrato de API consistente, validação na bord
 | R8 | `PersonForm` envia só `{ name, belt }` | `PersonForm.test.jsx` |
 | R9 | Nenhum comportamento de autorização mudou | suíte `authorization/` continua verde |
 | R10 | Golden do prompt recapturado deliberadamente | `consolidatePrompt.test.js` |
+| R11 | Criar análise não altera `technical_profile` da pessoa; o da análise continua | `persistence.test.js` |
+| R12 | Excluir a pessoa apaga análises, versões e histórico de perfil, sem atravessar tenant, preservando estratégias; falha na cascata é declarada | `personCascade.test.js` |
+| R13 | Faixa desconhecida vale como branca e concorda com `formatBeltRules` | `beltRules.test.js` |
+| R14 | Formulário envia opcionais preenchidos e `null` explícito ao limpar | `PersonForm.test.jsx` |
+| R15 | Busca ignora acento; ordenação não muta o cache | `usePersonFilters.test.js` |
 
 ## Acceptance Criteria
 
-- [x] `cd server && npm test` — 32 suítes / 406 testes (após merge com a `main` de 2026-09-03)
+- [x] `cd server && npm test` — 33 suítes / 415 testes
 - [x] `cd server && npm run typecheck` e `npm run lint`
-- [x] `cd frontend && npm test` — 8 suítes / 76 testes
+- [x] `cd frontend && npm test` — 9 suítes / 87 testes
 - [x] `cd frontend && npm run lint` (0 erros; os 4 avisos são anteriores) e `npm run build`
 - [x] Documentação atualizada no mesmo commit (módulo, API, ARCHITECTURE, DOMAIN, PROJECT_STATUS, GAPS, CHANGELOG, ADR-007, CLAUDE.md)
 

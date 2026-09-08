@@ -263,6 +263,32 @@ class AnalysisVersion {
       createdAt: dbData.created_at
     };
   }
+  /**
+   * Apaga as versões de um conjunto de análises. Usado na exclusão em cascata
+   * (spec 013).
+   *
+   * NÃO recebe escopo de posse — e isso é deliberado: `analysis_versions` não
+   * tem coluna `user_id`, a autorização deriva da análise pai (decisão P4).
+   * O chamador precisa ter verificado a posse das análises ANTES; hoje o único
+   * chamador passa exatamente os ids que `FightAnalysis.deleteByPerson`
+   * acabou de remover dentro do escopo.
+   * @param {string[]} analysisIds
+   * @param {'fight'|'tactical'} analysisType
+   * @returns {Promise<number>} quantidade de versões removidas
+   */
+  static async deleteByAnalysisIds(analysisIds, analysisType) {
+    if (!Array.isArray(analysisIds) || analysisIds.length === 0) return 0;
+
+    const { data, error } = await supabase
+      .from('analysis_versions')
+      .delete()
+      .in('analysis_id', analysisIds)
+      .eq('analysis_type', analysisType)
+      .select();
+
+    if (error) throw error;
+    return (data || []).length;
+  }
 }
 
 module.exports = AnalysisVersion;

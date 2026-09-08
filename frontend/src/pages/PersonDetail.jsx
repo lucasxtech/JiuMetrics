@@ -14,6 +14,7 @@ import { consolidateProfile } from '../services/aiService';
 import { saveProfileSummary } from '../services/chatService';
 import { useAnalysisProgress } from '../contexts/AnalysisProgressContext';
 import PersonHeader from '../components/person/PersonHeader';
+import PersonAttributes from '../components/person/PersonAttributes';
 import TechnicalSummaryPanel from '../components/person/TechnicalSummaryPanel';
 import AnalysesSection from '../components/person/AnalysesSection';
 import PersonDetailSkeleton from '../components/person/PersonDetailSkeleton';
@@ -164,6 +165,8 @@ export default function PersonDetail({ type }) {
       >
         <PersonForm type={type} initialData={person} onSubmit={handleEditSubmit} submitLabel="Salvar" />
       </Modal>
+
+      <PersonAttributes person={person} onEdit={() => setIsEditing(true)} />
 
       <TechnicalSummaryPanel
         summary={summary}

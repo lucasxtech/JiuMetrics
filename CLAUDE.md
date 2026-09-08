@@ -13,7 +13,7 @@ JiuMetrics analisa vídeos de luta de Jiu-Jitsu com IA para produzir um perfil t
 **Stack real** (confirmada no código, não inferida): SPA **React 19 + Vite** · API **Express 5** (CommonJS) · **Supabase/PostgreSQL** via PostgREST, **sem ORM** · autenticação **JWT própria** (não Supabase Auth) · IA via **Google Gemini** (`@google/genai`) · deploy na **Vercel** · **0 arquivos `.ts`/`.tsx` na aplicação** (TS pleno só em `playwright/`), mas desde a spec 011 (etapa 1, [ADR-010](./docs/decisions/010-adotar-typescript-incrementalmente.md)) `server/src/models/` e `server/src/utils/` são checados por `tsc` via `// @ts-check` por arquivo (`npm run typecheck` em `server/`) — JSDoc vira contrato verificado, sem migrar nenhum arquivo para `.ts`.
 
 ```
-frontend/    SPA React (12 páginas, 38 componentes, 14 services)
+frontend/    SPA React (12 páginas, 40 componentes, 14 services)
 server/      API Express (10 rotas, 13 controllers, 10 models, 23 migrations)
 playwright/  6 specs E2E em TypeScript (nunca rodam no CI)
 docs/        documentação permanente ← comece aqui
@@ -181,11 +181,11 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 ### Comandos
 
 ```bash
-cd server && npm test          # Jest — 32 suítes / 406 testes (bloqueia merge no CI)
+cd server && npm test          # Jest — 33 suítes / 415 testes (bloqueia merge no CI)
 ```
 
 ```bash
-cd frontend && npm test        # Vitest — 8 suítes / 76 testes (bloqueia merge no CI)
+cd frontend && npm test        # Vitest — 9 suítes / 87 testes (bloqueia merge no CI)
 ```
 
 ```bash

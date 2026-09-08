@@ -191,9 +191,20 @@ Atualizar atleta. Qualquer subconjunto dos campos do `POST`; corpo vazio é 400.
 ---
 
 ### DELETE /athletes/:id
-Hard delete. As análises de vídeo, estratégias e versões da pessoa **não** são apagadas em cascata (não há FK).
+Hard delete **com cascata na aplicação** (o banco não tem FK). Saem junto: as `fight_analyses` da pessoa, as `analysis_versions` dessas análises e as `profile_versions`. As **estratégias são preservadas** de propósito.
 
-**Resposta (200 OK):** `{ "success": true, "message": "Atleta deletado com sucesso", "data": { ...atleta removido... } }`
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Atleta deletado com sucesso",
+  "data": { "...": "atleta removido" },
+  "deleted": { "analyses": 3, "versions": 5, "profileVersions": 2 },
+  "cascadeFailed": false
+}
+```
+
+Se a cascata falhar, a pessoa já saiu e a resposta diz isso: `cascadeFailed: true`, `deleted: null` e a mensagem `"Atleta deletado, mas a limpeza das análises falhou"`. O `200` não esconde meia operação.
 
 ---
 

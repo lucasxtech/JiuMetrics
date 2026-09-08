@@ -1,6 +1,7 @@
 // @ts-check
 // Modelo de dados para Versões de Perfil Técnico com Supabase
 const { supabase } = require('../config/supabase');
+const { requireScope } = require('../utils/scopeGuard');
 
 class ProfileVersion {
   /**
@@ -100,6 +101,30 @@ class ProfileVersion {
       .eq('id', versionId);
 
     if (error) throw error;
+  }
+
+  /**
+   * Apaga o histórico de versões do perfil de uma pessoa. Usado na exclusão
+   * em cascata (spec 013) — sem FK, apagar a pessoa deixaria estas linhas
+   * órfãs.
+   * @param {string} personId
+   * @param {'athlete'|'opponent'} personType
+   * @param {string[]} allowedUserIds
+   * @returns {Promise<number>} quantidade de versões removidas
+   */
+  static async deleteByPerson(personId, personType, allowedUserIds) {
+    const ids = requireScope(allowedUserIds, 'ProfileVersion.deleteByPerson');
+
+    const { data, error } = await supabase
+      .from('profile_versions')
+      .delete()
+      .eq('person_id', personId)
+      .eq('person_type', personType)
+      .in('user_id', ids)
+      .select();
+
+    if (error) throw error;
+    return (data || []).length;
   }
 
   /**

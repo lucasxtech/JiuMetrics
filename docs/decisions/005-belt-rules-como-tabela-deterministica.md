@@ -47,6 +47,7 @@ Decisão reafirmada em 2026-08-12, ao definir a origem do conteúdo: extrair do 
 - **Uma fonte de verdade**, com aliases resolvidos num lugar só.
 - **A faixa mais restritiva entre os dois competidores governa a estratégia** — se atleta é marrom e adversário é azul, valem as restrições de azul. Regra correta para o contexto real de competição.
 - **Fallback conservador**: faixa desconhecida nunca resulta em sugestão mais permissiva.
+  > ⚠️ **Correção (2026-09-04, [spec 013](../../specs/013-athletes-opponents-consolidation/spec.md)):** esta propriedade era **meia verdade**. `formatBeltRules` sempre caiu em branca, mas `getBeltLevel` devolvia **5 (preta)** para faixa desconhecida — e é ele quem escolhe qual faixa governa a estratégia e se o aviso de técnica ilegal é montado. Com os dois lados desconhecidos, o aviso não era emitido: a estratégia saía **sem nenhuma restrição de perna**. As duas metades da mesma regra discordavam desde sempre. `getBeltLevel` passou a devolver 1 (branca), alinhando o código ao que este ADR decidiu. Coberto por testes em `services/__tests__/beltRules.test.js`.
 - **Testável** — coberto por `server/src/services/__tests__/beltRules.test.js`, incluindo o caso de faixa vazia.
 - **Comentários preservam o raciocínio e os erros concretos que motivaram a mudança**, o que impede a regressão de ser reintroduzida por engano.
 

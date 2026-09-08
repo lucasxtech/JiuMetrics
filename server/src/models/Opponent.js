@@ -6,5 +6,4 @@ module.exports = createPersonModel({
   table: 'opponents',
   personType: 'opponent',
   label: 'Opponent',
-  notFoundLabel: 'Adversário',
 });

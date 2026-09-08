@@ -36,7 +36,6 @@ describe('fightAnalysisController.createAnalysis', () => {
     };
     resolveScope.mockResolvedValue(['user-1']);
     Athlete.getById.mockResolvedValue({ id: 'athlete-1', name: 'Atleta X', userId: 'user-1' });
-    Athlete.updateTechnicalProfile.mockResolvedValue({});
     Athlete.update.mockResolvedValue({});
     FightAnalysis.create.mockResolvedValue({ id: 'analysis-1' });
     User.getGroupUserIds.mockResolvedValue(['user-1']);

@@ -8,6 +8,7 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import Modal from '../components/common/Modal';
 import PersonForm from '../components/forms/PersonForm';
 import { usePersons, usePersonMutations } from '../hooks/usePersons';
+import { usePersonFilters, SORT_OPTIONS } from '../hooks/usePersonFilters';
 import { personLabels } from '../constants/persons';
 
 const PlusIcon = () => (
@@ -22,6 +23,7 @@ export default function PersonList({ type }) {
   const [showForm, setShowForm] = useState(false);
   const { data: people = [], isLoading, error, refetch } = usePersons(type);
   const { create } = usePersonMutations(type);
+  const { search, setSearch, sort, setSort, visible } = usePersonFilters(people);
 
   const handleCreate = async (values) => {
     await create.mutateAsync(values);
@@ -65,18 +67,53 @@ export default function PersonList({ type }) {
 
       {(isLoading || people.length > 0) && (
         <section className="panel !py-8 !px-6 md:!px-8">
-          <div className="panel__head mb-8">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="eyebrow">Lista</p>
               <h2 className="panel__title">
-                {isLoading ? `Carregando ${labels.plural.toLowerCase()}...` : `${labels.plural} (${people.length})`}
+                {isLoading
+                  ? `Carregando ${labels.plural.toLowerCase()}...`
+                  : search
+                    ? `${visible.length} de ${people.length}`
+                    : `${labels.plural} (${people.length})`}
               </h2>
             </div>
+
+            {!isLoading && people.length > 1 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="sr-only" htmlFor="person-search">
+                  Buscar {labels.plural.toLowerCase()}
+                </label>
+                <input
+                  id="person-search"
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por nome ou faixa..."
+                  className="w-56 rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                />
+                <label className="sr-only" htmlFor="person-sort">
+                  Ordenar
+                </label>
+                <select
+                  id="person-sort"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8 xl:grid-cols-3 xl:gap-10">
             {isLoading
               ? Array.from({ length: 6 }).map((_, i) => <AthleteCardSkeleton key={i} />)
-              : people.map((person) => (
+              : visible.map((person) => (
                   <AthleteCard
                     key={person.id}
                     name={person.name}
@@ -88,6 +125,12 @@ export default function PersonList({ type }) {
                   />
                 ))}
           </div>
+
+          {!isLoading && visible.length === 0 && (
+            <p className="py-8 text-center text-sm text-slate-500">
+              Nenhum resultado para “{search}”.
+            </p>
+          )}
         </section>
       )}
 

@@ -125,7 +125,8 @@ exports.createAnalysis = async (req, res) => {
       }
     }
 
-    // Processar dados dos gráficos para perfil técnico
+    // `technical_profile` da ANÁLISE — alimenta o histórico de versões.
+    // Já NÃO é propagado para a pessoa; ver o comentário abaixo.
     const technicalProfile = extractTechnicalProfile(charts);
 
     // Criar análise
@@ -142,18 +143,17 @@ exports.createAnalysis = async (req, res) => {
       userId: req.userId,
     });
 
-    // Atualizar perfil técnico da pessoa.
+    // NÃO propagamos mais `technical_profile` para a pessoa (spec 013, P12).
     //
-    // O escopo era OMITIDO aqui — chamada com 2 de 3 argumentos. Dentro do
-    // model, `getById(id, undefined)` filtrava `.in('user_id', [undefined])`,
-    // não achava nada e devolvia null: no-op silencioso. Medido na spec 002:
-    // 0 de 37 atletas com o campo preenchido. (spec 007, defeito 3)
-    const Model = personType === 'athlete' ? Athlete : Opponent;
-    await Model.updateTechnicalProfile(personId, technicalProfile, allowedUserIds);
-
+    // Histórico: a spec 007 consertou esta escrita, que era um no-op silencioso
+    // (chamada com 2 de 3 argumentos; medido em 0 de 37 atletas preenchidos).
+    // Consertada, passou a gravar de verdade — e o mapeamento do módulo mostrou
+    // que **ninguém lê** o campo na pessoa: o único consumidor era uma prop que
+    // `AthleteCard` ignorava. Era uma query extra por análise para produzir
+    // dado morto. A COLUNA continua no banco; dropá-la é trabalho da spec 011.
     res.status(201).json({
       success: true,
-      message: 'Análise criada e perfil técnico atualizado',
+      message: 'Análise criada',
       data: analysis,
     });
 

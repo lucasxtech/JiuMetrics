@@ -15,21 +15,22 @@
  * existindo; só a implementação passou a ser uma.
  *
  * Contrato preservado: cada módulo continua exportando um objeto com os
- * mesmos seis métodos estáticos (`getAll`, `getById`, `create`, `update`,
- * `delete`, `updateTechnicalProfile`), então `require('../models/Athlete')`
- * e `jest.mock('../models/Athlete')` funcionam como antes.
+ * mesmos métodos estáticos (`getAll`, `getById`, `create`, `update`,
+ * `delete`), então `require('../models/Athlete')` e
+ * `jest.mock('../models/Athlete')` funcionam como antes.
+ *
+ * ⚠️ `updateTechnicalProfile` foi REMOVIDO (spec 013, P12): o campo era escrito
+ * a cada análise e nenhum consumidor o lia.
  */
 const { supabase } = require('../config/supabase');
 const { parseAthleteFromDB, parseAthletesFromDB } = require('../utils/dbParsers');
 const { requireScope } = require('./../utils/scopeGuard');
-const { NotFoundError } = require('../utils/errors');
 
 /**
  * @typedef {Object} PersonModelConfig
  * @property {'athletes'|'opponents'} table - tabela no Postgres
  * @property {'athlete'|'opponent'} personType - valor de `person_type` em `fight_analyses`
  * @property {string} label - nome do model, usado no contexto do `requireScope` (ex.: 'Athlete')
- * @property {string} notFoundLabel - rótulo humano para o `NotFoundError` (ex.: 'Atleta')
  */
 
 /**
@@ -52,7 +53,7 @@ const { NotFoundError } = require('../utils/errors');
 /**
  * @param {PersonModelConfig} config
  */
-function createPersonModel({ table, personType, label, notFoundLabel }) {
+function createPersonModel({ table, personType, label }) {
   const Model = {
     /**
      * Busca todas as pessoas dentro do grupo permitido, com `creatorName` e
@@ -208,8 +209,9 @@ function createPersonModel({ table, personType, label, notFoundLabel }) {
     },
 
     /**
-     * Hard delete. As `fight_analyses` da pessoa NÃO são apagadas em cascata
-     * (não há FK) — dívida registrada em docs/modules/athletes-opponents.md.
+     * Hard delete da linha da pessoa. A limpeza do que depende dela
+     * (análises, versões) é orquestrada em `controllers/personController.js`,
+     * porque atravessa tabelas e o banco não tem FK para fazê-la (spec 013).
      * @param {string} id
      * @param {string} userId - owner REAL do registro
      */
@@ -226,32 +228,6 @@ function createPersonModel({ table, personType, label, notFoundLabel }) {
 
       if (error) throw error;
       return parseAthleteFromDB(data);
-    },
-
-    /**
-     * Faz merge de `analysisData` no `technical_profile` existente.
-     * @param {string} id
-     * @param {Object} analysisData
-     * @param {string|string[]} allowedUserIds
-     */
-    async updateTechnicalProfile(id, analysisData, allowedUserIds) {
-      const person = await Model.getById(id, allowedUserIds);
-      if (!person) {
-        // LANÇA em vez de devolver null (spec 007): o chamador não tinha como
-        // distinguir "não encontrei" de "atualizei".
-        throw new NotFoundError(notFoundLabel);
-      }
-
-      // `getById` devolve camelCase; ler `technical_profile` aqui era o bug
-      // que só existia na cópia de Athlete (spec 007).
-      const updatedProfile = {
-        ...person.technicalProfile,
-        ...analysisData,
-      };
-
-      // A escrita usa o owner REAL do registro, não o escopo — permite ao
-      // admin atualizar o perfil de um membro do grupo sem transferir a posse.
-      return Model.update(id, { technicalProfile: updatedProfile }, person.userId);
     }
   };
 

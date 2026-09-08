@@ -107,7 +107,7 @@ Nenhuma destas é técnica. Todas mudam o que o usuário vê, e por isso não fo
 | **P7** | Qual das duas versões de `processPersonAnalyses` refletia a intenção? | A duplicação foi removida **por um fato, não por uma decisão**: nenhuma das duas cópias tinha chamador de produção. A sobrevivente (`server/src/utils/athleteStatsUtils.js`) também não tem — é código sem consumidor. Ligá-la a um é escolher os números que a UI e a IA passam a ver, e é aí que P7 volta a valer. Enquanto isso, `attributes` fica **fora** do prompt de `athlete-summary` |
 | ~~**P6**~~ | ✅ Defaults fabricados — resolvido na [spec 013](../specs/013-athletes-opponents-consolidation/spec.md): campo omitido é `null`, `belt` é enum obrigatória | — |
 | **P9/P11** | Unificação `athlete`/`opponent` (de **tabelas**; o código já é um só desde a spec 013) e ciclo de vida de dado | A unificação tem [ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md) e é o **último item** da spec 011 |
-| **P12** | `technical_profile` é gravado a cada análise e **ninguém lê** | A spec 007 corrigiu a escrita; a spec 013 removeu o único "leitor" (uma prop ignorada de `AthleteCard`). Parar de gravar economiza uma query por análise mas remove uma funcionalidade documentada como corrigida — decisão do proprietário |
+| ~~**P12**~~ | ✅ `technical_profile` da pessoa — decidido pelo proprietário em 2026-09-04: **parar de gravar**. A escrita saiu na spec 013, junto com `updateTechnicalProfile`. O campo da ANÁLISE continua, porque alimenta o histórico de versões | — |
 
 ---
 

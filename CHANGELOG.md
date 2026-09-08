@@ -30,6 +30,21 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 - **O resumo técnico aparecia duas vezes** na página de detalhe (dois painéis com a mesma string, mais o modal). Agora é um painel, recolhido por padrão.
 - `created_at` lido onde a API entrega `createdAt` ("Última atualização" caía em N/A) · cadastro rápido injetava `style: 'Guardeiro'` enquanto o backend usava `'Guarda'` · `alert()` na geração de resumo · `setTimeout` de 1 s antes de fechar o formulário.
 
+#### Adicionado
+
+- **Campos opcionais no formulário** — idade, peso, altura, condicionamento, estilo, pontos fortes e fracos, numa seção recolhida. Eles já existiam no banco e na tela de estratégia, mas **nenhuma tela os coletava**: era por isso que o backend os fabricava. Campo esvaziado envia `null` explícito, então dá para limpar de verdade. O cadastro rápido durante a análise de vídeo segue pedindo só nome e faixa.
+- **Ficha do lutador** na tela de detalhe, exibindo só o que foi informado — sem uma coluna de "N/A".
+- **Busca e ordenação** na lista (por nome, mais análises, mais recentes). A busca ignora acento: "joao" acha "João".
+
+#### Corrigido (segundo lote)
+
+- **Faixa desconhecida desligava as regras IBJJF.** `formatBeltRules` sempre caiu em branca para faixa desconhecida, mas `getBeltLevel` — que decide qual das duas faixas governa a estratégia e se o aviso de técnica ilegal é montado — devolvia **preta**. Com os dois lados desconhecidos, a estratégia saía sem nenhuma restrição de perna. As duas metades da mesma regra discordavam desde sempre; ver a correção anotada no [ADR-005](./docs/decisions/005-belt-rules-como-tabela-deterministica.md).
+- **Excluir uma pessoa deixava órfãos.** Sem FK no banco, as análises de vídeo, as versões dessas análises e o histórico de perfil continuavam apontando para um id inexistente. Agora saem em cascata, pela aplicação, e a resposta diz quantas linhas saíram. **As estratégias são preservadas** de propósito: são documentos gerados, guardam os nomes dos lutadores e continuam legíveis. Se a cascata falhar, a resposta declara `cascadeFailed` em vez de dizer "deletado com sucesso".
+
+#### Removido
+
+- **`technical_profile` da pessoa não é mais gravado.** A spec 007 tinha consertado essa escrita, que era um no-op silencioso; consertada, ela passou a gravar de verdade um campo que **ninguém lia** — o único consumidor era uma prop que `AthleteCard` ignorava. Era uma query extra por análise para produzir dado morto. `updateTechnicalProfile` saiu dos models. O `technical_profile` da **análise** continua, porque alimenta o histórico de versões; a coluna na pessoa continua no banco, porque dropar coluna é trabalho da spec 011.
+
 #### Refatorado
 
 - **Backend:** `models/personModel.js` e `controllers/personController.js` substituem 4 arquivos copiados (~330 linhas duplicadas, que já tinham divergido — spec 007). `Athlete.js`/`Opponent.js` e os dois controllers são wrappers.
@@ -38,11 +53,11 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 #### Testes
 
 - `server/src/__tests__/persons.test.js` — 28 testes de contrato rodando nas duas rotas (supertest + fake de PostgREST, models reais).
-- `frontend/src/hooks/__tests__/usePersons.test.jsx` e `components/forms/__tests__/PersonForm.test.jsx`.
+- `server/src/__tests__/personCascade.test.js` — cascata, isolamento entre tenants e o caso em que a limpeza falha.
+- `server/src/services/__tests__/beltRules.test.js` — faixa desconhecida como a mais restritiva.
+- `frontend`: `usePersons`, `usePersonFilters` e `PersonForm`.
 
-#### Pendente (decisão do proprietário)
-
-- `technical_profile` continua sendo gravado a cada análise e ninguém lê — ver P12 em [`docs/GAPS.md`](./docs/GAPS.md).
+Backend 33 suítes / 415 testes. Frontend 9 suítes / 87 testes.
 
 ### 🔬 Primeira medida de qualidade da análise de IA — 2026-09-03
 

@@ -10,14 +10,45 @@
  * Padrão de autorização (CLAUDE.md): `resolveScope` → `getById` com escopo →
  * 404 se não achou → escrita com o `userId` REAL do registro.
  */
-const { handleError } = require('../utils/errorHandler');
+const { handleError, logToleratedFailure } = require('../utils/errorHandler');
 const { resolveScope } = require('../services/authorization');
+const FightAnalysis = require('../models/FightAnalysis');
+const AnalysisVersion = require('../models/AnalysisVersion');
+const ProfileVersion = require('../models/ProfileVersion');
+
+/**
+ * Apaga o que dependia da pessoa (spec 013).
+ *
+ * Existe porque **o banco não tem FK** de `person_id` para `athletes`/
+ * `opponents` — nada apaga em cascata, e antes desta spec excluir uma pessoa
+ * deixava as análises de vídeo e o histórico de perfil apontando para um id
+ * inexistente. A cascata é feita na aplicação, na ordem filho → pai.
+ *
+ * **`tactical_analyses` NÃO entra aqui, de propósito.** Uma estratégia é um
+ * documento gerado, que o usuário pode ter exportado e ainda querer consultar;
+ * apagá-la junto é decisão de produto, não consequência técnica. Ela guarda os
+ * nomes dos lutadores desnormalizados (feature, ver spec 011), então continua
+ * legível mesmo sem a pessoa.
+ *
+ * @returns {Promise<{analyses: number, versions: number, profileVersions: number}>}
+ */
+async function deleteRelated(personId, personType, allowedUserIds) {
+  const analyses = await FightAnalysis.deleteByPerson(personId, personType, allowedUserIds);
+
+  // As versões dependem das análises que acabaram de sair — o escopo já foi
+  // aplicado ali (`analysis_versions` não tem `user_id`, decisão P4).
+  const versions = await AnalysisVersion.deleteByAnalysisIds(analyses.map((a) => a.id), 'fight');
+
+  const profileVersions = await ProfileVersion.deleteByPerson(personId, personType, allowedUserIds);
+
+  return { analyses: analyses.length, versions, profileVersions };
+}
 
 /**
  * @param {ReturnType<import('../models/personModel').createPersonModel>} Model
  * @param {{ singular: string, plural: string }} labels - ex.: { singular: 'Atleta', plural: 'atletas' }
  */
-function createPersonController(Model, { singular, plural }) {
+function createPersonController(Model, { singular, plural, personType }) {
   const notFound = (res) => res.status(404).json({
     success: false,
     error: `${singular} não encontrado`,
@@ -87,10 +118,34 @@ function createPersonController(Model, { singular, plural }) {
         if (!existing) return notFound(res);
 
         const deleted = await Model.delete(req.params.id, existing.userId);
+
+        // Cascata na aplicação — o banco não tem FK para fazê-la.
+        //
+        // Roda DEPOIS de a pessoa sair: se a ordem fosse a inversa e a exclusão
+        // da pessoa falhasse, teríamos destruído as análises de alguém que
+        // continua cadastrado. Nesta ordem o pior caso é o que já era o normal
+        // antes desta spec — linhas órfãs —, e o cliente é informado disso em
+        // vez de receber um sucesso que esconde metade do trabalho.
+        let cascade = null;
+        let cascadeFailed = false;
+        try {
+          cascade = await deleteRelated(req.params.id, personType, allowedUserIds);
+        } catch (cascadeError) {
+          cascadeFailed = true;
+          logToleratedFailure('cascata de exclusão de pessoa', cascadeError, {
+            personType,
+            personId: req.params.id,
+          });
+        }
+
         res.json({
           success: true,
-          message: `${singular} deletado com sucesso`,
+          message: cascadeFailed
+            ? `${singular} deletado, mas a limpeza das análises falhou`
+            : `${singular} deletado com sucesso`,
           data: deleted,
+          deleted: cascade,
+          cascadeFailed,
         });
       } catch (error) {
         handleError(res, `deletar ${singular.toLowerCase()}`, error);

@@ -2,4 +2,4 @@
 const Opponent = require('../models/Opponent');
 const { createPersonController } = require('./personController');
 
-module.exports = createPersonController(Opponent, { singular: 'Adversário', plural: 'adversários' });
+module.exports = createPersonController(Opponent, { singular: 'Adversário', plural: 'adversários', personType: 'opponent' });

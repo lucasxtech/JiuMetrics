@@ -25,13 +25,14 @@ O motivo original da separação, segundo o proprietário (2026-08-12): permitir
 
 1. **`name` e `belt` são obrigatórios na criação.** `belt` é um enum fechado (`Branca`, `Azul`, `Roxa`, `Marrom`, `Preta`), validado por zod na borda (`schemas/requests/person.js`). No `PUT` qualquer subconjunto é aceito, mas o corpo não pode ser vazio.
 2. **Campo omitido é `null`, nunca default inventado.** ✅ Spec 013 — antes o controller fabricava `age: 25`, `weight: 75`, `style: 'Guarda'`, `cardio: 50` e a tela de estratégia exibia isso como fato. A UI mostra apenas o que foi informado (`describePerson` em `constants/persons.js`).
-3. **`technical_summary` é gerado por IA**, não pelo usuário. É regenerado automaticamente sempre que uma análise da pessoa é criada ou deletada (fire-and-forget, tolerante a falha — módulo `fight-analysis`). O cliente HTTP **não** pode escrevê-lo por `PUT /api/athletes/:id`: o schema remove o campo. Quem o grava é o módulo de análise, o de chat e o botão "Gerar com IA" (`POST /api/ai/consolidate-profile`), sempre pelo model.
-4. **Se a pessoa fica com zero análises, o `technical_summary` é limpo.**
-5. **`belt` alimenta as regras IBJJF** na geração de estratégia. ⚠️ **Correção da doc anterior:** faixa desconhecida ou vazia **não** cai em branca — `getBeltLevel` devolve 5 (preta) e o aviso de restrição só é montado para nível < 5, ou seja, a restrição é **desligada**. Por isso a faixa é enum obrigatória na entrada: a porta foi fechada na borda, não na saída. Registros antigos com valor fora do enum mantêm o comportamento histórico.
-6. **`update` no model usa allow-list explícita de colunas** — não há mass assignment. Preservar ao refatorar.
-7. **Exclusão é hard delete.** As `fight_analyses`, `tactical_analyses` e `profile_versions` da pessoa **não** são apagadas em cascata — não há FK. O modal de confirmação diz isso ao usuário.
-8. **Leitura respeita escopo de tenant**, escrita usa o `user_id` real do registro (permite admin editar dado de membro do grupo sem transferir posse).
-9. **Contrato de saída é `camelCase` em todos os endpoints**, inclusive `POST` (✅ spec 013 — antes devolvia a linha crua do banco).
+3. **A pessoa NÃO guarda mais `technical_profile`.** ✅ Spec 013 — o campo era gravado a cada análise e nenhum consumidor o lia (uma query extra por análise para produzir dado morto). O `technical_profile` da **análise** continua existindo e alimenta o histórico de versões. A coluna na pessoa segue no banco; dropá-la é trabalho da spec 011.
+4. **`technical_summary` é gerado por IA**, não pelo usuário. É regenerado automaticamente sempre que uma análise da pessoa é criada ou deletada (fire-and-forget, tolerante a falha — módulo `fight-analysis`). O cliente HTTP **não** pode escrevê-lo por `PUT /api/athletes/:id`: o schema remove o campo. Quem o grava é o módulo de análise, o de chat e o botão "Gerar com IA" (`POST /api/ai/consolidate-profile`), sempre pelo model.
+5. **Se a pessoa fica com zero análises, o `technical_summary` é limpo.**
+6. **`belt` alimenta as regras IBJJF** na geração de estratégia, e faixa desconhecida ou vazia cai no conjunto **mais restritivo (branca)**. ✅ Spec 013 — até então isso valia só para o texto das regras (`formatBeltRules`); `getBeltLevel`, que decide qual faixa governa e se o aviso de técnica ilegal é sequer montado, devolvia 5 (preta) e **desligava a restrição**. As duas metades da mesma regra discordavam. Além da correção, `belt` virou enum obrigatória na criação, fechando a porta também na entrada.
+7. **`update` no model usa allow-list explícita de colunas** — não há mass assignment. Preservar ao refatorar.
+8. **Exclusão apaga em cascata, na aplicação.** ✅ Spec 013 — sai a pessoa, saem as `fight_analyses` dela, as `analysis_versions` dessas análises e as `profile_versions`. Não há FK: a cascata é orquestrada em `controllers/personController.js#deleteRelated` e a resposta declara quantas linhas saíram. **`tactical_analyses` é preservada de propósito** — uma estratégia é um documento gerado, que guarda os nomes desnormalizados e continua legível sem a pessoa; apagá-la é decisão de produto.
+9. **Leitura respeita escopo de tenant**, escrita usa o `user_id` real do registro (permite admin editar dado de membro do grupo sem transferir posse).
+10. **Contrato de saída é `camelCase` em todos os endpoints**, inclusive `POST` (✅ spec 013 — antes devolvia a linha crua do banco).
 
 ## Inputs
 
@@ -39,7 +40,7 @@ O motivo original da separação, segundo o proprietário (2026-08-12): permitir
 |---|---|
 | `POST /api/athletes` · `POST /api/opponents` | `name`, `belt` (obrigatórios); `age`, `weight`, `height`, `style`, `strongAttacks`, `weaknesses`, `cardio`, `videoUrl` (opcionais, `null` se omitidos) |
 | `PUT /api/athletes/:id` · `PUT /api/opponents/:id` | qualquer subconjunto dos campos acima; `null` explícito apaga |
-| Módulo de análise de luta | `technical_profile` (via `updateTechnicalProfile`) e `technical_summary` (regeneração automática) |
+| Módulo de análise de luta | `technical_summary` (regeneração automática após criar/apagar análise) |
 | `POST /api/ai/consolidate-profile` | `technical_summary`, `technical_summary_updated_at` |
 | Módulo de chat | `technical_summary` editado pelo usuário ou pela IA |
 
@@ -85,16 +86,15 @@ flowchart TD
 - **Versionar o `technical_summary`** — módulo [`chat-and-versions`](./chat-and-versions.md).
 - **Autenticação e definição de escopo** — `middleware/auth.js` e `services/authorization.js`.
 - **Cálculo de atributos para gráficos de radar** — `server/src/utils/athleteStatsUtils.js`, hoje sem consumidor (decisão P7 em [`GAPS.md`](../GAPS.md)).
+- **Apagar estratégias** ao excluir a pessoa — preservadas de propósito (regra 8).
 
 ## Known Issues
 
 | Severidade | Problema |
 |---|---|
-| **MEDIUM** | **`technical_profile` é escrito e ninguém lê.** A spec 007 corrigiu a escrita (uma query extra por análise); o único leitor era uma prop ignorada de `AthleteCard`, removida na spec 013. Decisão pendente: parar de gravar ou ligar a um consumidor — ver P7/P12 em [`GAPS.md`](../GAPS.md) |
-| **MEDIUM** | **Sem FK e sem cascade.** Deletar a pessoa deixa `fight_analyses`, `tactical_analyses` e `profile_versions` órfãos |
+| **MEDIUM** | **Sem FK no banco.** A cascata da spec 013 é da aplicação: um `DELETE` feito por fora dela (SQL direto) continua deixando órfãos. Só a FK real resolve — spec 011 |
 | **MEDIUM** | **RLS desligado** nas duas tabelas; o `REVOKE` da chave anon segue pendente — ver [`../DATABASE.md`](../DATABASE.md#4-estado-de-rls--visão-consolidada) |
-| **LOW** | `PersonForm` só coleta nome e faixa; os demais campos só entram por API |
-| **LOW** | Sem paginação nem busca em `getAll` |
+| **LOW** | Busca e ordenação são do **cliente** (`hooks/usePersonFilters.js`): a listagem traz todas as linhas do escopo, sem paginação de API |
 | **LOW** | A regeneração do resumo é fire-and-forget sem sinal de conclusão; a tela recarrega com `setTimeout` de 1 s / 3 s (F18 da SPEC-FRONTEND) |
 | ~~**HIGH**~~ | ✅ Spec 007 — `technical_profile` nunca era atualizado |
 | ~~**MEDIUM**~~ | ✅ Spec 013 — defaults fabricados exibidos como fato |
@@ -102,9 +102,9 @@ flowchart TD
 | ~~**MEDIUM**~~ | ✅ Spec 013 — lista desatualizada por 5 min após apagar/trocar faixa (sem invalidação de cache) |
 | ~~**MEDIUM**~~ | ✅ Spec 013 — `PUT` com o objeto inteiro sobrescrevia o resumo regenerado em background |
 | ~~**LOW**~~ | ✅ Spec 013 — `POST` devolvia `snake_case`; `created_at` lido onde a API entrega `createdAt`; `cardio: 0` virava 50; `age: 'abc'` era 500 |
+| ~~**LOW**~~ | ✅ Spec 013 — o formulário coletava só nome e faixa, enquanto a tela de estratégia exibia peso/idade/estilo |
 
 ## Future Considerations
 
 - **Unificação de tabelas com marcação de papel** — [ADR-007](../decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md), `PLANNED`. Com a implementação já única, a migração passa a ser só de dado e rotas.
-- **Coletar os campos opcionais no formulário**, ou removê-los do schema e do banco — decisão de produto.
 - **Resumo curto separado do perfil completo**: hoje um único `technical_summary` serve card, tela e prompt de estratégia.
