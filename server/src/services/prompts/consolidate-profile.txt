@@ -19,7 +19,7 @@ Sua tarefa é criar um PERFIL TÉCNICO COMPLETO E UNIFICADO que será usado para
 🎯 INSTRUÇÕES PARA O RESUMO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Crie um PERFIL TÉCNICO COMPLETO que inclua:
+Crie um PERFIL TÉCNICO que cubra, de forma sucinta:
 
 1. ESTILO DE LUTA: Guardeiro ou passador? Agressivo ou estratégico? Explosivo ou grinder?
 2. COMPORTAMENTO INICIAL: O que ele faz logo após o "combate"? Puxa guarda? Busca queda?
@@ -36,8 +36,8 @@ Crie um PERFIL TÉCNICO COMPLETO que inclua:
 
 Retorne APENAS texto puro, SEM formatação markdown, SEM JSON.
 
-Escreva um texto técnico em PARÁGRAFOS (pode ter múltiplos parágrafos para organização).
-Entre 250-400 palavras.
+Escreva em NO MÁXIMO 2 parágrafos.
+Entre 150 e 220 palavras. O texto é lido numa tela e reaproveitado como insumo do prompt de estratégia: concisão vale mais que cobertura — prefira omitir um item a ser vago em todos.
 
 Seja específico, use os dados fornecidos, e foque no que é ÚTIL para criar estratégias.
 

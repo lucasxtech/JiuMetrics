@@ -10,7 +10,7 @@
  * desde essa faixa). Esses testes travam o comportamento correto.
  */
 
-const { BELT_RULES } = require('../../config/ai');
+const { BELT_RULES, getBeltLevel } = require('../../config/ai');
 const { formatBeltRules, getBeltRulesText, formatBeltRulesForStrategy, buildVideoAnalysisContext } = require('../geminiService');
 
 describe('BELT_RULES (fonte única)', () => {
@@ -128,5 +128,42 @@ describe('buildVideoAnalysisContext (contexto do prompt de análise de vídeo)',
   it('não inclui nenhum texto de faixa quando belt não é informado', () => {
     const contextText = buildVideoAnalysisContext({ athleteName: 'Atleta Teste' });
     expect(contextText).not.toContain('FAIXA:');
+  });
+});
+
+describe('SPEC-013 — faixa desconhecida cai na MAIS RESTRITIVA, não na mais permissiva', () => {
+  // Até esta spec, `getBeltLevel` devolvia 5 (preta) para faixa desconhecida,
+  // enquanto `formatBeltRules` caía em branca. As duas metades da mesma regra
+  // discordavam — e a metade que decide se o aviso de técnica ilegal é sequer
+  // montado era a permissiva.
+  it('faixa desconhecida, vazia ou ausente vale como branca (nível 1)', () => {
+    expect(getBeltLevel('Coral')).toBe(1);
+    expect(getBeltLevel('')).toBe(1);
+    expect(getBeltLevel(null)).toBe(1);
+    expect(getBeltLevel(undefined)).toBe(1);
+  });
+
+  it('as faixas conhecidas mantêm a ordem', () => {
+    expect(getBeltLevel('Branca')).toBe(1);
+    expect(getBeltLevel('Azul')).toBe(2);
+    expect(getBeltLevel('Roxa')).toBe(3);
+    expect(getBeltLevel('Marrom')).toBe(4);
+    expect(getBeltLevel('Preta')).toBe(5);
+    expect(getBeltLevel('white')).toBe(1);
+    expect(getBeltLevel('black')).toBe(5);
+  });
+
+  it('faixa desconhecida é MAIS restritiva que qualquer faixa conhecida acima de branca', () => {
+    // É esta a inversão que a spec corrige: antes, desconhecida (5) era a
+    // menos restritiva de todas.
+    ['Azul', 'Roxa', 'Marrom', 'Preta'].forEach((conhecida) => {
+      expect(getBeltLevel('faixa que não existe')).toBeLessThan(getBeltLevel(conhecida));
+    });
+  });
+
+  it('getBeltLevel e formatBeltRules concordam sobre faixa desconhecida', () => {
+    // formatBeltRules sempre caiu em branca; agora getBeltLevel também.
+    expect(formatBeltRules('Coral')).toContain('branca');
+    expect(getBeltLevel('Coral')).toBe(getBeltLevel('Branca'));
   });
 });

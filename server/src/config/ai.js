@@ -74,14 +74,26 @@ function resolveBeltRules(belt) {
 
 /**
  * Nível numérico da faixa (1=branca ... 5=preta), usado para calcular a
- * faixa mais restritiva entre atleta e adversário. Faixa desconhecida ou
- * não informada retorna 5 (preta) — comportamento histórico preservado.
+ * faixa mais restritiva entre atleta e adversário.
+ *
+ * ⚠️ Faixa desconhecida ou não informada retorna **1 (branca)**, o conjunto
+ * mais restritivo. Até a spec 013 retornava 5 (preta), e isso **desligava a
+ * restrição**: com os dois lados desconhecidos, `restrictiveBelt` ficava em
+ * nível 5 e o aviso de técnica ilegal não era montado — a estratégia saía sem
+ * nenhuma restrição de perna. Era o oposto do que o ADR-005 decidiu e do que
+ * `formatBeltRules` já fazia (que sempre caiu em branca para faixa
+ * desconhecida): as duas metades da mesma regra discordavam entre si.
+ *
+ * Assumir a faixa mais permissiva arrisca sugerir técnica ilegal, cujo erro
+ * custa desclassificação. Assumir a mais restritiva, no pior caso, deixa de
+ * sugerir uma técnica que seria permitida.
+ *
  * @param {string} belt
- * @returns {number}
+ * @returns {number} 1..5 (1 = branca, também o fallback)
  */
 function getBeltLevel(belt) {
   const key = resolveBeltKey(belt);
-  return key ? (BELT_LEVELS[key] || 5) : 5;
+  return key ? (BELT_LEVELS[key] || BELT_LEVELS.branca) : BELT_LEVELS.branca;
 }
 
 // Modelos default por TAREFA, usados quando o usuário não escolhe um modelo
@@ -280,6 +292,7 @@ module.exports = {
   // reexportados aqui para manter a mesma API pública (config.BELT_RULES).
   BELT_RULES,
   resolveBeltKey,
+  BELT_LEVELS,
   resolveBeltRules,
   getBeltLevel,
 

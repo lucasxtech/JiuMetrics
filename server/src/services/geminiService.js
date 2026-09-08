@@ -13,7 +13,7 @@ const { VIDEO_ANALYSIS_SCHEMA } = require("../schemas/videoAnalysis");
 const { STRATEGY_SCHEMA } = require("../schemas/strategy");
 const { normalizeChartData } = require("../utils/chartUtils");
 const { getPrompt } = require("./prompts");
-const { MAX_SUMMARY_WORDS, BELT_RULES, resolveBeltRules, getBeltLevel, resolveModel, GENERATION } = require("../config/ai");
+const { MAX_SUMMARY_WORDS, BELT_RULES, BELT_LEVELS, resolveBeltKey, resolveBeltRules, getBeltLevel, resolveModel, GENERATION } = require("../config/ai");
 const { parseGeminiError } = require("../utils/errors");
 const { downloadYouTubeVideo } = require("./videoDownloader");
 
@@ -519,15 +519,27 @@ async function generateTacticalStrategy(athleteData, opponentData, customModel =
   const athleteBeltInfo = formatBeltRulesForStrategy(athleteData.belt);
   const opponentBeltInfo = formatBeltRulesForStrategy(opponentData.belt);
 
-  // Determinar a faixa mais restritiva (para estratégia segura)
+  // Determinar a faixa mais restritiva (para estratégia segura).
+  //
+  // Faixa desconhecida vale como branca desde a spec 013 — antes valia como
+  // preta, o que fazia o aviso abaixo NÃO ser montado quando o lado mais
+  // restritivo era justamente o desconhecido.
   const athleteLevel = getBeltLevel(athleteData.belt);
   const opponentLevel = getBeltLevel(opponentData.belt);
-  const restrictiveBelt = athleteLevel <= opponentLevel ? athleteData.belt : opponentData.belt;
+  const restrictiveRaw = athleteLevel <= opponentLevel ? athleteData.belt : opponentData.belt;
+  const restrictiveLevel = Math.min(athleteLevel, opponentLevel);
+
+  // Rótulo canônico: sem isto, uma faixa não informada imprimiria "undefined"
+  // ou o lixo que veio no campo dentro do aviso enviado ao modelo.
+  const restrictiveKey = resolveBeltKey(restrictiveRaw);
+  const restrictiveLabel = restrictiveKey
+    ? restrictiveKey.toUpperCase()
+    : 'BRANCA (faixa não informada — aplicando o conjunto mais restritivo)';
 
   let beltWarning = '';
-  if (restrictiveBelt && getBeltLevel(restrictiveBelt) < 5) {
+  if (restrictiveLevel < BELT_LEVELS.preta) {
     beltWarning = `\n\n🚨 ATENÇÃO - REGRAS DA COMPETIÇÃO:
-A faixa mais restritiva é ${restrictiveBelt?.toUpperCase()}.
+A faixa mais restritiva é ${restrictiveLabel}.
 NÃO SUGIRA técnicas ilegais para essa faixa (leg locks proibidos, etc).
 Se sugerir leg lock, verifique se é permitido para a faixa.`;
   }

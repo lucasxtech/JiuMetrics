@@ -12,7 +12,7 @@ Componentes relacionados a análises táticas e estratégias.
 - **AnalysisCard.jsx** - Card de análise tática
 - **AnalysisDetailModal.jsx** - Modal com detalhes completos da análise
 
-**Usado em:** `Analyses.jsx`, `Strategy.jsx`, `AthleteDetail.jsx`
+**Usado em:** `Analyses.jsx`, `Strategy.jsx`, `PersonDetail.jsx`
 
 ### chat/
 Componentes de chat com IA para refinar conteúdo.
@@ -26,7 +26,7 @@ Componentes de chat com IA para refinar conteúdo.
 
 **Fluxo:** Usuário envia mensagem → IA sugere edição → Diff exibido → Aceitar/Rejeitar
 
-**Usado em:** `Analyses.jsx`, `AthleteDetail.jsx`, `Strategy.jsx`
+**Usado em:** `Analyses.jsx`, `PersonDetail.jsx`, `Strategy.jsx`
 
 ### video/
 Componentes para análise de vídeos.
@@ -35,7 +35,7 @@ Componentes para análise de vídeos.
 - **VideoAnalysisCard.jsx** - Card de vídeo analisado
 - **VideoAnalysisEmptyState.jsx** - Estado vazio quando não há vídeos
 
-**Usado em:** `VideoAnalysis.jsx` (page), `AthleteDetail.jsx`
+**Usado em:** `VideoAnalysis.jsx` (page), `PersonDetail.jsx`
 
 ### charts/
 Componentes de gráficos e visualizações.
@@ -45,13 +45,14 @@ Componentes de gráficos e visualizações.
 - **StatsBarChart.jsx** - Gráfico de barras
 - **PieChartSection.jsx** - Seção com gráfico de pizza
 
-**Usado em:** `Overview.jsx`, `AthleteDetail.jsx`, `VideoAnalysis.jsx`, `AnalysisDetailModal.jsx`
+**Usado em:** `Overview.jsx`, `PersonDetail.jsx`, `VideoAnalysis.jsx`, `AnalysisDetailModal.jsx`
 
 ### common/
 Componentes reutilizáveis em toda aplicação.
 
 - **Header.jsx** - Cabeçalho de navegação
-- **AthleteCard.jsx** - Card de atleta/adversário
+- **AthleteCard.jsx** - Card de atleta/adversário (só nome, faixa, contagem de análises e criador)
+- **QuickAddModal.jsx** - Cadastro rápido sobre `Modal` + `PersonForm`
 - **LoadingSpinner.jsx** - Indicador de carregamento
 - **ErrorMessage.jsx** - Exibição de erros
 - **Modal.jsx** - Modal base reutilizável
@@ -63,9 +64,18 @@ Componentes reutilizáveis em toda aplicação.
 ### forms/
 Formulários de cadastro e edição.
 
-- **AthleteForm.jsx** - Formulário de atleta/adversário
+- **PersonForm.jsx** - Formulário único de atleta/adversário (nome + faixa; envia só `{ name, belt }`)
 
-**Usado em:** `Athletes.jsx`, `Opponents.jsx`, `AthleteDetail.jsx`
+**Usado em:** `PersonList.jsx`, `PersonDetail.jsx`, `QuickAddModal.jsx`
+
+### person/
+Peças da página de detalhe (`pages/PersonDetail.jsx`, spec 013).
+
+- **PersonHeader.jsx** - Nome, seletor de faixa, ações
+- **BeltSelect.jsx** - `<select>` nativo com as cores de `constants/persons.js`
+- **TechnicalSummaryPanel.jsx** - Painel único do resumo técnico, recolhido por padrão
+- **AnalysesSection.jsx** - Lista de análises de vídeo
+- **PersonDetailSkeleton.jsx** - Estado de carregamento
 
 ### routing/
 Componentes relacionados a roteamento.
@@ -105,7 +115,7 @@ import Badge from '../components/common/Badge';
 import FormattedText from '../components/common/FormattedText';
 
 // Forms
-import AthleteForm from '../components/forms/AthleteForm';
+import PersonForm from '../components/forms/PersonForm';
 
 // Routing
 import ProtectedRoute from '../components/routing/ProtectedRoute';

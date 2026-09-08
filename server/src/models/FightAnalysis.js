@@ -195,6 +195,31 @@ class FightAnalysis {
     if (error) throw error;
     return data && data.length > 0 ? parseAnalysisFromDB(data[0]) : null;
   }
+
+  /**
+   * Apaga TODAS as análises de uma pessoa. Usado na exclusão em cascata
+   * (spec 013): o banco não tem FK de `person_id`, então quem apaga a pessoa
+   * precisa apagar o que dependia dela — senão ficam linhas órfãs apontando
+   * para um `person_id` que não existe mais.
+   * @param {string} personId
+   * @param {'athlete'|'opponent'} personType
+   * @param {string|string[]} allowedUserIds - obrigatório
+   * @returns {Promise<Array>} análises removidas
+   */
+  static async deleteByPerson(personId, personType, allowedUserIds) {
+    const ids = requireScope(allowedUserIds, 'FightAnalysis.deleteByPerson');
+
+    const { data, error } = await supabase
+      .from('fight_analyses')
+      .delete()
+      .eq('person_id', personId)
+      .eq('person_type', personType)
+      .in('user_id', ids)
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(parseAnalysisFromDB);
+  }
 }
 
 module.exports = FightAnalysis;

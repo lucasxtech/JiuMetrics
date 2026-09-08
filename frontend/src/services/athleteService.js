@@ -1,42 +1,10 @@
-// Serviço para gerenciar atletas
-import api from './api';
+// Fachada nomeada sobre `personService('athlete')` (spec 013).
+import { personService } from './personService';
 
-/**
- * Busca lista de todos os atletas
- */
-export const getAllAthletes = async () => {
-  const response = await api.get('/athletes');
-  return response.data;
-};
+const svc = personService('athlete');
 
-/**
- * Busca um atleta pelo ID
- */
-export const getAthleteById = async (id) => {
-  const response = await api.get(`/athletes/${id}`);
-  return response.data;
-};
-
-/**
- * Cria um novo atleta
- */
-export const createAthlete = async (data) => {
-  const response = await api.post('/athletes', data);
-  return response.data;
-};
-
-/**
- * Atualiza um atleta existente
- */
-export const updateAthlete = async (id, data) => {
-  const response = await api.put(`/athletes/${id}`, data);
-  return response.data;
-};
-
-/**
- * Deleta um atleta
- */
-export const deleteAthlete = async (id) => {
-  const response = await api.delete(`/athletes/${id}`);
-  return response.data;
-};
+export const getAllAthletes = svc.getAll;
+export const getAthleteById = svc.getById;
+export const createAthlete = svc.create;
+export const updateAthlete = svc.update;
+export const deleteAthlete = svc.remove;

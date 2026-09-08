@@ -128,7 +128,7 @@ stateDiagram-v2
 **Regras de negócio** (`IMPLEMENTED`)
 
 1. Só `name` é obrigatório na criação.
-2. **Defaults são fabricados quando o campo é omitido**: `age: 25`, `weight: 75`, `belt: 'Branca'`, `style: 'Guarda'`, `cardio: 50`. ⚠️ Esse dado inventado é depois exibido como fato na tela de estratégia. Ver [`PROJECT_STATUS.md`](./PROJECT_STATUS.md#known-issues).
+2. ~~**Defaults são fabricados quando o campo é omitido**~~ ✅ **Resolvido na [spec 013](../specs/013-athletes-opponents-consolidation/spec.md):** campo omitido é `null` e a UI mostra só o que foi informado. `belt` passou a ser **obrigatória** na criação (enum fechado), porque uma faixa ausente desligava as regras IBJJF na estratégia.
 3. `technical_summary` é **regenerado automaticamente** ao criar ou deletar uma análise da pessoa.
 4. Se a pessoa fica com **zero** análises, o `technical_summary` é **limpo**.
 5. `belt` alimenta as regras IBJJF na geração de estratégia (ver §3.5, regra 4). Faixa vazia ou desconhecida cai no conjunto mais restritivo (branca).
