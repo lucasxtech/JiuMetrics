@@ -27,6 +27,8 @@ specs/       histórico versionado de mudanças planejadas
 **O que NÃO existe** — não invente, não documente como existente, não implemente sem pedido explícito:
 
 > histórico completo de lutas · histórico de lesões · acompanhamento médico, nutricional ou físico · contas de médico, nutricionista ou preparador físico · compartilhamento de informação entre profissionais · upload de arquivo de vídeo (só URL do YouTube) · recuperação de senha · fila, worker ou job assíncrono · WebSocket/SSE · cache de servidor.
+>
+> Vários destes estão **planejados** em [`docs/ROADMAP.md`](./docs/ROADMAP.md) (2026-09-23) — planejado não é implementado; a lista acima só muda quando a tarefa fechar em `main`.
 
 ✅ **As duas funcionalidades quebradas foram corrigidas na [spec 007](./specs/007-silent-failures-and-input-validation/spec.md)** (2026-08-18): histórico de versões de perfil técnico e atualização do `technical_profile`. Ficam registradas aqui porque a **causa** delas é o risco que continua vivo neste repositório:
 
@@ -141,6 +143,7 @@ Regras:
 | Tabelas, FKs, RLS, migrations | [`docs/DATABASE.md`](./docs/DATABASE.md) |
 | Em que estado o projeto está | [`docs/PROJECT_STATUS.md`](./docs/PROJECT_STATUS.md) |
 | **O que ficou aberto e por quê** | [`docs/GAPS.md`](./docs/GAPS.md) |
+| **Para onde o produto vai e qual é a próxima tarefa** | [`docs/ROADMAP.md`](./docs/ROADMAP.md) — tudo `PLANNED`; protótipo de referência no Claude Design |
 | Por que uma decisão foi tomada | [`docs/decisions/`](./docs/decisions/) |
 | Detalhe de um módulo | [`docs/modules/`](./docs/modules/) |
 | Evidência de um problema, em `arquivo:linha` | [`AUDIT.md`](./AUDIT.md) |

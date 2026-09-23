@@ -338,6 +338,8 @@ Registrado explicitamente para impedir suposição. **Nenhum destes existe** —
 
 Estes itens são **possível evolução futura**, mencionados aqui apenas como contexto. Tratá-los como parte do domínio atual seria erro factual.
 
+📍 **Desde 2026-09-23 eles têm roadmap:** [`ROADMAP.md`](./ROADMAP.md) — fases, tarefas e as decisões de produto já tomadas (dois eixos `role` × `profile`, modelo de time de confiança). Continua tudo `PLANNED`.
+
 **Se um deles entrar no roadmap**, duas decisões arquiteturais atuais precisam ser revisitadas antes: (a) o modelo de autorização, hoje binário `admin`/`user` sem noção de papel profissional; (b) a ausência de RLS — compartilhar dado clínico entre organizações sem defesa no banco seria imprudente.
 
 🎯 A análise de viabilidade dessa evolução — se `User` deveria representar um `Athlete`, como modelar profissional ↔ atleta, e **quais decisões precisam ser tomadas agora (custo zero) vs. depois** — está em [`../JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md) §7. A conclusão que importa hoje: **nunca assumir que `athletes.user_id` é a conta do próprio atleta** (hoje é a de quem gerencia o registro).
