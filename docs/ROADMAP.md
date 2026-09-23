@@ -133,7 +133,7 @@ Registrado aqui para virar tarefa, não para ser esquecido. Detalhe em `.ai/desi
 
 - ~~Professor é sempre admin~~ ✅ **Resolvido em `Perfis e acessos`:** admin é um toggle por conta, independente do perfil; "admin só acrescenta a gestão de contas". → `R-05` fechada.
 - ~~Só o atleta edita o calendário~~ ✅ **Resolvido em `Perfis e acessos`:** fisio, nutri e preparador **editam** treinos de qualquer atleta; professor **só vê**, com presença. → `R-06` fechada.
-- **Exclusão de conta:** o protótipo transfere análises, estratégias e adversários para outra conta, mas diz que **a ficha e a saúde não são transferidas e ficam sem dono** até serem vinculadas a outra conta. Hoje o backend transfere `athletes` junto, e "dado sem dono" fere o invariante 1 de `DOMAIN.md`. → `R-13`.
+- ~~Exclusão de conta com transferência~~ ✅ **Decidido 2026-09-23: excluir apaga tudo**, sem transferência. O diálogo do protótipo com "Transferir para" sai; fica a lista do que será apagado e a confirmação digitada. → `R-13` fechada.
 - **Senha provisória com troca no primeiro acesso:** o fluxo de novo usuário promete isso e não existe. → `R-14`.
 - **Peso atual "da ficha, atualizado em 21 set":** a aba Nutrição lê um peso atual com data. Não existe campo nem entidade. → `R-58`, `R-60`.
 - **Aba Nutrição dentro de Saúde:** proposta do protótipo, com restrições alimentares e orientações em linha do tempo. Adotada. → `R-57`.
@@ -172,7 +172,7 @@ Sem R-02, **nenhuma tarefa da fase 5 começa.** Ver [`GAPS.md`](./GAPS.md) §1 p
 | R-09 | Migração de dados: vincular cada conta `atleta` à sua ficha. Heurística por nome + **confirmação manual** do dono; nenhuma fusão automática | código + decisão | R-04 | ⚪ |
 | R-10 | Endpoints de admin: definir perfil na criação e na edição de usuário; `GET /auth/validate` devolve `profile` | código | R-04 | ⚪ |
 | R-11 | Converter `user_id` para UUID nas 3 tabelas `VARCHAR` e recriar FKs (item 2 da spec 011). Pré-requisito para as FKs das áreas novas serem reais | spec + infra | R-02 | ⚪ |
-| R-13 | **Decisão:** na exclusão de conta, a ficha vinculada e a saúde ficam sem dono (como o protótipo) ou são transferidas junto (como hoje)? Proposta: transferir a **gestão** (`user_id`) para a conta escolhida e só limpar `account_user_id`; nunca deixar linha sem `user_id` | decisão | R-04 | ⚪ |
+| R-13 | ~~Decisão: exclusão de conta~~ **Decidido 2026-09-23: excluir apaga tudo** — análises, estratégias, adversários, ficha, treinos, competições, saúde e anexos. Sem transferência. Substitui o fluxo atual "transferir ou apagar" e o diálogo de transferência do protótipo. Diálogo: lista do que será apagado + digitar o nome para confirmar; nunca a própria conta nem o último admin | decisão | R-04 | ✅ |
 | R-14 | Senha provisória com **troca obrigatória no primeiro acesso** (`users.must_change_password`), sem recuperação de senha por e-mail | spec | R-04 | ⚪ |
 | R-12 | Unificar `athletes` e `opponents` ([ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md), item 4 da spec 011). Recomendado antes das tabelas novas apontarem para "o lutador" | spec + infra | R-11 | ⚪ |
 
@@ -189,11 +189,11 @@ Reconstrução do que já existe, no design novo. **Sem funcionalidade nova de b
 | R-22 | Shell: sidebar por perfil, header + barra inferior mobile, sheet "Mais", painel lateral, item ativo por prefixo de rota, "Sair" em todo lugar | código | R-21, R-10 | ⚪ |
 | R-23 | Login, cadastro (se `ALLOW_PUBLIC_REGISTER`), **404**, **sessão expirada** | código | R-22 | ⚪ |
 | R-24 | Atletas, Adversários, Ficha (abas Resumo e Análises de vídeo), cadastro rápido, formulário completo da ficha | código | R-22 | ⚪ |
-| R-25 | **Design:** voltar ao Claude Design com a lista de fluxos que faltam: editar/excluir em cada entidade, erros de login/análise/upload/geração, navegação de período | design | — | ⚪ |
+| R-25 | **Design:** voltar ao Claude Design com os fluxos que faltam (conferido 2026-09-23 — nenhuma **tela** falta; faltam sheets e estados): (a) troca de senha no primeiro acesso e em Configurações; (b) editar ficha completa (peso, altura, idade, estilo, peso atual) — hoje "Editar" abre o cadastro rápido; (c) editar/excluir sessão, horário da grade, evento de competição, inscrição, luta, evento da linha do tempo, orientação de nutrição; (d) excluir adversário, análise de vídeo e estratégia; (e) erros: login errado, análise falhou (vídeo privado, pessoa não identificada, tempo esgotado), anexo recusado, geração de estratégia falhou; (f) viewer de anexo com imagem, não só PDF; (g) navegação de período no calendário e na grade | design | — | ⚪ |
 | R-26 | Análise de vídeo: lista, nova (só YouTube, texto corrigido), **espera honesta** (5 etapas, sem porcentagem, pode sair da tela), resultado com barras empilhadas e nota de estimativa; remover badge "N frames" | código | R-22 | ⚪ |
 | R-27 | Relatório de estratégia como **componente único** (tela e PDF) a partir de `StrategyReport.dc.html`; gerar, lista, PDF; "+X pts" e probabilidade como estimativa | código | R-22 | ⚪ |
 | R-28 | Painel lateral único de chat + versões para os 3 contextos (estratégia, análise, perfil), com sugestão de edição no lugar do texto. Apaga as 4 variações de diff e os 2 relatórios duplicados | código | R-27 | ⚪ |
-| R-29 | Configurações e **Usuários conforme `Perfis e acessos`**: contadores (contas, admins, ativas, staff), busca + filtros de perfil/permissão/status, linha com perfil, ficha vinculada, último acesso e status, menu por conta (alterar perfil, tornar/remover admin, vincular/desvincular ficha, ver acessos à saúde, desativar/reativar, excluir com transferência e confirmação digitada), diálogo de novo usuário (perfil com dica, toggle admin, toggle "criar ficha vinculada"); aba "Registro de acesso à saúde" fica vazia até a fase 5. Início mínimo dos dois perfis | código | R-22, R-10 | ⚪ |
+| R-29 | Configurações e **Usuários conforme `Perfis e acessos`**: contadores (contas, admins, ativas, staff), busca + filtros de perfil/permissão/status, linha com perfil, ficha vinculada, último acesso e status, menu por conta (alterar perfil, tornar/remover admin, vincular/desvincular ficha, ver acessos à saúde, desativar/reativar, excluir **apagando tudo**, com confirmação digitada), diálogo de novo usuário (perfil com dica, toggle admin, toggle "criar ficha vinculada"); aba "Registro de acesso à saúde" fica vazia até a fase 5. Início mínimo dos dois perfis | código | R-22, R-10 | ⚪ |
 | R-2A | Corrigir no backend o que a tela nova expõe: `technical_stats` × `technicalStats`, `submissions.detalhes` como objeto, `sweeps.concluidas` inexistente, F20 (refinamento na tela de estratégia não salva) | código | R-26, R-27 | ⚪ |
 | R-2B | E2E mínimo dos fluxos críticos rodando **localmente** (login, analisar vídeo com mock, gerar estratégia, aceitar sugestão) — CI continua sem E2E até decisão | código | R-28 | ⚪ |
 
@@ -257,7 +257,6 @@ Nenhuma é técnica. Todas mudam o que o usuário vê.
 |---|---|---|
 | ~~R-05~~ | ✅ respondida em `Perfis e acessos`: admin é toggle independente do perfil | — |
 | ~~R-06~~ | ✅ respondida: fisio, nutri e preparador editam treinos; professor só vê | — |
-| R-13 | Ficha e saúde de conta excluída ficam sem dono ou vão junto com a transferência? | a fase 1 transfere tudo, como hoje, e só desvincula a conta |
 | R-09 | Confirmação manual do vínculo conta → ficha para os 25 usuários | nenhuma conta `atleta` ganha "Minha ficha" até confirmar |
 | R-30 | Quais categorias de peso valem (gênero, idade, modalidade)? Fonte: regulamento IBJJF/CBJJ vigente | a inscrição usa lista adulto masculino kimono e o resto é texto livre |
 | R-50 | Supabase Storage é aceitável para exame médico? Alternativa é bucket S3 próprio | a fase 5 não começa |
