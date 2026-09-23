@@ -2,7 +2,7 @@
 
 > **Responde a duas perguntas:** para onde o produto vai, e qual é a próxima tarefa.
 >
-> **Criado:** 2026-09-23 · **Dono:** Lucas Menezes · **Origem:** brainstorm de 2026-09-22 e protótipo do Claude Design de 2026-09-22.
+> **Criado:** 2026-09-23 · **Atualizado:** 2026-09-23 (`Perfis e acessos`) · **Dono:** Lucas Menezes · **Origem:** brainstorm de 2026-09-22 e protótipos do Claude Design de 2026-09-22 e 2026-09-23.
 >
 > **Regra deste documento:** tudo aqui é `PLANNED` até a tarefa correspondente ser fechada com código em `main`. Nada daqui existe no sistema hoje — a lista de "o que NÃO existe" do [`CLAUDE.md`](../CLAUDE.md) continua verdadeira. Quando uma tarefa fecha, ela muda de status **aqui** e a documentação permanente (`DOMAIN.md`, `ARCHITECTURE.md`, `docs/modules/`) é atualizada na mesma PR.
 
@@ -48,6 +48,22 @@ Modelo de **time de confiança**: sem tabela de vínculo profissional ↔ atleta
 
 Como todo o staff vê tudo, existe **registro de acesso à área de saúde** (quem abriu a saúde de quem, quando), consultável pelo admin. É a única prestação de contas desse modelo, e é reversível: se um dia entrar profissional externo, adiciona-se vínculo por cima.
 
+**Matriz de acesso detalhada** — fixada em `Perfis e acessos.dc.html` (2026-09-23). "Edita" inclui ver; "vê" é só leitura; "—" é invisível.
+
+| Área | atleta | professor | fisioterapeuta · nutricionista · preparador físico |
+|---|---|---|---|
+| Própria ficha | edita | edita, se tiver ficha | edita, se tiver ficha |
+| Fichas de outros atletas | — | vê | vê |
+| Treinos e calendário do atleta | edita só os próprios | **vê**, com presença de todos | **edita** de qualquer atleta |
+| Grade de treinos do time | vê, como sugestão no calendário | **edita** | vê |
+| Competições | edita só as próprias | **edita** as do time | vê |
+| Saúde: lesões | edita só a própria | edita | edita |
+| Saúde: nutrição (aba nova) | edita só a própria | edita | edita |
+| Análises, estratégias, adversários | edita as próprias | edita | edita |
+| Usuários e registro de acesso | só com permissão `admin`, qualquer perfil | | |
+
+Regras do registro de acesso: grava quem abriu, de quem, **o quê** (lesão + região, nutrição, ou visão geral) e quando; o atleta abrindo a própria saúde **não** entra no registro.
+
 Isso muda `services/authorization.js#resolveScope`: o escopo passa a depender de `role` **e** `profile`. A regra atual "só admin vê o grupo" ([ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md), [ADR-011](./decisions/011-seam-de-politica-de-autorizacao.md)) vira "admin **ou staff** vê o grupo". Vai precisar de ADR novo.
 
 ### 1.3 Áreas
@@ -75,7 +91,7 @@ Sem notificação, lembrete ou e-mail em nenhuma fase: não existe job no projet
 
 ## 2. Referência de design
 
-**Projeto no Claude Design:** [`Design scope questionnaire`](https://claude.ai/design/p/6f39984b-2862-4cac-b7e2-8d93de97ffc6?file=JiuMetrics.dc.html) (dono Lucas Menezes). Arquivos: `JiuMetrics.dc.html` (protótipo clicável completo), `StrategyReport.dc.html` (relatório de estratégia como componente único para tela e PDF), `jm-icons.js`, `support.js`, `github.md` (mapa protótipo → arquivos do repo).
+**Projeto no Claude Design:** [`Design scope questionnaire`](https://claude.ai/design/p/6f39984b-2862-4cac-b7e2-8d93de97ffc6?file=JiuMetrics.dc.html) (dono Lucas Menezes). Arquivos: `JiuMetrics.dc.html` (protótipo clicável completo), `StrategyReport.dc.html` (relatório de estratégia como componente único para tela e PDF), **`Perfis e acessos.dc.html`** (2026-09-23: matriz de acesso por perfil, navegação e Início por perfil, tela de Usuários completa, proposta da aba Nutrição), `jm-icons.js`, `support.js`, `github.md` (mapa protótipo → arquivos do repo).
 
 **Cópia local de trabalho:** `.ai/design/` (ignorada pelo Git; pode sumir). Inclui o inventário tela a tela em `inventario-prototipo.md`. ⚠️ A cópia de `JiuMetrics.dc.html` está truncada em 256 KiB pelo limite da ferramenta de leitura — o template está inteiro, o fim do script de dados não.
 
@@ -87,6 +103,7 @@ Sem notificação, lembrete ou e-mail em nenhuma fase: não existe job no projet
 - **Semânticas novas:** 7 tipos de treino com cor própria (kimono, sem kimono, físico, drill, competição, descanso, outro); 4 status de lesão; 4 medalhas; convenção do calendário: ponto cheio = feito, contorno = planejado ou pulado, tracejado = horário da grade aguardando confirmação.
 - **Componentes base:** botão (5 variantes, 44px padrão, 48 em CTA), chip, controle segmentado, abas, pill, avatar com inicial, badge de faixa desenhada como faixa com ponteira, badge "estimativa da IA", sheet (diálogo centralizado no desktop, painel inferior no celular, com `role=dialog`, foco preso, Esc), toast escuro com ação e desfazer, skeleton, estado vazio tracejado, estado de erro que **não mostra zero como dado**, linha do tempo, célula de calendário, stat em mono.
 - **Estados globais por tela:** normal, carregando, vazio (com texto e ação próprios por rota), erro. O estado de erro diz literalmente "Nenhum número foi mostrado para não parecer dado real".
+- **Navegação por perfil:** atleta vê Início, Meu calendário, Competições, Saúde; staff vê Início, Atletas, Grade de treinos, Competições do time, Saúde do time, com etiqueta "Staff"; todos veem Análises de vídeo, Estratégias, Adversários; atleta tem "Minha ficha"; admin ganha "Usuários" com etiqueta "Admin". **O Início do staff muda por perfil:** professor vê presença da aula de hoje; fisioterapeuta vê lesionados primeiro e consultas/exames dos próximos dias; nutricionista vê peso × peso-alvo por atleta; preparador físico vê o treino físico da semana.
 - **Rotas propostas:** `/entrar`, `/`, `/calendario?visao=`, `/grade`, `/competicoes`, `/inscricoes/:id`, `/saude`, `/saude/lesoes/:id`, `/atletas/:id/:aba`, `/adversarios/:id`, `/analises-de-video`, `/estrategias/:id`, `/estrategias/:id/pdf`, `/configuracoes`, `/usuarios`, `/sessao-expirada`, `*` → 404.
 
 ### 2.2 Mapa de telas — protótipo × sistema atual × fase
@@ -114,8 +131,12 @@ Sem notificação, lembrete ou e-mail em nenhuma fase: não existe job no projet
 
 Registrado aqui para virar tarefa, não para ser esquecido. Detalhe em `.ai/design/inventario-prototipo.md` §7.
 
-- **Professor é sempre admin** no protótipo (`isAdmin = admin || isProfessor`). Nossa decisão separa os dois eixos. → `R-05`.
-- **Só o atleta edita o calendário** no protótipo, mas o mapa diz que nutri, fisio e preparador "escrevem em treino". → `R-06`.
+- ~~Professor é sempre admin~~ ✅ **Resolvido em `Perfis e acessos`:** admin é um toggle por conta, independente do perfil; "admin só acrescenta a gestão de contas". → `R-05` fechada.
+- ~~Só o atleta edita o calendário~~ ✅ **Resolvido em `Perfis e acessos`:** fisio, nutri e preparador **editam** treinos de qualquer atleta; professor **só vê**, com presença. → `R-06` fechada.
+- **Exclusão de conta:** o protótipo transfere análises, estratégias e adversários para outra conta, mas diz que **a ficha e a saúde não são transferidas e ficam sem dono** até serem vinculadas a outra conta. Hoje o backend transfere `athletes` junto, e "dado sem dono" fere o invariante 1 de `DOMAIN.md`. → `R-13`.
+- **Senha provisória com troca no primeiro acesso:** o fluxo de novo usuário promete isso e não existe. → `R-14`.
+- **Peso atual "da ficha, atualizado em 21 set":** a aba Nutrição lê um peso atual com data. Não existe campo nem entidade. → `R-58`, `R-60`.
+- **Aba Nutrição dentro de Saúde:** proposta do protótipo, com restrições alimentares e orientações em linha do tempo. Adotada. → `R-57`.
 - **Peso de hoje** aparece no Início e não existe entidade de pesagem. → fase 6 (`R-60`).
 - **Sem edição nem exclusão** de sessão, horário da grade, evento, inscrição, luta, evento de linha do tempo, ficha completa. Falta desenhar. → `R-25`.
 - **Sem erro de login, de análise (vídeo privado, pessoa não identificada), de upload nem de geração.** → `R-25`.
@@ -144,13 +165,15 @@ Sem R-02, **nenhuma tarefa da fase 5 começa.** Ver [`GAPS.md`](./GAPS.md) §1 p
 | ID | Tarefa | Tipo | Depende | Status |
 |---|---|---|---|---|
 | R-04 | **Spec** de identidade: coluna `users.profile` (enum), `athletes.account_user_id` (UUID, nullable, UNIQUE), regra de escopo por `role` × `profile`, migração dos 25 usuários | spec | — | ⚪ |
-| R-05 | **Decisão:** professor nasce `admin` por padrão ou não? O protótipo assume que sim; a decisão de 2026-09-22 separa os eixos | decisão | — | ⚪ |
-| R-06 | **Decisão:** quem além do atleta pode criar/editar sessão no calendário dele? (preparador físico é o caso óbvio) | decisão | — | ⚪ |
+| R-05 | ~~Decisão: professor nasce `admin` por padrão?~~ **Não.** Admin é toggle por conta, qualquer perfil; não dá para remover o último admin ativo nem a si mesmo (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
+| R-06 | ~~Decisão: quem edita o calendário do atleta?~~ **Atleta, fisioterapeuta, nutricionista e preparador físico.** Professor só vê, com presença (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
 | R-07 | ADR: "staff vê o tenant" substitui "só admin vê o grupo"; registrar o modelo de time de confiança e por que não há consentimento por atleta | código | R-04 | ⚪ |
 | R-08 | `resolveScope` passa a receber `profile`; testes de posse em `__tests__/authorization/` ganham fixtures de perfil (atleta não vê outro atleta; fisio vê o tenant; admin idem) — **teste antes do código** | código | R-04 | ⚪ |
 | R-09 | Migração de dados: vincular cada conta `atleta` à sua ficha. Heurística por nome + **confirmação manual** do dono; nenhuma fusão automática | código + decisão | R-04 | ⚪ |
 | R-10 | Endpoints de admin: definir perfil na criação e na edição de usuário; `GET /auth/validate` devolve `profile` | código | R-04 | ⚪ |
 | R-11 | Converter `user_id` para UUID nas 3 tabelas `VARCHAR` e recriar FKs (item 2 da spec 011). Pré-requisito para as FKs das áreas novas serem reais | spec + infra | R-02 | ⚪ |
+| R-13 | **Decisão:** na exclusão de conta, a ficha vinculada e a saúde ficam sem dono (como o protótipo) ou são transferidas junto (como hoje)? Proposta: transferir a **gestão** (`user_id`) para a conta escolhida e só limpar `account_user_id`; nunca deixar linha sem `user_id` | decisão | R-04 | ⚪ |
+| R-14 | Senha provisória com **troca obrigatória no primeiro acesso** (`users.must_change_password`), sem recuperação de senha por e-mail | spec | R-04 | ⚪ |
 | R-12 | Unificar `athletes` e `opponents` ([ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md), item 4 da spec 011). Recomendado antes das tabelas novas apontarem para "o lutador" | spec + infra | R-11 | ⚪ |
 
 R-11 e R-12 são trabalho de banco de produção com backup testado. **Não bloqueiam as fases 2 a 4** se as tabelas novas nascerem apontando para `athletes.id` com FK real (`athletes.id` já é UUID). Bloqueiam a limpeza final.
@@ -170,7 +193,7 @@ Reconstrução do que já existe, no design novo. **Sem funcionalidade nova de b
 | R-26 | Análise de vídeo: lista, nova (só YouTube, texto corrigido), **espera honesta** (5 etapas, sem porcentagem, pode sair da tela), resultado com barras empilhadas e nota de estimativa; remover badge "N frames" | código | R-22 | ⚪ |
 | R-27 | Relatório de estratégia como **componente único** (tela e PDF) a partir de `StrategyReport.dc.html`; gerar, lista, PDF; "+X pts" e probabilidade como estimativa | código | R-22 | ⚪ |
 | R-28 | Painel lateral único de chat + versões para os 3 contextos (estratégia, análise, perfil), com sugestão de edição no lugar do texto. Apaga as 4 variações de diff e os 2 relatórios duplicados | código | R-27 | ⚪ |
-| R-29 | Configurações e Usuários (com perfil e permissão); Início mínimo dos dois perfis (só blocos que já têm dado: última análise, última estratégia, atividade) | código | R-22 | ⚪ |
+| R-29 | Configurações e **Usuários conforme `Perfis e acessos`**: contadores (contas, admins, ativas, staff), busca + filtros de perfil/permissão/status, linha com perfil, ficha vinculada, último acesso e status, menu por conta (alterar perfil, tornar/remover admin, vincular/desvincular ficha, ver acessos à saúde, desativar/reativar, excluir com transferência e confirmação digitada), diálogo de novo usuário (perfil com dica, toggle admin, toggle "criar ficha vinculada"); aba "Registro de acesso à saúde" fica vazia até a fase 5. Início mínimo dos dois perfis | código | R-22, R-10 | ⚪ |
 | R-2A | Corrigir no backend o que a tela nova expõe: `technical_stats` × `technicalStats`, `submissions.detalhes` como objeto, `sweeps.concluidas` inexistente, F20 (refinamento na tela de estratégia não salva) | código | R-26, R-27 | ⚪ |
 | R-2B | E2E mínimo dos fluxos críticos rodando **localmente** (login, analisar vídeo com mock, gerar estratégia, aceitar sugestão) — CI continua sem E2E até decisão | código | R-28 | ⚪ |
 
@@ -207,7 +230,9 @@ Reconstrução do que já existe, no design novo. **Sem funcionalidade nova de b
 | R-53 | Upload e download de anexo por URL assinada; viewer dentro da plataforma, sem nova aba e sem miniatura em lista | código | R-52 | ⚪ |
 | R-54 | Telas: saúde do atleta, lesão com linha do tempo e coluna de status/restrições/dados, sheets de registrar lesão e adicionar evento, excluir lesão com confirmação, saúde do time com "lesionados agora" e "próximos 7 dias"; aba Saúde da ficha; card "Lesão ativa" no Início | código | R-52 | ⚪ |
 | R-55 | Restrições ativas alimentam o banner do calendário (R-46) e o sinal "com lesão" na lista de atletas e no Início do time | código | R-54, R-46 | ⚪ |
-| R-56 | Registro de acesso à saúde visível em Usuários (só leitura, admin) | código | R-52 | ⚪ |
+| R-56 | Registro de acesso à saúde visível em Usuários: aba própria, filtro por atleta a partir do menu da conta, colunas quem (perfil), de quem, o quê, quando | código | R-52 | ⚪ |
+| R-57 | **Aba Nutrição dentro de Saúde** (mesma regra de acesso, mesmo registro): bloco "Peso para a próxima competição" (peso atual da ficha × peso-alvo da inscrição × dias), campo **restrições alimentares** (aparece para o staff antes de qualquer orientação), **orientações** em linha do tempo com tipo, texto, anexo e autor. Entra na spec R-51 como `nutrition_notes` + `athletes.dietary_restrictions` | spec + código | R-51, R-34 | ⚪ |
+| R-58 | Peso atual na ficha: `athletes.current_weight` + `weight_updated_at`, editável pelo atleta e pelo staff. É o mínimo que a aba Nutrição e o card de competição precisam; o histórico fica para R-60 | código | R-24 | ⚪ |
 
 ### Fase 6 — Início completo e extras
 
@@ -218,7 +243,7 @@ Reconstrução do que já existe, no design novo. **Sem funcionalidade nova de b
 | R-62 | Metas por ciclo: fraquezas do perfil técnico viram objetivos com prazo até a próxima competição | spec | R-34, R-27 | ⚪ |
 | R-63 | Graduações: histórico de faixa e grau por data; `belt` da ficha passa a ser derivada da última graduação | spec | R-24 | ⚪ |
 | R-64 | Linha do tempo unificada do atleta | código | R-34, R-42, R-54 | ⚪ |
-| R-65 | Início completo dos dois perfis com todos os blocos ligados a dado real; feed de atividade real | código | fases 3–5 | ⚪ |
+| R-65 | Início completo: atleta, e **staff com bloco variável por perfil** (professor: presença de hoje; fisio: consultas e exames próximos; nutri: peso × alvo; preparador: treino físico da semana), ordenação padrão por perfil, feed de atividade real | código | fases 3–5 | ⚪ |
 | R-66 | Tema escuro (os tokens já permitem) | código | R-21 | ⚪ |
 | R-67 | Notificações e lembretes — **exige job/e-mail, arquitetura nova, spec própria** | spec | — | ⚪ |
 
@@ -230,8 +255,9 @@ Nenhuma é técnica. Todas mudam o que o usuário vê.
 
 | ID | Pergunta | Se ficar sem resposta |
 |---|---|---|
-| R-05 | Professor é admin por padrão? | a fase 1 implementa os eixos separados e o dono marca admin à mão |
-| R-06 | Preparador físico (e nutri, fisio) pode criar sessão no calendário do atleta? | a fase 4 nasce com só o atleta editando, como o protótipo |
+| ~~R-05~~ | ✅ respondida em `Perfis e acessos`: admin é toggle independente do perfil | — |
+| ~~R-06~~ | ✅ respondida: fisio, nutri e preparador editam treinos; professor só vê | — |
+| R-13 | Ficha e saúde de conta excluída ficam sem dono ou vão junto com a transferência? | a fase 1 transfere tudo, como hoje, e só desvincula a conta |
 | R-09 | Confirmação manual do vínculo conta → ficha para os 25 usuários | nenhuma conta `atleta` ganha "Minha ficha" até confirmar |
 | R-30 | Quais categorias de peso valem (gênero, idade, modalidade)? Fonte: regulamento IBJJF/CBJJ vigente | a inscrição usa lista adulto masculino kimono e o resto é texto livre |
 | R-50 | Supabase Storage é aceitável para exame médico? Alternativa é bucket S3 próprio | a fase 5 não começa |
