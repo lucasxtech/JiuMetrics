@@ -280,14 +280,14 @@ exports.linkAthlete = async (req, res) => {
 };
 
 /**
- * Remove permanentemente um usuário (hard delete).
- * Body: { transferToUserId?: string } — se fornecido, transfere dados antes de excluir.
- * Admin não pode excluir a si mesmo.
+ * Remove permanentemente um usuário e TUDO que ele criou ou que está
+ * vinculado a ele — sem transferência (spec 014, R7, decisão do proprietário
+ * R-13). Admin não pode excluir a si mesmo. `api_usage` é preservado
+ * (livro-caixa financeiro).
  */
 exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { transferToUserId } = req.body;
 
     if (id === req.user.id) {
       return res.status(400).json({ error: 'Você não pode excluir sua própria conta.' });
@@ -295,22 +295,16 @@ exports.deleteUser = async (req, res) => {
 
     if (!await assertSameTenant(id, req.user.id, res)) return;
 
-    if (transferToUserId) {
-      if (transferToUserId === id) {
-        return res.status(400).json({ error: 'Não é possível transferir dados para o próprio usuário.' });
-      }
-      if (!await assertSameTenant(transferToUserId, req.user.id, res)) return;
-      await User.transferData(id, transferToUserId);
-      console.log(`🔐 [AUDIT] Admin ${req.user.id} transferiu dados do usuário ${id} para ${transferToUserId}`);
-    } else {
-      await User.deleteAllData(id);
-      console.log(`🔐 [AUDIT] Admin ${req.user.id} excluiu todos os dados do usuário ${id}`);
+    const scope = await resolveScope(req.actor);
+    try {
+      const deleted = await User.purgeAccount(id, scope);
+      evictAuthCache(id);
+      console.log(`🔐 [AUDIT] Admin ${req.user.id} EXCLUIU o usuário ${id} e todos os dados:`, deleted);
+      return res.json({ success: true, message: 'Conta e todos os dados excluídos.', deleted });
+    } catch (e) {
+      console.error(`❌ [AUDIT] Exclusão de ${id} falhou na etapa ${e.step}; apagado até aqui:`, e.partial);
+      return res.status(500).json({ error: 'A exclusão falhou no meio. Veja o log do servidor.', step: e.step, deleted: e.partial });
     }
-
-    await User.hardDelete(id);
-    evictAuthCache(id);
-    console.log(`🔐 [AUDIT] Admin ${req.user.id} EXCLUIU permanentemente o usuário ${id}`);
-    res.json({ success: true, message: 'Usuário excluído permanentemente.' });
   } catch (error) {
     handleError(res, 'Excluir usuário', error);
   }

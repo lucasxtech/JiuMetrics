@@ -518,62 +518,83 @@ class User {
   }
 
   /**
-   * Transfere todos os dados de um usuário para outro antes de excluí-lo.
-   * Tabelas afetadas: athletes, opponents, fight_analyses, tactical_analyses.
-   * Chat sessions e api_usage NÃO são transferidos (descartados com o usuário).
-   * @param {string} fromUserId
-   * @param {string} toUserId
-   */
-  static async transferData(fromUserId, toUserId) {
-    const tables = ['athletes', 'opponents', 'fight_analyses', 'tactical_analyses'];
-    for (const table of tables) {
-      const { error } = await supabase
-        .from(table)
-        .update({ user_id: toUserId })
-        .eq('user_id', fromUserId);
-      if (error) {
-        console.error(`❌ Erro ao transferir ${table}:`, error);
-        throw error;
-      }
-    }
-  }
-
-  /**
-   * Exclui todos os dados de um usuário (athletes, opponents, fight_analyses, tactical_analyses).
-   * Chamado quando o admin opta por não transferir os dados antes de excluir o usuário.
+   * Apaga TUDO de uma conta (spec 014, R-13): fichas geridas ou vinculadas,
+   * análises e versões dessas fichas, análises/estratégias/chats/adversários
+   * criados pela conta, e a própria conta. `api_usage` é preservado (livro-caixa).
+   * Ordem: filhos antes dos pais, para um erro no meio deixar estado consistente.
    * @param {string} userId
+   * @param {string[]} allowedUserIds escopo do admin (o tenant)
+   * @returns {Promise<{athletes: number, opponents: number, fightAnalyses: number, analysisVersions: number, profileVersions: number, tacticalAnalyses: number, chatSessions: number}>}
    */
-  static async deleteAllData(userId) {
-    const tables = ['fight_analyses', 'tactical_analyses', 'athletes', 'opponents'];
-    for (const table of tables) {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('user_id', userId);
-      if (error) {
-        console.error(`❌ Erro ao excluir dados de ${table}:`, error);
-        throw error;
+  static async purgeAccount(userId, allowedUserIds) {
+    requireScope(allowedUserIds, 'User.purgeAccount');
+    const counts = { athletes: 0, opponents: 0, fightAnalyses: 0, analysisVersions: 0, profileVersions: 0, tacticalAnalyses: 0, chatSessions: 0 };
+    /**
+     * @param {string} label
+     * @param {() => Promise<void>} fn
+     */
+    const run = async (label, fn) => {
+      try {
+        return await fn();
+      } catch (e) {
+        /** @type {Error & {step?: string, partial?: typeof counts}} */
+        const err = e;
+        err.partial = { ...counts };
+        err.step = label;
+        throw err;
       }
-    }
-  }
-
-  /**
-   * Remove permanentemente um usuário do sistema (hard delete).
-   * @param {string} userId
-   */
-  static async hardDelete(userId) {
-    try {
-      await User.invalidateTokens(userId);
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
-
+    };
+    /**
+     * @param {string} table
+     * @param {(q: any) => any} apply
+     * @returns {Promise<number>}
+     */
+    const del = async (table, apply) => {
+      const q = apply(supabase.from(table).delete());
+      const { data, error } = await q.select();
       if (error) throw error;
-      return true;
-    } catch (error) {
-      throw error;
+      return (data || []).length;
+    };
+
+    // 1. fichas: geridas pela conta OU vinculadas à conta (só dentro do tenant)
+    const { data: a1, error: e1 } = await supabase.from('athletes').select('id').eq('user_id', userId);
+    if (e1) throw e1;
+    const { data: a2, error: e2 } = await supabase.from('athletes').select('id').eq('account_user_id', userId).in('user_id', allowedUserIds);
+    if (e2) throw e2;
+    const athleteIds = [...new Set([...(a1 || []), ...(a2 || [])].map((a) => a.id))];
+
+    // 2. análises da conta + análises dessas fichas (mesmo que criadas por outro do tenant)
+    const { data: f1, error: e3 } = await supabase.from('fight_analyses').select('id').eq('user_id', userId);
+    if (e3) throw e3;
+    let f2 = [];
+    if (athleteIds.length) {
+      const r = await supabase.from('fight_analyses').select('id').in('person_id', athleteIds).eq('person_type', 'athlete').in('user_id', allowedUserIds);
+      if (r.error) throw r.error;
+      f2 = r.data || [];
     }
+    const analysisIds = [...new Set([...(f1 || []), ...f2].map((f) => f.id))];
+
+    await run('chatSessions', async () => { counts.chatSessions = await del('ai_chat_sessions', (q) => q.eq('user_id', userId)); });
+    await run('tacticalAnalyses', async () => { counts.tacticalAnalyses = await del('tactical_analyses', (q) => q.eq('user_id', userId)); });
+    if (analysisIds.length) {
+      await run('analysisVersions', async () => { counts.analysisVersions = await del('analysis_versions', (q) => q.in('analysis_id', analysisIds)); });
+    }
+    if (athleteIds.length) {
+      await run('profileVersions', async () => { counts.profileVersions = await del('profile_versions', (q) => q.in('person_id', athleteIds).eq('person_type', 'athlete')); });
+    }
+    if (analysisIds.length) {
+      await run('fightAnalyses', async () => { counts.fightAnalyses = await del('fight_analyses', (q) => q.in('id', analysisIds)); });
+    }
+    if (athleteIds.length) {
+      await run('athletes', async () => { counts.athletes = await del('athletes', (q) => q.in('id', athleteIds)); });
+    }
+    await run('opponents', async () => { counts.opponents = await del('opponents', (q) => q.eq('user_id', userId)); });
+    await run('user', async () => {
+      await User.invalidateTokens(userId);
+      const { error } = await supabase.from('users').delete().eq('id', userId);
+      if (error) throw error;
+    });
+    return counts;
   }
 }
 
