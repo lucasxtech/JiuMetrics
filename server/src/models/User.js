@@ -519,16 +519,35 @@ class User {
 
   /**
    * Apaga TUDO de uma conta (spec 014, R-13): fichas geridas ou vinculadas,
-   * análises e versões dessas fichas, análises/estratégias/chats/adversários
-   * criados pela conta, e a própria conta. `api_usage` é preservado (livro-caixa).
-   * Ordem: filhos antes dos pais, para um erro no meio deixar estado consistente.
+   * análises e versões dessas fichas e dos adversários da conta,
+   * estratégias, chats e adversários criados pela conta, e a própria conta.
+   * `api_usage` é preservado (livro-caixa). Ordem: filhos antes dos pais,
+   * para um erro no meio deixar estado consistente (`error.step`/`.partial`).
+   *
+   * Exceção (revisão T10, ruling do controller): uma ficha GERIDA pela conta
+   * (`user_id = userId`) mas ainda VINCULADA a OUTRA conta viva
+   * (`account_user_id` setado e diferente de `userId`) não é apagada — é
+   * REAPARENTADA (`user_id` passa a ser o `account_user_id`), porque a ficha
+   * pertence à identidade vinculada, não a quem a geria. Suas análises e
+   * versões de perfil migram com ela. Isto roda ANTES de coletar
+   * `athleteIds`, para excluir essas fichas e análises das exclusões.
+   *
+   * Exige que `userId` esteja dentro do próprio `allowedUserIds` (achado 1,
+   * revisão T10) — sem isto, um chamador poderia apagar a conta de outro
+   * tenant só por controlar o escopo passado.
    * @param {string} userId
    * @param {string[]} allowedUserIds escopo do admin (o tenant)
-   * @returns {Promise<{athletes: number, opponents: number, fightAnalyses: number, analysisVersions: number, profileVersions: number, tacticalAnalyses: number, chatSessions: number}>}
+   * @returns {Promise<{athletes: number, opponents: number, fightAnalyses: number, analysisVersions: number, profileVersions: number, tacticalAnalyses: number, chatSessions: number, reparentedAthletes: number}>}
    */
   static async purgeAccount(userId, allowedUserIds) {
-    requireScope(allowedUserIds, 'User.purgeAccount');
-    const counts = { athletes: 0, opponents: 0, fightAnalyses: 0, analysisVersions: 0, profileVersions: 0, tacticalAnalyses: 0, chatSessions: 0 };
+    const ids = requireScope(allowedUserIds, 'User.purgeAccount');
+    if (!ids.includes(userId)) {
+      /** @type {Error & {code: string}} */
+      const e = Object.assign(new Error('Usuário fora do escopo do chamador'), { code: 'NOT_FOUND' });
+      throw e;
+    }
+
+    const counts = { athletes: 0, opponents: 0, fightAnalyses: 0, analysisVersions: 0, profileVersions: 0, tacticalAnalyses: 0, chatSessions: 0, reparentedAthletes: 0 };
     /**
      * @param {string} label
      * @param {() => Promise<void>} fn
@@ -556,32 +575,93 @@ class User {
       return (data || []).length;
     };
 
-    // 1. fichas: geridas pela conta OU vinculadas à conta (só dentro do tenant)
-    const { data: a1, error: e1 } = await supabase.from('athletes').select('id').eq('user_id', userId);
-    if (e1) throw e1;
-    const { data: a2, error: e2 } = await supabase.from('athletes').select('id').eq('account_user_id', userId).in('user_id', allowedUserIds);
-    if (e2) throw e2;
-    const athleteIds = [...new Set([...(a1 || []), ...(a2 || [])].map((a) => a.id))];
+    // 0. fichas GERIDAS pela conta, separando as que continuam VINCULADAS a
+    // outra conta viva — essas reparentam em vez de apagar (ver JSDoc acima).
+    // Sem `.neq` no fake: filtra em JS.
+    const { data: managedRows, error: eManaged } = await supabase.from('athletes').select('id, account_user_id').eq('user_id', userId);
+    if (eManaged) throw eManaged;
+    const isLinkedElsewhere = (/** @type {{account_user_id?: string}} */ a) => Boolean(a.account_user_id) && a.account_user_id !== userId;
+    const toReparent = (managedRows || []).filter(isLinkedElsewhere);
+    const ownAthleteIds = (managedRows || []).filter((a) => !isLinkedElsewhere(a)).map((a) => a.id);
 
-    // 2. análises da conta + análises dessas fichas (mesmo que criadas por outro do tenant)
+    if (toReparent.length) {
+      await run('reparentAthletes', async () => {
+        for (const row of toReparent) {
+          const newOwner = row.account_user_id;
+          const { error: upErr } = await supabase.from('athletes').update({ user_id: newOwner }).eq('id', row.id);
+          if (upErr) throw upErr;
+          const { data: fRows, error: fErr } = await supabase.from('fight_analyses').select('id').eq('person_id', row.id).eq('person_type', 'athlete');
+          if (fErr) throw fErr;
+          if (fRows && fRows.length) {
+            const { error: fUpErr } = await supabase.from('fight_analyses').update({ user_id: newOwner }).in('id', fRows.map((f) => f.id));
+            if (fUpErr) throw fUpErr;
+          }
+          const { error: pvUpErr } = await supabase.from('profile_versions').update({ user_id: newOwner }).eq('person_id', row.id).eq('person_type', 'athlete');
+          if (pvUpErr) throw pvUpErr;
+          counts.reparentedAthletes += 1;
+        }
+      });
+    }
+
+    // 1. fichas: as que restaram geridas pela conta (sem vínculo a outra
+    // conta) OU vinculadas à conta (só dentro do tenant)
+    const { data: a2, error: e2 } = await supabase.from('athletes').select('id').eq('account_user_id', userId).in('user_id', ids);
+    if (e2) throw e2;
+    const athleteIds = [...new Set([...ownAthleteIds, ...(a2 || []).map((a) => a.id)])];
+
+    // 1b. adversários geridos pela conta (achado 4, revisão T10 — o lado do
+    // adversário também precisa cair na purga; sem conceito de "vínculo"
+    // como o de athletes, então não há reparenting aqui).
+    const { data: oppRows, error: eOpp } = await supabase.from('opponents').select('id').eq('user_id', userId);
+    if (eOpp) throw eOpp;
+    const opponentIds = (oppRows || []).map((o) => o.id);
+
+    // 2. análises da conta + análises das fichas/adversários da conta (mesmo
+    // que criadas por outro do tenant)
     const { data: f1, error: e3 } = await supabase.from('fight_analyses').select('id').eq('user_id', userId);
     if (e3) throw e3;
     let f2 = [];
     if (athleteIds.length) {
-      const r = await supabase.from('fight_analyses').select('id').in('person_id', athleteIds).eq('person_type', 'athlete').in('user_id', allowedUserIds);
+      const r = await supabase.from('fight_analyses').select('id').in('person_id', athleteIds).eq('person_type', 'athlete').in('user_id', ids);
       if (r.error) throw r.error;
       f2 = r.data || [];
     }
-    const analysisIds = [...new Set([...(f1 || []), ...f2].map((f) => f.id))];
+    let f3 = [];
+    if (opponentIds.length) {
+      const r = await supabase.from('fight_analyses').select('id').in('person_id', opponentIds).eq('person_type', 'opponent').in('user_id', ids);
+      if (r.error) throw r.error;
+      f3 = r.data || [];
+    }
+    const analysisIds = [...new Set([...(f1 || []), ...f2, ...f3].map((f) => f.id))];
 
     await run('chatSessions', async () => { counts.chatSessions = await del('ai_chat_sessions', (q) => q.eq('user_id', userId)); });
     await run('tacticalAnalyses', async () => { counts.tacticalAnalyses = await del('tactical_analyses', (q) => q.eq('user_id', userId)); });
     if (analysisIds.length) {
       await run('analysisVersions', async () => { counts.analysisVersions = await del('analysis_versions', (q) => q.in('analysis_id', analysisIds)); });
     }
+
+    // 3. profile_versions: da conta + das fichas/adversários da conta
+    // (achado 4), deduplicadas por id — uma linha pode casar em mais de um
+    // dos três filtros.
+    const { data: pv1, error: ePv1 } = await supabase.from('profile_versions').select('id').eq('user_id', userId);
+    if (ePv1) throw ePv1;
+    let pv2 = [];
     if (athleteIds.length) {
-      await run('profileVersions', async () => { counts.profileVersions = await del('profile_versions', (q) => q.in('person_id', athleteIds).eq('person_type', 'athlete')); });
+      const r = await supabase.from('profile_versions').select('id').in('person_id', athleteIds).eq('person_type', 'athlete');
+      if (r.error) throw r.error;
+      pv2 = r.data || [];
     }
+    let pv3 = [];
+    if (opponentIds.length) {
+      const r = await supabase.from('profile_versions').select('id').in('person_id', opponentIds).eq('person_type', 'opponent');
+      if (r.error) throw r.error;
+      pv3 = r.data || [];
+    }
+    const profileVersionIds = [...new Set([...(pv1 || []), ...pv2, ...pv3].map((p) => p.id))];
+    if (profileVersionIds.length) {
+      await run('profileVersions', async () => { counts.profileVersions = await del('profile_versions', (q) => q.in('id', profileVersionIds)); });
+    }
+
     if (analysisIds.length) {
       await run('fightAnalyses', async () => { counts.fightAnalyses = await del('fight_analyses', (q) => q.in('id', analysisIds)); });
     }

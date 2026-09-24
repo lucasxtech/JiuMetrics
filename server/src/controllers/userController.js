@@ -282,8 +282,12 @@ exports.linkAthlete = async (req, res) => {
 /**
  * Remove permanentemente um usuário e TUDO que ele criou ou que está
  * vinculado a ele — sem transferência (spec 014, R7, decisão do proprietário
- * R-13). Admin não pode excluir a si mesmo. `api_usage` é preservado
- * (livro-caixa financeiro).
+ * R-13). Admin não pode excluir a si mesmo, nem a raiz do tenant enquanto
+ * houver outros membros no grupo (revisão T10, achado 2): `users.tenant_id`
+ * aponta para a raiz sem `ON DELETE` na FK (migration 021), então apagar a
+ * raiz com outros membros vivos deixaria a purga inteira feita e só a
+ * exclusão da própria linha falhando (23503) — conta esvaziada, sem
+ * usuário. `api_usage` é preservado (livro-caixa financeiro).
  */
 exports.deleteUser = async (req, res) => {
   try {
@@ -295,15 +299,29 @@ exports.deleteUser = async (req, res) => {
 
     if (!await assertSameTenant(id, req.user.id, res)) return;
 
+    const tenantId = await User.getTenantId(id);
+    if (tenantId === id) {
+      const groupIds = await User.getGroupUserIds(id);
+      if (groupIds.length > 1) {
+        return res.status(409).json({ error: 'A conta raiz da equipe não pode ser excluída enquanto houver outros membros.' });
+      }
+    }
+
     const scope = await resolveScope(req.actor);
     try {
       const deleted = await User.purgeAccount(id, scope);
-      evictAuthCache(id);
       console.log(`🔐 [AUDIT] Admin ${req.user.id} EXCLUIU o usuário ${id} e todos os dados:`, deleted);
       return res.json({ success: true, message: 'Conta e todos os dados excluídos.', deleted });
     } catch (e) {
-      console.error(`❌ [AUDIT] Exclusão de ${id} falhou na etapa ${e.step}; apagado até aqui:`, e.partial);
+      // achado 3 (revisão T10): a causa vai só para o log do servidor — a
+      // resposta ao cliente nunca leva `e.message` (regra 2 de Security).
+      console.error(`❌ [AUDIT] Exclusão de ${id} falhou na etapa ${e.step} (${e.code || 'sem código'}): ${e.message || e}; apagado até aqui:`, e.partial);
       return res.status(500).json({ error: 'A exclusão falhou no meio. Veja o log do servidor.', step: e.step, deleted: e.partial });
+    } finally {
+      // roda tanto no sucesso quanto na falha (achado 2/3): mesmo uma purga
+      // parcial já mudou dados do usuário, então o cache de auth não pode
+      // ficar com a versão antiga.
+      evictAuthCache(id);
     }
   } catch (error) {
     handleError(res, 'Excluir usuário', error);
