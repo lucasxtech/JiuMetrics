@@ -1,7 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminService } from '../services/adminService';
+import { getAllAthletes } from '../services/athleteService';
 import { useAuth } from '../contexts/AuthContext';
 import CustomSelect from '../components/common/CustomSelect';
+import { BELTS, DEFAULT_BELT, BELT_BADGE_CLASSES } from '../constants/persons';
+
+// ─── Perfil profissional (spec 014) ────────────────────────────────────────────
+const PROFILE_OPTIONS = [
+  { value: 'atleta', label: 'Atleta' },
+  { value: 'professor', label: 'Professor' },
+  { value: 'nutricionista', label: 'Nutricionista' },
+  { value: 'fisioterapeuta', label: 'Fisioterapeuta' },
+  { value: 'preparador_fisico', label: 'Preparador físico' },
+];
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function useToast() {
@@ -67,21 +78,57 @@ function ConfirmActionModal({ open, onClose, onConfirm, title, message, confirmL
   );
 }
 
+// ─── Resumo do que foi apagado (spec 014, R7) ──────────────────────────────────
+// `deleted` vem de `User.purgeAccount` via `deleteUser` controller:
+// { athletes, opponents, fightAnalyses, analysisVersions, profileVersions,
+//   tacticalAnalyses, chatSessions, reparentedAthletes, reassignedAnalyses,
+//   reassignedProfileVersions }
+function summarizeDeleted(deleted) {
+  if (!deleted) return '';
+  const parts = [
+    deleted.athletes ? `${deleted.athletes} ficha(s) de atleta` : null,
+    deleted.opponents ? `${deleted.opponents} adversário(s)` : null,
+    deleted.fightAnalyses ? `${deleted.fightAnalyses} análise(s) de vídeo` : null,
+    deleted.tacticalAnalyses ? `${deleted.tacticalAnalyses} estratégia(s)` : null,
+    deleted.chatSessions ? `${deleted.chatSessions} conversa(s)` : null,
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
+// O que NÃO foi apagado, e sim passou para outra conta (revisão final da spec
+// 014): fichas geridas pela conta mas vinculadas a outra pessoa da equipe
+// (`reparentedAthletes`) e análises que a conta fez de pessoas que continuam
+// (`reassignedAnalyses`).
+function summarizeTransferred(deleted) {
+  if (!deleted) return '';
+  const parts = [
+    deleted.reparentedAthletes ? `${deleted.reparentedAthletes} ficha(s) para a conta vinculada` : null,
+    deleted.reassignedAnalyses ? `${deleted.reassignedAnalyses} análise(s) para quem gere a ficha` : null,
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
 // ─── Modal excluir usuário ────────────────────────────────────────────────────
-function DeleteUserModal({ user, otherUsers, onClose, onDeleted, toast }) {
+// Sem transferência escolhida pelo admin (spec 014, R7/R-13): o backend
+// rejeita `transferToUserId` com 400 — nada de UI para escolher um destino.
+// O que o backend transfere sozinho (fichas vinculadas a outra pessoa,
+// análises de pessoas que continuam) está descrito no texto do diálogo.
+// Sem contagens antes de confirmar (spec 014, decisão 6): elas vêm na
+// resposta e aparecem no toast.
+function DeleteUserModal({ user, onClose, onDeleted, toast }) {
   const [confirmText, setConfirmText] = useState('');
-  const [transferData, setTransferData] = useState(false);
-  const [transferToUserId, setTransferToUserId] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const canConfirm = confirmText === 'excluir' && (!transferData || transferToUserId);
+  const canConfirm = confirmText === 'excluir';
 
   const handleSubmit = async () => {
     if (!canConfirm) return;
     setLoading(true);
     try {
-      await adminService.deleteUser(user.id, transferData ? transferToUserId : null);
-      toast(`Usuário "${user.name}" excluído${transferData ? ' e dados transferidos' : ''}.`);
+      const res = await adminService.deleteUser(user.id);
+      const summary = summarizeDeleted(res.data.deleted);
+      const transferred = summarizeTransferred(res.data.deleted);
+      toast(`Usuário "${user.name}" excluído.${summary ? ` Apagado: ${summary}.` : ''}${transferred ? ` Transferido: ${transferred}.` : ''}`);
       onDeleted(user.id);
       onClose();
     } catch (err) {
@@ -108,9 +155,6 @@ function DeleteUserModal({ user, otherUsers, onClose, onDeleted, toast }) {
         {/* Título */}
         <div className="text-center">
           <h3 className="text-lg font-bold text-slate-900 mb-1">Excluir usuário</h3>
-          <p className="text-slate-500 text-sm">
-            Você está prestes a excluir <span className="font-semibold text-slate-800">"{user.name}"</span>.
-          </p>
         </div>
 
         {/* Aviso de irreversibilidade */}
@@ -118,45 +162,19 @@ function DeleteUserModal({ user, otherUsers, onClose, onDeleted, toast }) {
           <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
-          <span>Esta ação é <strong>irreversível</strong>. O usuário e todos os dados não transferidos serão removidos permanentemente.</span>
-        </div>
-
-        {/* Transferência de dados */}
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-slate-700">Deseja guardar os dados deste usuário?</p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setTransferData(false)}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${!transferData ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
-            >
-              Não, descartar
-            </button>
-            {otherUsers.length > 0 && (
-              <button
-                onClick={() => { setTransferData(true); setTransferToUserId(''); }}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${transferData ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}
-              >
-                Sim, transferir
-              </button>
-            )}
+          <div className="space-y-2">
+            <p>
+              <strong>Será apagado:</strong> a conta de <strong>{user.name}</strong>; as fichas de atleta dela,
+              inclusive a ficha vinculada a ela mesmo que gerida por outra pessoa; as análises de vídeo e o
+              histórico dessas fichas; e as estratégias, conversas e adversários da conta.
+            </p>
+            <p>
+              <strong>Não será apagado, passa para outra conta:</strong> fichas que ela gere mas estão vinculadas
+              à conta de outra pessoa da equipe (passam para essa pessoa) e análises que ela fez de pessoas que
+              continuam na equipe (passam para quem gere a ficha delas).
+            </p>
+            <p>O registro de uso de IA é preservado. Não dá para desfazer.</p>
           </div>
-
-          {transferData && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-600">Transferir dados para:</label>
-              <select
-                value={transferToUserId}
-                onChange={e => setTransferToUserId(e.target.value)}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="">Selecione um usuário...</option>
-                {otherUsers.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-                ))}
-              </select>
-              <p className="text-xs text-slate-400">Atletas, adversários e análises serão transferidos para o usuário selecionado.</p>
-            </div>
-          )}
         </div>
 
         {/* Campo de confirmação */}
@@ -198,16 +216,33 @@ function DeleteUserModal({ user, otherUsers, onClose, onDeleted, toast }) {
 
 // ─── Modal criar usuário ──────────────────────────────────────────────────────
 function CreateUserModal({ onClose, onCreated, toast }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({
+    name: '', email: '', password: '', confirmPassword: '',
+    profile: 'atleta', isAdmin: false, createAthlete: true, belt: DEFAULT_BELT,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // `createAthlete` reflete o perfil por padrão (marcado quando 'atleta'),
+  // mas o admin pode ligar/desligar manualmente depois de escolher o perfil.
+  const handleProfileChange = (newProfile) => {
+    setForm(p => ({ ...p, profile: newProfile, createAthlete: newProfile === 'atleta' }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) { setError('As senhas não coincidem.'); return; }
     setLoading(true); setError('');
     try {
-      const res = await adminService.createUser({ name: form.name, email: form.email, password: form.password });
+      const res = await adminService.createUser({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        profile: form.profile,
+        isAdmin: form.isAdmin,
+        createAthlete: form.createAthlete,
+        athlete: form.createAthlete ? { belt: form.belt } : undefined,
+      });
       onCreated(res.data.data);
       toast('Usuário criado com sucesso!');
       onClose();
@@ -220,7 +255,7 @@ function CreateUserModal({ onClose, onCreated, toast }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-slate-900">Novo Usuário</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
@@ -252,6 +287,63 @@ function CreateUserModal({ onClose, onCreated, toast }) {
               )}
             </div>
           ))}
+
+          <div>
+            <label htmlFor="profile" className="block text-sm font-medium text-slate-700 mb-1.5">Perfil profissional</label>
+            <select
+              id="profile"
+              value={form.profile}
+              onChange={e => handleProfileChange(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-colors"
+            >
+              {PROFILE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+          </div>
+
+          <label className="flex items-center gap-2.5 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.isAdmin}
+              onChange={e => setForm(p => ({ ...p, isAdmin: e.target.checked }))}
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Administrador (vê e gerencia toda a equipe)
+          </label>
+
+          <label className="flex items-center gap-2.5 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.createAthlete}
+              onChange={e => setForm(p => ({ ...p, createAthlete: e.target.checked }))}
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Criar ficha de atleta para esta conta
+          </label>
+
+          {form.createAthlete && (
+            <div>
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Faixa</span>
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Faixa">
+                {BELTS.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.belt === option}
+                    onClick={() => setForm(p => ({ ...p, belt: option }))}
+                    className={`rounded-full border px-4 py-2 text-xs font-semibold transition-all ${
+                      form.belt === option
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/20'
+                        : `${BELT_BADGE_CLASSES[option]} hover:opacity-80`
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 border border-slate-200 text-slate-700 rounded-xl py-2.5 text-sm font-medium hover:bg-slate-50 transition-colors">Cancelar</button>
             <button type="submit" disabled={loading} className="flex-1 bg-indigo-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors">
@@ -306,12 +398,15 @@ function CardSkeleton() {
 }
 
 // ─── User Card ─────────────────────────────────────────────────────────────────
-function UserCard({ user, isMe, onChangeRole, onDeactivate, onReactivate, onDelete, actionLoading }) {
+function UserCard({ user, isMe, onChangeRole, onDeactivate, onReactivate, onDelete, onChangeProfile, onLinkAthlete, unlinkedAthletes, athletesError, actionLoading }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
+  const [linking, setLinking] = useState(false);
   const menuRef = useRef(null);
   const fmtDate = d => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
   const isLoading = actionLoading === user.id || actionLoading === user.id + '-role';
+  const isProfileLoading = actionLoading === user.id + '-profile';
+  const isAthleteLoading = actionLoading === user.id + '-athlete';
 
   const handleToggleMenu = () => {
     if (!menuOpen && menuRef.current) {
@@ -361,12 +456,64 @@ function UserCard({ user, isMe, onChangeRole, onDeactivate, onReactivate, onDele
             </span>
           </div>
           <p className="text-sm text-slate-400 truncate mt-0.5" title={user.email}>{user.email}</p>
+
+          {/* Perfil profissional + ficha vinculada (spec 014) */}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <select
+              value={user.profile}
+              onChange={e => onChangeProfile(user.id, e.target.value)}
+              disabled={isProfileLoading}
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+            >
+              {PROFILE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+
+            <span className="text-xs text-slate-400">Ficha: {user.athleteName || 'sem ficha'}</span>
+
+            {linking ? (
+              athletesError ? (
+                <span className="text-xs text-amber-600">Não foi possível carregar as fichas. Tente recarregar.</span>
+              ) : (
+                <select
+                  autoFocus
+                  defaultValue=""
+                  disabled={isAthleteLoading}
+                  onChange={e => { onLinkAthlete(user.id, e.target.value || null); setLinking(false); }}
+                  onBlur={() => setLinking(false)}
+                  className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">Selecione uma ficha...</option>
+                  {unlinkedAthletes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              )
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLinking(true)}
+                disabled={isAthleteLoading}
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+              >
+                Vincular…
+              </button>
+            )}
+
+            {user.athleteId && (
+              <button
+                type="button"
+                onClick={() => onLinkAthlete(user.id, null)}
+                disabled={isAthleteLoading}
+                className="text-xs font-medium text-slate-400 hover:text-red-600 disabled:opacity-50"
+              >
+                Desvincular
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Datas */}
         <div className="hidden lg:flex flex-col items-end gap-0.5 shrink-0 text-xs text-slate-400">
           <span>Criado: {fmtDate(user.created_at)}</span>
-          <span>Login: {fmtDate(user.last_login)}</span>
+          <span>Login: {fmtDate(user.lastLogin)}</span>
         </div>
 
         {/* Menu ••• */}
@@ -450,6 +597,8 @@ export default function AdminUsers() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [confirmModal, setConfirmModal] = useState(null);
   const [deleteModal, setDeleteModal] = useState(null); // { user }
+  const [athletes, setAthletes] = useState([]);
+  const [athletesError, setAthletesError] = useState(false);
   const { user: currentUser } = useAuth();
   const { toasts, toast } = useToast();
   const userNameMap = useRef({});
@@ -470,7 +619,58 @@ export default function AdminUsers() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  // Fichas do tenant, para o select de "Vincular ficha" de cada card — falha
+  // aqui não deve travar a lista de usuários, só a ação de vincular. Estado
+  // explícito (CLAUDE.md): uma lista vazia por erro não pode parecer "sem
+  // fichas cadastradas" — o card mostra um aviso em vez do select vazio.
+  const fetchAthletes = async () => {
+    try {
+      const res = await getAllAthletes();
+      setAthletes(res.data || []);
+      setAthletesError(false);
+    } catch {
+      setAthletesError(true);
+    }
+  };
+
+  useEffect(() => { fetchUsers(); fetchAthletes(); }, []);
+
+  const unlinkedAthletes = athletes.filter(a => !a.accountUserId);
+
+  const handleChangeProfile = async (id, profile) => {
+    setActionLoading(id + '-profile');
+    try {
+      const res = await adminService.changeProfile(id, profile);
+      setUsers(u => u.map(usr => usr.id === id ? { ...usr, profile: res.data.data.profile } : usr));
+      toast('Perfil profissional atualizado.');
+    } catch (err) {
+      toast(err.response?.data?.error || 'Erro ao alterar o perfil profissional.', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleLinkAthlete = async (id, athleteId) => {
+    setActionLoading(id + '-athlete');
+    try {
+      const res = await adminService.linkAthlete(id, athleteId);
+      const updated = res.data.data;
+      setUsers(u => u.map(usr => usr.id === id ? { ...usr, athleteId: updated.athleteId, athleteName: updated.athleteName } : usr));
+      setAthletes(a => a.map(ath => {
+        if (ath.id === athleteId) return { ...ath, accountUserId: id };
+        if (ath.accountUserId === id && ath.id !== athleteId) return { ...ath, accountUserId: null };
+        return ath;
+      }));
+      // Atualização local acima para a UI responder já; o refetch confirma com
+      // o servidor (revisão final da spec 014, M7).
+      fetchAthletes();
+      toast(athleteId ? 'Ficha vinculada.' : 'Ficha desvinculada.');
+    } catch (err) {
+      toast(err.response?.data?.error || 'Erro ao vincular a ficha.', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleDeactivate = (id, name) => setConfirmModal({
     type: 'deactivate', userId: id,
@@ -614,6 +814,10 @@ export default function AdminUsers() {
                 onDeactivate={handleDeactivate}
                 onReactivate={handleReactivate}
                 onDelete={handleDelete}
+                onChangeProfile={handleChangeProfile}
+                onLinkAthlete={handleLinkAthlete}
+                unlinkedAthletes={unlinkedAthletes}
+                athletesError={athletesError}
                 actionLoading={actionLoading}
               />
             ))}
@@ -647,9 +851,13 @@ export default function AdminUsers() {
       {deleteModal && (
         <DeleteUserModal
           user={deleteModal.user}
-          otherUsers={users.filter(u => u.id !== deleteModal.user.id)}
           onClose={() => setDeleteModal(null)}
-          onDeleted={deletedId => setUsers(u => u.filter(usr => usr.id !== deletedId))}
+          onDeleted={deletedId => {
+            setUsers(u => u.filter(usr => usr.id !== deletedId));
+            // A exclusão apaga ou transfere fichas (M7): a lista de fichas
+            // livres para vincular muda junto.
+            fetchAthletes();
+          }}
           toast={toast}
         />
       )}

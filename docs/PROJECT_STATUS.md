@@ -32,11 +32,15 @@ Funcionalidades verificadas no código e em uso.
 |---|---|
 | Login com e-mail e senha | JWT próprio (HS256), `bcrypt` 10 rounds, 7 dias ou 30 com "lembrar-me" |
 | Validação de sessão em 3 camadas | `role` lido do banco, `is_active` reconsultado, `token_version` comparado — é a razão de **não existir escalonamento de privilégio** |
-| Dois papéis: `admin` e `user` | Sem papel intermediário nem permissão granular |
-| Grupos por `tenant_id` | Aponta para o admin-raiz; admin vê o grupo, usuário comum vê só o próprio |
-| Painel de administração de usuários | Criar, editar nome/senha, trocar papel, desativar, reativar, excluir |
-| Exclusão com decisão explícita | Transferir dados para outro usuário **ou** apagá-los — sem default silencioso |
-| Invalidação imediata de sessão | Troca de papel ou desativação derruba os JWTs vivos do usuário |
+| Dois papéis (`role`): `admin` e `user`, **mais um perfil (`profile`) independente** | Desde a [spec 014](../specs/014-identity-and-profiles/spec.md): `atleta`, `professor`, `nutricionista`, `fisioterapeuta`, `preparador_fisico`. Admin é toggle por conta, qualquer perfil |
+| Escopo por `tenant_id` **e** perfil | Admin **ou** perfil de staff vê o grupo; perfil `atleta` vê só a própria conta (spec 014, [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md)) — antes só admin via o grupo |
+| Capacidades por ação (`CAPABILITIES`/`can`) | Spec 014 — tabela perfil × ação, com `training`/`schedule`/`competition`/`health` reservados sem endpoint ainda |
+| Vínculo conta ↔ ficha de atleta | `athletes.account_user_id` (spec 014), gerenciável em `/admin/users/:id/athlete`; migração dos 25 usuários atuais via `link-accounts.js`, pendente de execução pelo proprietário |
+| Troca de senha pelo próprio usuário; senha provisória obrigatória | `POST /api/auth/change-password` (spec 014) — conta criada por admin nasce com `must_change_password: true` |
+| Painel de administração de usuários | Criar (com perfil e ficha), editar nome/senha, trocar papel/perfil, vincular ficha, desativar, reativar, excluir |
+| **Exclusão total, sem transferência** | Spec 014 substitui "transferir ou apagar": apaga tudo dentro do tenant, preserva `api_usage` (que deixa de contar no orçamento e na tela de uso); reparenta (em vez de apagar) ficha vinculada a outra conta viva e transfere ao gestor as análises que a conta fez de pessoas que continuam — ver *Known Issues*/[`GAPS.md`](./GAPS.md) |
+| Última guarda de admin | Não é possível remover o último admin ativo do tenant nem alterar o próprio papel (spec 014) |
+| Invalidação imediata de sessão | Troca de papel, de perfil ou de senha — inclusive a redefinida pelo admin, que vira provisória (spec 014) — derruba os JWTs vivos do usuário; o token de uma conta excluída passa a receber 401 |
 | Log de auditoria de acesso admin | Inclusive tentativas **negadas** |
 | Registro público | **Desabilitado por padrão** (`ALLOW_PUBLIC_REGISTER`) |
 
@@ -130,7 +134,7 @@ Severidade e evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md). Iten
 | 9 | **Rate limiting inoperante em produção** — `MemoryStore` em serverless. ⚠️ O **abuso de IA** ganhou freio efetivo na spec 009 (orçamento por tenant contado em `api_usage`, não em memória); o **brute force no login** e o limite por IP continuam sem valer. Resolver exige infraestrutura — store externo ou limite na borda — e é decisão do proprietário |
 | ~~10~~ | ✅ **RESOLVIDO (specs 007 e 009)** — gasto de IA tem três barreiras, todas antes de gastar: teto de 5 vídeos por requisição, allow-list de modelos (a escolha do cliente já não vira o modelo usado) e **orçamento mensal por tenant** (`AI_MONTHLY_BUDGET_USD`, default 50 — ~130× o histórico de US$ 0,38/mês). O orçamento conta o gasto **persistido**, o que faz valer em serverless |
 | ~~11~~ | ✅ **RESOLVIDO (specs 006 e 007)** — `athlete-summary` aceitava corpo arbitrário direto no prompt, sem posse nem limite. Passou a receber `athleteId` e carregar os dados no servidor (006); o schema de entrada (007) faz o formato antigo ser removido antes do controller |
-| 12 | **Fallback de autenticação abre em falha do banco** — volta a confiar no `role` do token, desligando as 3 proteções de uma vez |
+| 12 | **Fallback de autenticação abre em falha de rede** — volta a confiar no `role` do token, desligando as 3 proteções de uma vez. Estreitado na revisão final da spec 014: só erro **sem** `code` (rede/timeout) cai no fallback; conta inexistente (`PGRST116`) é 401 e erro com código do banco é 503 |
 | 13 | **Migrations não são a fonte de verdade** — `users` nunca é criada, falta a `020`, sem runner nem controle de estado. **Impossível reconstruir o banco a partir do repositório.** ⚠️ A [spec 011](../specs/011-schema-integrity/spec.md) só executou o item de TypeScript (2026-08-24) — este continua **sem tocar**, porque exige `pg_dump` com acesso de superusuário ao Postgres |
 | 14 | **Tipos de `user_id` divergentes** — VARCHAR em 3 tabelas, UUID em 5; FKs derrubadas na `008`. Mascara bugs (o de nº 6 passa por causa disso). ⚠️ Também **sem tocar** — é o item de maior risco de perda de dado da spec 011, não iniciado |
 | ~~15~~ | ✅ **RESOLVIDO (spec 010)** — a cópia do frontend foi removida. Achado que destravou a decisão P7, que a spec tratava como bloqueio duro: **nenhuma das duas cópias tinha chamador de produção**. Eram 359 linhas de código morto divergente, e apagar uma não muda número em tela nenhuma. A pergunta "qual das duas refletia a intenção" volta quando alguém ligar a que sobrou a um consumidor |

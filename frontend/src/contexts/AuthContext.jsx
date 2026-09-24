@@ -47,10 +47,28 @@ export function AuthProvider({ children }) {
     queryClient.clear();
   }, []);
 
+  // Chamado após `POST /auth/change-password` (spec 014, R10): grava o token
+  // novo (o antigo foi invalidado no servidor) e zera `mustChangePassword`
+  // tanto no estado quanto no `localStorage`, para o `ProtectedRoute` parar
+  // de redirecionar para /trocar-senha na próxima navegação.
+  const markPasswordChanged = useCallback((token) => {
+    if (token) localStorage.setItem('jiumetrics_token', token);
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, mustChangePassword: false };
+      localStorage.setItem('jiumetrics_user', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const isAdmin = user?.role === 'admin';
+  const profile = user?.profile || 'atleta';
+  const mustChangePassword = Boolean(user?.mustChangePassword);
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, loading, setUserFromLoginResponse, logout }}>
+    <AuthContext.Provider
+      value={{ user, isAdmin, profile, mustChangePassword, loading, setUserFromLoginResponse, markPasswordChanged, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

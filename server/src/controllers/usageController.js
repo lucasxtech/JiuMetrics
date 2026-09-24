@@ -48,7 +48,10 @@ exports.getStats = async (req, res) => {
     const startDate = calculateStartDate(period);
     const now = new Date();
 
-    // Admin vê consumo de todo o grupo; usuário comum vê só o próprio
+    // Admin ou perfil de staff (spec 014) vê o consumo do tenant; perfil
+    // `atleta` com role=user vê só o próprio — é o escopo de `resolveScope`.
+    // Linhas de `api_usage` de uma conta excluída continuam no banco, mas o
+    // id dela sai do tenant e deixa de aparecer aqui (e no orçamento).
     const scopeIds = await resolveScope(req.actor);
     const usageRecords = await ApiUsage.getUsageStats(scopeIds, startDate?.toISOString(), null);
 

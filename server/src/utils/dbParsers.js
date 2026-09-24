@@ -23,6 +23,9 @@ function parseAthleteFromDB(dbAthlete) {
     analysesCount: dbAthlete.analyses_count || 0,
     creatorName: dbAthlete.creator_name || null,
     userId: dbAthlete.user_id,
+    // Conta vinculada a esta ficha (spec 014) — usado pelo front para listar
+    // fichas "sem vínculo" no fluxo de "Vincular ficha" de `AdminUsers.jsx`.
+    accountUserId: dbAthlete.account_user_id || null,
     createdAt: dbAthlete.created_at,
     updatedAt: dbAthlete.updated_at,
   };

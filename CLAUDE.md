@@ -2,7 +2,7 @@
 
 > **Para agentes de IA e desenvolvedores trabalhando neste repositório.** Leia isto antes de alterar qualquer coisa.
 >
-> **Atualizado:** 2026-09-04 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md), [010](./specs/010-frontend-consolidation/spec.md) e [013](./specs/013-athletes-opponents-consolidation/spec.md) executadas · [008](./specs/008-database-access-lockdown/spec.md) parcialmente executada (código pronto, `REVOKE` pendente de execução manual)
+> **Atualizado:** 2026-09-24 · **Baseline:** `main` (`895066f`) + specs [002](./specs/002-verification-baseline/spec.md) a [007](./specs/007-silent-failures-and-input-validation/spec.md), [009](./specs/009-ai-cost-and-reliability/spec.md), [010](./specs/010-frontend-consolidation/spec.md), [013](./specs/013-athletes-opponents-consolidation/spec.md) e [014](./specs/014-identity-and-profiles/spec.md) executadas · [008](./specs/008-database-access-lockdown/spec.md) e [014](./specs/014-identity-and-profiles/spec.md) parcialmente executadas (código pronto; `REVOKE` da 008 e migration `025` da 014 pendentes de execução manual no SQL Editor do Supabase, e `link-accounts.js --apply` da 014 pendente de o dono revisar a proposta)
 
 ---
 
@@ -26,7 +26,11 @@ specs/       histórico versionado de mudanças planejadas
 
 **O que NÃO existe** — não invente, não documente como existente, não implemente sem pedido explícito:
 
-> histórico completo de lutas · histórico de lesões · acompanhamento médico, nutricional ou físico · contas de médico, nutricionista ou preparador físico · compartilhamento de informação entre profissionais · upload de arquivo de vídeo (só URL do YouTube) · recuperação de senha · fila, worker ou job assíncrono · WebSocket/SSE · cache de servidor.
+> histórico completo de lutas · histórico de lesões · acompanhamento médico, nutricional ou físico · contas de médico · compartilhamento de informação entre profissionais · upload de arquivo de vídeo (só URL do YouTube) · recuperação de senha · fila, worker ou job assíncrono · WebSocket/SSE · cache de servidor.
+>
+> Vários destes estão **planejados** em [`docs/ROADMAP.md`](./docs/ROADMAP.md) (2026-09-23) — planejado não é implementado; a lista acima só muda quando a tarefa fechar em `main`.
+>
+> ⚠️ **Nuance desde a spec 014:** contas com perfil `nutricionista`, `fisioterapeuta` e `preparador_fisico` (`users.profile`) **existem** — não invente o contrário. O que continua **não existindo** são as **áreas** que essas contas editariam (saúde, nutrição, treino): sem tabela, sem model, sem endpoint. A conta e o que ela vê já existem; o que ela editaria, não — não promova nenhuma dessas áreas para "O que existe" acima.
 
 ✅ **As duas funcionalidades quebradas foram corrigidas na [spec 007](./specs/007-silent-failures-and-input-validation/spec.md)** (2026-08-18): histórico de versões de perfil técnico e atualização do `technical_profile`. Ficam registradas aqui porque a **causa** delas é o risco que continua vivo neste repositório:
 
@@ -81,7 +85,8 @@ Regras não negociáveis:
 | Papel | Vê |
 |---|---|
 | `admin` | todos os `user_id` do mesmo `tenant_id` |
-| `user` | **apenas o próprio `user_id`** |
+| `user` com perfil de staff (professor, nutricionista, fisioterapeuta, preparador_fisico) | todos os `user_id` do mesmo `tenant_id` — spec 014 |
+| `user` com perfil `atleta` | **apenas o próprio `user_id`** |
 
 **O padrão obrigatório** em qualquer endpoint que toque dado de usuário:
 
@@ -94,7 +99,7 @@ await Model.update(id, dados, recurso.userId);   // owner REAL, não o requisita
 
 Dois detalhes: **404, não 403** (não vaza existência); e a escrita usa o `userId` **do registro**, permitindo admin editar dado de membro do grupo.
 
-`utils/tenantScope.js#getScopeIds` ainda existe, mas é **wrapper `@deprecated`** delegando a `resolveScope` — não use em código novo. `req.actor` (`{ id, role, tenantId }`) é populado pelo `authMiddleware`; `services/authorization.js` nunca importa Express nem lê `req` diretamente, o que o torna testável sem HTTP (ver [ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md)).
+`utils/tenantScope.js#getScopeIds` ainda existe, mas é **wrapper `@deprecated`** delegando a `resolveScope` — não use em código novo. `req.actor` (`{ id, role, profile, tenantId }` — `profile` desde a spec 014) é populado pelo `authMiddleware`; `services/authorization.js` nunca importa Express nem lê `req` diretamente, o que o torna testável sem HTTP (ver [ADR-011](./docs/decisions/011-seam-de-politica-de-autorizacao.md)). Desde a spec 014 existe também `can(actor, action, resource)` — tabela `CAPABILITIES`, avaliada por área/ação (`person:*`, `training:*`, `schedule:*`, `competition:*`, `health:*`, `users:manage`); ação não cadastrada é negada. Ver [ADR-014](./docs/decisions/014-dois-eixos-na-conta-e-time-de-confianca.md) e [`docs/AUTHORIZATION.md`](./docs/AUTHORIZATION.md#50-capacidades-por-ação-capabilities-spec-014).
 
 **O escopo é OBRIGATÓRIO no model** (spec 006). Todo método de model de domínio exige o escopo de posse na assinatura e lança `MissingScopeError` sem ele — `utils/scopeGuard.js#requireScope`. Ao criar um método novo, siga isso: **nunca aceite um `id` sem escopo.** A armadilha antiga (`FightAnalysis.update()`/`.delete()` aceitando qualquer ID, `AnalysisVersion` sem filtro nenhum) produziu 6 IDORs; hoje o mesmo esquecimento falha em vez de vazar.
 
@@ -127,7 +132,7 @@ Regras:
 2. **Nunca execute migration sem pedido explícito.** Elas são aplicadas à mão, e a `018` contém `UPDATE users SET role='user'` **sem `WHERE`** — reexecutá-la rebaixa todos os admins.
 3. **Nunca versione PII em migration.** As `017`, `019` e `022` contêm e-mails reais — dívida conhecida, não padrão.
 4. **`user_id` tem tipos divergentes**: `VARCHAR(255)` em `athletes`/`opponents`/`fight_analyses`, `UUID` nas demais. Não presuma o tipo.
-5. **Apenas 4 foreign keys reais existem** em todo o banco. Não presuma integridade referencial — `person_id` é polimórfico sem constraint.
+5. **Apenas 5 foreign keys reais existem** em todo o banco (era 4; a 5ª, `athletes.account_user_id → users(id)`, entrou na spec 014, migration `025`). Não presuma integridade referencial — `person_id` é polimórfico sem constraint.
 6. ✅ **RESOLVIDO na [spec 008](./specs/008-database-access-lockdown/spec.md)** — os dois clientes viraram um (`supabase`, `service_role`), sem fallback: `config/supabase.js` lança no boot sem `SUPABASE_SERVICE_ROLE_KEY`. ⚠️ **O `REVOKE` de `anon`/`authenticated` está escrito (`server/migrations/024-revoke-anon-access.sql`) e não executado** — pendente de o proprietário colar no SQL Editor do Supabase. Até lá, a chave anon publicada continua com GRANT nas tabelas de produção.
 
 ## Documentation
@@ -141,6 +146,7 @@ Regras:
 | Tabelas, FKs, RLS, migrations | [`docs/DATABASE.md`](./docs/DATABASE.md) |
 | Em que estado o projeto está | [`docs/PROJECT_STATUS.md`](./docs/PROJECT_STATUS.md) |
 | **O que ficou aberto e por quê** | [`docs/GAPS.md`](./docs/GAPS.md) |
+| **Para onde o produto vai e qual é a próxima tarefa** | [`docs/ROADMAP.md`](./docs/ROADMAP.md) — tudo `PLANNED`; protótipo de referência no Claude Design |
 | Por que uma decisão foi tomada | [`docs/decisions/`](./docs/decisions/) |
 | Detalhe de um módulo | [`docs/modules/`](./docs/modules/) |
 | Evidência de um problema, em `arquivo:linha` | [`AUDIT.md`](./AUDIT.md) |
@@ -181,11 +187,11 @@ A spec [001](./specs/001-refactor-foundation/spec.md) está `Superseded` — era
 ### Comandos
 
 ```bash
-cd server && npm test          # Jest — 33 suítes / 415 testes (bloqueia merge no CI)
+cd server && npm test          # Jest — 43 suítes / 541 testes (bloqueia merge no CI)
 ```
 
 ```bash
-cd frontend && npm test        # Vitest — 9 suítes / 87 testes (bloqueia merge no CI)
+cd frontend && npm test        # Vitest — 48 suítes / 103 testes (bloqueia merge no CI)
 ```
 
 ```bash

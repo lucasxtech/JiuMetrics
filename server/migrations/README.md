@@ -26,6 +26,9 @@ Execute os arquivos SQL na ordem numérica no **Supabase SQL Editor**:
 ### 5️⃣ Acesso (spec 008)
 - **024-revoke-anon-access.sql** — `REVOKE` de `anon`/`authenticated` em todas as tabelas de domínio. ⚠️ Rodar **depois** de validar que o backend já funciona com `service_role` (unificação de cliente feita no código desta mesma spec) — senão a aplicação perde acesso junto com a chave anon. Rollback (`GRANT` de volta) documentado no próprio arquivo.
 
+### 6️⃣ Identidade (spec 014)
+- **025-account-profile.sql** — Perfil da conta, troca de senha obrigatória e vínculo conta ↔ ficha. Adiciona `users.profile`, `users.must_change_password`, `athletes.account_user_id` (FK real + UNIQUE parcial). Aditiva e idempotente.
+
 ## ⚠️ Importante
 
 - Execute sempre na ordem numérica (001 → 009)

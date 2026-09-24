@@ -10,11 +10,14 @@ const { resolveScope } = require('../services/authorization');
  * importa o model diretamente — e é ignorado se algum chamador antigo
  * ainda o passar.
  *
- * @param {Object} req - Request do Express (requer req.user e req.userId)
+ * @param {Object} req - Request do Express (requer req.user — com `role` e `profile` — e req.userId)
  * @returns {Promise<string[]>} Array de user IDs para filtrar queries
  */
 async function getScopeIds(req) {
-  return resolveScope({ id: req.userId, role: req.user?.role, tenantId: null });
+  // `profile` desde a spec 014 (revisão final, M5): sem ele, um chamador
+  // antigo deste wrapper veria staff com `role=user` como atleta — escopo
+  // menor que o de `resolveScope(req.actor)`, divergência silenciosa.
+  return resolveScope({ id: req.userId, role: req.user?.role, profile: req.user?.profile, tenantId: null });
 }
 
 module.exports = { getScopeIds };

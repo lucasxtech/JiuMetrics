@@ -33,6 +33,16 @@ describe('tenantScope.getScopeIds', () => {
     expect(User.getGroupUserIds).not.toHaveBeenCalled();
   });
 
+  // Revisão final da spec 014 (M5): o wrapper repassa `profile` — staff com
+  // role=user tem o mesmo escopo que teria via `resolveScope(req.actor)`.
+  it('staff com role=user (spec 014): retorna o grupo, como resolveScope(req.actor)', async () => {
+    User.getGroupUserIds.mockResolvedValue(['admin-1', 'fisio-1', 'user-1']);
+    const req = { user: { role: 'user', profile: 'fisioterapeuta' }, userId: 'fisio-1' };
+
+    await expect(getScopeIds(req, User)).resolves.toEqual(['admin-1', 'fisio-1', 'user-1']);
+    expect(User.getGroupUserIds).toHaveBeenCalledWith('fisio-1');
+  });
+
   it('sem req.user (ex.: middleware não rodou): trata como não-admin', async () => {
     const req = { userId: 'user-1' };
 

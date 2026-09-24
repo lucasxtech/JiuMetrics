@@ -77,22 +77,23 @@ stateDiagram-v2
     Desativado --> Ativo: POST /admin/users/:id/reactivate
     Ativo --> Excluído: DELETE /users/:id/permanent
     Desativado --> Excluído: DELETE /users/:id/permanent
-    Excluído --> [*]: dados transferidos OU apagados
+    Excluído --> [*]: tudo apagado (spec 014) — exceto api_usage, fichas reparentadas e análises transferidas
 ```
+
+**Campos novos (spec 014)** — `profile` (`VARCHAR(30) NOT NULL DEFAULT 'atleta'`, `CHECK` em `atleta|professor|nutricionista|fisioterapeuta|preparador_fisico`, independente de `role`) e `must_change_password` (`BOOLEAN NOT NULL DEFAULT false`, ligado na criação pelo admin, desligado na primeira troca de senha bem-sucedida).
 
 **Regras de negócio** (`IMPLEMENTED`)
 
-1. Existem exatamente **dois papéis**: `admin` e `user`.
-2. Sub-usuário criado por admin **herda o `tenant_id` do criador** e nasce sempre `role: 'user'`.
+1. Existem exatamente **dois papéis** de permissão: `admin` e `user`. Desde a spec 014, a conta também tem um **perfil** (`profile`) independente do papel — ver §4 para o efeito no escopo.
+2. Sub-usuário criado por admin **herda o `tenant_id` do criador**, nasce com o `role` e o `profile` que o admin escolher (default `role: 'user'`, `profile: 'atleta'`), e sempre com `must_change_password: true` (spec 014).
 3. Usuário de registro público é **seu próprio tenant** (`tenant_id = id`).
 4. Registro público está **desabilitado por padrão** (`ALLOW_PUBLIC_REGISTER`).
-5. Admin **não pode** desativar, excluir nem alterar o próprio papel.
-6. Toda operação admin sobre outro usuário exige **mesmo `tenant_id`** (`assertSameTenant`).
-7. Desativar ou trocar o papel **incrementa `token_version`**, invalidando as sessões vivas do usuário imediatamente.
-8. Exclusão permanente exige decisão explícita: **transferir** os dados para outro usuário do tenant **ou apagá-los**. Não há terceira opção.
-9. Ao transferir, movem-se `athletes`, `opponents`, `fight_analyses` e `tactical_analyses`. **Chat sessions e api_usage não são transferidos** — são descartados com o usuário.
-10. Dados de usuário **desativado continuam visíveis ao grupo** (decisão deliberada, comentada em `User.js`).
-11. Senha: mínimo 6 caracteres, hash `bcrypt` com 10 rounds. Sem requisito de complexidade.
+5. Admin **não pode** desativar, excluir nem alterar o próprio papel. Desde a spec 014, também não pode **remover o último admin ativo** do tenant (`changeRole` conta admins ativos antes de rebaixar) — a checagem é "ler depois escrever", sem lock nem constraint de banco, e por isso não fecha uma corrida entre dois admins rebaixando um ao outro na mesma janela (dívida registrada em comentário no controller).
+6. Toda operação admin sobre outro usuário exige **mesmo `tenant_id`** (`assertSameTenant`), que devolve **404**, nunca 403, para não vazar a existência de conta de outro tenant.
+7. Desativar, trocar o papel, trocar o `profile` (spec 014) ou trocar a própria senha **incrementa `token_version`**, invalidando as sessões vivas do usuário imediatamente, e evicta o cache de auth (`evictAuthCache`).
+8. **Exclusão permanente apaga tudo** (spec 014, substitui a regra anterior de "transferir ou apagar" — **não há mais opção de transferência**, e `transferToUserId` no corpo é 400): fichas geridas (`athletes.user_id = id`) ou vinculadas (`athletes.account_user_id = id`), suas `fight_analyses`, `analysis_versions` e `profile_versions`, os `opponents` geridos e as `fight_analyses`/`profile_versions` deles, as `tactical_analyses` (com cascata de `strategy_versions` no banco) e as `ai_chat_sessions`. `api_usage` é **preservado** (decisão do proprietário, 2026-09-24) para auditoria em SQL — mas o id excluído sai de `getGroupUserIds`, então essas linhas **deixam de contar** no orçamento mensal (spec 009) e na tela de uso. **Exceção decidida pelo controller, não pela spec original:** uma ficha **gerida** pela conta excluída mas **vinculada** (`account_user_id`) a outra conta viva **dentro do escopo do chamador** não é apagada — é **reparentada** (`user_id` passa a ser o `account_user_id`), junto com suas análises e versões de perfil; contada em `deleted.reparentedAthletes`. Uma ficha vinculada a uma conta **fora** do escopo do chamador não reparenta e é apagada como qualquer outra. **Segunda exceção, também do controller (revisão final da spec 014, 2026-09-24 — o proprietário pode reverter):** `fight_analyses`/`profile_versions` **escritas pela conta** sobre uma pessoa que **sobrevive** à purga (ficha ou adversário do tenant fora do conjunto de exclusão — ex.: o atleta autogerido que o professor excluído analisou) são **transferidas** ao gestor dessa pessoa (`user_id` da ficha/adversário), contadas em `deleted.reassignedAnalyses`/`deleted.reassignedProfileVersions`; se a pessoa vai ser apagada, ou não é encontrada no tenant, a linha é apagada. Ver `User.js#purgeAccount` para a ordem exata (coleta tudo antes de escrever; reparent antes das exclusões; filhos antes de pais) e [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md)/a spec 014 para o raciocínio completo. **A raiz do tenant não pode ser excluída enquanto houver outros membros** (409) — `users.tenant_id → users(id)` não tem `ON DELETE`, e apagar a raiz com o grupo vivo deixaria a purga feita e só a própria linha falhando.
+9. Dados de usuário **desativado continuam visíveis ao grupo** (decisão deliberada, comentada em `User.js`).
+10. Senha: mínimo 6 caracteres, hash `bcrypt` com 10 rounds. Sem requisito de complexidade. Troca pelo próprio usuário (`POST /api/auth/change-password`, spec 014) exige a senha atual — inclusive quando é a provisória.
 
 **NEEDS_CONFIRMATION**
 - Existe constraint `UNIQUE` em `users.email`? Nenhuma migration cria uma. Sem ela, a criação de usuário tem race condition (checa-depois-insere).
@@ -112,11 +113,14 @@ stateDiagram-v2
 
 **Responsabilidade** — representar um lutador: atributos declarados pelo usuário + perfil técnico derivado de IA.
 
-**Campos** — `name` (único obrigatório), `belt`, `weight`, `height`, `age`, `style`, `strong_attacks`, `weaknesses`, `video_url`, `cardio`, `technical_profile` (JSONB), `technical_summary` (TEXT, gerado por IA), `technical_summary_updated_at`, `user_id`.
+**Campos** — `name` (único obrigatório), `belt`, `weight`, `height`, `age`, `style`, `strong_attacks`, `weaknesses`, `video_url`, `cardio`, `technical_profile` (JSONB), `technical_summary` (TEXT, gerado por IA), `technical_summary_updated_at`, `user_id`, e (só em `athletes`, spec 014) `account_user_id`.
+
+**`account_user_id` (só `athletes`, spec 014)** — `UUID NULL UNIQUE REFERENCES users(id) ON DELETE SET NULL`. Semântica: **a conta da própria pessoa** — o atleta cujo `athletes.name` é este registro. É um campo diferente de `user_id`: `user_id` (VARCHAR, sem FK) continua sendo **quem gerencia** a ficha (o professor que cadastrou, o próprio atleta, ou qualquer admin do tenant); `account_user_id` é **quem é** a ficha, quando essa pessoa tem conta no sistema. Os dois podem divergir (um professor gerencia a ficha de um aluno cuja conta é outra) ou coincidir (o atleta se cadastrou e depois vinculou a própria conta). `UNIQUE` garante no máximo uma ficha por conta. `opponents` **não** ganha esta coluna — adversário não tem conta (ver [ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md); se a unificação de `athletes`/`opponents` vier, a coluna migra junto).
 
 **Relacionamentos**
 
-- `user_id` → dono (**sem FK**, tipo `VARCHAR(255)`)
+- `user_id` → gestor (**sem FK**, tipo `VARCHAR(255)`)
+- `account_user_id` (só `athletes`) → a conta da própria pessoa (**FK real**, `UUID`, `ON DELETE SET NULL`, spec 014)
 - referenciado por `fight_analyses.person_id` + `person_type` — **FK polimórfica sem constraint**
 - referenciado por `tactical_analyses.athlete_id` / `opponent_id` — **sem FK**
 - referenciado por `profile_versions.person_id` + `person_type` — **sem FK**
@@ -292,14 +296,15 @@ erDiagram
     TACTICAL_ANALYSIS ||--o{ STRATEGY_VERSION : "analysis_id (FK CASCADE)"
 ```
 
-**Regra de escopo** — toda a autorização de dados cabe em `services/authorization.js#resolveScope` (spec 005; antes vivia em `utils/tenantScope.js#getScopeIds`, que hoje é só um wrapper `@deprecated`):
+**Regra de escopo** — toda a autorização de dados cabe em `services/authorization.js#resolveScope` (spec 005, estendida na spec 014; antes vivia em `utils/tenantScope.js#getScopeIds`, que hoje é só um wrapper `@deprecated`):
 
-| Papel | Vê |
+| Papel/perfil | Vê |
 |---|---|
-| `admin` | todos os `user_id` do mesmo `tenant_id` |
-| `user` | **apenas o próprio `user_id`** |
+| `admin` (qualquer perfil) | todos os `user_id` do mesmo `tenant_id` |
+| `user` com perfil de staff (`professor`, `nutricionista`, `fisioterapeuta`, `preparador_fisico`) | todos os `user_id` do mesmo `tenant_id` — spec 014, modelo de time de confiança |
+| `user` com perfil `atleta` | **apenas o próprio `user_id`** |
 
-Confirmado com o proprietário em 2026-08-12: **usuário comum vê apenas os próprios dados; somente admin vê o grupo.**
+Confirmado com o proprietário em 2026-08-12 (revisitado em 2026-09-22): **usuário comum (perfil atleta) vê apenas os próprios dados; admin ou staff vê o grupo.** Ver [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md) para o porquê do time de confiança (sem tabela de vínculo, sem consentimento por atleta).
 
 **Exceção estrutural** — `analysis_versions` não tem coluna `user_id`. Sua autorização precisaria derivar da `fight_analysis` pai, e hoje não deriva de nada.
 
@@ -311,7 +316,7 @@ O que deveria ser sempre verdade. Marcado se o código garante.
 
 | # | Invariante | Garantido? |
 |---|---|---|
-| 1 | Todo dado pertence a exatamente um `user_id` | ⚠️ **não** — `user_id` é nullable em `athletes`/`opponents`/`fight_analyses`; órfão fica invisível a todos |
+| 1 | Todo dado pertence a exatamente um `user_id` | ⚠️ **não** — `user_id` é nullable em `athletes`/`opponents`/`fight_analyses`; órfão fica invisível a todos. Desde a spec 014, `athletes` também pode ter `account_user_id` (a conta da própria pessoa) **independente** de `user_id` (quem gerencia) — os dois só precisam coincidir se o próprio atleta gerencia a própria ficha |
 | 2 | Estratégia só existe se ambos os lados têm ≥1 análise | ✅ em `generateStrategy` |
 | 3 | Uma `fight_analysis` aponta para pessoa existente | ⚠️ **não** — sem FK, e `analyze-link` não valida |
 | 4 | Técnica sugerida é legal para a faixa mais restritiva | ✅ na montagem do prompt (**correção esportiva da tabela é `NEEDS_CONFIRMATION`**) |
@@ -331,16 +336,19 @@ Registrado explicitamente para impedir suposição. **Nenhum destes existe** —
 - histórico completo de lutas (o que existe é análise de vídeo, não registro de competições)
 - histórico de lesões
 - acompanhamento médico, nutricional ou físico
-- contas de médico, nutricionista ou preparador físico
 - compartilhamento de informação entre profissionais
 - categorias de peso, campeonatos, chaves ou resultados oficiais
 - planos de treino ou periodização
 
+**Desde a spec 014 (2026-09-24), contas com perfil profissional (`nutricionista`, `fisioterapeuta`, `preparador_fisico`, `professor`) *existem*** — `users.profile` e o escopo de time de confiança em `resolveScope`. **As áreas que essas contas editariam continuam fora do domínio**: não há treino, nutrição nem saúde no banco, e nenhum endpoint dessas áreas existe (`training:*`, `health:*` em `CAPABILITIES` são `PLANNED`, sem consumidor). A distinção importa: a conta e o que ela vê já existem; o que ela editaria, não.
+
 Estes itens são **possível evolução futura**, mencionados aqui apenas como contexto. Tratá-los como parte do domínio atual seria erro factual.
 
-**Se um deles entrar no roadmap**, duas decisões arquiteturais atuais precisam ser revisitadas antes: (a) o modelo de autorização, hoje binário `admin`/`user` sem noção de papel profissional; (b) a ausência de RLS — compartilhar dado clínico entre organizações sem defesa no banco seria imprudente.
+📍 **Desde 2026-09-23 eles têm roadmap:** [`ROADMAP.md`](./ROADMAP.md) — fases, tarefas e as decisões de produto já tomadas (dois eixos `role` × `profile`, modelo de time de confiança). Continua tudo `PLANNED`.
 
-🎯 A análise de viabilidade dessa evolução — se `User` deveria representar um `Athlete`, como modelar profissional ↔ atleta, e **quais decisões precisam ser tomadas agora (custo zero) vs. depois** — está em [`../JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md) §7. A conclusão que importa hoje: **nunca assumir que `athletes.user_id` é a conta do próprio atleta** (hoje é a de quem gerencia o registro).
+**Se um deles entrar no roadmap**, uma decisão arquitetural atual precisa ser revisitada antes: a ausência de RLS — compartilhar dado clínico dentro do mesmo tenant sem defesa no banco, só com o registro de acesso planejado, é a aposta feita; entre organizações diferentes seria imprudente. O modelo de autorização em si — binário `admin`/`user` **mais** perfil profissional (`professor`, `nutricionista`, `fisioterapeuta`, `preparador_fisico`) — já foi resolvido pela spec 014 (ver [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md)).
+
+🎯 A análise de viabilidade dessa evolução — se `User` deveria representar um `Athlete`, como modelar profissional ↔ atleta, e **quais decisões precisam ser tomadas agora (custo zero) vs. depois** — está em [`../JIU_METRICS_REFACTORING_PLAN.md`](../JIU_METRICS_REFACTORING_PLAN.md) §7 (escrito **antes** da spec 014; a premissa "nunca assumir que `athletes.user_id` é a conta do próprio atleta" continua válida — é por isso que a spec 014 introduziu `account_user_id` em vez de reinterpretar `user_id`).
 
 ---
 
