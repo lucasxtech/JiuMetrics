@@ -15,11 +15,13 @@ router.post('/login', authController.login);
 // Rota de validação de token (protegida)
 router.get('/validate', authMiddleware, (req, res) => {
   // Se chegou aqui, o token é válido
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     userId: req.userId,
     role: req.user.role,
-    message: 'Token válido' 
+    profile: req.user.profile,
+    mustChangePassword: req.user.mustChangePassword,
+    message: 'Token válido'
   });
 });
 

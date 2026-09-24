@@ -7,7 +7,7 @@ if (!process.env.JWT_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // Cache em memória para evitar consulta ao banco em cada request.
-// Chave: userId → { role, is_active, token_version, expiresAt }
+// Chave: userId → { role, is_active, token_version, profile, must_change_password, expiresAt }
 const _authCache = new Map();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 const CACHE_MAX_SIZE = 5000;         // limite para evitar memory leak em produção
@@ -93,18 +93,25 @@ const authMiddleware = (req, res, next) => {
         }
 
         // Usar role do banco (não do token) para evitar role stale no JWT
-        req.user = { id: decoded.userId, role: authInfo.role };
+        // profile — spec 014: sempre lido do banco, nunca do token; linha
+        // sem a coluna (banco anterior à migration 025) vale como o perfil
+        // mais restritivo ('atleta').
+        const profile = authInfo.profile || 'atleta';
+        const mustChangePassword = authInfo.must_change_password === true;
+        req.user = { id: decoded.userId, role: authInfo.role, profile, mustChangePassword };
         req.userId = decoded.userId;
         // req.actor — SPEC-005: shape estável para server/src/services/authorization.js.
         // tenantId fica reservado (não resolvido aqui) até uma dimensão futura precisar dele.
-        req.actor = { id: decoded.userId, role: authInfo.role, tenantId: null };
+        req.actor = { id: decoded.userId, role: authInfo.role, profile, tenantId: null };
         return next();
       } catch (dbError) {
         console.error('⚠️ Falha ao verificar usuário no DB — usando dados do token como fallback:', dbError.message);
-        // Fallback seguro: continua com dados do token se o banco estiver indisponível
-        req.user = { id: decoded.userId, role: decoded.role || 'user' };
+        // Fallback seguro: continua com dados do token se o banco estiver indisponível.
+        // profile fica no valor mais restritivo ('atleta') porque o token não carrega
+        // o perfil (spec 014) — não há como saber o perfil real sem consultar o banco.
+        req.user = { id: decoded.userId, role: decoded.role || 'user', profile: 'atleta', mustChangePassword: false };
         req.userId = decoded.userId;
-        req.actor = { id: decoded.userId, role: decoded.role || 'user', tenantId: null };
+        req.actor = { id: decoded.userId, role: decoded.role || 'user', profile: 'atleta', tenantId: null };
         return next();
       }
     });

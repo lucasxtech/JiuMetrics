@@ -320,16 +320,17 @@ class User {
   }
 
   /**
-   * Retorna dados de autenticação do usuário (role, is_active, token_version).
+   * Retorna dados de autenticação do usuário (role, is_active, token_version,
+   * profile, must_change_password).
    * Usado pelo middleware para validar sessões sem confiar apenas no JWT.
    * @param {string} userId
-   * @returns {Promise<{role: string, is_active: boolean, token_version: number}>}
+   * @returns {Promise<{role: string, is_active: boolean, token_version: number, profile: string, must_change_password: boolean}>}
    */
   static async getAuthInfo(userId) {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('role, is_active, token_version')
+        .select('role, is_active, token_version, profile, must_change_password')
         .eq('id', userId)
         .single();
 
