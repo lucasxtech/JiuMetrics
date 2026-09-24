@@ -1,6 +1,6 @@
 # SPEC-014 — Identidade: perfil da conta, vínculo conta ↔ ficha e escopo por perfil
 
-**Status: Proposed** · Escrita em 2026-09-24 · Fase 1 do [`docs/ROADMAP.md`](../../docs/ROADMAP.md) (tarefas R-04, R-07, R-08, R-09, R-10, R-13, R-14)
+**Status: Approved** (2026-09-24, pelo proprietário) · Escrita em 2026-09-24 · Fase 1 do [`docs/ROADMAP.md`](../../docs/ROADMAP.md) (tarefas R-04, R-07, R-08, R-09, R-10, R-13, R-14)
 
 > Primeira spec da evolução "plataforma da equipe". **Não cria nenhuma área nova** (competições, agenda, saúde). Só faz a conta saber *quem* a pessoa é e a autorização saber *o que* isso libera — para que as specs seguintes não precisem varrer controllers de novo.
 
@@ -80,12 +80,12 @@ Nada é dropado. `opponents` **não** ganha `account_user_id`: adversário não 
 | `GET /api/auth/validate` | resposta ganha `profile` e `mustChangePassword` |
 | **`POST /api/auth/change-password`** (novo, autenticado) | `{ currentPassword, newPassword }`; valida a atual, grava a nova, zera `must_change_password`, **incrementa `token_version`** e devolve token novo. Schema zod. Quando `must_change_password` é verdadeiro, `currentPassword` continua obrigatória (é a provisória) |
 | `GET /api/admin/users` | cada linha ganha `profile`, `athleteId` e `athleteName` da ficha vinculada, `lastLogin` |
-| `POST /api/admin/users` | corpo ganha `profile` (obrigatório), `isAdmin` (bool, vira `role`), `createAthlete` (bool) e, se verdadeiro, `athlete: { belt }` (faixa é obrigatória desde a spec 013 — o protótipo não pede a faixa nesse diálogo; ver *Documentation Impact*). Cria a ficha com `user_id = <nova conta>` e `account_user_id = <nova conta>`. Sempre grava `must_change_password = true` |
+| `POST /api/admin/users` | corpo ganha `profile` (obrigatório), `isAdmin` (bool, vira `role`), `createAthlete` (bool) e, se verdadeiro, `athlete: { belt }` (faixa é obrigatória desde a spec 013; decidido em 2026-09-24 que o diálogo **pede a faixa** quando o toggle de ficha está ligado — o protótipo ainda não a mostra, ver *Documentation Impact*). Cria a ficha com `user_id = <nova conta>` e `account_user_id = <nova conta>`. Sempre grava `must_change_password = true` |
 | **`PATCH /api/admin/users/:id/profile`** (novo) | `{ profile }`; mesmo tenant; incrementa `token_version` e evict do cache (o escopo mudou) |
 | `PATCH /api/admin/users/:id/role` | inalterado, com duas regras novas: não remover admin de si mesmo; não remover o **último admin ativo** do tenant |
 | **`PATCH /api/admin/users/:id/athlete`** (novo) | `{ athleteId }` vincula, `{ athleteId: null }` desvincula. A ficha precisa pertencer ao tenant (`user_id` no escopo) e não estar vinculada a outra conta (409) |
 | `DELETE /api/admin/users/:id/permanent` | **corpo sem `transferToUserId`**; se vier, 400. Apaga, nesta ordem e só dentro do tenant: `ai_chat_sessions`; `strategy_versions` (cascata do banco) e `tactical_analyses`; `analysis_versions` e `profile_versions` das análises da conta; `fight_analyses`; `athletes` com `user_id = id` **ou** `account_user_id = id` (e as análises/versões dessas fichas, mesmo que criadas por outra conta do tenant); `opponents`; por fim a linha em `users`. Resposta declara contagens por tabela. Falha no meio **não** é tolerada: a exclusão para e devolve 500 com o que já foi apagado |
-| `api_usage` | **não é apagado**: é o livro-caixa do tenant e alimenta o orçamento mensal (spec 009). `NEEDS_CONFIRMATION` com o proprietário; se ele quiser apagar, é uma linha na lista acima |
+| `api_usage` | **não é apagado** (decisão do proprietário, 2026-09-24): é o livro-caixa do tenant e alimenta o orçamento mensal (spec 009) |
 
 Todos os endpoints novos e alterados com corpo ganham schema zod (`schemas/requests/users.js`), mapeando **antes** o payload que o frontend atual envia (`adminService.js`, `AdminUsers.jsx`), pela armadilha registrada no [`CLAUDE.md`](../../CLAUDE.md) (campo não declarado chega `undefined` em silêncio).
 

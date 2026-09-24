@@ -138,6 +138,7 @@ Registrado aqui para virar tarefa, não para ser esquecido. Detalhe em `.ai/desi
 - ~~Exclusão de conta com transferência~~ ✅ **Decidido 2026-09-23: excluir apaga tudo**, sem transferência. O diálogo do protótipo com "Transferir para" sai; fica a lista do que será apagado e a confirmação digitada. → `R-13` fechada.
 - **Senha provisória com troca no primeiro acesso:** o fluxo de novo usuário promete isso e não existe. → `R-14`.
 - **Peso atual "da ficha, atualizado em 21 set":** a aba Nutrição lê um peso atual com data. Não existe campo nem entidade. → `R-58`, `R-60`.
+- **Diálogo de novo usuário sem faixa:** quando "criar ficha de atleta" está ligado, a faixa é obrigatória (spec 013). Decidido 2026-09-24: chips de faixa aparecem no diálogo. Falta no protótipo. → `R-25`.
 - **Aba Nutrição dentro de Saúde:** proposta do protótipo, com restrições alimentares e orientações em linha do tempo. Adotada. → `R-57`.
 - **Peso de hoje** aparece no Início e não existe entidade de pesagem. → fase 6 (`R-60`).
 - **Sem edição nem exclusão** de sessão, horário da grade, evento, inscrição, luta, evento de linha do tempo, ficha completa. Falta desenhar. → `R-25`.
@@ -166,7 +167,7 @@ Sem R-02, **nenhuma tarefa da fase 5 começa.** Ver [`GAPS.md`](./GAPS.md) §1 p
 
 | ID | Tarefa | Tipo | Depende | Status |
 |---|---|---|---|---|
-| R-04 | **Spec** de identidade — escrita: [`specs/014-identity-and-profiles/spec.md`](../specs/014-identity-and-profiles/spec.md), aguardando aprovação do dono. Cobre também R-07, R-08, R-09, R-10, R-13 e R-14 | spec | — | 🟡 |
+| R-04 | **Spec** de identidade — escrita: [`specs/014-identity-and-profiles/spec.md`](../specs/014-identity-and-profiles/spec.md), **aprovada em 2026-09-24**, em implementação. Cobre também R-07, R-08, R-09, R-10, R-13 e R-14 | spec | — | 🟡 |
 | R-05 | ~~Decisão: professor nasce `admin` por padrão?~~ **Não.** Admin é toggle por conta, qualquer perfil; não dá para remover o último admin ativo nem a si mesmo (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
 | R-06 | ~~Decisão: quem edita o calendário do atleta?~~ **Atleta, fisioterapeuta, nutricionista e preparador físico.** Professor só vê, com presença (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
 | R-07 | ADR: "staff vê o tenant" substitui "só admin vê o grupo"; registrar o modelo de time de confiança e por que não há consentimento por atleta | código | R-04 | ⚪ |
