@@ -30,14 +30,14 @@ Concentra quatro coisas que em sistemas maiores estariam separadas: autenticaç�
 
 8. **Admin não pode desativar, excluir nem alterar o próprio papel** — evita que se tranque fora ou se auto-rebaixe. Desde a spec 014, também **não pode remover o último admin ativo** do tenant (checagem "ler depois escrever", sem lock — dois admins rebaixando um ao outro na mesma janela ainda podem, em teoria, zerar os admins).
 9. **Toda operação admin sobre outro usuário exige mesmo `tenant_id`** (`assertSameTenant`, resolvido em **uma única query** buscando os dois `tenant_id` de uma vez), com **404**, nunca 403.
-10. **Desativar, trocar papel, trocar perfil (spec 014) ou trocar a própria senha (spec 014) incrementa `token_version`**, invalidando as sessões vivas do usuário imediatamente, e evicta o cache de auth. Ver [ADR-004](../decisions/004-token-version-para-invalidacao-de-sessao.md).
+10. **Desativar, trocar papel, trocar perfil (spec 014), trocar a própria senha (spec 014) ou o admin redefinir a senha (`PATCH /api/admin/users/:id` com `password`, revisão final da spec 014) incrementa `token_version`**, invalidando as sessões vivas do usuário imediatamente, e evicta o cache de auth. Senha redefinida pelo admin é provisória: grava `must_change_password = true`, como na criação. Ver [ADR-004](../decisions/004-token-version-para-invalidacao-de-sessao.md).
 11. **Toda operação admin gera log de auditoria** — inclusive as **negadas** (`adminMiddleware` loga tentativa recusada com o `userId`).
-12. **`role` e `profile` são sempre lidos do banco**, nunca do JWT — é a razão de não existir escalonamento de privilégio no sistema.
+12. **`role` e `profile` são lidos do banco**, nunca do JWT — é a razão de não existir escalonamento de privilégio no sistema. **Uma exceção, precisa:** quando a leitura de `users` falha **sem resposta do banco** (erro sem `code` — rede/timeout), o `authMiddleware` cai no fallback e usa o `role` **do token** (com `profile: 'atleta'`, o mais restritivo — o token não carrega perfil). Quando o banco **responde** com erro, não há fallback desde a revisão final da spec 014: `PGRST116` (conta não existe mais) é **401**, qualquer outro código é **503**.
 
 ### Ciclo de vida do usuário
 
 13. **Desativação é soft delete** — os dados são preservados e **continuam visíveis ao grupo** (decisão deliberada, comentada em `User.js`).
-14. **Exclusão permanente apaga tudo, sem transferência** (spec 014 — substitui a regra anterior de "transferir ou apagar"; `transferToUserId` no corpo agora é **400**): fichas geridas ou vinculadas, suas análises e versões, adversários, estratégias e chats. `api_usage` é **preservado** (é o livro-caixa do tenant). **Exceção decidida pelo controller:** uma ficha gerida pela conta excluída mas vinculada a **outra** conta viva **dentro do escopo do chamador** é **reparentada**, não apagada — ver [`../DOMAIN.md`](../DOMAIN.md#31-user) regra 8 e a [spec 014](../../specs/014-identity-and-profiles/spec.md) para o raciocínio completo. A **raiz do tenant não pode ser excluída** enquanto houver outros membros (409).
+14. **Exclusão permanente apaga tudo, sem transferência** (spec 014 — substitui a regra anterior de "transferir ou apagar"; `transferToUserId` no corpo agora é **400**): fichas geridas ou vinculadas, suas análises e versões, adversários, estratégias e chats. `api_usage` é **preservado** para auditoria em SQL, mas o id excluído sai do tenant — as linhas **deixam de contar** no orçamento mensal e na tela de uso. **Duas exceções decididas pelo controller:** uma ficha gerida pela conta excluída mas vinculada a **outra** conta viva **dentro do escopo do chamador** é **reparentada**, não apagada; e análises/versões de perfil **escritas pela conta** sobre uma pessoa que **sobrevive** à purga são **transferidas** ao gestor dessa pessoa (`reassignedAnalyses`/`reassignedProfileVersions`, revisão final, 2026-09-24) — ver [`../DOMAIN.md`](../DOMAIN.md#31-user) regra 8 e a [spec 014](../../specs/014-identity-and-profiles/spec.md) para o raciocínio completo. A **raiz do tenant não pode ser excluída** enquanto houver outros membros (409).
 15. **Registro público desabilitado por padrão** (`ALLOW_PUBLIC_REGISTER !== 'true'`), e a checagem vem **antes** da consulta por e-mail — não vaza existência de conta quando desligado.
 
 ### Credenciais
@@ -46,7 +46,7 @@ Concentra quatro coisas que em sistemas maiores estariam separadas: autenticaç�
 17. **E-mail:** normalizado (`lowercase` + `trim`), validado com `/^\S+@\S+\.\S+$/` e limite de 254 chars — regex deliberadamente sem aninhamento para **evitar ReDoS**, com comentário explicando a escolha.
 18. **JWT:** HS256, payload `{userId, role, tokenVersion}` (**`profile` não vai no JWT** — sempre relido do banco), expiração 7 dias (ou 30 com `rememberMe`).
 19. **`password_hash` nunca é serializado** em nenhuma resposta.
-20. **Troca de senha pelo próprio usuário** (`POST /api/auth/change-password`, spec 014): exige a senha atual (inclusive quando é a provisória), zera `must_change_password`, incrementa `token_version` e devolve token novo. Conta criada por admin nasce com `must_change_password: true`; o frontend (`ProtectedRoute`) bloqueia toda rota, exceto `/trocar-senha`, enquanto isso for verdadeiro.
+20. **Troca de senha pelo próprio usuário** (`POST /api/auth/change-password`, spec 014): exige a senha atual (inclusive quando é a provisória), recusa nova senha igual à atual (400, revisão final), zera `must_change_password`, incrementa `token_version` e devolve token novo. Conta criada por admin nasce com `must_change_password: true`; o frontend (`ProtectedRoute`) bloqueia toda rota, exceto `/trocar-senha`, enquanto isso for verdadeiro.
 
 ## Inputs
 
@@ -60,7 +60,7 @@ Todos os endpoints com corpo, novos ou alterados pela spec 014, validam com zod 
 | **`POST /api/auth/change-password`** *(spec 014)* | autenticada | `{ currentPassword, newPassword }` |
 | `GET /api/admin/users` | **admin** | — |
 | `POST /api/admin/users` | **admin** | `{ name, email, password, profile, isAdmin, createAthlete, athlete?: { belt } }` |
-| `PATCH /api/admin/users/:id` | **admin** | `{ name?, password? }` |
+| `PATCH /api/admin/users/:id` | **admin** | `{ name?, password? }` — com `password`, a senha vira provisória e as sessões caem |
 | `PATCH /api/admin/users/:id/role` | **admin** | `{ role: 'admin'\|'user' }` |
 | **`PATCH /api/admin/users/:id/profile`** *(spec 014)* | **admin** | `{ profile }` |
 | **`PATCH /api/admin/users/:id/athlete`** *(spec 014)* | **admin** | `{ athleteId: string\|null }` |
@@ -73,9 +73,9 @@ Todos os endpoints com corpo, novos ou alterados pela spec 014, validam com zod 
 - **JWT + objeto do usuário** (`{id, name, email, role, profile, mustChangePassword}` no login; spec 014) no login/registro
 - **`req.user = {id, role, profile, mustChangePassword}`**, **`req.userId`** e **`req.actor = {id, role, profile, tenantId}`** (spec 005, `profile` desde a spec 014) para todos os controllers a jusante — é a saída mais consumida do módulo
 - **`User.getGroupUserIds`** — consumido por `services/authorization.js#resolveScope`, não chamado diretamente pelos controllers
-- **`User.getLinkedAthletes`/`linkAthlete`** — a ficha vinculada a cada conta, consumida por `publicUser()` no controller e pela tela de Usuários (spec 014)
+- **`User.getLinkedAthletes`/`linkAthlete`** — a ficha vinculada a cada conta, consumida por `publicUser()` no controller e pela tela de Usuários (spec 014). Os dois exigem o escopo do chamador (`getLinkedAthletes(userIds, allowedUserIds)` desde a revisão final): ficha gerida fora do escopo não aparece como vinculada
 - **`CAPABILITIES`/`can`** (`services/authorization.js`, spec 014) — tabela de capacidades por perfil × ação, consumida pelas specs de competições/agenda/saúde quando existirem endpoints nessas áreas
-- **Lista de usuários do tenant** para o painel admin (com `profile`, `athleteId`/`athleteName`, `is_active`, `last_login`)
+- **Lista de usuários do tenant** para o painel admin (com `profile`, `athleteId`/`athleteName`, `is_active`, `lastLogin` — camelCase; a coluna do banco é `last_login`)
 - **Logs de auditoria** no stdout
 
 ## Dependencies
@@ -103,7 +103,9 @@ flowchart TD
         CACHE -->|miss| Q["SELECT role, is_active, token_version"]
         CACHE -->|hit| CHK
         Q --> CHK["is_active? tokenVersion confere?"]
-        Q -.->|"erro de DB"| FB["⚠️ fallback: role DO TOKEN"]
+        Q -.->|"PGRST116"| E401S["401 sessão inválida"]
+        Q -.->|"outro code"| E503["503"]
+        Q -.->|"sem code (rede)"| FB["⚠️ fallback: role DO TOKEN"]
         CHK --> RU["req.user = {id, role DO BANCO}"]
         FB --> RU
     end
@@ -139,7 +141,7 @@ flowchart TD
 
 | Severidade | Problema |
 |---|---|
-| **HIGH** | **Fallback de autenticação abre em falha do banco.** Se `User.getAuthInfo` lançar, o middleware segue com o `role` **do token**. Uma indisponibilidade do Supabase desliga as três proteções ao mesmo tempo: token de conta desativada volta a valer, `token_version` deixa de ser checado, e o papel do token volta a ser aceito. Um JWT antigo de admin só precisa que o banco fique instável |
+| **HIGH** | **Fallback de autenticação abre em falha de rede.** Se a leitura de `users` falhar **sem resposta do banco** (erro sem `code`), o middleware segue com o `role` **do token**. Uma indisponibilidade de rede do Supabase desliga as três proteções ao mesmo tempo: token de conta desativada volta a valer, `token_version` deixa de ser checado, e o papel do token volta a ser aceito. **Estreitado na revisão final da spec 014:** erro com código do PostgREST/Postgres não cai mais no fallback — `PGRST116` (conta excluída) é 401 e qualquer outro código (ex.: `42703`, coluna inexistente num deploy antes da migration) é 503. O caso de rede continua aberto (AZ-8) |
 | **HIGH** | **A tabela `users` não tem migration de criação.** Só recebe `ALTER` em `017`/`021`/`023`. O schema real é **UNKNOWN** e não é reconstruível a partir do repositório |
 | **MEDIUM** | **Enumeração de usuários** — 403 "conta desativada" retornado **antes** do `bcrypt.compare`. Descobre contas existentes sem credencial, e dá oráculo de timing (não passa por bcrypt) |
 | **MEDIUM** | **PII em log** — e-mail logado em toda tentativa de login; presença de header + path logados em **todo** request autenticado. E-mails em texto claro nos logs da Vercel; relevante para LGPD |
@@ -164,4 +166,4 @@ flowchart TD
 - **Baseline de schema real** de `users` via `pg_dump --schema-only`, mais `UNIQUE(email)`.
 - ~~**Papéis profissionais** (nutricionista, fisioterapeuta, preparador físico) não existem no domínio atual~~ — ✅ **existem como perfil de conta desde a spec 014**. O que falta agora são as **áreas** que essas contas editariam (treino, agenda, saúde) — ver [`../DOMAIN.md`](../DOMAIN.md#6-o-que-não-faz-parte-do-domínio-atual) e [`../ROADMAP.md`](../ROADMAP.md) fases 3–5. Quando entrarem, a ausência de RLS precisa ser reavaliada, porque passará a existir dado de saúde cruzando fronteira de organização dentro do mesmo tenant.
 - **Tela de Usuários redesenhada** conforme o protótipo `Perfis e acessos` — contadores, filtros de perfil, registro de acesso à saúde (vazio até a fase 5). R-29, [`../ROADMAP.md`](../ROADMAP.md) fase 2.
-- **Reverter a decisão de reparent** (ver [`../DOMAIN.md`](../DOMAIN.md#31-user) regra 8) se o proprietário decidir que uma ficha vinculada a outra conta deveria mesmo ser apagada junto com quem a geria, não reparentada.
+- **Reverter a decisão de reparent** (ver [`../DOMAIN.md`](../DOMAIN.md#31-user) regra 8) se o proprietário decidir que uma ficha vinculada a outra conta deveria mesmo ser apagada junto com quem a geria, não reparentada — e, pela mesma razão, a **transferência de análises** sobre pessoas que continuam (revisão final, `reassignedAnalyses`).

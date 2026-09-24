@@ -121,6 +121,8 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
     expect(res.body.deleted).toMatchObject({
       athletes: 2, fightAnalyses: 3, analysisVersions: 1, profileVersions: 4,
       chatSessions: 1, tacticalAnalyses: 1, opponents: 1, reparentedAthletes: 1,
+      // nenhuma linha própria do alvo aponta para pessoa sobrevivente aqui
+      reassignedAnalyses: 0, reassignedProfileVersions: 0,
     });
 
     expect(store('users').some((u) => u.id === target.id)).toBe(false);
@@ -184,6 +186,24 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
     const res = await request(app).delete(`/api/admin/users/${target.id}/permanent`).set('Authorization', authHeader(fx.tenantB.admin)).send({});
     expect(res.status).toBe(404);
     expect(store('users').some((u) => u.id === target.id)).toBe(true);
+  });
+
+  // I7 (revisão final da spec 014): antes do C1-b, a leitura de auth de uma
+  // conta apagada (PGRST116) caía no fallback do token e a sessão continuava
+  // valendo. Aquece o cache de auth antes, para provar também a evicção.
+  test('I7: o token antigo da conta excluída é recusado (401) na requisição seguinte', async () => {
+    const targetToken = authHeader(target);
+    const before = await request(app).get('/api/auth/validate').set('Authorization', targetToken);
+    expect(before.status).toBe(200);
+
+    const del = await request(app).delete(`/api/admin/users/${target.id}/permanent`).set('Authorization', admin).send({});
+    expect(del.status).toBe(200);
+
+    const after = await request(app).get('/api/auth/validate').set('Authorization', targetToken);
+    expect(after.status).toBe(401);
+    expect(after.body).toEqual({ error: 'Sessão inválida. Faça login novamente.' });
+    const dataRoute = await request(app).get('/api/athletes').set('Authorization', targetToken);
+    expect(dataRoute.status).toBe(401);
   });
 
   // achado 1: o model tem que recusar sozinho, sem depender do controller
@@ -288,6 +308,7 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
     expect(res.body.deleted).toEqual({
       athletes: 0, opponents: 0, fightAnalyses: 0, analysisVersions: 0,
       profileVersions: 0, tacticalAnalyses: 0, chatSessions: 0, reparentedAthletes: 0,
+      reassignedAnalyses: 0, reassignedProfileVersions: 0,
     });
     expect(res.body.message).toBeUndefined();
 
@@ -340,8 +361,9 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
       const real = realFrom(table);
       if (table === 'athletes') {
         // só a chamada de UPDATE falha — as duas SELECTs da coleta (managedRows,
-        // rLinked) e o DELETE da exclusão continuam reais via `real`.
-        return { ...real, update: () => ({ eq: () => Promise.resolve({ data: null, error: failure }) }) };
+        // rLinked) e o DELETE da exclusão continuam reais via `real`. O
+        // UPDATE é `.eq('id').in('user_id', ids)` desde a revisão final (M6).
+        return { ...real, update: () => ({ eq: () => ({ in: () => Promise.resolve({ data: null, error: failure }) }) }) };
       }
       return real;
     });
@@ -372,5 +394,97 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
     const analiseFinal = store('fight_analyses').find((f) => f.id === analiseDaFichaReparentada.id);
     expect(analiseFinal).toBeDefined();
     expect(analiseFinal.user_id).toBe(fx.tenantA.physio.id);
+  });
+});
+
+/**
+ * I3 (revisão final da spec 014 — ruling do controller, diverge da spec
+ * original; o proprietário pode reverter): análise/versão de perfil ESCRITA
+ * pela conta excluída sobre uma pessoa que SOBREVIVE à purga é transferida
+ * ao gestor dessa pessoa, não apagada. A conta excluída aqui é o físio
+ * (staff, faz o papel do "professor" que analisa atletas do time).
+ */
+describe('Spec 014 — exclusão transfere análises sobre pessoas que continuam (I3)', () => {
+  let fx, admin, prof;
+  const tenantBSnapshot = (fx) => {
+    const ids = [fx.tenantB.admin.id, fx.tenantB.user.id, fx.tenantB.athlete2.id, fx.tenantB.physio.id];
+    return ['users', 'athletes', 'opponents', 'fight_analyses', 'analysis_versions', 'profile_versions', 'ai_chat_sessions', 'tactical_analyses']
+      .map((t) => [t, JSON.stringify(store(t).filter((r) => ids.includes(r.user_id) || ids.includes(r.id) || r.analysis_id === fx.tenantB.fightAnalysis.id))]);
+  };
+
+  beforeEach(() => {
+    fx = buildFixtures();
+    prof = fx.tenantA.physio;
+    admin = authHeader(fx.tenantA.admin);
+  });
+
+  function seed(extra) {
+    const s = {
+      ...fx.seedRows,
+      athletes: [...fx.seedRows.athletes, ...(extra.athletes || [])],
+      fight_analyses: [...fx.seedRows.fight_analyses, ...(extra.fight_analyses || [])],
+      analysis_versions: [...fx.seedRows.analysis_versions, ...(extra.analysis_versions || [])],
+      profile_versions: [...(extra.profile_versions || [])],
+    };
+    assertUniqueAccountLinks(s.athletes);
+    supabaseMock.__setFake(createFakeSupabase(s));
+  }
+
+  test('análise do "professor" sobre atleta autogerido é transferida ao atleta; a da ficha apagada é apagada; tenant B intocado', async () => {
+    const fichaDoProf = { ...fx.tenantA.athlete2Row, id: 'ficha-gerida-pelo-prof', user_id: prof.id, account_user_id: null, name: 'Ficha gerida pelo prof' };
+    const analiseSobreAtleta2 = { ...fx.tenantA.fightAnalysis, id: 'analise-do-prof-sobre-atleta2', person_id: fx.tenantA.athlete2Row.id, person_type: 'athlete', user_id: prof.id };
+    const versaoDaAnaliseSobreAtleta2 = { ...fx.tenantA.version, id: 'versao-da-analise-sobre-atleta2', analysis_id: analiseSobreAtleta2.id };
+    const analiseSobreFichaDoProf = { ...fx.tenantA.fightAnalysis, id: 'analise-do-prof-sobre-ficha-dele', person_id: fichaDoProf.id, person_type: 'athlete', user_id: prof.id };
+    seed({
+      athletes: [fichaDoProf],
+      fight_analyses: [analiseSobreAtleta2, analiseSobreFichaDoProf],
+      analysis_versions: [versaoDaAnaliseSobreAtleta2],
+    });
+    const tenantBBefore = tenantBSnapshot(fx);
+
+    const res = await request(app).delete(`/api/admin/users/${prof.id}/permanent`).set('Authorization', admin).send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.deleted).toMatchObject({ reassignedAnalyses: 1, fightAnalyses: 1, athletes: 1, reparentedAthletes: 0 });
+
+    // transferida ao gestor da ficha (o próprio atleta2, autogerido), com a versão
+    const transferida = store('fight_analyses').find((f) => f.id === analiseSobreAtleta2.id);
+    expect(transferida).toBeDefined();
+    expect(transferida.user_id).toBe(fx.tenantA.athlete2.id);
+    expect(store('analysis_versions').some((v) => v.id === versaoDaAnaliseSobreAtleta2.id)).toBe(true);
+
+    // a análise da ficha que foi apagada junto com a conta é apagada
+    expect(store('athletes').some((a) => a.id === fichaDoProf.id)).toBe(false);
+    expect(store('fight_analyses').some((f) => f.id === analiseSobreFichaDoProf.id)).toBe(false);
+
+    // nada da conta excluída sobra com user_id dela
+    expect(store('fight_analyses').some((f) => f.user_id === prof.id)).toBe(false);
+    expect(tenantBSnapshot(fx)).toEqual(tenantBBefore);
+  });
+
+  test('versões de perfil e adversários seguem a mesma regra; pessoa inexistente ou de outro tenant é apagada', async () => {
+    // adversário GERIDO pelo usuário comum do tenant A — sobrevive à purga
+    const analiseSobreAdversarioDoUser = { ...fx.tenantA.fightAnalysis, id: 'analise-do-prof-sobre-adversario-do-user', person_id: fx.tenantA.opponent.id, person_type: 'opponent', user_id: prof.id };
+    const pvSobreAtleta2 = { id: 'pv-do-prof-sobre-atleta2', person_id: fx.tenantA.athlete2Row.id, person_type: 'athlete', user_id: prof.id, version_number: 1, content: 'a', is_current: true };
+    const analiseSobrePessoaInexistente = { ...fx.tenantA.fightAnalysis, id: 'analise-sobre-pessoa-inexistente', person_id: 'pessoa-que-nao-existe', person_type: 'athlete', user_id: prof.id };
+    // pessoa de OUTRO tenant: não se acha dentro do escopo — não transfere para fora
+    const analiseSobreFichaDeOutroTenant = { ...fx.tenantA.fightAnalysis, id: 'analise-sobre-ficha-de-outro-tenant', person_id: fx.tenantB.athlete.id, person_type: 'athlete', user_id: prof.id };
+    seed({
+      fight_analyses: [analiseSobreAdversarioDoUser, analiseSobrePessoaInexistente, analiseSobreFichaDeOutroTenant],
+      profile_versions: [pvSobreAtleta2],
+    });
+    const tenantBBefore = tenantBSnapshot(fx);
+
+    const res = await request(app).delete(`/api/admin/users/${prof.id}/permanent`).set('Authorization', admin).send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.deleted).toMatchObject({ reassignedAnalyses: 1, reassignedProfileVersions: 1, fightAnalyses: 2, profileVersions: 0 });
+    expect(store('fight_analyses').find((f) => f.id === analiseSobreAdversarioDoUser.id).user_id).toBe(fx.tenantA.user.id);
+    expect(store('profile_versions').find((p) => p.id === pvSobreAtleta2.id).user_id).toBe(fx.tenantA.athlete2.id);
+    expect(store('fight_analyses').some((f) => f.id === analiseSobrePessoaInexistente.id)).toBe(false);
+    expect(store('fight_analyses').some((f) => f.id === analiseSobreFichaDeOutroTenant.id)).toBe(false);
+    // a ficha do outro tenant em si não foi tocada
+    expect(store('athletes').find((a) => a.id === fx.tenantB.athlete.id).user_id).toBe(fx.tenantB.user.id);
+    expect(tenantBSnapshot(fx)).toEqual(tenantBBefore);
   });
 });

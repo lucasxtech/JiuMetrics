@@ -16,6 +16,20 @@
  *  - GET /api/strategy/analyses   → controllers/strategyController.js#listAnalyses
  *      (NÃO `/api/strategy` — essa rota não existe; ver routes/strategy.js)
  *  - GET /api/admin/users         → routes/admin.js (authMiddleware + adminMiddleware)
+ *
+ * Revisão final da spec 014 (I5) — R4 cobre também versões e chat. Rotas
+ * reais, de `routes/chatRoutes.js` (montado em `/api/chat`):
+ *  - GET /api/chat/versions/:analysisId            → chatAnalysisController#getVersions
+ *      (posse derivada da análise pai; fora do escopo → 404)
+ *  - GET /api/chat/session/:id                     → chatSessionController#getSession
+ *      (`ChatSession.getById(id, req.userId)`; de outro → 404)
+ *  - GET /api/chat/sessions/:contextType/:contextId → chatSessionController#getSessionsByContext
+ *      (filtra por `req.userId`; de outro → 200 com lista vazia, nunca 404)
+ *  - GET /api/chat/profile-versions/:personType/:personId → chatProfileController#getProfileVersions
+ *      (filtra por `req.userId`; de outro → 200 com lista vazia, nunca 404)
+ * Os dois últimos NÃO devolvem 404 — o status é fixado no comportamento real,
+ * como no teste de `/api/fight-analysis/person` acima; o que se prova é que a
+ * linha semeada do outro atleta não aparece.
  */
 jest.mock('../../config/supabase', () => require('./support/supabaseMock'));
 jest.mock('../../services/geminiService');
@@ -88,5 +102,59 @@ describe('Spec 014 — atleta vs staff nos endpoints existentes (R4, R5)', () =>
   test('fisioterapeuta com role=user não acessa /api/admin/users', async () => {
     const res = await request(app).get('/api/admin/users').set('Authorization', authHeader(fx.tenantA.physio));
     expect(res.status).toBe(403);
+  });
+
+  // ─── R4 em versões e chat (revisão final, I5) ─────────────────────────────
+  test('atleta recebe 404 nas versões de uma análise de outro atleta do mesmo tenant', async () => {
+    const res = await request(app)
+      .get(`/api/chat/versions/${fx.tenantA.fightAnalysis.id}`)
+      .set('Authorization', authHeader(fx.tenantA.athlete2));
+    expect(res.status).toBe(404);
+    expect(res.body.data).toBeUndefined();
+  });
+
+  test('controle: staff do tenant lê as versões da mesma análise (o 404 acima é escopo, não rota quebrada)', async () => {
+    const res = await request(app)
+      .get(`/api/chat/versions/${fx.tenantA.fightAnalysis.id}`)
+      .set('Authorization', authHeader(fx.tenantA.physio));
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((v) => v.id)).toEqual([fx.tenantA.version.id]);
+  });
+
+  test('atleta recebe 404 na sessão de chat de outro atleta do mesmo tenant', async () => {
+    const res = await request(app)
+      .get(`/api/chat/session/${fx.tenantA.chatSession.id}`)
+      .set('Authorization', authHeader(fx.tenantA.athlete2));
+    expect(res.status).toBe(404);
+    expect(res.body.data).toBeUndefined();
+  });
+
+  test('atleta não lista as sessões de chat da análise de outro atleta do mesmo tenant', async () => {
+    const res = await request(app)
+      .get(`/api/chat/sessions/analysis/${fx.tenantA.fightAnalysis.id}`)
+      .set('Authorization', authHeader(fx.tenantA.athlete2));
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+  });
+
+  test('atleta não lê as versões de perfil técnico de outro atleta do mesmo tenant', async () => {
+    const pvDoUser = {
+      id: 'pv-do-user', person_id: fx.tenantA.athlete.id, person_type: 'athlete', user_id: fx.tenantA.user.id,
+      version_number: 1, content: 'perfil', is_current: true, created_at: new Date().toISOString(),
+    };
+    supabaseMock.__setFake(createFakeSupabase({ ...fx.seedRows, profile_versions: [pvDoUser] }));
+
+    const res = await request(app)
+      .get(`/api/chat/profile-versions/athlete/${fx.tenantA.athlete.id}`)
+      .set('Authorization', authHeader(fx.tenantA.athlete2));
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+
+    // controle: o dono vê a linha semeada — a lista vazia acima é escopo
+    const own = await request(app)
+      .get(`/api/chat/profile-versions/athlete/${fx.tenantA.athlete.id}`)
+      .set('Authorization', authHeader(fx.tenantA.user));
+    expect(own.status).toBe(200);
+    expect(own.body.data).toHaveLength(1);
   });
 });

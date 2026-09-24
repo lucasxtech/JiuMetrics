@@ -91,7 +91,7 @@ erDiagram
 
 **Índices:** `idx_users_role`, `idx_users_is_active` (`017`), `idx_users_tenant_id` (`021`).
 
-**✅ Colunas reais (medidas em 2026-08-13, antes da spec 014):** `id, name, email, password_hash, role, is_active, created_by, tenant_id, token_version, last_login, created_at, updated_at` — 12 colunas, exatamente as inferidas das migrations. O schema deixa de ser UNKNOWN. `profile` e `must_change_password` (migration `025`) são **aditivas e não foram medidas em produção ainda** — a migration está escrita, revisada e pendente de execução manual pelo proprietário no SQL Editor do Supabase (mesma situação da `024`, ver §4/§6).
+**✅ Colunas reais (medidas em 2026-08-13, antes da spec 014):** `id, name, email, password_hash, role, is_active, created_by, tenant_id, token_version, last_login, created_at, updated_at` — 12 colunas, exatamente as inferidas das migrations. O schema deixa de ser UNKNOWN. `profile` e `must_change_password` (migration `025`) são **aditivas e não foram medidas em produção ainda** — a migration está escrita, revisada e pendente de execução manual pelo proprietário no SQL Editor do Supabase (como a `024`, ver §4/§6 — mas com a ordem **inversa**: a `025` precisa ser aplicada **antes** do deploy do código da spec 014, que lê e grava essas colunas; ver [`GAPS.md`](./GAPS.md) e [`DEPLOY.md`](./DEPLOY.md)).
 
 **População real:** 25 usuários · 3 admins · **0 inativos** · 2 tenants distintos · nenhum sem `tenant_id`.
 

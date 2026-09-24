@@ -42,4 +42,17 @@ describe('Spec 014 — troca de senha (R10)', () => {
     expect(fresh.status).toBe(200);
     expect(fresh.body.mustChangePassword).toBe(false);
   });
+
+  // M2 (revisão final): "trocar" pela mesma senha zeraria must_change_password
+  // sem a provisória deixar de valer.
+  test('change-password recusa nova senha igual à atual (400), sem mexer na conta', async () => {
+    const tok = authHeader(fx.tenantA.athlete2);
+    const res = await request(app).post('/api/auth/change-password').set('Authorization', tok).send({ currentPassword: 'provisoria1', newPassword: 'provisoria1' });
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'A nova senha precisa ser diferente da atual.' });
+    const row = supabaseMock.__getFake().store.get('users').find((u) => u.id === fx.tenantA.athlete2.id);
+    expect(row.must_change_password).toBe(true);
+    expect(row.token_version).toBe(fx.tenantA.athlete2.token_version);
+    expect(row.password_hash).toBe(hash);
+  });
 });

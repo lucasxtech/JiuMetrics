@@ -19,11 +19,56 @@ describe('Spec 014 — gestão de contas pelo admin (R6, R9, R11)', () => {
   });
 
   test('GET /users traz profile, ficha vinculada e lastLogin', async () => {
+    // I2 (revisão final): a chave é `lastLogin` (camelCase, `publicUser`) —
+    // o front lia `last_login` e a data de login saía em branco em todo card.
+    const lastLogin = '2026-09-20T12:00:00.000Z';
+    store('users').find((u) => u.id === fx.tenantA.athlete2.id).last_login = lastLogin;
     const res = await request(app).get('/api/admin/users').set('Authorization', admin);
     expect(res.status).toBe(200);
     const u = res.body.data.find((x) => x.id === fx.tenantA.athlete2.id);
-    expect(u).toMatchObject({ profile: 'atleta', athleteId: fx.tenantA.athlete2Row.id, athleteName: fx.tenantA.athlete2Row.name });
+    expect(u).toMatchObject({ profile: 'atleta', athleteId: fx.tenantA.athlete2Row.id, athleteName: fx.tenantA.athlete2Row.name, lastLogin });
+    expect(u).not.toHaveProperty('last_login');
+    expect(res.body.data.find((x) => x.id === fx.tenantA.physio.id).lastLogin).toBeNull();
     expect(res.body.data.map((x) => x.id)).not.toContain(fx.tenantB.admin.id);
+  });
+
+  // I6 (revisão final): `getLinkedAthletes` lia `athletes` só por
+  // `account_user_id`, sem escopo — uma ficha gerida em OUTRO tenant que
+  // apontasse para uma conta deste aparecia como a ficha dela.
+  test('GET /users não mostra como vinculada uma ficha gerida em outro tenant', async () => {
+    const fichaDeOutroTenant = { ...fx.tenantB.athlete2Row, id: 'ficha-do-tenant-b-apontando-para-fisio-a', user_id: fx.tenantB.admin.id, account_user_id: fx.tenantA.physio.id, name: 'Ficha do tenant B' };
+    supabaseMock.__setFake(createFakeSupabase({ ...fx.seedRows, athletes: [...fx.seedRows.athletes, fichaDeOutroTenant] }));
+
+    const res = await request(app).get('/api/admin/users').set('Authorization', admin);
+    expect(res.status).toBe(200);
+    const physio = res.body.data.find((x) => x.id === fx.tenantA.physio.id);
+    expect(physio).toMatchObject({ athleteId: null, athleteName: null });
+
+    const scopeA = [fx.tenantA.admin.id, fx.tenantA.user.id, fx.tenantA.athlete2.id, fx.tenantA.physio.id];
+    await expect(User.getLinkedAthletes([fx.tenantA.physio.id], scopeA)).resolves.toEqual([]);
+    // e o método exige o escopo (spec 006): sem ele, lança em vez de ler
+    await expect(User.getLinkedAthletes([fx.tenantA.physio.id])).rejects.toThrow();
+  });
+
+  // M4 (revisão final): senha definida pelo admin é provisória, como na criação.
+  test('PATCH /users/:id com password grava must_change_password, invalida as sessões; só nome não', async () => {
+    const oldToken = authHeader(fx.tenantA.athlete2);
+    const warm = await request(app).get('/api/auth/validate').set('Authorization', oldToken);
+    expect(warm.status).toBe(200);
+    const before = store('users').find((u) => u.id === fx.tenantA.athlete2.id).token_version;
+
+    const onlyName = await request(app).patch(`/api/admin/users/${fx.tenantA.athlete2.id}`).set('Authorization', admin).send({ name: 'Novo Nome' });
+    expect(onlyName.status).toBe(200);
+    expect(store('users').find((u) => u.id === fx.tenantA.athlete2.id)).toMatchObject({ token_version: before, must_change_password: false });
+
+    const res = await request(app).patch(`/api/admin/users/${fx.tenantA.athlete2.id}`).set('Authorization', admin).send({ password: 'provisoria9' });
+    expect(res.status).toBe(200);
+    const row = store('users').find((u) => u.id === fx.tenantA.athlete2.id);
+    expect(row.must_change_password).toBe(true);
+    expect(row.token_version).toBe(before + 1);
+
+    const stale = await request(app).get('/api/auth/validate').set('Authorization', oldToken);
+    expect(stale.status).toBe(401);
   });
 
   test('POST /users cria com perfil, admin opcional, ficha vinculada e must_change_password', async () => {

@@ -125,7 +125,11 @@ async function applyDecisions(supabase, decisions) {
       athleteLinked = true;
     }
     if (d.profile) {
-      const up = await supabase.from('users').update({ profile: d.profile }).eq('id', userId);
+      // `.select('id')` para saber quantas linhas a escrita tocou (revisão
+      // final da spec 014, M8): um `userId` inexistente no arquivo de
+      // decisões fazia um UPDATE de 0 linhas, sem erro — e a conta era
+      // contada como `applied` sem que nada tivesse mudado.
+      const up = await supabase.from('users').update({ profile: d.profile }).eq('id', userId).select('id');
       if (up.error) {
         skipped.push({
           userId,
@@ -135,10 +139,41 @@ async function applyDecisions(supabase, decisions) {
         });
         continue;
       }
+      if (!up.data || up.data.length === 0) {
+        skipped.push({
+          userId,
+          reason: athleteLinked
+            ? `parcial: ficha vinculada, usuário ${userId} não encontrado`
+            : `usuário ${userId} não encontrado`,
+        });
+        continue;
+      }
     }
     applied += 1;
   }
   return { applied, skipped };
+}
+
+/**
+ * Lê `users` e `athletes` e devolve a proposta do dry-run. Falha ALTO
+ * (revisão final da spec 014, M8): antes, um erro em qualquer das duas
+ * leituras virava lista vazia (`data` null → `[]`) e o dry-run imprimia uma
+ * tabela vazia ou "sem ficha" para todo mundo — indistinguível de um banco
+ * sem fichas. Agora lança, e `main` sai com código 1.
+ *
+ * @param {object} supabase - cliente PostgREST (produção ou fake de teste)
+ * @returns {Promise<ReturnType<typeof proposeLinks>>}
+ */
+async function dryRun(supabase) {
+  const rUsers = await supabase.from('users').select('id, name, email, profile').order('created_at', { ascending: true });
+  if (rUsers.error) {
+    throw new Error(`Falha ao ler users (${rUsers.error.code || 'sem código'}): ${rUsers.error.message}`);
+  }
+  const rAthletes = await supabase.from('athletes').select('id, user_id, name, account_user_id');
+  if (rAthletes.error) {
+    throw new Error(`Falha ao ler athletes (${rAthletes.error.code || 'sem código'}): ${rAthletes.error.message}`);
+  }
+  return proposeLinks(rUsers.data || [], rAthletes.data || []);
 }
 
 const USO = 'Uso: node scripts/link-accounts.js [--apply <arquivo.json>]';
@@ -169,11 +204,10 @@ async function main() {
     return;
   }
 
-  const { data: users } = await supabase.from('users').select('id, name, email, profile').order('created_at', { ascending: true });
-  const { data: athletes } = await supabase.from('athletes').select('id, user_id, name, account_user_id');
   // Dry-run: a tabela é o ponto do comando — não é log de PII proibido, é
-  // exatamente o que o dono pediu para revisar antes de decidir.
-  console.table(proposeLinks(users || [], athletes || []));
+  // exatamente o que o dono pediu para revisar antes de decidir. Erro de
+  // leitura lança; o `catch` de baixo imprime e sai com código 1.
+  console.table(await dryRun(supabase));
   console.log('\nDry-run. Para aplicar: edite um JSON de decisões e rode com --apply <arquivo>.');
 }
 
@@ -184,4 +218,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { proposeLinks, applyDecisions, PROFILES };
+module.exports = { proposeLinks, applyDecisions, dryRun, PROFILES };

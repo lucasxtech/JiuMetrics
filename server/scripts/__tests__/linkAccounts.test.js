@@ -1,4 +1,4 @@
-const { proposeLinks, applyDecisions } = require('../link-accounts');
+const { proposeLinks, applyDecisions, dryRun } = require('../link-accounts');
 const { createFakeSupabase } = require('../../src/__tests__/authorization/support/fakeSupabase');
 
 describe('Spec 014 — link-accounts (R13)', () => {
@@ -40,7 +40,8 @@ describe('Spec 014 — link-accounts (R13)', () => {
     const spyClient = {
       from(table) {
         if (table === 'users') {
-          return { update: () => ({ eq: () => Promise.resolve({ error: { message: 'boom' } }) }) };
+          // `.select('id')` depois do `.eq` desde a revisão final (M8).
+          return { update: () => ({ eq: () => ({ select: () => Promise.resolve({ data: null, error: { message: 'boom' } }) }) }) };
         }
         return client.from(table);
       },
@@ -64,5 +65,35 @@ describe('Spec 014 — link-accounts (R13)', () => {
     const res = await applyDecisions(spyClient, { u2: { athleteId: 'a2', profile: 'professor' } });
     expect(res.applied).toBe(0);
     expect(res.skipped).toEqual([{ userId: 'u2', reason: 'erro ao ler ficha a2: down' }]);
+  });
+
+  // Revisão final da spec 014 (M8): uma decisão só de perfil para um userId
+  // que não existe fazia UPDATE de 0 linhas sem erro e contava como aplicada.
+  test('applyDecisions: decisão só de perfil para usuário inexistente é skipped, não applied', async () => {
+    const { client, store } = createFakeSupabase({ users: users.map((u) => ({ ...u, profile: 'atleta' })), athletes });
+    const res = await applyDecisions(client, { 'u-inexistente': { profile: 'professor' }, u1: { profile: 'nutricionista' } });
+    expect(res.applied).toBe(1);
+    expect(res.skipped).toEqual([{ userId: 'u-inexistente', reason: 'usuário u-inexistente não encontrado' }]);
+    expect(store.get('users').find((u) => u.id === 'u1').profile).toBe('nutricionista');
+  });
+
+  test('dryRun propõe a partir das duas leituras', async () => {
+    const { client } = createFakeSupabase({ users: users.map((u) => ({ ...u, created_at: '2026-01-01' })), athletes });
+    const out = await dryRun(client);
+    expect(out.find((r) => r.userId === 'u1').proposal).toBe('a1');
+  });
+
+  // M8: erro de leitura no dry-run não pode virar tabela vazia (que se lê
+  // como "ninguém tem ficha") — lança, e `main` sai com código 1.
+  test.each(['users', 'athletes'])('dryRun lança quando a leitura de %s falha', async (failing) => {
+    const { client } = createFakeSupabase({ users, athletes });
+    const failure = Promise.resolve({ data: null, error: { code: 'XX000', message: 'down' } });
+    const spyClient = {
+      from(table) {
+        if (table !== failing) return client.from(table);
+        return { select: () => (table === 'users' ? { order: () => failure } : failure) };
+      },
+    };
+    await expect(dryRun(spyClient)).rejects.toThrow(`Falha ao ler ${failing} (XX000): down`);
   });
 });

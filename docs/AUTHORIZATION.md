@@ -80,14 +80,16 @@ flowchart TD
     V -->|inválido| E401["401"]
     V -->|válido| C{"cache em memória<br/>TTL 5 min?"}
     C -->|hit| I["authInfo"]
-    C -->|miss| Q["User.getAuthInfo<br/>SELECT role, is_active, token_version"]
+    C -->|miss| Q["User.getAuthInfo<br/>SELECT * (role, is_active, token_version,<br/>profile, must_change_password)"]
     Q --> I
     I --> A1{"is_active?"}
     A1 -->|false| E403["403 conta desativada"]
     A1 -->|true| A2{"token.tokenVersion<br/>=== db.token_version?"}
     A2 -->|não| E401b["401 sessão expirada"]
     A2 -->|sim| OK["req.user = {id, role DO BANCO}<br/>req.userId = id"]
-    Q -->|erro de DB| FB["⚠️ FALLBACK:<br/>usa role DO TOKEN"]
+    Q -->|"PGRST116<br/>(conta não existe)"| E401c["401 sessão inválida"]
+    Q -->|"outro code<br/>(banco respondeu)"| E503["503"]
+    Q -->|"sem code<br/>(rede/timeout)"| FB["⚠️ FALLBACK:<br/>usa role DO TOKEN"]
     FB --> OK
 
     style FB fill:#8b1a1a,color:#fff
@@ -97,7 +99,8 @@ flowchart TD
 1. **`role` vem do banco, não do token** — um JWT com papel alterado ou obsoleto não escala privilégio.
 2. **`is_active` é reconsultado** — conta desativada é rejeitada mesmo com token válido.
 3. **`token_version` é comparado** — troca de papel ou desativação invalida sessões vivas imediatamente. Ver [ADR-004](./decisions/004-token-version-para-invalidacao-de-sessao.md).
-4. **`profile` também vem do banco** (spec 014) — `User.getAuthInfo` devolve `role, is_active, token_version, profile, must_change_password`, e o middleware popula `req.user.profile` e `req.actor.profile`. Uma linha de banco anterior à migration `025` (sem a coluna) vale como `'atleta'` — o perfil mais restritivo. No fallback de falha do banco (AZ-8), `profile` também cai em `'atleta'`, nunca no que o token diria — o token não carrega perfil.
+4. **`profile` também vem do banco** (spec 014) — `User.getAuthInfo` devolve `role, is_active, token_version, profile, must_change_password`, e o middleware popula `req.user.profile` e `req.actor.profile`. A leitura é `select('*')` com o objeto montado campo a campo (revisão final da spec 014): uma linha de banco anterior à migration `025` (sem a coluna) chega `undefined` e vale como `'atleta'` — o perfil mais restritivo — em vez de derrubar a query com `42703`. No fallback de falha de rede (AZ-8), `profile` também cai em `'atleta'`, nunca no que o token diria — o token não carrega perfil.
+5. **O erro da leitura decide o que acontece** (revisão final da spec 014): `PGRST116` — a linha de `users` não existe, ex.: conta excluída — é **401** `Sessão inválida`; qualquer outro `code` do PostgREST/Postgres é **503**, com o código no log, **sem** fallback; só o erro **sem** `code` (o supabase-js devolve `code: ''` para falha de rede, e um gateway que responde HTML não traz código) cai no fallback do token.
 
 **Cache**: `Map` em memória, TTL 5 min, teto de 5000 entradas com evicção FIFO. `evictAuthCache(userId)` é chamado em toda mutação sensível de usuário. Em ambiente serverless o cache é **por instância** — uma desativação pode levar até 5 min para valer em todas.
 
@@ -150,7 +153,7 @@ A matriz completa (idêntica à da [spec](../specs/014-identity-and-profiles/spe
 | `health:read` / `health:write` | própria ficha | tenant | tenant | como o perfil |
 | `users:manage` | negado | negado | negado | **permitido** |
 
-`training`, `schedule`, `competition` e `health` **não têm endpoint ainda** — entram na tabela para que as specs de competições, agenda e saúde (fases 3–5 do [`ROADMAP.md`](./ROADMAP.md)) só precisem registrar consumidores, sem tocar `resolveScope` de novo. `users:manage` é a única ação hoje efetivamente consumida (equivalente a `adminMiddleware`, que continua decidindo por `role` sem olhar `profile` — R-05).
+`training`, `schedule`, `competition` e `health` **não têm endpoint ainda** — entram na tabela para que as specs de competições, agenda e saúde (fases 3–5 do [`ROADMAP.md`](./ROADMAP.md)) só precisem registrar consumidores, sem tocar `resolveScope` de novo. **Nenhum código de produção chama `can`/`authorize` ainda** — nem para `users:manage`: a gestão de contas continua decidida pelo `adminMiddleware` (por `role`, sem olhar `profile` — R-05), e a linha `users:manage` só **espelha** essa regra na tabela. Hoje a matriz inteira é exercitada apenas por `capabilities.test.js`; os primeiros consumidores reais serão os endpoints das specs de competições, agenda e saúde.
 
 `competition:team-event:write` é a exceção da tabela: não basta `inScope` porque um `atleta` (escopo `[id]`) pode criar evento de equipe para qualquer colega do tenant — essa regra sozinha consulta `User.getGroupUserIds` diretamente, em vez de usar o `scope` padrão. Não generalizar esse padrão para outras ações sem necessidade equivalente.
 
@@ -266,9 +269,10 @@ Criava a análise sem verificar que a pessoa existia e pertencia ao usuário, en
 `athleteData` era aceito inteiro do `req.body` e serializado direto no prompt, sem validação de schema, sem limite (o teto era o `express.json` de 10 MB) e sem relação com o `user_id` do chamador — abuso de custo de IA e prompt injection direta. Não havia "dado alheio" a ler porque o endpoint não buscava nada: o próprio contrato era a falha.
 **Correção:** o endpoint recebe `athleteId` e carrega nome e análises no servidor, dentro do escopo. O formato antigo devolve 400. Contrato coberto por `athleteSummary.test.js`, incluindo um teste que prova que um `athleteData` enviado junto **não alcança o prompt**.
 
-### AZ-8 — Fallback de autenticação abre em falha do banco
-Se `User.getAuthInfo` lançar, o middleware continua com o `role` **do token**.
-**Impacto:** uma indisponibilidade do Supabase desliga as três proteções ao mesmo tempo — token de conta desativada volta a valer, `token_version` deixa de ser checado, e o papel do token volta a ser aceito.
+### AZ-8 — Fallback de autenticação abre em falha de rede
+Se a leitura de `User.getAuthInfo` falhar **sem resposta do banco** (erro sem `code` — rede/timeout), o middleware continua com o `role` **do token**.
+**Impacto:** uma indisponibilidade de rede do Supabase desliga as três proteções ao mesmo tempo — token de conta desativada volta a valer, `token_version` deixa de ser checado, e o papel do token volta a ser aceito.
+**Estreitado na revisão final da spec 014 (2026-09-24):** antes, **qualquer** erro caía no fallback — inclusive `PGRST116` (a conta tinha sido excluída, e o token dela continuava valendo) e `42703` (código deployado antes da migration `025`: o login dava 500 e as rotas autenticadas perdiam as checagens de `is_active`/`token_version` em silêncio). Hoje só o erro sem `code` cai no fallback; `PGRST116` é 401 e os demais códigos são 503. Testado em `authorization/authFallback.test.js` e no teste I7 de `deleteAccount.test.js`. O caso de rede continua aberto.
 
 ### AZ-9 — Rate limiting inoperante em produção
 `MemoryStore` em function serverless. Enfraquece diretamente a proteção de brute force no login e o teto de operações de IA.

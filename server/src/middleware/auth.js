@@ -93,9 +93,10 @@ const authMiddleware = (req, res, next) => {
         }
 
         // Usar role do banco (não do token) para evitar role stale no JWT
-        // profile — spec 014: sempre lido do banco, nunca do token; linha
-        // sem a coluna (banco anterior à migration 025) vale como o perfil
-        // mais restritivo ('atleta').
+        // profile — spec 014: lido do banco, nunca do token; linha sem a
+        // coluna (banco anterior à migration 025 — `getAuthInfo` usa
+        // `select('*')`, então a coluna ausente chega `undefined` em vez de
+        // derrubar a query) vale como o perfil mais restritivo ('atleta').
         const profile = authInfo.profile || 'atleta';
         const mustChangePassword = authInfo.must_change_password === true;
         req.user = { id: decoded.userId, role: authInfo.role, profile, mustChangePassword };
@@ -105,10 +106,34 @@ const authMiddleware = (req, res, next) => {
         req.actor = { id: decoded.userId, role: authInfo.role, profile, tenantId: null };
         return next();
       } catch (dbError) {
-        console.error('⚠️ Falha ao verificar usuário no DB — usando dados do token como fallback:', dbError.message);
-        // Fallback seguro: continua com dados do token se o banco estiver indisponível.
-        // profile fica no valor mais restritivo ('atleta') porque o token não carrega
-        // o perfil (spec 014) — não há como saber o perfil real sem consultar o banco.
+        // Três casos, decididos pelo `code` do erro (revisão final da spec
+        // 014, C1). O PostgREST devolve `code` quando o BANCO respondeu
+        // (`PGRST*` do PostgREST, SQLSTATE do Postgres, ex. `42703`); o
+        // supabase-js devolve `code: ''` para falha de rede, e um gateway que
+        // responde HTML não traz `code` nenhum. Por isso:
+        //
+        // 1. `PGRST116` — o banco respondeu que a linha de `users` não existe
+        //    (conta excluída pela purga da spec 014). O token é de uma conta
+        //    que deixou de existir: 401, nunca fallback.
+        // 2. Qualquer outro código — o banco respondeu com erro (coluna
+        //    inexistente porque o deploy veio antes da migration, query
+        //    inválida, timeout de statement...). Não há por que confiar no
+        //    token quando o banco está no ar: 503, e o código vai para o log.
+        //    Antes desta correção, esses casos caíam no fallback e desligavam
+        //    em silêncio as checagens de `is_active` e `token_version`.
+        // 3. Sem código — falha de conectividade/timeout. Único caso em que o
+        //    fallback do token continua valendo (dívida conhecida, AZ-8 em
+        //    docs/AUTHORIZATION.md): o `role` vem do JWT, `profile` fica no
+        //    mais restritivo ('atleta') porque o token não carrega perfil.
+        const code = dbError && dbError.code;
+        if (code === 'PGRST116') {
+          return res.status(401).json({ error: 'Sessão inválida. Faça login novamente.' });
+        }
+        if (code) {
+          console.error(`❌ Banco respondeu com erro ao verificar usuário (código ${code}) — requisição recusada, sem fallback para o token`);
+          return res.status(503).json({ error: 'Serviço temporariamente indisponível.' });
+        }
+        console.error('⚠️ Falha de conexão ao verificar usuário no DB — usando dados do token como fallback:', dbError && dbError.message);
         req.user = { id: decoded.userId, role: decoded.role || 'user', profile: 'atleta', mustChangePassword: false };
         req.userId = decoded.userId;
         req.actor = { id: decoded.userId, role: decoded.role || 'user', profile: 'atleta', tenantId: null };

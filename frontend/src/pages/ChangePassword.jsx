@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { changePassword } from '../services/authService';
 import { useAuth } from '../contexts/AuthContext';
 
+// Mensagem exata do 401 de senha atual errada (`authController#changePassword`).
+// Qualquer OUTRO 401 nesta chamada é sessão inválida/expirada (vem do
+// `authMiddleware`) — como `changePassword` usa `skipAuthLogout`, o
+// interceptor de `api.js` não desloga sozinho, e a tela precisa fazê-lo.
+const WRONG_CURRENT_PASSWORD = 'Senha atual incorreta.';
+
 /**
  * Troca de senha (spec 014, R10). É a única rota que um usuário com
  * `mustChangePassword: true` consegue acessar (ver `ProtectedRoute`) —
@@ -11,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
  */
 export default function ChangePassword() {
   const navigate = useNavigate();
-  const { markPasswordChanged, mustChangePassword } = useAuth();
+  const { markPasswordChanged, mustChangePassword, logout } = useAuth();
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,6 +44,11 @@ export default function ChangePassword() {
       setError('As senhas não coincidem.');
       return;
     }
+    // Espelho da regra do servidor (revisão final da spec 014, M2).
+    if (newPassword === currentPassword) {
+      setError('A nova senha precisa ser diferente da atual.');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -46,8 +57,15 @@ export default function ChangePassword() {
       markPasswordChanged(res.data.token);
       navigate('/');
     } catch (err) {
-      if (err.response?.status === 401) {
-        setError('Senha atual incorreta.');
+      if (err.response?.status === 401 && err.response?.data?.error === WRONG_CURRENT_PASSWORD) {
+        setError(WRONG_CURRENT_PASSWORD);
+      } else if (err.response?.status === 401) {
+        // Sessão inválida/expirada (revisão final da spec 014, M3): mostrar
+        // "senha atual incorreta" aqui mandaria o usuário redigitar uma senha
+        // certa para sempre. Sai pelo mesmo caminho de logout do app.
+        logout();
+        navigate('/login', { replace: true });
+        return;
       } else {
         setError(err.response?.data?.error || 'Erro ao trocar a senha.');
       }

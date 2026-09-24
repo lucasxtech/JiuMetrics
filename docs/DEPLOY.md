@@ -260,6 +260,7 @@ vercel
 **✅ Já está em produção!** Supabase é cloud-native.
 
 ### Checklist:
+- [ ] **🔴 BLOQUEANTE para a spec 014: `server/migrations/025-account-profile.sql` aplicada no SQL Editor do Supabase ANTES de mergear/deployar o código da spec 014.** O código lê e grava `users.profile`, `users.must_change_password` e `athletes.account_user_id`; sem as colunas, a tela de Usuários, a criação/exclusão de conta e o vínculo de ficha falham. O login e o `authMiddleware` sobrevivem (leem com `select('*')`), mas isso é rede de segurança, não ordem alternativa. A `025` é aditiva, idempotente e sem `UPDATE` — pode ir antes do código sem quebrar a versão em produção. Ver [`GAPS.md`](./GAPS.md) (spec 014, item 1)
 - [ ] Migrações executadas (migrations/*.sql) — ver ressalva em [`docs/DATABASE.md`](./DATABASE.md) §1: elas não são a fonte de verdade
 - [ ] `anon`/`authenticated` sem GRANT nas tabelas de `public` (spec 008) — **não** RLS: [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md) escolheu revogar acesso em vez de reativar RLS, porque a autenticação é JWT próprio e `auth.uid()` nunca é satisfeita
 - [ ] Índices criados para performance
@@ -323,6 +324,7 @@ Desde a spec 008 o backend **não inicia** sem `SUPABASE_SERVICE_ROLE_KEY` — n
 - [ ] Favicon e manifest.json
 
 **Database:**
+- [ ] **🔴 `025-account-profile.sql` aplicada ANTES do deploy da spec 014** (ver *Banco de Dados* acima)
 - [ ] Todas as migrações executadas
 - [ ] Índices criados
 - [ ] RLS configurado

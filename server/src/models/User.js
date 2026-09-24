@@ -180,15 +180,25 @@ class User {
 
   /**
    * Fichas de atleta vinculadas a um conjunto de contas (spec 014, R6).
-   * @param {string[]} userIds
+   *
+   * Exige escopo (revisão final da spec 014, I6): a leitura filtra por
+   * `account_user_id` E por `user_id` (quem gere a ficha) dentro de
+   * `allowedUserIds`. Sem o segundo filtro, uma ficha gerida em OUTRO tenant
+   * que apontasse `account_user_id` para uma conta deste tenant apareceria
+   * como "a ficha dela" — o mesmo esquecimento que produziu os IDORs da spec
+   * 006, agora falhando em vez de vazar.
+   * @param {string[]} userIds - contas cujas fichas vinculadas se quer
+   * @param {string[]} allowedUserIds - escopo de posse do chamador (`resolveScope`)
    * @returns {Promise<Array<{id: string, name: string, account_user_id: string}>>}
    */
-  static async getLinkedAthletes(userIds) {
+  static async getLinkedAthletes(userIds, allowedUserIds) {
+    const ids = requireScope(allowedUserIds, 'User.getLinkedAthletes');
     if (!userIds.length) return [];
     const { data, error } = await supabase
       .from('athletes')
       .select('id, name, account_user_id')
-      .in('account_user_id', userIds);
+      .in('account_user_id', userIds)
+      .in('user_id', ids);
     if (error) throw error;
     return data || [];
   }
@@ -276,28 +286,46 @@ class User {
 
   /**
    * Busca usuário por email
+   *
+   * `select('*')`, não lista de colunas (revisão final da spec 014, C1): o
+   * login é o primeiro caminho a rodar depois de um deploy, e nomear
+   * `profile`/`must_change_password` fazia o PostgREST responder `42703`
+   * (coluna inexistente) se o código subisse antes da migration 025 — o login
+   * dava 500 para todo mundo. Com `*`, coluna ausente só chega `undefined`, e
+   * os defaults de quem lê (`'atleta'`, `false`) valem. O objeto devolvido é
+   * montado campo a campo, então nada além do que o login precisa sai daqui.
+   * ⚠️ A ordem de deploy continua sendo "migration 025 antes do código" — isto
+   * é rede de segurança, não licença para inverter.
    * @param {string} email - Email do usuário
-   * @returns {Promise<Object|null>} Usuário encontrado ou null
+   * @returns {Promise<{id: string, name: string, email: string, password_hash: string, role: string, is_active: boolean, token_version: number, profile?: string, must_change_password?: boolean, last_login: string|null, created_at: string}|null>} Usuário encontrado ou null
    */
   static async findByEmail(email) {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, email, password_hash, role, is_active, token_version, profile, must_change_password, last_login, created_at')
-        .eq('email', email.toLowerCase().trim())
-        .single();
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .single();
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return null;
-        }
-        throw error;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
       }
-
-      return data;
-    } catch (error) {
       throw error;
     }
+
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      password_hash: data.password_hash,
+      role: data.role,
+      is_active: data.is_active,
+      token_version: data.token_version,
+      profile: data.profile,
+      must_change_password: data.must_change_password,
+      last_login: data.last_login,
+      created_at: data.created_at,
+    };
   }
 
   /**
@@ -464,23 +492,35 @@ class User {
    * Retorna dados de autenticação do usuário (role, is_active, token_version,
    * profile, must_change_password).
    * Usado pelo middleware para validar sessões sem confiar apenas no JWT.
+   *
+   * `select('*')` pela mesma razão de `findByEmail` (revisão final da spec
+   * 014, C1): nomear colunas novas faz o PostgREST responder `42703` antes da
+   * migration 025, e o middleware inteiro passava a depender disso. O objeto
+   * devolvido é montado explicitamente — **`password_hash` nunca entra nele**,
+   * porque este valor vai para o cache em memória do middleware.
+   *
+   * Erros sobem com o `code` do PostgREST/Postgres intacto: o middleware usa
+   * esse código para decidir entre 401 (`PGRST116`, conta não existe mais),
+   * 503 (qualquer outro código) e o fallback do token (sem código — falha de
+   * rede). Ver `middleware/auth.js`.
    * @param {string} userId
-   * @returns {Promise<{role: string, is_active: boolean, token_version: number, profile: string, must_change_password: boolean}>}
+   * @returns {Promise<{role: string, is_active: boolean, token_version: number, profile?: string, must_change_password?: boolean}>}
    */
   static async getAuthInfo(userId) {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('role, is_active, token_version, profile, must_change_password')
-        .eq('id', userId)
-        .single();
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('❌ Erro no User.getAuthInfo:', error);
-      throw error;
-    }
+    if (error) throw error;
+    return {
+      role: data.role,
+      is_active: data.is_active,
+      token_version: data.token_version,
+      profile: data.profile,
+      must_change_password: data.must_change_password,
+    };
   }
 
   /**
@@ -527,8 +567,8 @@ class User {
    * envolvidos — só leitura, nenhuma escrita — dentro de um único
    * `run('collect', ...)`, para que uma leitura que falhe também carregue
    * `error.step`/`error.partial` (zerado, porque nada foi escrito ainda) em
-   * vez de lançar cru. Só depois disso a purga escreve: reparent, depois as
-   * exclusões, filhos antes de pais.
+   * vez de lançar cru. Só depois disso a purga escreve: transferências
+   * (reassign + reparent), depois as exclusões, filhos antes de pais.
    *
    * Exceção (ruling do controller): uma ficha GERIDA pela conta
    * (`user_id = userId`) mas ainda VINCULADA a OUTRA conta viva e DENTRO DO
@@ -539,6 +579,17 @@ class User {
    * com ela. Uma ficha vinculada a uma conta FORA do escopo (achado C1) não
    * reparenta — ficaria fora do alcance de quem chamou — e cai no conjunto
    * de exclusão como qualquer outra ficha da conta.
+   *
+   * Segunda exceção (ruling do controller na revisão final da spec 014, I3 —
+   * reversível pelo proprietário): uma `fight_analyses`/`profile_versions`
+   * ESCRITA pela conta (`user_id = userId`) sobre uma pessoa que SOBREVIVE à
+   * purga (ficha ou adversário do tenant fora do conjunto de exclusão — ex.:
+   * o atleta autogerido que o professor excluído analisou) é TRANSFERIDA ao
+   * gestor dessa pessoa (`user_id` da ficha/adversário), não apagada —
+   * contada em `reassignedAnalyses`/`reassignedProfileVersions`. Linha cuja
+   * pessoa vai ser apagada, ou não é encontrada no tenant, é apagada como
+   * antes. A decisão é tomada inteira na coleta; a escrita acontece no passo
+   * `reparent`, antes do reparent das fichas.
    *
    * Como a coleta roda ANTES do reparent (a escrita), uma análise/versão de
    * perfil de uma ficha-a-reparentar ainda aparece com `user_id = userId`
@@ -561,7 +612,7 @@ class User {
    * controlar o escopo passado.
    * @param {string} userId
    * @param {string[]} allowedUserIds escopo do admin (o tenant)
-   * @returns {Promise<{athletes: number, opponents: number, fightAnalyses: number, analysisVersions: number, profileVersions: number, tacticalAnalyses: number, chatSessions: number, reparentedAthletes: number}>}
+   * @returns {Promise<{athletes: number, opponents: number, fightAnalyses: number, analysisVersions: number, profileVersions: number, tacticalAnalyses: number, chatSessions: number, reparentedAthletes: number, reassignedAnalyses: number, reassignedProfileVersions: number}>}
    */
   static async purgeAccount(userId, allowedUserIds) {
     const ids = requireScope(allowedUserIds, 'User.purgeAccount');
@@ -571,7 +622,7 @@ class User {
       throw e;
     }
 
-    const counts = { athletes: 0, opponents: 0, fightAnalyses: 0, analysisVersions: 0, profileVersions: 0, tacticalAnalyses: 0, chatSessions: 0, reparentedAthletes: 0 };
+    const counts = { athletes: 0, opponents: 0, fightAnalyses: 0, analysisVersions: 0, profileVersions: 0, tacticalAnalyses: 0, chatSessions: 0, reparentedAthletes: 0, reassignedAnalyses: 0, reassignedProfileVersions: 0 };
     /**
      * @param {string} label
      * @param {() => Promise<void>} fn
@@ -601,6 +652,10 @@ class User {
 
     /** @type {Array<{id: string, account_user_id?: string, fightAnalysisIds: string[]}>} */
     let toReparent = [];
+    /** @type {Array<{id: string, newOwner: string}>} */
+    let reassignFA = [];
+    /** @type {Array<{id: string, newOwner: string}>} */
+    let reassignPV = [];
     /** @type {string[]} */
     let athleteIds = [];
     /** @type {string[]} */
@@ -647,14 +702,55 @@ class User {
       if (rOpp.error) throw rOpp.error;
       opponentIds = (rOpp.data || []).map((o) => o.id);
 
-      // fight_analyses: próprias (excluindo as de fichas que vão reparentar
-      // — ver JSDoc) + das fichas/adversários da conta (mesmo que criadas
-      // por outro do tenant).
+      // Linhas "próprias" (escritas pela conta) de fight_analyses e
+      // profile_versions, excluindo as de fichas que vão reparentar (ver
+      // JSDoc) — essas migram com a ficha no passo de reparent.
       const rOwnFA = await supabase.from('fight_analyses').select('id, person_id, person_type').eq('user_id', userId);
       if (rOwnFA.error) throw rOwnFA.error;
       const ownFA = (rOwnFA.data || []).filter(
         (f) => !(f.person_type === 'athlete' && reparentAthleteIds.includes(f.person_id))
       );
+      const rOwnPV = await supabase.from('profile_versions').select('id, person_id, person_type').eq('user_id', userId);
+      if (rOwnPV.error) throw rOwnPV.error;
+      const ownPV = (rOwnPV.data || []).filter(
+        (p) => !(p.person_type === 'athlete' && reparentAthleteIds.includes(p.person_id))
+      );
+
+      // I3 (revisão final da spec 014 — ruling do controller, reversível pelo
+      // proprietário): uma linha própria cuja PESSOA sobrevive à purga (ficha
+      // ou adversário do tenant fora do conjunto de exclusão — ex.: atleta
+      // autogerido analisado pelo professor excluído) é TRANSFERIDA ao gestor
+      // dessa pessoa (`user_id` da ficha/adversário), espelhando o reparent.
+      // Pessoa no conjunto de exclusão, ou que não se acha no tenant (id
+      // inexistente, de outro tenant, `person_type` desconhecido), continua
+      // sendo apagada. Tudo decidido aqui, na leitura; a escrita só aplica.
+      const deletedPersons = new Set([
+        ...athleteIds.map((id) => `athlete:${id}`),
+        ...opponentIds.map((id) => `opponent:${id}`),
+      ]);
+      const personKey = (/** @type {{person_type: string, person_id: string}} */ r) => `${r.person_type}:${r.person_id}`;
+      const maybeSurvivors = [...ownFA, ...ownPV].filter((r) => !deletedPersons.has(personKey(r)));
+      /** @type {Map<string, string>} chave `tipo:id` da pessoa → `user_id` do gestor */
+      const survivorOwner = new Map();
+      for (const [personType, table] of /** @type {const} */ ([['athlete', 'athletes'], ['opponent', 'opponents']])) {
+        const personIds = [...new Set(maybeSurvivors.filter((r) => r.person_type === personType).map((r) => r.person_id))];
+        if (!personIds.length) continue;
+        const r = await supabase.from(table).select('id, user_id').in('id', personIds).in('user_id', ids);
+        if (r.error) throw r.error;
+        for (const person of r.data || []) {
+          // defensivo: uma pessoa gerida pela própria conta ou já está no
+          // conjunto de exclusão ou no de reparent — nunca é "sobrevivente".
+          if (person.user_id !== userId) survivorOwner.set(`${personType}:${person.id}`, person.user_id);
+        }
+      }
+      const ownerOf = (/** @type {{person_type: string, person_id: string}} */ r) => survivorOwner.get(personKey(r));
+      reassignFA = ownFA.filter((f) => ownerOf(f)).map((f) => ({ id: f.id, newOwner: /** @type {string} */ (ownerOf(f)) }));
+      reassignPV = ownPV.filter((p) => ownerOf(p)).map((p) => ({ id: p.id, newOwner: /** @type {string} */ (ownerOf(p)) }));
+      const ownFAToDelete = ownFA.filter((f) => !ownerOf(f));
+      const ownPVToDelete = ownPV.filter((p) => !ownerOf(p));
+
+      // fight_analyses a apagar: próprias sem pessoa sobrevivente + das
+      // fichas/adversários da conta (mesmo que criadas por outro do tenant).
       let athleteFA = [];
       if (athleteIds.length) {
         const r = await supabase.from('fight_analyses').select('id').in('person_id', athleteIds).eq('person_type', 'athlete').in('user_id', ids);
@@ -667,16 +763,10 @@ class User {
         if (r.error) throw r.error;
         opponentFA = r.data || [];
       }
-      analysisIds = [...new Set([...ownFA, ...athleteFA, ...opponentFA].map((f) => f.id))];
+      analysisIds = [...new Set([...ownFAToDelete, ...athleteFA, ...opponentFA].map((f) => f.id))];
 
-      // profile_versions: próprias (mesma exclusão de reparent) + das
-      // fichas/adversários da conta (achado 4), deduplicadas por id — uma
+      // profile_versions a apagar: mesma regra, deduplicadas por id — uma
       // linha pode casar em mais de um dos três filtros.
-      const rOwnPV = await supabase.from('profile_versions').select('id, person_id, person_type').eq('user_id', userId);
-      if (rOwnPV.error) throw rOwnPV.error;
-      const ownPV = (rOwnPV.data || []).filter(
-        (p) => !(p.person_type === 'athlete' && reparentAthleteIds.includes(p.person_id))
-      );
       let athletePV = [];
       if (athleteIds.length) {
         // achado H2 (revisão T10 r3): mesma restrição de escopo do
@@ -691,13 +781,39 @@ class User {
         if (r.error) throw r.error;
         opponentPV = r.data || [];
       }
-      profileVersionIds = [...new Set([...ownPV, ...athletePV, ...opponentPV].map((p) => p.id))];
+      profileVersionIds = [...new Set([...ownPVToDelete, ...athletePV, ...opponentPV].map((p) => p.id))];
     });
 
-    // FASE 2 — escreve: reparent primeiro, depois as exclusões (filhos antes
-    // de pais).
-    if (toReparent.length) {
+    /**
+     * Agrupa `{id, newOwner}` por dono, para uma escrita por dono.
+     * @param {Array<{id: string, newOwner: string}>} rows
+     * @returns {Map<string, string[]>}
+     */
+    const byOwner = (rows) => {
+      /** @type {Map<string, string[]>} */
+      const m = new Map();
+      for (const r of rows) m.set(r.newOwner, [...(m.get(r.newOwner) || []), r.id]);
+      return m;
+    };
+
+    // FASE 2 — escreve: transferências primeiro (reassign + reparent), depois
+    // as exclusões (filhos antes de pais).
+    if (toReparent.length || reassignFA.length || reassignPV.length) {
       await run('reparent', async () => {
+        // I3: filhos cujo pai sobrevive só trocam de dono. `.eq('user_id',
+        // userId)` torna a escrita idempotente numa retentativa — uma linha
+        // já transferida não casa mais, e também já não aparece na leitura
+        // "própria" da coleta seguinte.
+        for (const [newOwner, faIds] of byOwner(reassignFA)) {
+          const { data, error } = await supabase.from('fight_analyses').update({ user_id: newOwner }).in('id', faIds).eq('user_id', userId).select('id');
+          if (error) throw error;
+          counts.reassignedAnalyses += (data || []).length;
+        }
+        for (const [newOwner, pvIds] of byOwner(reassignPV)) {
+          const { data, error } = await supabase.from('profile_versions').update({ user_id: newOwner }).in('id', pvIds).eq('user_id', userId).select('id');
+          if (error) throw error;
+          counts.reassignedProfileVersions += (data || []).length;
+        }
         for (const row of toReparent) {
           const newOwner = row.account_user_id;
           // achado H1 (revisão T10 r3): filhos primeiro, ficha por último —
@@ -718,7 +834,9 @@ class User {
           }
           const { error: pvUpErr } = await supabase.from('profile_versions').update({ user_id: newOwner }).eq('person_id', row.id).eq('person_type', 'athlete').in('user_id', ids);
           if (pvUpErr) throw pvUpErr;
-          const { error: upErr } = await supabase.from('athletes').update({ user_id: newOwner }).eq('id', row.id);
+          // M6: `.in('user_id', ids)` — defesa em profundidade; a ficha foi
+          // lida com `user_id = userId`, que está no escopo por construção.
+          const { error: upErr } = await supabase.from('athletes').update({ user_id: newOwner }).eq('id', row.id).in('user_id', ids);
           if (upErr) throw upErr;
           counts.reparentedAthletes += 1;
         }

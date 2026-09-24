@@ -59,7 +59,7 @@ function publicUser(u, linked) {
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.getAll(req.user.id);
-    const linked = await User.getLinkedAthletes(users.map((u) => u.id));
+    const linked = await User.getLinkedAthletes(users.map((u) => u.id), await resolveScope(req.actor));
     res.json({ success: true, data: users.map((u) => publicUser(u, linked)) });
   } catch (error) {
     handleError(res, 'Listar usuários', error);
@@ -102,6 +102,11 @@ exports.createUser = async (req, res) => {
 /**
  * Atualiza nome ou senha de um usuário (apenas admin)
  * Body (já validado pelo zod — `updateUserSchema`): { name?, password? }
+ *
+ * Senha definida pelo admin é PROVISÓRIA (revisão final da spec 014, M4),
+ * como na criação da conta: grava `must_change_password = true`, incrementa
+ * `token_version` e evicta o cache — as sessões vivas caem e o próximo login
+ * leva o usuário a `/trocar-senha`. Só nome não mexe em sessão.
  */
 exports.updateUser = async (req, res) => {
   try {
@@ -112,9 +117,17 @@ exports.updateUser = async (req, res) => {
 
     const updates = {};
     if (name) updates.name = name;
-    if (password) updates.password = password;
+    if (password) {
+      updates.password = password;
+      updates.must_change_password = true;
+    }
 
     const updated = await User.update(id, updates);
+    if (password) {
+      await User.invalidateTokens(id);
+      evictAuthCache(id);
+      console.log(`🔐 [AUDIT] Admin ${req.user.id} redefiniu a senha do usuário ${id} (provisória)`);
+    }
     res.json({
       success: true,
       data: {
@@ -244,7 +257,7 @@ exports.changeProfile = async (req, res) => {
     await User.invalidateTokens(id);
     evictAuthCache(id);
     console.log(`🔐 [AUDIT] Admin ${req.user.id} alterou profile do usuário ${id} para '${profile}'`);
-    res.json({ success: true, data: publicUser(updated, await User.getLinkedAthletes([id])) });
+    res.json({ success: true, data: publicUser(updated, await User.getLinkedAthletes([id], await resolveScope(req.actor))) });
   } catch (error) {
     handleError(res, 'Alterar perfil do usuário', error);
   }
@@ -266,7 +279,7 @@ exports.linkAthlete = async (req, res) => {
     try {
       const result = await User.linkAthlete(id, athleteId, scope);
       console.log(`🔐 [AUDIT] Admin ${req.user.id} ${result} ficha ${athleteId} ↔ usuário ${id}`);
-      const linked = await User.getLinkedAthletes([id]);
+      const linked = await User.getLinkedAthletes([id], scope);
       const u = (await User.getAll(req.user.id)).find((x) => x.id === id);
       return res.json({ success: true, data: publicUser(u, linked) });
     } catch (e) {

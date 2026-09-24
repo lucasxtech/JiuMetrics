@@ -81,7 +81,8 @@ function ConfirmActionModal({ open, onClose, onConfirm, title, message, confirmL
 // ─── Resumo do que foi apagado (spec 014, R7) ──────────────────────────────────
 // `deleted` vem de `User.purgeAccount` via `deleteUser` controller:
 // { athletes, opponents, fightAnalyses, analysisVersions, profileVersions,
-//   tacticalAnalyses, chatSessions, reparentedAthletes }
+//   tacticalAnalyses, chatSessions, reparentedAthletes, reassignedAnalyses,
+//   reassignedProfileVersions }
 function summarizeDeleted(deleted) {
   if (!deleted) return '';
   const parts = [
@@ -94,9 +95,26 @@ function summarizeDeleted(deleted) {
   return parts.join(', ');
 }
 
+// O que NÃO foi apagado, e sim passou para outra conta (revisão final da spec
+// 014): fichas geridas pela conta mas vinculadas a outra pessoa da equipe
+// (`reparentedAthletes`) e análises que a conta fez de pessoas que continuam
+// (`reassignedAnalyses`).
+function summarizeTransferred(deleted) {
+  if (!deleted) return '';
+  const parts = [
+    deleted.reparentedAthletes ? `${deleted.reparentedAthletes} ficha(s) para a conta vinculada` : null,
+    deleted.reassignedAnalyses ? `${deleted.reassignedAnalyses} análise(s) para quem gere a ficha` : null,
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
 // ─── Modal excluir usuário ────────────────────────────────────────────────────
-// Sem transferência (spec 014, R7/R-13): a exclusão é total, e o backend
+// Sem transferência escolhida pelo admin (spec 014, R7/R-13): o backend
 // rejeita `transferToUserId` com 400 — nada de UI para escolher um destino.
+// O que o backend transfere sozinho (fichas vinculadas a outra pessoa,
+// análises de pessoas que continuam) está descrito no texto do diálogo.
+// Sem contagens antes de confirmar (spec 014, decisão 6): elas vêm na
+// resposta e aparecem no toast.
 function DeleteUserModal({ user, onClose, onDeleted, toast }) {
   const [confirmText, setConfirmText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -109,7 +127,8 @@ function DeleteUserModal({ user, onClose, onDeleted, toast }) {
     try {
       const res = await adminService.deleteUser(user.id);
       const summary = summarizeDeleted(res.data.deleted);
-      toast(`Usuário "${user.name}" excluído.${summary ? ` Apagado: ${summary}.` : ''}`);
+      const transferred = summarizeTransferred(res.data.deleted);
+      toast(`Usuário "${user.name}" excluído.${summary ? ` Apagado: ${summary}.` : ''}${transferred ? ` Transferido: ${transferred}.` : ''}`);
       onDeleted(user.id);
       onClose();
     } catch (err) {
@@ -143,10 +162,19 @@ function DeleteUserModal({ user, onClose, onDeleted, toast }) {
           <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
-          <span>
-            A conta de <strong>{user.name}</strong> e tudo o que ela criou serão apagados: fichas, análises de
-            vídeo, estratégias, adversários e conversas. Não dá para desfazer.
-          </span>
+          <div className="space-y-2">
+            <p>
+              <strong>Será apagado:</strong> a conta de <strong>{user.name}</strong>; as fichas de atleta dela,
+              inclusive a ficha vinculada a ela mesmo que gerida por outra pessoa; as análises de vídeo e o
+              histórico dessas fichas; e as estratégias, conversas e adversários da conta.
+            </p>
+            <p>
+              <strong>Não será apagado, passa para outra conta:</strong> fichas que ela gere mas estão vinculadas
+              à conta de outra pessoa da equipe (passam para essa pessoa) e análises que ela fez de pessoas que
+              continuam na equipe (passam para quem gere a ficha delas).
+            </p>
+            <p>O registro de uso de IA é preservado. Não dá para desfazer.</p>
+          </div>
         </div>
 
         {/* Campo de confirmação */}
@@ -485,7 +513,7 @@ function UserCard({ user, isMe, onChangeRole, onDeactivate, onReactivate, onDele
         {/* Datas */}
         <div className="hidden lg:flex flex-col items-end gap-0.5 shrink-0 text-xs text-slate-400">
           <span>Criado: {fmtDate(user.created_at)}</span>
-          <span>Login: {fmtDate(user.last_login)}</span>
+          <span>Login: {fmtDate(user.lastLogin)}</span>
         </div>
 
         {/* Menu ••• */}
@@ -633,6 +661,9 @@ export default function AdminUsers() {
         if (ath.accountUserId === id && ath.id !== athleteId) return { ...ath, accountUserId: null };
         return ath;
       }));
+      // Atualização local acima para a UI responder já; o refetch confirma com
+      // o servidor (revisão final da spec 014, M7).
+      fetchAthletes();
       toast(athleteId ? 'Ficha vinculada.' : 'Ficha desvinculada.');
     } catch (err) {
       toast(err.response?.data?.error || 'Erro ao vincular a ficha.', 'error');
@@ -821,7 +852,12 @@ export default function AdminUsers() {
         <DeleteUserModal
           user={deleteModal.user}
           onClose={() => setDeleteModal(null)}
-          onDeleted={deletedId => setUsers(u => u.filter(usr => usr.id !== deletedId))}
+          onDeleted={deletedId => {
+            setUsers(u => u.filter(usr => usr.id !== deletedId));
+            // A exclusão apaga ou transfere fichas (M7): a lista de fichas
+            // livres para vincular muda junto.
+            fetchAthletes();
+          }}
           toast={toast}
         />
       )}

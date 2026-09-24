@@ -130,7 +130,9 @@ Authorization: Bearer {token}
 }
 ```
 
-**Resposta (401):** `{ "error": "Senha atual incorreta." }` — este 401 **não** é sessão inválida; o frontend chama esta rota com `skipAuthLogout: true` para não forçar logout ao mostrar o erro.
+**Resposta (400):** `{ "error": "A nova senha precisa ser diferente da atual." }` — `newPassword` igual a `currentPassword` (revisão final da spec 014). Checado antes da senha atual; nada muda na conta.
+
+**Resposta (401):** `{ "error": "Senha atual incorreta." }` — este 401 **não** é sessão inválida; o frontend chama esta rota com `skipAuthLogout: true` para não forçar logout ao mostrar o erro. Por isso a tela (`ChangePassword.jsx`) compara a **mensagem**: qualquer outro 401 nesta rota vem do `authMiddleware` (sessão expirada ou conta excluída) e leva a tela a deslogar e ir para `/login`.
 
 ---
 
@@ -1113,6 +1115,8 @@ Criar sub-usuário. Sempre nasce com `must_change_password = true` (spec 014).
 ### PATCH /admin/users/:id
 Atualizar nome/senha. **Body:** `{ name?, password? }` — ao menos um dos dois.
 
+Senha definida pelo admin é **provisória** (revisão final da spec 014), como na criação: com `password`, grava `must_change_password = true`, **incrementa `token_version`** e evicta o cache de auth — as sessões vivas do usuário caem e o próximo login leva a `/trocar-senha`. Só `name` não mexe em sessão.
+
 ---
 
 ### PATCH /admin/users/:id/role
@@ -1151,9 +1155,13 @@ Reativar uma conta desativada.
 ### DELETE /admin/users/:id/permanent
 **Exclusão total, sem transferência** (spec 014 — substitui o antigo fluxo "transferir ou apagar"). **Body:** `{}` — qualquer `transferToUserId` no corpo é **400** (`{ error: '...' }`, o campo saiu do contrato).
 
-Apaga, dentro do tenant: `ai_chat_sessions`, `tactical_analyses` (com `strategy_versions` em cascata no banco), `analysis_versions` e `profile_versions` das análises da conta, `fight_analyses`, `athletes` geridas ou vinculadas pela conta (com exceção abaixo), `opponents`, e por fim a linha em `users`. `api_usage` é **preservado**.
+Apaga, dentro do tenant: `ai_chat_sessions`, `tactical_analyses` (com `strategy_versions` em cascata no banco), `analysis_versions` e `profile_versions` das análises da conta, `fight_analyses`, `athletes` geridas ou vinculadas pela conta (com as exceções abaixo), `opponents`, e por fim a linha em `users`. `api_usage` é **preservado** no banco para auditoria em SQL — mas o id excluído sai do tenant (`getGroupUserIds`), então essas linhas **deixam de contar** no orçamento mensal (spec 009) e na tela de uso.
 
 **Decisão tomada durante a implementação, mais restritiva que o texto original da spec:** uma ficha **gerida** pela conta (`athletes.user_id = id`) mas **vinculada** a **outra** conta viva do tenant (`athletes.account_user_id` ≠ `id`, dentro do escopo de quem chama) **não é apagada** — é **reparentada** (`user_id` passa a ser `account_user_id`, com suas `fight_analyses`/`profile_versions` migrando junto) e contada em `deleted.reparentedAthletes`. Uma ficha vinculada a uma conta fora do escopo do chamador é apagada normalmente. Rationale: apagar a conta de um professor não pode apagar a ficha e o histórico de um aluno vivo. Esta decisão é do controller, não da spec original, e o proprietário pode reverter.
+
+**Segunda decisão do controller (revisão final da spec 014, 2026-09-24 — diverge da spec, o proprietário pode reverter):** uma `fight_analyses` ou `profile_versions` **escrita pela conta** (`user_id = id`) sobre uma pessoa que **sobrevive** à purga — ficha ou adversário do tenant fora do conjunto de exclusão, ex.: o atleta autogerido que o professor excluído analisou — é **transferida** ao gestor dessa pessoa (`user_id` da ficha/adversário), não apagada. Contadas em `deleted.reassignedAnalyses` e `deleted.reassignedProfileVersions`. Linha cuja pessoa vai ser apagada, ou que não é encontrada no tenant (id inexistente ou de outro tenant), é apagada como antes.
+
+Depois da exclusão, o token antigo da conta recebe **401** `{ "error": "Sessão inválida. Faça login novamente." }` na requisição seguinte (o `authMiddleware` lê `PGRST116` — a linha não existe mais — e não cai no fallback do token).
 
 **Resposta (200 OK):**
 ```json
@@ -1168,7 +1176,9 @@ Apaga, dentro do tenant: `ai_chat_sessions`, `tactical_analyses` (com `strategy_
     "profileVersions": 1,
     "tacticalAnalyses": 2,
     "chatSessions": 4,
-    "reparentedAthletes": 1
+    "reparentedAthletes": 1,
+    "reassignedAnalyses": 2,
+    "reassignedProfileVersions": 0
   }
 }
 ```
@@ -1212,11 +1222,12 @@ Authorization: Bearer {jwt_token}
 | Código | Significado |
 |--------|-------------|
 | 400 | Bad Request - Dados inválidos ou ausentes |
-| 401 | Unauthorized - Token inválido ou ausente |
-| 403 | Forbidden - Sem permissão para acessar recurso |
+| 401 | Unauthorized - Token inválido, ausente, de sessão invalidada (`token_version`) ou de conta que não existe mais |
+| 403 | Forbidden - Sem permissão para acessar recurso (ou conta desativada) |
 | 404 | Not Found - Recurso não encontrado |
 | 429 | Too Many Requests - Rate limit excedido |
 | 500 | Internal Server Error - Erro no servidor |
+| 503 | Service Unavailable - o banco respondeu com erro ao validar a sessão (`authMiddleware`, revisão final da spec 014): a requisição é recusada em vez de confiar no token |
 
 ### Rate Limiting
 

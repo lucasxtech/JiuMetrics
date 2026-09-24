@@ -25,10 +25,10 @@ Registrar cada chamada à API do Gemini com tokens consumidos e custo estimado, 
 3. **Custo é calculado por tabela de preços por modelo** (`PRICING`), em USD por 1 M de tokens, com preço separado de input e output.
 4. **Modelos `3-pro-preview` usam preço em faixas (*tiered*)** — até 200 K tokens de prompt: $2/$12; acima: $4/$18.
 5. **Modelo desconhecido cai no preço de `gemini-2.5-flash`** (`DEFAULT_MODEL`), agora **com aviso no log** (spec 009). Registrar zero seria pior — subestimaria o gasto. E o cenário que tornava isso perigoso deixou de existir: a allow-list garante que todo modelo que chega até aqui tem preço em `PRICING`.
-6. **Escopo:** admin vê o consumo de todo o grupo; usuário comum vê só o próprio (via `resolveScope`, `services/authorization.js` — spec 005).
+6. **Escopo:** admin **ou perfil de staff** (professor, nutricionista, fisioterapeuta, preparador físico — spec 014) vê o consumo de todo o tenant; perfil `atleta` com `role=user` vê só o próprio (via `resolveScope`, `services/authorization.js` — spec 005, estendido na spec 014).
 7. **Períodos suportados:** `today`, `week`, `month` (default), `all`.
 8. **A resposta agrega por modelo e por operação**, e devolve os 10 registros mais recentes.
-9. **`api_usage` não é transferido** quando um usuário é excluído com transferência de dados — é descartado junto com a conta.
+9. **`api_usage` é preservado quando uma conta é excluída** (spec 014, decisão do proprietário de 2026-09-24 — a exclusão não oferece mais transferência). As linhas continuam no banco, com o `user_id` da conta apagada, **para auditoria em SQL**. Mas o id sai de `User.getGroupUserIds` (a linha de `users` foi apagada), então essas linhas **deixam de contar** no orçamento mensal do tenant (`services/costGuard.js`) e deixam de aparecer na tela de uso — o gasto de uma conta excluída "some" das duas.
 
 ## Inputs
 

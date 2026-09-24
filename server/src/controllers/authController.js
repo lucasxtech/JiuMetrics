@@ -57,7 +57,9 @@ exports.register = async (req, res) => {
     }
 
     const user = await User.create({ name, email, password });
-    const token = generateToken(user.id, user.role || 'user', false, user.token_version || 1);
+    // `?? 1`, não `|| 1` (revisão final da spec 014, M1): token_version = 0 é
+    // válido, e `||` assinaria 1 — o middleware recusaria o próprio token.
+    const token = generateToken(user.id, user.role || 'user', false, user.token_version ?? 1);
     await User.updateLastLogin(user.id);
 
     res.status(201).json({
@@ -108,7 +110,8 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: ERROR_MESSAGES.INVALID_CREDENTIALS });
     }
 
-    const token = generateToken(user.id, user.role || 'user', rememberMe, user.token_version || 1);
+    // `?? 1`, não `|| 1` — mesma regra de `invalidateTokens`/`changePassword` (M1).
+    const token = generateToken(user.id, user.role || 'user', rememberMe, user.token_version ?? 1);
     await User.updateLastLogin(user.id);
 
     console.log('✅ Login successful for:', email, '| role:', user.role);
@@ -139,6 +142,13 @@ exports.login = async (req, res) => {
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body; // validado pelo zod
+    // Revisão final da spec 014 (M2): trocar pela mesma senha não é troca — e
+    // para a senha provisória, zeraria `must_change_password` sem que a
+    // provisória deixasse de valer. Checado antes do bcrypt: não depende da
+    // senha real, então não é oráculo de nada.
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ error: 'A nova senha precisa ser diferente da atual.' });
+    }
     const hash = await User.getPasswordHash(req.user.id);
     if (!hash || !(await User.verifyPassword(currentPassword, hash))) {
       return res.status(401).json({ error: 'Senha atual incorreta.' });

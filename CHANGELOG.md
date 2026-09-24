@@ -28,22 +28,36 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 #### Alterado
 
-- **Exclusão de conta (`DELETE /api/admin/users/:id/permanent`) não oferece mais transferência.** Substituído por exclusão total: fichas geridas/vinculadas, análises, versões, estratégias, chats e adversários — tudo dentro do tenant. `transferToUserId` no corpo agora é **400**. `api_usage` é preservado (é o livro-caixa do tenant). **Decisão tomada durante a implementação, mais restritiva que o texto original da spec:** uma ficha gerida pela conta excluída mas vinculada a **outra** conta viva do tenant é **reparentada** (`user_id` passa a ser o `account_user_id`), não apagada — para não destruir a ficha e o histórico de um aluno vivo ao excluir a conta de quem a geria. O proprietário pode reverter essa decisão.
+- **Exclusão de conta (`DELETE /api/admin/users/:id/permanent`) não oferece mais transferência.** Substituído por exclusão total: fichas geridas/vinculadas, análises, versões, estratégias, chats e adversários — tudo dentro do tenant. `transferToUserId` no corpo agora é **400**. `api_usage` é preservado no banco para auditoria em SQL — mas o id excluído sai do tenant, então esse gasto **deixa de contar** no orçamento mensal e na tela de uso. **Decisão tomada durante a implementação, mais restritiva que o texto original da spec:** uma ficha gerida pela conta excluída mas vinculada a **outra** conta viva do tenant é **reparentada** (`user_id` passa a ser o `account_user_id`), não apagada — para não destruir a ficha e o histórico de um aluno vivo ao excluir a conta de quem a geria. **Pelo mesmo motivo (revisão final):** análises e versões de perfil que a conta excluída fez de pessoas que **continuam** na equipe são **transferidas** ao gestor dessas pessoas (`deleted.reassignedAnalyses`/`reassignedProfileVersions`), não apagadas. O proprietário pode reverter as duas decisões.
 - **A raiz de um tenant não pode ser excluída enquanto tiver outros membros** (409) — `users.tenant_id` não tem `ON DELETE`, e apagar a raiz esvaziaria o grupo e travaria na própria linha.
 - **`GET /api/auth/validate` e `POST /api/auth/login`** devolvem `profile` e `mustChangePassword`, sempre lidos do banco (nunca do JWT).
+- **Senha redefinida pelo admin (`PATCH /api/admin/users/:id` com `password`) é provisória** (revisão final): grava `must_change_password`, derruba as sessões vivas do usuário e leva à troca obrigatória no próximo login.
+- **`POST /api/auth/change-password` recusa nova senha igual à atual** (400, revisão final).
+
+#### Corrigido (revisão final da branch, 2026-09-24)
+
+- **Conta excluída continuava com sessão válida.** O `authMiddleware` caía no fallback do token para **qualquer** erro de leitura — inclusive "linha não existe" (`PGRST116`) depois da purga. Agora só erro **sem** código (rede/timeout) usa o fallback; `PGRST116` é **401** e qualquer outro código do banco é **503**, sem nunca aceitar o `role` do JWT.
+- **Deploy antes da migration derrubaria o login.** `findByEmail`/`getAuthInfo` nomeavam as colunas novas, e o PostgREST responde `42703` à query inteira. As duas leituras passaram a `select('*')` com o objeto montado campo a campo (sem `password_hash` no cache de auth).
+- **Data de login em branco em todos os cards de Usuários** — a tela lia `last_login`, a API entrega `lastLogin`.
+- **Ficha de outro tenant podia aparecer como "vinculada" na tela de Usuários** — `User.getLinkedAthletes` lia `athletes` sem escopo; agora exige `allowedUserIds`.
+- **Troca de senha com sessão expirada dizia "Senha atual incorreta."** — a tela agora só mostra essa frase para esse 401; qualquer outro 401 desloga e vai para `/login`.
+- **`link-accounts.js`**: o dry-run sai com código 1 se a leitura de `users`/`athletes` falhar (antes imprimia uma tabela vazia, que se lia como "ninguém tem ficha"); `--apply` conta como *skipped* uma decisão para usuário inexistente (antes contava como aplicada).
+- **Tokens de `register`/`login` assinados com `token_version ?? 1`**, como o resto do código (`|| 1` trataria `0` como ausente).
 
 #### Testes
 
-- 5 suítes novas em `server/src/__tests__/authorization/`: `scope.test.js`, `staff.test.js`, `capabilities.test.js`, `deleteAccount.test.js`, `password.test.js` (+ `profileScope.test.js`, `actor.test.js`, `models.test.js`, `users.test.js` estendidos) e `server/scripts/__tests__/linkAccounts.test.js`.
+- Arquivos de teste **novos** no backend: `server/src/__tests__/authorization/` — `actor`, `scope`, `staff`, `capabilities`, `users`, `password`, `deleteAccount` e `authFallback` (revisão final) —, `server/src/__tests__/usersSchemas.test.js` e `server/scripts/__tests__/linkAccounts.test.js`. *(Correção: a versão anterior desta entrada dizia que `profileScope.test.js` e `models.test.js` tinham sido "estendidos" — não foram; `actor` e `users` são novos, não estendidos.)* Estendidos de fato: `server/src/services/__tests__/authorization.test.js` e `server/src/utils/__tests__/tenantScope.test.js`.
+- Frontend: `ProtectedRoute.mustChange.test.jsx`, `adminService.test.js`, `api.test.js` e `pages/ChangePassword.test.jsx` (revisão final) novos; `authService.test.js` estendido.
 - Fixtures de autorização ganham um segundo atleta e um usuário `fisioterapeuta` por tenant.
 
-Backend 42 suítes / 520 testes. Frontend 46 suítes / 100 testes.
+Backend 43 suítes / 541 testes. Frontend 48 suítes (13 arquivos) / 103 testes.
 
 **Para quem opera:**
-- **A migration `025-account-profile.sql` precisa ser aplicada à mão** no SQL Editor do Supabase antes de qualquer coisa acima funcionar em produção — é aditiva, idempotente, sem `UPDATE`.
+- 🔴 **BLOQUEANTE — aplique a migration `025-account-profile.sql` no SQL Editor do Supabase ANTES de mergear/deployar este código.** É aditiva, idempotente, sem `UPDATE`, e não quebra a versão que está em produção. Sem ela, este código quebra a tela de Usuários, a criação/exclusão de conta e o vínculo de ficha (o login sobrevive, mas isso é rede de segurança, não ordem alternativa). É o inverso da spec 008: lá o código ia antes do `REVOKE`.
 - **Depois da migration, rode `node scripts/link-accounts.js` (dry-run) a partir de `server/`**, revise a tabela proposta, escreva o arquivo de decisões e só então rode `--apply <arquivo>`. Sem isso, nenhuma conta `atleta` atual tem a própria ficha vinculada.
 - **Contas criadas pelo admin agora exigem troca de senha no primeiro acesso.**
-- **Excluir uma conta agora apaga tudo, permanentemente** — não há mais opção de transferir dados para outro usuário antes de excluir.
+- **Excluir uma conta agora apaga tudo, permanentemente** — não há mais opção de transferir dados para outro usuário antes de excluir. As únicas exceções são automáticas: fichas vinculadas a outra pessoa da equipe e análises feitas sobre pessoas que continuam passam para quem as gere.
+- **Depois de excluir uma conta, o token dela recebe 401** na requisição seguinte. Se o `authMiddleware` passar a devolver **503** em massa, o banco está respondendo com erro à leitura de `users` — o código do erro está no log do servidor.
 
 ### 🥋 Atletas e adversários: uma implementação, validação na borda, fim dos defaults inventados — 2026-09-04
 
