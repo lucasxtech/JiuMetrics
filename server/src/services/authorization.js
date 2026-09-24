@@ -41,22 +41,93 @@ async function resolveScope(actor) {
 }
 
 /**
- * Assinatura estável para decisões de autorização por ação/recurso.
+ * Perfis de saúde/performance com regra própria em `training:write` — mais
+ * restrita que `STAFF_PROFILES` (que inclui `professor`, sem acesso de
+ * escrita a dados de treino/saúde de terceiros).
+ */
+const HEALTH_STAFF = ['nutricionista', 'fisioterapeuta', 'preparador_fisico'];
+
+/**
+ * Tabela de capacidades por ação (spec 014 §Autorização, R8) — a matriz é a
+ * fonte de verdade; cada função aqui é a tradução literal de uma linha dela.
  *
- * Implementação inicial (SPEC-005): equivalente a `resolveScope` — só
- * checa se `resource.userId` está dentro do escopo do ator. `action` não é
- * usado ainda; existe para que as dimensões futuras (permissão por ação,
- * relacionamento profissional↔atleta) tenham uma assinatura já estável
- * para morar, em vez de voltar para os controllers.
+ * Cada regra recebe `{ actor, resource, scope, isOwn, inScope }` (o contexto
+ * comum montado por `can`) e devolve um boolean (ou `Promise<boolean>` —
+ * `can` sempre dá `await` no retorno da regra):
+ * - `isOwn`: o recurso é da própria conta (`resource.accountUserId === actor.id`).
+ * - `inScope`: o dono/gestor do recurso (`resource.userId`) está no escopo
+ *   do ator (`resolveScope`) — para `atleta`/`professor`-fora-de-staff isso
+ *   é só o próprio id; para `role=admin` e `STAFF_PROFILES` é o tenant inteiro.
+ *
+ * `competition:team-event:write` é a única regra que não basta com
+ * `inScope`: um `atleta` cria evento de equipe (recurso de tenant) para
+ * qualquer colega, mas o escopo de um `atleta` é só `[id]` — por isso essa
+ * regra sozinha faz sua própria consulta de tenant via
+ * `User.getGroupUserIds`, em vez de usar o escopo padrão. Não generalize
+ * esse padrão para as outras ações: o custo de uma consulta extra por
+ * decisão é proposital só aqui.
+ *
+ * Ação não listada aqui é NEGADA — `can` devolve `false` sem lançar.
+ *
+ * @type {Object<string, (ctx: {actor: {id: string, role?: string, profile?: string, tenantId?: string|null}, resource: {userId?: string, accountUserId?: string}, scope: string[], isOwn: boolean, inScope: boolean}) => (boolean|Promise<boolean>)>}
+ */
+const CAPABILITIES = {
+  'person:read': ({ inScope }) => inScope,
+  'person:write': ({ inScope }) => inScope,
+  'own-athlete:write': ({ isOwn }) => isOwn,
+  'training:read': ({ actor, isOwn, inScope }) => isOwn || (STAFF_PROFILES.includes(actor.profile) && inScope),
+  'training:write': ({ actor, isOwn, inScope }) => isOwn || (HEALTH_STAFF.includes(actor.profile) && inScope),
+  'schedule:write': ({ actor, inScope }) => actor.profile === 'professor' && inScope,
+  // `isOwn` sozinho superestimaria: daria 1 para o "próprio" recurso de
+  // qualquer perfil (inclusive nutricionista/fisio/preparador), e a matriz
+  // exige 0 para esses três mesmo no próprio recurso — só atleta e
+  // professor escrevem competição, cada um por um caminho diferente
+  // (atleta: a própria inscrição; professor: qualquer um no escopo).
+  'competition:write': ({ actor, isOwn, inScope }) =>
+    (actor.profile === 'atleta' && isOwn) || (actor.profile === 'professor' && inScope),
+  'competition:team-event:write': async ({ actor, resource }) =>
+    (actor.profile === 'atleta' || actor.profile === 'professor') &&
+    (await User.getGroupUserIds(actor.id)).includes(resource.userId),
+  'health:read': ({ actor, isOwn, inScope }) => isOwn || (STAFF_PROFILES.includes(actor.profile) && inScope),
+  'health:write': ({ actor, isOwn, inScope }) => isOwn || (STAFF_PROFILES.includes(actor.profile) && inScope),
+  'users:manage': ({ actor }) => actor.role === 'admin',
+};
+
+/**
+ * Ponto único de decisão de autorização por ação/recurso (spec 014 R8).
+ *
+ * Resolve o escopo do ator (`resolveScope`) e monta o contexto comum
+ * (`isOwn`, `inScope`) uma vez, depois consulta `CAPABILITIES[action]` e
+ * aplica essa regra a esse contexto. Ação sem regra cadastrada, ou ator sem
+ * `id`, é negada — nunca lança.
  *
  * @param {{id: string, role?: string, profile?: string, tenantId?: string|null}} actor
- * @param {string} action - ex.: 'read', 'write' (reservado, não avaliado ainda)
- * @param {{userId?: string}} resource - recurso com o `userId` do dono
+ * @param {string} action - chave de `CAPABILITIES`; ação desconhecida é negada
+ * @param {{userId?: string, accountUserId?: string}} [resource] - recurso avaliado
+ * @returns {Promise<boolean>}
+ */
+async function can(actor, action, resource = {}) {
+  const rule = CAPABILITIES[action];
+  if (!rule || !actor || !actor.id) return false;
+  const scope = await resolveScope(actor);
+  const isOwn = Boolean(resource.accountUserId) && resource.accountUserId === actor.id;
+  const inScope = Boolean(resource.userId) && scope.includes(resource.userId);
+  return Boolean(await rule({ actor, resource, scope, isOwn, inScope }));
+}
+
+/**
+ * Assinatura estável para decisões de autorização por ação/recurso —
+ * mantida para compatibilidade com a spec 005; desde a spec 014 (R8) é um
+ * alias direto de `can` (nenhum chamador de produção dependia do
+ * comportamento antigo "só escopo, ação ignorada" — verificado por grep).
+ *
+ * @param {{id: string, role?: string, profile?: string, tenantId?: string|null}} actor
+ * @param {string} action - chave de `CAPABILITIES`
+ * @param {{userId?: string, accountUserId?: string}} [resource]
  * @returns {Promise<boolean>}
  */
 async function authorize(actor, action, resource) {
-  const scope = await resolveScope(actor);
-  return Boolean(resource?.userId) && scope.includes(resource.userId);
+  return can(actor, action, resource);
 }
 
-module.exports = { resolveScope, authorize, PROFILES, STAFF_PROFILES };
+module.exports = { resolveScope, authorize, can, CAPABILITIES, PROFILES, STAFF_PROFILES };

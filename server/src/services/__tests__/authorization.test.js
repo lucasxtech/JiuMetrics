@@ -39,24 +39,29 @@ describe('authorization.authorize', () => {
     jest.clearAllMocks();
   });
 
+  // Desde a spec 014 (R8) `authorize` é um alias de `can`: a ação precisa
+  // ser uma chave real de `CAPABILITIES`, não mais um rótulo livre como
+  // 'read'/'write'. `person:read`/`person:write` são as regras equivalentes
+  // ao comportamento original (só escopo — ver capabilities.test.js).
+
   it('permite quando o userId do recurso está no escopo do ator', async () => {
     const actor = { id: 'user-1', role: 'user' };
-    await expect(authorize(actor, 'read', { userId: 'user-1' })).resolves.toBe(true);
+    await expect(authorize(actor, 'person:read', { userId: 'user-1' })).resolves.toBe(true);
   });
 
   it('nega quando o userId do recurso está fora do escopo do ator', async () => {
     const actor = { id: 'user-1', role: 'user' };
-    await expect(authorize(actor, 'read', { userId: 'user-2' })).resolves.toBe(false);
+    await expect(authorize(actor, 'person:read', { userId: 'user-2' })).resolves.toBe(false);
   });
 
   it('admin: permite recurso de qualquer membro do grupo resolvido', async () => {
     User.getGroupUserIds.mockResolvedValue(['admin-1', 'user-1']);
     const actor = { id: 'admin-1', role: 'admin' };
-    await expect(authorize(actor, 'write', { userId: 'user-1' })).resolves.toBe(true);
+    await expect(authorize(actor, 'person:write', { userId: 'user-1' })).resolves.toBe(true);
   });
 
   it('nega quando o recurso não tem userId', async () => {
     const actor = { id: 'user-1', role: 'user' };
-    await expect(authorize(actor, 'read', {})).resolves.toBe(false);
+    await expect(authorize(actor, 'person:read', {})).resolves.toBe(false);
   });
 });
