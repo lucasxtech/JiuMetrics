@@ -547,6 +547,15 @@ class User {
    * formar os conjuntos de exclusão, em vez de depender de uma segunda
    * leitura pós-escrita.
    *
+   * O reparent escreve filhos (`fight_analyses`, `profile_versions`) antes
+   * da ficha (achado H1, revisão T10 r3) — só assim uma retentativa após
+   * falha parcial é segura: enquanto a ficha ainda estiver com
+   * `user_id = userId`, ela volta a aparecer em `managedRows` na próxima
+   * chamada, e a releitura dos filhos (já migrados ou não) decide de novo o
+   * que falta. Na ordem inversa, uma ficha já reparentada mas com filhos
+   * pendentes "desapareceria" de `managedRows`, e esses filhos seriam lidos
+   * como se ainda fossem da conta apagada.
+   *
    * Exige que `userId` esteja dentro do próprio `allowedUserIds` (achado 1)
    * — sem isto, um chamador poderia apagar a conta de outro tenant só por
    * controlar o escopo passado.
@@ -590,7 +599,7 @@ class User {
       return (data || []).length;
     };
 
-    /** @type {Array<{id: string, account_user_id?: string}>} */
+    /** @type {Array<{id: string, account_user_id?: string, fightAnalysisIds: string[]}>} */
     let toReparent = [];
     /** @type {string[]} */
     let athleteIds = [];
@@ -612,9 +621,20 @@ class User {
       const managedRows = rManaged.data || [];
       const isReparentable = (/** @type {{account_user_id?: string}} */ a) =>
         Boolean(a.account_user_id) && a.account_user_id !== userId && ids.includes(a.account_user_id);
-      toReparent = managedRows.filter(isReparentable);
-      const reparentAthleteIds = toReparent.map((a) => a.id);
+      const reparentCandidates = managedRows.filter(isReparentable);
+      const reparentAthleteIds = reparentCandidates.map((a) => a.id);
       const ownAthleteIds = managedRows.filter((a) => !isReparentable(a)).map((a) => a.id);
+
+      // achado H1 (revisão T10 r3): lê os fight_analyses de cada ficha a
+      // reparentar AQUI (fase de leitura), para a fase de escrita não
+      // precisar ler nada — condição para retomar uma retentativa parcial
+      // sem se importar com o que já migrou (ver JSDoc da fase de escrita).
+      toReparent = [];
+      for (const row of reparentCandidates) {
+        const rFA = await supabase.from('fight_analyses').select('id').eq('person_id', row.id).eq('person_type', 'athlete').in('user_id', ids);
+        if (rFA.error) throw rFA.error;
+        toReparent.push({ ...row, fightAnalysisIds: (rFA.data || []).map((f) => f.id) });
+      }
 
       // fichas vinculadas à conta (geridas por qualquer um do tenant)
       const rLinked = await supabase.from('athletes').select('id').eq('account_user_id', userId).in('user_id', ids);
@@ -659,13 +679,15 @@ class User {
       );
       let athletePV = [];
       if (athleteIds.length) {
-        const r = await supabase.from('profile_versions').select('id').in('person_id', athleteIds).eq('person_type', 'athlete');
+        // achado H2 (revisão T10 r3): mesma restrição de escopo do
+        // equivalente em fight_analyses (athleteFA), por consistência.
+        const r = await supabase.from('profile_versions').select('id').in('person_id', athleteIds).eq('person_type', 'athlete').in('user_id', ids);
         if (r.error) throw r.error;
         athletePV = r.data || [];
       }
       let opponentPV = [];
       if (opponentIds.length) {
-        const r = await supabase.from('profile_versions').select('id').in('person_id', opponentIds).eq('person_type', 'opponent');
+        const r = await supabase.from('profile_versions').select('id').in('person_id', opponentIds).eq('person_type', 'opponent').in('user_id', ids);
         if (r.error) throw r.error;
         opponentPV = r.data || [];
       }
@@ -678,18 +700,26 @@ class User {
       await run('reparent', async () => {
         for (const row of toReparent) {
           const newOwner = row.account_user_id;
-          const { error: upErr } = await supabase.from('athletes').update({ user_id: newOwner }).eq('id', row.id);
-          if (upErr) throw upErr;
-          // achado C1: mesma restrição de escopo de f2/f3 na leitura que
-          // decide o que migra com a ficha.
-          const { data: fRows, error: fErr } = await supabase.from('fight_analyses').select('id').eq('person_id', row.id).eq('person_type', 'athlete').in('user_id', ids);
-          if (fErr) throw fErr;
-          if (fRows && fRows.length) {
-            const { error: fUpErr } = await supabase.from('fight_analyses').update({ user_id: newOwner }).in('id', fRows.map((f) => f.id));
+          // achado H1 (revisão T10 r3): filhos primeiro, ficha por último —
+          // seguro para retentativa. Se a escrita falhar depois de migrar os
+          // filhos mas antes da ficha, o `user_id` da ficha continua sendo o
+          // `userId` original: a próxima chamada volta a encontrá-la em
+          // `managedRows` e a reidentifica como candidata a reparent: a
+          // releitura de `fight_analyses`/`profile_versions` (fase de
+          // coleta) já os encontra com `user_id = newOwner` (dentro do
+          // escopo) e reescreve o mesmo valor — idempotente. Na ordem
+          // inversa (ficha primeiro), uma falha nos filhos os deixaria
+          // `user_id = userId` órfãos: a ficha já não estaria em
+          // `managedRows` na retentativa, e esses filhos cairiam na leitura
+          // "própria" como se ainda fossem da conta apagada.
+          if (row.fightAnalysisIds.length) {
+            const { error: fUpErr } = await supabase.from('fight_analyses').update({ user_id: newOwner }).in('id', row.fightAnalysisIds);
             if (fUpErr) throw fUpErr;
           }
           const { error: pvUpErr } = await supabase.from('profile_versions').update({ user_id: newOwner }).eq('person_id', row.id).eq('person_type', 'athlete').in('user_id', ids);
           if (pvUpErr) throw pvUpErr;
+          const { error: upErr } = await supabase.from('athletes').update({ user_id: newOwner }).eq('id', row.id);
+          if (upErr) throw upErr;
           counts.reparentedAthletes += 1;
         }
       });

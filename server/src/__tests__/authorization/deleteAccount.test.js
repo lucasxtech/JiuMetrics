@@ -10,6 +10,27 @@ const User = require('../../models/User');
 const app = loadApp();
 const store = (t) => supabaseMock.__getFake().store.get(t) || [];
 
+/**
+ * Guarda de sanidade do seed (achado B, revisão T10 r3): `athletes.account_user_id`
+ * é UNIQUE em produção (`athletes_account_user_id_key`, migration 025) — duas
+ * fichas vinculadas à mesma conta são um seed impossível, e o fake não recusa
+ * isso como o banco recusaria. Chame antes de todo `createFakeSupabase(seed)`
+ * desta suíte, para essa classe de erro de seed não voltar a passar em
+ * silêncio (já aconteceu duas vezes: achado 5 e achado B).
+ * @param {Array<{id: string, account_user_id?: string|null}>} athletes
+ */
+function assertUniqueAccountLinks(athletes) {
+  const seen = new Map();
+  for (const a of athletes) {
+    if (!a.account_user_id) continue;
+    const prev = seen.get(a.account_user_id);
+    if (prev) {
+      throw new Error(`Seed inválido: account_user_id ${a.account_user_id} vinculado a duas fichas (${prev} e ${a.id}) — violaria athletes_account_user_id_key`);
+    }
+    seen.set(a.account_user_id, a.id);
+  }
+}
+
 describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
   let fx, admin, target;
   let fichaDeOutro, fichaDeTerceiroVinculada, analiseDaFichaReparentada;
@@ -73,6 +94,7 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
       ],
       api_usage: [{ id: 'au1', user_id: target.id, model_name: 'm', operation_type: 'strategy', total_tokens: 1, estimated_cost_usd: 0.01 }],
     };
+    assertUniqueAccountLinks(seed.athletes);
     supabaseMock.__setFake(createFakeSupabase(seed));
     admin = authHeader(fx.tenantA.admin);
   });
@@ -289,9 +311,13 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
   // exclusão como qualquer outra ficha da conta, em vez de "escapar" intacta
   // (o que aconteceria se ela nem reparentasse nem fosse apagada).
   test('C1: ficha vinculada a conta fora do escopo do chamador não reparenta, é apagada', async () => {
-    const contaForaDoEscopo = fx.tenantB.user.id; // outro tenant — fora do escopo do admin A
+    // achado B: fx.tenantB.user.id JÁ é o account_user_id de fx.tenantB.athlete
+    // (fixtures) — usar de novo violaria UNIQUE(account_user_id). O físio de
+    // outro tenant não tem ficha própria, continua fora do escopo do admin A.
+    const contaForaDoEscopo = fx.tenantB.physio.id;
     const fichaForaDeEscopo = { ...fx.tenantA.athlete2Row, id: 'ficha-vinculada-fora-do-escopo', user_id: target.id, account_user_id: contaForaDoEscopo, name: 'Ficha vinculada a conta de outro tenant' };
     const seed = { ...fx.seedRows, athletes: [...fx.seedRows.athletes, fichaForaDeEscopo] };
+    assertUniqueAccountLinks(seed.athletes);
     supabaseMock.__setFake(createFakeSupabase(seed));
 
     const scopeA = [fx.tenantA.admin.id, fx.tenantA.user.id, fx.tenantA.athlete2.id, fx.tenantA.physio.id];
@@ -300,5 +326,51 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
     expect(deleted).toMatchObject({ reparentedAthletes: 0, athletes: 2 });
     // apagada — não ficou intacta (o que indicaria reparent) nem sobrou órfã
     expect(store('athletes').some((a) => a.id === fichaForaDeEscopo.id)).toBe(false);
+  });
+
+  // achado H1: uma retentativa depois de uma falha NO MEIO do reparent (na
+  // escrita da própria ficha, depois dos filhos já terem migrado) tem que
+  // terminar reparentando de verdade — não apagar os filhos órfãos nem
+  // deixar a ficha para trás.
+  test('H1: retentativa após falha na escrita da ficha do reparent termina reparentando (não apagando)', async () => {
+    const fake = supabaseMock.__getFake();
+    const realFrom = fake.client.from.bind(fake.client);
+    const failure = { code: 'FAKE_ATHLETE_UPDATE_FAIL', message: 'Falha simulada ao escrever a ficha do reparent' };
+    const fromSpy = jest.spyOn(fake.client, 'from').mockImplementation((table) => {
+      const real = realFrom(table);
+      if (table === 'athletes') {
+        // só a chamada de UPDATE falha — as duas SELECTs da coleta (managedRows,
+        // rLinked) e o DELETE da exclusão continuam reais via `real`.
+        return { ...real, update: () => ({ eq: () => Promise.resolve({ data: null, error: failure }) }) };
+      }
+      return real;
+    });
+
+    const res1 = await request(app).delete(`/api/admin/users/${target.id}/permanent`).set('Authorization', admin).send({});
+    expect(res1.status).toBe(500);
+    expect(res1.body.step).toBe('reparent');
+
+    fromSpy.mockRestore();
+
+    // filhos primeiro (achado H1): a análise da ficha já migrou...
+    const analiseParcial = store('fight_analyses').find((f) => f.id === analiseDaFichaReparentada.id);
+    expect(analiseParcial.user_id).toBe(fx.tenantA.physio.id);
+    // ...mas a ficha em si ainda não (a escrita que falhou), então a próxima
+    // chamada ainda a encontra em `managedRows` como candidata a reparent.
+    const fichaParcial = store('athletes').find((a) => a.id === fichaDeTerceiroVinculada.id);
+    expect(fichaParcial.user_id).toBe(target.id);
+    expect(store('users').some((u) => u.id === target.id)).toBe(true); // conta ainda existe
+
+    // retentativa — mesma chamada, sem o spy
+    const res2 = await request(app).delete(`/api/admin/users/${target.id}/permanent`).set('Authorization', admin).send({});
+    expect(res2.status).toBe(200);
+    expect(res2.body.deleted.reparentedAthletes).toBe(1);
+
+    const fichaFinal = store('athletes').find((a) => a.id === fichaDeTerceiroVinculada.id);
+    expect(fichaFinal).toBeDefined();
+    expect(fichaFinal.user_id).toBe(fx.tenantA.physio.id);
+    const analiseFinal = store('fight_analyses').find((f) => f.id === analiseDaFichaReparentada.id);
+    expect(analiseFinal).toBeDefined();
+    expect(analiseFinal.user_id).toBe(fx.tenantA.physio.id);
   });
 });
