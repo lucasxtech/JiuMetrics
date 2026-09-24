@@ -26,9 +26,11 @@ specs/       histórico versionado de mudanças planejadas
 
 **O que NÃO existe** — não invente, não documente como existente, não implemente sem pedido explícito:
 
-> histórico completo de lutas · histórico de lesões · acompanhamento médico, nutricional ou físico · contas de médico, nutricionista ou preparador físico · compartilhamento de informação entre profissionais · upload de arquivo de vídeo (só URL do YouTube) · recuperação de senha · fila, worker ou job assíncrono · WebSocket/SSE · cache de servidor.
+> histórico completo de lutas · histórico de lesões · acompanhamento médico, nutricional ou físico · contas de médico · compartilhamento de informação entre profissionais · upload de arquivo de vídeo (só URL do YouTube) · recuperação de senha · fila, worker ou job assíncrono · WebSocket/SSE · cache de servidor.
 >
 > Vários destes estão **planejados** em [`docs/ROADMAP.md`](./docs/ROADMAP.md) (2026-09-23) — planejado não é implementado; a lista acima só muda quando a tarefa fechar em `main`.
+>
+> ⚠️ **Nuance desde a spec 014:** contas com perfil `nutricionista`, `fisioterapeuta` e `preparador_fisico` (`users.profile`) **existem** — não invente o contrário. O que continua **não existindo** são as **áreas** que essas contas editariam (saúde, nutrição, treino): sem tabela, sem model, sem endpoint. A conta e o que ela vê já existem; o que ela editaria, não — não promova nenhuma dessas áreas para "O que existe" acima.
 
 ✅ **As duas funcionalidades quebradas foram corrigidas na [spec 007](./specs/007-silent-failures-and-input-validation/spec.md)** (2026-08-18): histórico de versões de perfil técnico e atualização do `technical_profile`. Ficam registradas aqui porque a **causa** delas é o risco que continua vivo neste repositório:
 

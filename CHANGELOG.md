@@ -26,7 +26,7 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 - **Última guarda de admin**: não é possível remover o último admin ativo do tenant nem alterar o próprio papel.
 - **`server/scripts/link-accounts.js`** — procedimento de migração dos usuários atuais: `--dry-run` propõe vínculo por nome, `--apply <arquivo>` só aplica o que o dono confirmar num arquivo de decisões (fora do Git).
 
-#### Mudado
+#### Alterado
 
 - **Exclusão de conta (`DELETE /api/admin/users/:id/permanent`) não oferece mais transferência.** Substituído por exclusão total: fichas geridas/vinculadas, análises, versões, estratégias, chats e adversários — tudo dentro do tenant. `transferToUserId` no corpo agora é **400**. `api_usage` é preservado (é o livro-caixa do tenant). **Decisão tomada durante a implementação, mais restritiva que o texto original da spec:** uma ficha gerida pela conta excluída mas vinculada a **outra** conta viva do tenant é **reparentada** (`user_id` passa a ser o `account_user_id`), não apagada — para não destruir a ficha e o histórico de um aluno vivo ao excluir a conta de quem a geria. O proprietário pode reverter essa decisão.
 - **A raiz de um tenant não pode ser excluída enquanto tiver outros membros** (409) — `users.tenant_id` não tem `ON DELETE`, e apagar a raiz esvaziaria o grupo e travaria na própria linha.

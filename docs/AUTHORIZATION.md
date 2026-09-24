@@ -135,14 +135,14 @@ Além de "quais `user_id` o ator alcança", `can(actor, action, resource)` respo
 - **`isOwn`** — `Boolean(resource.accountUserId) && resource.accountUserId === actor.id`. **Contrato do chamador:** para `isOwn` fazer sentido, o `resource` passado precisa carregar `accountUserId` — se o chamador não souber ou não buscar esse campo, `isOwn` é sempre `false` e a regra correspondente nega mesmo quando deveria permitir. Isto é comportamento correto do ponto de vista de `can` (falha fechado), mas é uma armadilha de integração: buscar a ficha sem o `account_user_id` e assumir que `own-athlete:write` vai "simplesmente funcionar" é o erro mais provável ao consumir esta função.
 - **`inScope`** — `Boolean(resource.userId) && scope.includes(resource.userId)`. Para `atleta` isso é só o próprio id; para `admin`/staff é o tenant inteiro.
 
-A matriz completa (idêntica à da [spec](../specs/014-identity-and-profiles/spec.md#autorização--servicesauthorizationjs), transcrita do código):
+A matriz completa, transcrita do código (**uma célula diverge da tabela da [spec](../specs/014-identity-and-profiles/spec.md#autorização--servicesauthorizationjs)** — `training:read` × `admin`: o texto da spec diz "tenant", o código diz "como o perfil"; a tabela abaixo segue o código, que é a fonte de verdade desta seção):
 
 | `action` | `atleta` | `professor` | fisio · nutri · prep | `admin` (qualquer perfil) |
 |---|---|---|---|---|
 | `person:read` | próprio escopo | tenant | tenant | tenant |
 | `person:write` | próprio escopo | tenant | tenant | tenant |
 | `own-athlete:write` (ficha vinculada) | se `accountUserId === actor.id` | idem | idem | idem |
-| `training:read` | própria ficha | tenant | tenant | tenant |
+| `training:read` | própria ficha | tenant | tenant | como o perfil |
 | `training:write` | própria ficha | **negado** em ficha alheia | tenant | como o perfil |
 | `schedule:write` (grade do time) | negado | tenant | negado | como o perfil |
 | `competition:write` | própria ficha | tenant | negado | como o perfil |
@@ -153,6 +153,8 @@ A matriz completa (idêntica à da [spec](../specs/014-identity-and-profiles/spe
 `training`, `schedule`, `competition` e `health` **não têm endpoint ainda** — entram na tabela para que as specs de competições, agenda e saúde (fases 3–5 do [`ROADMAP.md`](./ROADMAP.md)) só precisem registrar consumidores, sem tocar `resolveScope` de novo. `users:manage` é a única ação hoje efetivamente consumida (equivalente a `adminMiddleware`, que continua decidindo por `role` sem olhar `profile` — R-05).
 
 `competition:team-event:write` é a exceção da tabela: não basta `inScope` porque um `atleta` (escopo `[id]`) pode criar evento de equipe para qualquer colega do tenant — essa regra sozinha consulta `User.getGroupUserIds` diretamente, em vez de usar o `scope` padrão. Não generalizar esse padrão para outras ações sem necessidade equivalente.
+
+**Leitura da coluna `admin` (armadilha comum):** "tenant" nessa coluna só aparece nas duas linhas cuja regra é puramente `inScope` (`person:read`/`person:write` — `inScope` já é o tenant inteiro para `role === 'admin'`, sem olhar `profile`) e em `users:manage`, cuja regra é puramente `actor.role === 'admin'`. **Todas as outras linhas leem `actor.profile`**, e `role` não entra na conta — um admin com `profile: 'atleta'` cai exatamente na coluna `atleta` para essas ações (ex.: `training:read` só dá `própria ficha`, não o tenant, a um admin-atleta). "como o perfil" é a forma correta de ler essas células; não presuma que "admin" implica tenant em nenhuma ação fora das duas exceções citadas.
 
 **O padrão correto**, aplicado consistentemente em `athleteController`, `opponentController`, `fightAnalysisController`, `strategyController`, `usageController`:
 

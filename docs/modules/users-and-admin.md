@@ -83,7 +83,7 @@ Todos os endpoints com corpo, novos ou alterados pela spec 014, validam com zod 
 - `jsonwebtoken`, `bcrypt`, `zod` (`schemas/requests/users.js`, spec 014)
 - **Um único cliente Supabase, `service_role`** (`config/supabase.js`, spec 008) — não existe mais `supabaseAdmin` nem cliente `anon` separado; a distinção "`anon` para a maioria, `supabaseAdmin` em `transferData`/`deleteAllData`/`hardDelete`" descrevia o estado **anterior** à spec 008 e não existe mais no código (`transferData`/`deleteAllData` foram substituídos por `User.purgeAccount` na spec 014, que também usa o cliente único)
 - `JWT_SECRET` — **obrigatória**: o processo lança erro no boot se faltar
-- Cache em memória no `authMiddleware` (`Map`, TTL 5 min, teto 5000, evicção FIFO) — chave agora inclui `profile`/`must_change_password`
+- Cache em memória no `authMiddleware` (`Map`, TTL 5 min, teto 5000, evicção FIFO) — a chave continua sendo só `userId`; o **valor** cacheado (`authInfo`) agora também carrega `profile`/`must_change_password`, ao lado de `role`/`is_active`/`token_version`
 - `server/scripts/link-accounts.js` (spec 014) — script Node fora do request path, para o procedimento de migração dos 25 usuários atuais (dry-run + arquivo de decisões)
 
 ## Flow

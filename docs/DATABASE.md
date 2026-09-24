@@ -2,7 +2,7 @@
 
 > **Documenta o banco REAL, como derivado das migrations versionadas.** Nada foi alterado; nenhuma migration foi executada.
 >
-> **Fonte:** as 25 migrations em `server/migrations/` (22 verificadas em 2026-08-12 + [`024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), da spec 008 + [`025-account-profile.sql`](../server/migrations/025-account-profile.sql), da spec 014), os 10 models em `server/src/models/`, `server/src/config/supabase.js`.
+> **Fonte:** as 24 migrations em `server/migrations/` (22 verificadas em 2026-08-12 + [`024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), da spec 008 + [`025-account-profile.sql`](../server/migrations/025-account-profile.sql), da spec 014), os 10 models em `server/src/models/`, `server/src/config/supabase.js`.
 >
 > ⚠️ **Limitação crítica deste documento:** as migrations **não são a fonte de verdade** do schema (ver §6). A tabela `users` nunca é criada por uma migration, e o estado real de RLS, constraints e GRANTs em produção **não foi consultado**. Tudo que depende disso está marcado `NEEDS_CONFIRMATION`.
 
