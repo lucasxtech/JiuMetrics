@@ -32,11 +32,15 @@ Funcionalidades verificadas no código e em uso.
 |---|---|
 | Login com e-mail e senha | JWT próprio (HS256), `bcrypt` 10 rounds, 7 dias ou 30 com "lembrar-me" |
 | Validação de sessão em 3 camadas | `role` lido do banco, `is_active` reconsultado, `token_version` comparado — é a razão de **não existir escalonamento de privilégio** |
-| Dois papéis: `admin` e `user` | Sem papel intermediário nem permissão granular |
-| Grupos por `tenant_id` | Aponta para o admin-raiz; admin vê o grupo, usuário comum vê só o próprio |
-| Painel de administração de usuários | Criar, editar nome/senha, trocar papel, desativar, reativar, excluir |
-| Exclusão com decisão explícita | Transferir dados para outro usuário **ou** apagá-los — sem default silencioso |
-| Invalidação imediata de sessão | Troca de papel ou desativação derruba os JWTs vivos do usuário |
+| Dois papéis (`role`): `admin` e `user`, **mais um perfil (`profile`) independente** | Desde a [spec 014](../specs/014-identity-and-profiles/spec.md): `atleta`, `professor`, `nutricionista`, `fisioterapeuta`, `preparador_fisico`. Admin é toggle por conta, qualquer perfil |
+| Escopo por `tenant_id` **e** perfil | Admin **ou** perfil de staff vê o grupo; perfil `atleta` vê só a própria conta (spec 014, [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md)) — antes só admin via o grupo |
+| Capacidades por ação (`CAPABILITIES`/`can`) | Spec 014 — tabela perfil × ação, com `training`/`schedule`/`competition`/`health` reservados sem endpoint ainda |
+| Vínculo conta ↔ ficha de atleta | `athletes.account_user_id` (spec 014), gerenciável em `/admin/users/:id/athlete`; migração dos 25 usuários atuais via `link-accounts.js`, pendente de execução pelo proprietário |
+| Troca de senha pelo próprio usuário; senha provisória obrigatória | `POST /api/auth/change-password` (spec 014) — conta criada por admin nasce com `must_change_password: true` |
+| Painel de administração de usuários | Criar (com perfil e ficha), editar nome/senha, trocar papel/perfil, vincular ficha, desativar, reativar, excluir |
+| **Exclusão total, sem transferência** | Spec 014 substitui "transferir ou apagar": apaga tudo dentro do tenant, preserva `api_usage`; reparenta (em vez de apagar) ficha vinculada a outra conta viva — ver *Known Issues*/[`GAPS.md`](./GAPS.md) |
+| Última guarda de admin | Não é possível remover o último admin ativo do tenant nem alterar o próprio papel (spec 014) |
+| Invalidação imediata de sessão | Troca de papel, de perfil ou de senha (spec 014) derruba os JWTs vivos do usuário |
 | Log de auditoria de acesso admin | Inclusive tentativas **negadas** |
 | Registro público | **Desabilitado por padrão** (`ALLOW_PUBLIC_REGISTER`) |
 

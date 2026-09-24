@@ -11,6 +11,40 @@ Mudanças relevantes do JiuMetrics. Baseado em [Keep a Changelog](https://keepac
 
 ## [Não lançado]
 
+### 🪪 Identidade: perfil da conta, vínculo conta ↔ ficha, escopo por perfil — 2026-09-24
+
+[Spec 014](./specs/014-identity-and-profiles/spec.md). Primeira spec do [`docs/ROADMAP.md`](./docs/ROADMAP.md) (plataforma da equipe) — não cria nenhuma área nova (competições, agenda, saúde), só faz a conta saber *quem* a pessoa é e a autorização saber *o que* isso libera.
+
+#### Adicionado
+
+- **`users.profile`** (`atleta`, `professor`, `nutricionista`, `fisioterapeuta`, `preparador_fisico`), independente de `role`. Admin continua sendo um toggle por conta, qualquer perfil.
+- **`athletes.account_user_id`** — vincula uma ficha à conta da própria pessoa (única por conta, FK real `ON DELETE SET NULL`). `athletes.user_id` (quem gerencia) não muda de significado.
+- **`resolveScope`** passa a devolver o tenant para admin **ou** perfil de staff (professor, nutricionista, fisioterapeuta, preparador físico) — antes só admin via o grupo. Ver [ADR-014](./docs/decisions/014-dois-eixos-na-conta-e-time-de-confianca.md) (complementa ADR-002 e ADR-011, não os substitui).
+- **`CAPABILITIES`/`can(actor, action, resource)`** em `services/authorization.js` — tabela de capacidades por perfil × ação, testada ponta a ponta pela matriz inteira. `training`, `schedule`, `competition` e `health` já têm linha na tabela, sem endpoint ainda — são para as specs seguintes do roadmap.
+- **Admin gerencia perfil, permissão, vínculo de ficha e exclusão total pela API**: `PATCH /api/admin/users/:id/profile` e `PATCH /api/admin/users/:id/athlete` (novos), `POST /api/admin/users` ganha `profile`/`createAthlete`/`athlete.belt`.
+- **Troca de senha pelo próprio usuário**: `POST /api/auth/change-password` (exige a senha atual, incrementa `token_version`, devolve token novo). Conta criada por admin nasce com `must_change_password: true`; o frontend bloqueia toda rota até a troca.
+- **Última guarda de admin**: não é possível remover o último admin ativo do tenant nem alterar o próprio papel.
+- **`server/scripts/link-accounts.js`** — procedimento de migração dos usuários atuais: `--dry-run` propõe vínculo por nome, `--apply <arquivo>` só aplica o que o dono confirmar num arquivo de decisões (fora do Git).
+
+#### Mudado
+
+- **Exclusão de conta (`DELETE /api/admin/users/:id/permanent`) não oferece mais transferência.** Substituído por exclusão total: fichas geridas/vinculadas, análises, versões, estratégias, chats e adversários — tudo dentro do tenant. `transferToUserId` no corpo agora é **400**. `api_usage` é preservado (é o livro-caixa do tenant). **Decisão tomada durante a implementação, mais restritiva que o texto original da spec:** uma ficha gerida pela conta excluída mas vinculada a **outra** conta viva do tenant é **reparentada** (`user_id` passa a ser o `account_user_id`), não apagada — para não destruir a ficha e o histórico de um aluno vivo ao excluir a conta de quem a geria. O proprietário pode reverter essa decisão.
+- **A raiz de um tenant não pode ser excluída enquanto tiver outros membros** (409) — `users.tenant_id` não tem `ON DELETE`, e apagar a raiz esvaziaria o grupo e travaria na própria linha.
+- **`GET /api/auth/validate` e `POST /api/auth/login`** devolvem `profile` e `mustChangePassword`, sempre lidos do banco (nunca do JWT).
+
+#### Testes
+
+- 5 suítes novas em `server/src/__tests__/authorization/`: `scope.test.js`, `staff.test.js`, `capabilities.test.js`, `deleteAccount.test.js`, `password.test.js` (+ `profileScope.test.js`, `actor.test.js`, `models.test.js`, `users.test.js` estendidos) e `server/scripts/__tests__/linkAccounts.test.js`.
+- Fixtures de autorização ganham um segundo atleta e um usuário `fisioterapeuta` por tenant.
+
+Backend 42 suítes / 520 testes. Frontend 46 suítes / 100 testes.
+
+**Para quem opera:**
+- **A migration `025-account-profile.sql` precisa ser aplicada à mão** no SQL Editor do Supabase antes de qualquer coisa acima funcionar em produção — é aditiva, idempotente, sem `UPDATE`.
+- **Depois da migration, rode `node scripts/link-accounts.js` (dry-run) a partir de `server/`**, revise a tabela proposta, escreva o arquivo de decisões e só então rode `--apply <arquivo>`. Sem isso, nenhuma conta `atleta` atual tem a própria ficha vinculada.
+- **Contas criadas pelo admin agora exigem troca de senha no primeiro acesso.**
+- **Excluir uma conta agora apaga tudo, permanentemente** — não há mais opção de transferir dados para outro usuário antes de excluir.
+
 ### 🥋 Atletas e adversários: uma implementação, validação na borda, fim dos defaults inventados — 2026-09-04
 
 [Spec 013](./specs/013-athletes-opponents-consolidation/spec.md). Nasceu de um mapeamento do módulo; o banco não foi tocado.

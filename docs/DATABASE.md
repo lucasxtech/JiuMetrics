@@ -2,7 +2,7 @@
 
 > **Documenta o banco REAL, como derivado das migrations versionadas.** Nada foi alterado; nenhuma migration foi executada.
 >
-> **Fonte:** as 23 migrations em `server/migrations/` (22 verificadas em 2026-08-12 + [`024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), da spec 008), os 10 models em `server/src/models/`, `server/src/config/supabase.js`.
+> **Fonte:** as 25 migrations em `server/migrations/` (22 verificadas em 2026-08-12 + [`024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), da spec 008 + [`025-account-profile.sql`](../server/migrations/025-account-profile.sql), da spec 014), os 10 models em `server/src/models/`, `server/src/config/supabase.js`.
 >
 > ⚠️ **Limitação crítica deste documento:** as migrations **não são a fonte de verdade** do schema (ver §6). A tabela `users` nunca é criada por uma migration, e o estado real de RLS, constraints e GRANTs em produção **não foi consultado**. Tudo que depende disso está marcado `NEEDS_CONFIRMATION`.
 
@@ -45,6 +45,7 @@ flowchart TD
 erDiagram
     USERS ||--o{ USERS : "tenant_id / created_by (FK)"
     USERS ||--o{ ATHLETES : "user_id (VARCHAR, sem FK)"
+    USERS ||--o{ ATHLETES : "account_user_id (UUID, FK real, spec 014)"
     USERS ||--o{ OPPONENTS : "user_id (VARCHAR, sem FK)"
     USERS ||--o{ FIGHT_ANALYSES : "user_id (VARCHAR, sem FK)"
     USERS ||--o{ TACTICAL_ANALYSES : "user_id (UUID, sem FK)"
@@ -65,7 +66,7 @@ erDiagram
     AI_CHAT_SESSIONS ||--o{ ANALYSIS_VERSIONS : "chat_session_id (FK REAL, SET NULL)"
 ```
 
-**Leia este diagrama com atenção ao que está escrito nas arestas:** de 12 relacionamentos, apenas **4 são foreign keys reais**. As outras 8 são convenções mantidas pelo código.
+**Leia este diagrama com atenção ao que está escrito nas arestas:** de 13 relacionamentos, apenas **5 são foreign keys reais** (a 5ª, `athletes.account_user_id`, é da spec 014). As outras 8 são convenções mantidas pelo código.
 
 ---
 
@@ -84,11 +85,13 @@ erDiagram
 | `is_active` | BOOLEAN NOT NULL DEFAULT `true` | `017` | soft delete |
 | `tenant_id` | UUID NOT NULL → `users(id)` | `021` | **FK real** — aponta para o admin-raiz do grupo |
 | `token_version` | INTEGER NOT NULL DEFAULT 1 | `023` | invalidação de sessão |
+| `profile` | VARCHAR(30) NOT NULL DEFAULT `'atleta'` | `025` | `CHECK` em `atleta\|professor\|nutricionista\|fisioterapeuta\|preparador_fisico` — spec 014, independente de `role` |
+| `must_change_password` | BOOLEAN NOT NULL DEFAULT `false` | `025` | ligado na criação por admin, desligado por `POST /api/auth/change-password` — spec 014 |
 | `last_login`, `created_at`, `updated_at` | — | UNKNOWN | |
 
 **Índices:** `idx_users_role`, `idx_users_is_active` (`017`), `idx_users_tenant_id` (`021`).
 
-**✅ Colunas reais (medidas em 2026-08-13):** `id, name, email, password_hash, role, is_active, created_by, tenant_id, token_version, last_login, created_at, updated_at` — 12 colunas, exatamente as inferidas das migrations. O schema deixa de ser UNKNOWN.
+**✅ Colunas reais (medidas em 2026-08-13, antes da spec 014):** `id, name, email, password_hash, role, is_active, created_by, tenant_id, token_version, last_login, created_at, updated_at` — 12 colunas, exatamente as inferidas das migrations. O schema deixa de ser UNKNOWN. `profile` e `must_change_password` (migration `025`) são **aditivas e não foram medidas em produção ainda** — a migration está escrita, revisada e pendente de execução manual pelo proprietário no SQL Editor do Supabase (mesma situação da `024`, ver §4/§6).
 
 **População real:** 25 usuários · 3 admins · **0 inativos** · 2 tenants distintos · nenhum sem `tenant_id`.
 
@@ -112,11 +115,14 @@ Criadas em `001` com **colunas idênticas**. Toda alteração posterior foi apli
 | `user_id` | **VARCHAR(255)**, nullable | `002` + `008` (convertida de UUID) |
 | `technical_summary` | TEXT | `012` |
 | `technical_summary_updated_at` | TIMESTAMPTZ | `012` |
+| `account_user_id` **(só `athletes`)** | UUID NULL UNIQUE → `users(id)` ON DELETE SET NULL | `025` |
 
-**Índices:** `idx_athletes_name`, `idx_opponents_name` (`001`); `idx_athletes_user_id`, `idx_opponents_user_id` (`002`).
+**Índices:** `idx_athletes_name`, `idx_opponents_name` (`001`); `idx_athletes_user_id`, `idx_opponents_user_id` (`002`); `athletes_account_user_id_key` (`025`, **único**, parcial — `WHERE account_user_id IS NOT NULL`).
 **Triggers:** `update_updated_at_column()` em UPDATE (`001`).
 **RLS:** **DESLIGADO** (`008`, `009`).
 **FK de `user_id`:** **removida** em `008` (apontava para `auth.users`).
+
+**`account_user_id` (só `athletes`, spec 014):** a conta da própria pessoa — semântica diferente de `user_id` (que continua sendo quem *gerencia* a ficha). **`opponents` não ganha esta coluna**, porque adversário não tem conta ([ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md); se a unificação vier, a coluna migra junto). É **FK real** desde a `025` — a 5ª do banco (§5) — porque aponta para `users.id`, já UUID nos dois lados; não precisou esperar a conversão de tipo de `user_id` (R-11, ainda não feita).
 
 ### `fight_analyses`
 
@@ -311,7 +317,7 @@ SELECT grantee, table_name, privilege_type
 
 ## 5. Constraints e integridade
 
-### Foreign keys existentes — apenas 4
+### Foreign keys existentes — 5 (era 4, spec 014 acrescentou a 5ª)
 
 | FK | Tabela | Ação |
 |---|---|---|
@@ -319,6 +325,7 @@ SELECT grantee, table_name, privilege_type
 | `tenant_id → users(id)` | `users` | — |
 | `chat_session_id → ai_chat_sessions(id)` | `analysis_versions` | ON DELETE SET NULL |
 | `analysis_id → tactical_analyses(id)` | `strategy_versions` | **ON DELETE CASCADE** |
+| `account_user_id → users(id)` | `athletes` | ON DELETE SET NULL — **spec 014**, migration `025` |
 
 ### Foreign keys ausentes — e por quê
 
@@ -369,7 +376,7 @@ Consequências reais:
 
 ## 6. Migrations
 
-22 arquivos em `server/migrations/`, numerados `001`–`019`, `021`–`023`.
+24 arquivos SQL em `server/migrations/`, numerados `001`–`019`, `021`–`025` (falta a `020`, ver abaixo).
 
 ### Problemas conhecidos
 
@@ -411,10 +418,14 @@ Consequências reais:
 | 021 | `021-add-tenant-id.sql` | adiciona `tenant_id` + FK, propaga em até 3 níveis, torna NOT NULL |
 | 022 | `022-fix-tenant-id-migrated-users.sql` | corrige `tenant_id` dos usuários migrados na `019` |
 | 023 | `023-add-token-version.sql` | adiciona `token_version` |
+| 024 | `024-revoke-anon-access.sql` | `REVOKE` de `anon`/`authenticated` (spec 008) — **escrita e não executada**, ver §4 |
+| 025 | `025-account-profile.sql` | `users.profile` + `must_change_password`; `athletes.account_user_id` (FK real) + índice único parcial (spec 014) — **aditiva, sem `UPDATE`, escrita e não executada** (mesma situação da `024`) |
 
 ### Scripts soltos (não são migrations)
 
 `server/DEBUG_ANALYSES.sql` e `server/FIX_USER_ID.sql` — scripts de diagnóstico/correção pontual, rastreados no git na raiz do `server/`. Contêm PII e consultam `auth.users`.
+
+`server/scripts/link-accounts.js` (spec 014) **também não é uma migration** — é um script Node executado localmente pelo proprietário (dry-run por padrão), que propõe e depois aplica o vínculo `athletes.account_user_id` e o `profile` dos 25 usuários atuais, com confirmação manual arquivo por arquivo (`.ai/link-accounts.decisions.json`, fora do Git). Não roda em CI, não é aplicado automaticamente, e a migration `025` não popula essas colunas — só cria-as.
 
 ---
 

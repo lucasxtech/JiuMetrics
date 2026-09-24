@@ -1,6 +1,6 @@
-# GAPS — o que ficou aberto depois das specs 002–011
+# GAPS — o que ficou aberto depois das specs 002–014
 
-> **Atualizado:** 2026-09-02 · **Escopo:** tudo que as specs 002 a 011 **não** resolveram — incluindo o que as specs 008 e 011 resolveram só em parte —, com o motivo real de cada caso.
+> **Atualizado:** 2026-09-24 · **Escopo:** tudo que as specs 002 a 014 **não** resolveram — incluindo o que as specs 008, 011 e 014 resolveram só em parte —, com o motivo real de cada caso.
 >
 > Este documento existe porque a alternativa é pior. Um relatório que só lista o que foi feito faz um sistema parecer mais pronto do que está — e neste repositório *parecer pronto* já foi a causa de três funcionalidades quebradas sobreviverem meses. Nada aqui é "TODO futuro": cada item tem uma razão de ainda estar aberto, e a razão importa mais que o item.
 
@@ -34,6 +34,15 @@ O `REVOKE` está escrito — [`server/migrations/024-revoke-anon-access.sql`](..
 3. **Configurar `SUPABASE_SERVICE_ROLE_KEY` na Vercel** (produção, backend) → **mergear e deployar** o código da spec 008 → **validar em produção** → **só então** colar [`024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql) no SQL Editor.
 
 > 🔴 **A ordem do passo 3 não é negociável, e isso foi verificado da pior maneira.** Em 2026-09-02 o `REVOKE` foi executado antes do deploy e **o login caiu em produção**: o código em `main` lê `users` com o cliente **anon** (`models/User.js#findByEmail`), que acabara de perder o GRANT. O rollback funcionou na primeira tentativa — o que também confirmou, na prática, que a rede de segurança desta spec existe. Sequência completa em [`specs/008-database-access-lockdown/spec.md`](../specs/008-database-access-lockdown/spec.md).
+
+### 🟡 Spec 014 — Identidade: perfil da conta, vínculo conta ↔ ficha (parcial)
+
+O código fechou em 2026-09-24 (`23084a3`..`a9f42f9`) e todos os testes passam (ver [`PROJECT_STATUS.md`](./PROJECT_STATUS.md)). Quatro itens ficaram abertos, nenhum bloqueando o resto do roadmap:
+
+1. 🔴 **Migration `025` não executada.** `server/migrations/025-account-profile.sql` (`users.profile`, `users.must_change_password`, `athletes.account_user_id`) está escrita, aditiva, sem `UPDATE` — mesma situação da `024` da spec 008: precisa ser colada no SQL Editor do Supabase pelo proprietário. Até lá, `profile`/`must_change_password`/`account_user_id` não existem em produção, e o código que os lê recebe os defaults do fallback (`'atleta'`, `false`, `null`).
+2. 🔴 **`link-accounts.js --apply` não executado.** O script (dry-run por padrão) está pronto e testado, mas o proprietário ainda não rodou o `--dry-run` contra produção nem revisou/aplicou o arquivo de decisões dos 25 usuários atuais. Nenhuma conta `atleta` tem `account_user_id` preenchido enquanto isso não acontecer — ver R-09 no [`ROADMAP.md`](./ROADMAP.md).
+3. **Sem caminho para aposentar a raiz de um tenant.** `DELETE /api/admin/users/:id/permanent` devolve 409 quando o alvo é `tenant_id === id` e há outros membros vivos (`users.tenant_id → users(id)` não tem `ON DELETE`, então apagar a raiz esvaziaria o tenant e travaria na última linha). Isso é a proteção certa contra o caso ruim, mas **não existe hoje nenhum fluxo** para transferir a raiz do tenant a outro admin do grupo antes de excluir a conta original — se o dono precisar disso (ex.: trocar quem é o "dono" administrativo da academia), é trabalho novo, sem spec.
+4. **`User.js#purgeAccount`, achado H2 (revisão T10 r3): filtro de escopo em `profile_versions` sem teste dedicado.** A leitura de `profile_versions` de fichas-a-excluir escritas por outra conta do tenant (`athletePV`) ganhou a mesma restrição `.in('user_id', ids)` que o equivalente em `fight_analyses` (`athleteFA`), "por consistência" — mas `deleteAccount.test.js` não tem um caso que force especificamente essa filtragem (uma `profile_version` de uma ficha-a-excluir, escrita por uma conta **fora** do escopo do chamador, que deveria **não** ser apagada). Não é um vazamento conhecido — é ausência de prova.
 
 ### 🟡 Spec 011 — Integridade de schema (parcial: 1 de 5 itens)
 
@@ -95,6 +104,8 @@ Isso não é detalhe de cobertura: é o que fez três itens da spec 010 ficarem 
 | 🟡 | **`InlineDiff` duplicado nos dois modais** | 010 | O arquivo órfão saiu; cada modal ainda declara a própria cópia local |
 | 🟡 | **Login loga o e-mail do usuário** | — | PII em log, dívida conhecida, nunca entrou no escopo de nenhuma spec |
 | 🟡 | **PII em migrations** (`017`, `019`, `022`) | — | E-mails reais versionados. Corrigir exige reescrever histórico |
+| 🟡 | **`AdminUsers.jsx` passou de 660 para 800+ linhas** | 014 | Perfil, vínculo de ficha e exclusão sem transferência entraram no arquivo existente porque a spec 014 era explícita em não redesenhar o front (fase 2, R-29, fica com a tela nova). Crescer o arquivo em vez de fatiar era a escolha certa para não abrir duas frentes na mesma spec |
+| 🟡 | **`authController.js` ainda assina token com `token_version \|\| 1`, não `?? 1`** | 014 | `User.js#invalidateTokens` e `authController.js#changePassword` já usam `?? 1` (achado registrado em comentário: `token_version = 0` é válido e `\|\|` o trataria como ausente). `register`/`login` (`generateToken(user.id, user.role \|\| 'user', ..., user.token_version \|\| 1)`) não foram tocados porque a spec 014 não mexeu no fluxo de login além de acrescentar `profile`/`mustChangePassword` à resposta — a inconsistência é real, mas nenhuma conta de produção tem `token_version = 0` hoje (o default da coluna é `1`), então não é um bug observado, é uma armadilha adiada |
 
 ---
 

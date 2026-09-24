@@ -17,7 +17,8 @@
 7. [Upload de Vídeos](#-upload-de-vídeos)
 8. [Chat com IA](#-chat-com-ia)
 9. [Rastreamento de Custos](#-rastreamento-de-custos)
-10. [Health Check](#-health-check)
+10. [Administração de Usuários](#-administração-de-usuários)
+11. [Health Check](#-health-check)
 
 ---
 
@@ -58,7 +59,8 @@ Fazer login e obter token JWT.
 ```json
 {
   "email": "joao@email.com",
-  "password": "senha123"
+  "password": "senha123",
+  "rememberMe": false
 }
 ```
 
@@ -66,15 +68,19 @@ Fazer login e obter token JWT.
 ```json
 {
   "success": true,
-  "message": "Login realizado com sucesso",
   "user": {
     "id": "uuid",
     "name": "João Silva",
-    "email": "joao@email.com"
+    "email": "joao@email.com",
+    "role": "user",
+    "profile": "atleta",
+    "mustChangePassword": false
   },
   "token": "jwt_token_here"
 }
 ```
+
+`profile` e `mustChangePassword` foram acrescentados na [spec 014](../specs/014-identity-and-profiles/spec.md) — lidos do banco (`users.profile`, `users.must_change_password`), nunca do JWT. Uma conta criada pelo admin nasce com `mustChangePassword: true`; o frontend bloqueia toda rota até a troca (`ProtectedRoute`).
 
 ---
 
@@ -89,10 +95,42 @@ Authorization: Bearer {token}
 **Resposta (200 OK):**
 ```json
 {
-  "valid": true,
-  "userId": "uuid"
+  "success": true,
+  "userId": "uuid",
+  "role": "user",
+  "profile": "atleta",
+  "mustChangePassword": false,
+  "message": "Token válido"
 }
 ```
+
+---
+
+### POST /auth/change-password
+Trocar a própria senha (autenticado). Novo na [spec 014](../specs/014-identity-and-profiles/spec.md) — exige a senha atual, inclusive quando ela é a provisória (`mustChangePassword: true`). Zera `must_change_password`, **incrementa `token_version`** (o token antigo passa a ser recusado) e devolve um token novo já válido.
+
+**Headers:**
+```
+Authorization: Bearer {token}
+```
+
+**Body:**
+```json
+{
+  "currentPassword": "senhaAtual123",
+  "newPassword": "novaSenha456"
+}
+```
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "token": "jwt_token_novo"
+}
+```
+
+**Resposta (401):** `{ "error": "Senha atual incorreta." }` — este 401 **não** é sessão inválida; o frontend chama esta rota com `skipAuthLogout: true` para não forçar logout ao mostrar o erro.
 
 ---
 
@@ -1012,6 +1050,137 @@ Tabela de preços dos modelos Gemini.
 
 ---
 
+## 👥 Administração de Usuários
+
+Todas as rotas abaixo exigem admin (`role === 'admin'`) — `authMiddleware` + `adminMiddleware`, sob rate limit de 100 req/15min/IP. Erro de posse é sempre **404**, nunca 403 (não vaza existência de conta de outro tenant). Documentado em detalhe no [módulo `users-and-admin`](./modules/users-and-admin.md); esta seção não existia antes da [spec 014](../specs/014-identity-and-profiles/spec.md), que acrescentou perfil, vínculo de ficha e exclusão total.
+
+### GET /admin/users
+Listar os usuários do tenant.
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "name": "João Silva",
+      "email": "joao@email.com",
+      "role": "user",
+      "profile": "atleta",
+      "mustChangePassword": false,
+      "is_active": true,
+      "athleteId": "uuid-ou-null",
+      "athleteName": "João Silva ou null",
+      "lastLogin": "2026-09-24T10:00:00Z",
+      "created_at": "2026-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+`athleteId`/`athleteName` vêm da ficha vinculada (`athletes.account_user_id`), quando existir.
+
+---
+
+### POST /admin/users
+Criar sub-usuário. Sempre nasce com `must_change_password = true` (spec 014).
+
+**Body:**
+```json
+{
+  "name": "Maria Souza",
+  "email": "maria@email.com",
+  "password": "senha123",
+  "profile": "atleta",
+  "isAdmin": false,
+  "createAthlete": true,
+  "athlete": { "belt": "Azul" }
+}
+```
+
+| Campo | Regra |
+|---|---|
+| `profile` | um de `atleta`, `professor`, `nutricionista`, `fisioterapeuta`, `preparador_fisico` — default `atleta` |
+| `isAdmin` | vira `role: 'admin' \| 'user'` |
+| `createAthlete` | se `true`, cria a ficha e já vincula (`account_user_id` = a nova conta) |
+| `athlete.belt` | **obrigatório se `createAthlete: true`** (faixa é obrigatória desde a spec 013) |
+
+**Resposta (201):** `{ "success": true, "data": { ...mesmo formato do GET, com a ficha já vinculada se createAthlete... } }`
+
+---
+
+### PATCH /admin/users/:id
+Atualizar nome/senha. **Body:** `{ name?, password? }` — ao menos um dos dois.
+
+---
+
+### PATCH /admin/users/:id/role
+Promover/rebaixar. **Body:** `{ role: 'admin' | 'user' }`. Recusa alterar o próprio (`400`) e recusa remover o **último admin ativo** do tenant (`400`, spec 014). Invalida tokens e evicta o cache.
+
+---
+
+### PATCH /admin/users/:id/profile *(novo, spec 014)*
+Alterar o perfil profissional. **Body:** `{ profile }` (mesmo enum do `POST`). Invalida tokens e evicta o cache — o escopo do usuário pode ter mudado.
+
+**Resposta (200 OK):** `{ "success": true, "data": { ...publicUser... } }`
+
+---
+
+### PATCH /admin/users/:id/athlete *(novo, spec 014)*
+Vincular ou desvincular uma ficha de atleta à conta. **Body:** `{ athleteId: "uuid" }` para vincular, `{ athleteId: null }` para desvincular.
+
+- **404** se a ficha não existir no escopo do tenant.
+- **409** se a ficha já estiver vinculada a **outra** conta.
+- Idempotente: vincular a mesma ficha à mesma conta duas vezes não é erro.
+
+**Resposta (200 OK):** `{ "success": true, "data": { ...publicUser, com athleteId/athleteName atualizados... } }`
+
+---
+
+### DELETE /admin/users/:id
+Desativar (soft delete). Dados preservados e continuam visíveis ao grupo.
+
+---
+
+### POST /admin/users/:id/reactivate
+Reativar uma conta desativada.
+
+---
+
+### DELETE /admin/users/:id/permanent
+**Exclusão total, sem transferência** (spec 014 — substitui o antigo fluxo "transferir ou apagar"). **Body:** `{}` — qualquer `transferToUserId` no corpo é **400** (`{ error: '...' }`, o campo saiu do contrato).
+
+Apaga, dentro do tenant: `ai_chat_sessions`, `tactical_analyses` (com `strategy_versions` em cascata no banco), `analysis_versions` e `profile_versions` das análises da conta, `fight_analyses`, `athletes` geridas ou vinculadas pela conta (com exceção abaixo), `opponents`, e por fim a linha em `users`. `api_usage` é **preservado**.
+
+**Decisão tomada durante a implementação, mais restritiva que o texto original da spec:** uma ficha **gerida** pela conta (`athletes.user_id = id`) mas **vinculada** a **outra** conta viva do tenant (`athletes.account_user_id` ≠ `id`, dentro do escopo de quem chama) **não é apagada** — é **reparentada** (`user_id` passa a ser `account_user_id`, com suas `fight_analyses`/`profile_versions` migrando junto) e contada em `deleted.reparentedAthletes`. Uma ficha vinculada a uma conta fora do escopo do chamador é apagada normalmente. Rationale: apagar a conta de um professor não pode apagar a ficha e o histórico de um aluno vivo. Esta decisão é do controller, não da spec original, e o proprietário pode reverter.
+
+**Resposta (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Conta e todos os dados excluídos.",
+  "deleted": {
+    "athletes": 1,
+    "opponents": 2,
+    "fightAnalyses": 5,
+    "analysisVersions": 3,
+    "profileVersions": 1,
+    "tacticalAnalyses": 2,
+    "chatSessions": 4,
+    "reparentedAthletes": 1
+  }
+}
+```
+
+**Resposta (400):** tentar excluir a própria conta.
+
+**Resposta (409):** o alvo é a **raiz do tenant** (`tenant_id === id`) e há outros membros vivos no grupo — `users.tenant_id → users(id)` não tem `ON DELETE`, então apagar a raiz com o grupo vivo deixaria a purga inteira feita e só a exclusão da linha falhando.
+
+**Resposta (500):** falha no meio da exclusão. `{ error, step, deleted }` — `step` é a etapa que falhou, `deleted` é o que já foi apagado até ali. A causa real vai só para o log do servidor, nunca para o cliente (regra 2 de *Security* do `CLAUDE.md`).
+
+---
+
 ## 🩺 Health Check
 
 ### GET /health
@@ -1137,5 +1306,5 @@ curl -X GET 'http://localhost:5050/api/usage/stats?period=today' \
 
 ---
 
-**Última atualização:** Março 2026  
+**Última atualização:** 2026-09-24 (spec 014 — perfil da conta, senha, administração de usuários)
 **Versão da API:** 2.0

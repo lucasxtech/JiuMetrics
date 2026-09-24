@@ -64,7 +64,7 @@ Como todo o staff vê tudo, existe **registro de acesso à área de saúde** (qu
 
 Regras do registro de acesso: grava quem abriu, de quem, **o quê** (lesão + região, nutrição, ou visão geral) e quando; o atleta abrindo a própria saúde **não** entra no registro.
 
-Isso muda `services/authorization.js#resolveScope`: o escopo passa a depender de `role` **e** `profile`. A regra atual "só admin vê o grupo" ([ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md), [ADR-011](./decisions/011-seam-de-politica-de-autorizacao.md)) vira "admin **ou staff** vê o grupo". Vai precisar de ADR novo.
+Isso mudou `services/authorization.js#resolveScope`: o escopo passa a depender de `role` **e** `profile`. A regra atual "só admin vê o grupo" ([ADR-002](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md), [ADR-011](./decisions/011-seam-de-politica-de-autorizacao.md)) virou "admin **ou staff** vê o grupo" — implementado e registrado em [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md) (complementa os dois ADRs, não os substitui).
 
 ### 1.3 Áreas
 
@@ -136,7 +136,7 @@ Registrado aqui para virar tarefa, não para ser esquecido. Detalhe em `.ai/desi
 - ~~Professor é sempre admin~~ ✅ **Resolvido em `Perfis e acessos`:** admin é um toggle por conta, independente do perfil; "admin só acrescenta a gestão de contas". → `R-05` fechada.
 - ~~Só o atleta edita o calendário~~ ✅ **Resolvido em `Perfis e acessos`:** fisio, nutri e preparador **editam** treinos de qualquer atleta; professor **só vê**, com presença. → `R-06` fechada.
 - ~~Exclusão de conta com transferência~~ ✅ **Decidido 2026-09-23: excluir apaga tudo**, sem transferência. O diálogo do protótipo com "Transferir para" sai; fica a lista do que será apagado e a confirmação digitada. → `R-13` fechada.
-- **Senha provisória com troca no primeiro acesso:** o fluxo de novo usuário promete isso e não existe. → `R-14`.
+- ~~**Senha provisória com troca no primeiro acesso:** o fluxo de novo usuário promete isso e não existe.~~ ✅ **Implementado na spec 014** (`users.must_change_password`, `POST /api/auth/change-password`, `ProtectedRoute` redireciona para `/trocar-senha`). A tela é o **mínimo** pedido pela spec (sem o design do protótipo) — o polish fica com `R-25`/`R-29`. → `R-14`.
 - **Peso atual "da ficha, atualizado em 21 set":** a aba Nutrição lê um peso atual com data. Não existe campo nem entidade. → `R-58`, `R-60`.
 - **Diálogo de novo usuário sem faixa:** quando "criar ficha de atleta" está ligado, a faixa é obrigatória (spec 013). Decidido 2026-09-24: chips de faixa aparecem no diálogo. Falta no protótipo. → `R-25`.
 - **Aba Nutrição dentro de Saúde:** proposta do protótipo, com restrições alimentares e orientações em linha do tempo. Adotada. → `R-57`.
@@ -167,17 +167,19 @@ Sem R-02, **nenhuma tarefa da fase 5 começa.** Ver [`GAPS.md`](./GAPS.md) §1 p
 
 | ID | Tarefa | Tipo | Depende | Status |
 |---|---|---|---|---|
-| R-04 | **Spec** de identidade — escrita: [`specs/014-identity-and-profiles/spec.md`](../specs/014-identity-and-profiles/spec.md), **aprovada em 2026-09-24**, em implementação. Cobre também R-07, R-08, R-09, R-10, R-13 e R-14 | spec | — | 🟡 |
+| R-04 | **Spec** de identidade — escrita: [`specs/014-identity-and-profiles/spec.md`](../specs/014-identity-and-profiles/spec.md), **aprovada em 2026-09-24, implementada** (`23084a3`..`a9f42f9`). Cobre também R-07, R-08, R-09, R-10, R-13 e R-14 | spec | — | ✅ |
 | R-05 | ~~Decisão: professor nasce `admin` por padrão?~~ **Não.** Admin é toggle por conta, qualquer perfil; não dá para remover o último admin ativo nem a si mesmo (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
 | R-06 | ~~Decisão: quem edita o calendário do atleta?~~ **Atleta, fisioterapeuta, nutricionista e preparador físico.** Professor só vê, com presença (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
-| R-07 | ADR: "staff vê o tenant" substitui "só admin vê o grupo"; registrar o modelo de time de confiança e por que não há consentimento por atleta | código | R-04 | ⚪ |
-| R-08 | `resolveScope` passa a receber `profile`; testes de posse em `__tests__/authorization/` ganham fixtures de perfil (atleta não vê outro atleta; fisio vê o tenant; admin idem) — **teste antes do código** | código | R-04 | ⚪ |
-| R-09 | Migração de dados: vincular cada conta `atleta` à sua ficha. Heurística por nome + **confirmação manual** do dono; nenhuma fusão automática | código + decisão | R-04 | ⚪ |
-| R-10 | Endpoints de admin: definir perfil na criação e na edição de usuário; `GET /auth/validate` devolve `profile` | código | R-04 | ⚪ |
+| R-07 | ✅ **[ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md)** — "staff vê o tenant" substitui "só admin vê o grupo"; registra o modelo de time de confiança e por que não há consentimento por atleta. Complementa ADR-002 e ADR-011, não os substitui | código | R-04 | ✅ |
+| R-08 | ✅ `resolveScope` recebe `profile` (`role === 'admin' \|\| STAFF_PROFILES.includes(profile)`); `CAPABILITIES`/`can(actor, action, resource)` novo, com teste percorrendo a matriz inteira (`authorization/capabilities.test.js`); testes de posse em `__tests__/authorization/` ganham fixtures de perfil (`scope.test.js`, `staff.test.js`) — escritos antes do código | código | R-04 | ✅ |
+| R-09 | 🟡 **Código pronto, execução pendente do dono.** `server/scripts/link-accounts.js` implementado (dry-run por padrão, `--apply <arquivo>` com arquivo de decisões em `.ai/`, nunca fusão automática), com testes (`scripts/__tests__/linkAccounts.test.js`). O dono ainda **não rodou** `--dry-run` contra produção nem revisou/aplicou as decisões dos 25 usuários atuais — até lá, nenhuma conta `atleta` tem `account_user_id` preenchido em produção | código + decisão | R-04 | 🟡 |
+| R-10 | ✅ Endpoints de admin: `POST /admin/users` recebe `profile`; `PATCH /admin/users/:id/profile` novo; `GET /auth/validate` e `POST /auth/login` devolvem `profile` e `mustChangePassword` | código | R-04 | ✅ |
 | R-11 | Converter `user_id` para UUID nas 3 tabelas `VARCHAR` e recriar FKs (item 2 da spec 011). Pré-requisito para as FKs das áreas novas serem reais | spec + infra | R-02 | ⚪ |
-| R-13 | ~~Decisão: exclusão de conta~~ **Decidido 2026-09-23: excluir apaga tudo** — análises, estratégias, adversários, ficha, treinos, competições, saúde e anexos. Sem transferência. Substitui o fluxo atual "transferir ou apagar" e o diálogo de transferência do protótipo. Diálogo: lista do que será apagado + digitar o nome para confirmar; nunca a própria conta nem o último admin | decisão | R-04 | ✅ |
-| R-14 | Senha provisória com **troca obrigatória no primeiro acesso** (`users.must_change_password`), sem recuperação de senha por e-mail | spec | R-04 | ⚪ |
+| R-13 | ✅ **Implementado.** Exclusão apaga tudo — fichas geridas/vinculadas, análises, versões, estratégias, chats e adversários, dentro do tenant. Sem transferência (`transferToUserId` no corpo é 400). `api_usage` preservado. **Decisão do controller, não da spec original, que o dono deve confirmar:** ficha gerida pela conta excluída mas vinculada a outra conta viva do tenant é **reparentada**, não apagada — ver §4 | decisão | R-04 | ✅ |
+| R-14 | ✅ Senha provisória com **troca obrigatória no primeiro acesso** (`users.must_change_password`, `POST /api/auth/change-password`), sem recuperação de senha por e-mail | spec | R-04 | ✅ |
 | R-12 | Unificar `athletes` e `opponents` ([ADR-007](./decisions/007-unificar-athlete-e-opponent-numa-entidade-com-papel.md), item 4 da spec 011). Recomendado antes das tabelas novas apontarem para "o lutador" | spec + infra | R-11 | ⚪ |
+
+**Fase 1 nota:** a **raiz do tenant não pode ser excluída enquanto tiver outros membros** (`DELETE /admin/users/:id/permanent` devolve 409) — `users.tenant_id → users(id)` não tem `ON DELETE`, então apagar a raiz com o grupo vivo deixaria a purga inteira feita e só a exclusão da linha falhando. Não existe hoje um caminho para aposentar uma raiz de tenant; ver [`GAPS.md`](./GAPS.md).
 
 R-11 e R-12 são trabalho de banco de produção com backup testado. **Não bloqueiam as fases 2 a 4** se as tabelas novas nascerem apontando para `athletes.id` com FK real (`athletes.id` já é UUID). Bloqueiam a limpeza final.
 
@@ -261,6 +263,7 @@ Nenhuma é técnica. Todas mudam o que o usuário vê.
 | ~~R-05~~ | ✅ respondida em `Perfis e acessos`: admin é toggle independente do perfil | — |
 | ~~R-06~~ | ✅ respondida: fisio, nutri e preparador editam treinos; professor só vê | — |
 | R-09 | Confirmação manual do vínculo conta → ficha para os 25 usuários | nenhuma conta `atleta` ganha "Minha ficha" até confirmar |
+| — | **Reparent na exclusão de conta é a decisão certa?** A spec 014 pedia apagar toda ficha `user_id = conta` na exclusão; a implementação (`userController.js#deleteUser`, `User.js#purgeAccount`) **reparenta** em vez de apagar quando a ficha está vinculada (`account_user_id`) a outra conta viva do mesmo tenant — para não apagar a ficha e o histórico de um aluno vivo ao excluir a conta do professor que a geria. É decisão do controller, não da spec original | se o dono discordar, o comportamento correto vira "apagar mesmo assim" e a lógica de reparent sai |
 | R-30 | Quais categorias de peso valem (gênero, idade, modalidade)? Fonte: regulamento IBJJF/CBJJ vigente | a inscrição usa lista adulto masculino kimono e o resto é texto livre |
 | R-50 | Supabase Storage é aceitável para exame médico? Alternativa é bucket S3 próprio | a fase 5 não começa |
 

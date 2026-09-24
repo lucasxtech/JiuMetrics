@@ -2,7 +2,7 @@
 
 > **Documento de segurança.** Descreve autenticação e autorização como estão **implementadas hoje**, incluindo as falhas conhecidas e as já corrigidas.
 >
-> **Fonte:** `server/src/middleware/`, `server/src/controllers/`, `server/src/services/authorization.js`, `server/src/utils/scopeGuard.js`, `server/migrations/`, `frontend/src/contexts/AuthContext.jsx`. Auditado em 2026-08-12 contra `main` (`895066f`); atualizado em 2026-08-18 com as specs 005 e 006. Evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md) §5 e §6.
+> **Fonte:** `server/src/middleware/`, `server/src/controllers/`, `server/src/services/authorization.js`, `server/src/utils/scopeGuard.js`, `server/migrations/`, `frontend/src/contexts/AuthContext.jsx`. Auditado em 2026-08-12 contra `main` (`895066f`); atualizado em 2026-08-18 com as specs 005 e 006, e em 2026-09-24 com a spec 014 (perfil da conta, capacidades). Evidência em `arquivo:linha` na [`../AUDIT.md`](../AUDIT.md) §5 e §6.
 
 ---
 
@@ -10,16 +10,19 @@
 
 ## 1. Tipos de usuário
 
-Existem **exatamente dois papéis**. Não há papel intermediário, nem permissão granular, nem grupo além do tenant.
+Desde a spec 014, a conta tem **dois eixos independentes**: `role` (permissão) e `profile` (o que a conta é/vê). Não há grupo além do tenant, e não há tabela de papéis — os dois eixos são colunas fixas.
 
-| Papel | Como se torna | Pode |
+| Perfil/papel | Como se torna | Vê |
 |---|---|---|
-| `user` | criado por um admin, ou registro público (desabilitado por padrão) | ver e gerenciar **apenas os próprios dados** |
-| `admin` | promovido por outro admin do mesmo tenant, ou definido via SQL | ver os dados de **todos os membros do seu tenant**, e gerenciar usuários do tenant |
+| `user` com perfil `atleta` (default) | criado por um admin, ou registro público (desabilitado por padrão) | **apenas o próprio `user_id`**, em tudo |
+| `user` com perfil de staff (`professor`, `nutricionista`, `fisioterapeuta`, `preparador_fisico`) | definido pelo admin em `PATCH /api/admin/users/:id/profile`, ou na criação | todos os `user_id` do mesmo `tenant_id` — modelo de **time de confiança**, sem tabela de vínculo nem consentimento por atleta (spec 014) |
+| `admin` (qualquer perfil) | promovido por outro admin do mesmo tenant, ou definido via SQL | todos os `user_id` do seu tenant, **e** gerencia usuários (`users:manage`) |
 
-**Confirmado com o proprietário (2026-08-12): usuário comum vê apenas os próprios dados; somente admin vê o grupo.** Esta é a regra de produto, e o código a implementa corretamente onde é aplicada.
+**`role` e `profile` são independentes** (R-05, [`ROADMAP.md`](./ROADMAP.md) §1.1): admin é um toggle por conta, qualquer perfil. Um professor não precisa ser admin para ver o time — é o que a spec 014 resolveu; antes dela, a única forma de um professor ver o grupo era virar admin, o que também lhe dava gestão de contas.
 
-`tenant_id` aponta sempre para o admin-raiz do grupo. Um usuário criado por registro público é seu próprio tenant.
+**Confirmado com o proprietário (2026-08-12, revisitado em 2026-09-22): usuário comum vê apenas os próprios dados; admin ou staff vê o grupo.** Esta é a regra de produto, e o código a implementa em `resolveScope` (§5).
+
+`tenant_id` aponta sempre para o admin-raiz do grupo. Um usuário criado por registro público é seu próprio tenant. Ver [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md) para o porquê do desenho (coluna fixa, não tabela de permissões; time de confiança, não vínculo com consentimento).
 
 ## 2. Autenticação
 
@@ -46,20 +49,24 @@ sequenceDiagram
     end
     A->>A: sign JWT {userId, role, tokenVersion}
     A->>DB: updateLastLogin
-    A-->>U: {user{id,name,email,role}, token}
+    A-->>U: {user{id,name,email,role,profile,mustChangePassword}, token}
 ```
 
 | Aspecto | Implementação |
 |---|---|
 | Algoritmo | HS256, segredo em `JWT_SECRET` (obrigatório — `throw` no boot se faltar) |
-| Payload | `{ userId, role, tokenVersion }` |
+| Payload | `{ userId, role, tokenVersion }` — **`profile` não vai no JWT**, é sempre relido do banco pelo `authMiddleware` (spec 014) |
 | Expiração | **7 dias**, ou **30 dias** com `rememberMe` |
 | Transporte | header `Authorization: Bearer <jwt>` |
 | Armazenamento no cliente | `localStorage` (`jiumetrics_token`, `jiumetrics_user`) |
 | Refresh token | **não existe** |
 | Recuperação de senha | **não existe** — depende de um admin |
+| Troca de senha pelo próprio usuário | ✅ **spec 014** — `POST /api/auth/change-password` (autenticado), exige a senha atual, incrementa `token_version` (invalida o token antigo) e devolve token novo |
+| Senha provisória obrigatória | ✅ **spec 014** — conta criada por admin nasce com `users.must_change_password = true`; o frontend (`ProtectedRoute`) bloqueia toda rota exceto `/trocar-senha` enquanto isso for verdadeiro |
 | Hash de senha | `bcrypt`, 10 rounds |
 | CSRF | **não se aplica** — não há cookie de sessão |
+
+`GET /api/auth/validate` e o login devolvem `profile` e `mustChangePassword` desde a spec 014 (lidos do banco, nunca do JWT).
 
 **Registro público** está desabilitado por padrão (`ALLOW_PUBLIC_REGISTER !== 'true'`). A checagem acontece **antes** da consulta por e-mail, então não vaza existência de conta quando desligado. A rota `/register` continua acessível na SPA e retorna 403.
 
@@ -90,6 +97,7 @@ flowchart TD
 1. **`role` vem do banco, não do token** — um JWT com papel alterado ou obsoleto não escala privilégio.
 2. **`is_active` é reconsultado** — conta desativada é rejeitada mesmo com token válido.
 3. **`token_version` é comparado** — troca de papel ou desativação invalida sessões vivas imediatamente. Ver [ADR-004](./decisions/004-token-version-para-invalidacao-de-sessao.md).
+4. **`profile` também vem do banco** (spec 014) — `User.getAuthInfo` devolve `role, is_active, token_version, profile, must_change_password`, e o middleware popula `req.user.profile` e `req.actor.profile`. Uma linha de banco anterior à migration `025` (sem a coluna) vale como `'atleta'` — o perfil mais restritivo. No fallback de falha do banco (AZ-8), `profile` também cai em `'atleta'`, nunca no que o token diria — o token não carrega perfil.
 
 **Cache**: `Map` em memória, TTL 5 min, teto de 5000 entradas com evicção FIFO. `evictAuthCache(userId)` é chamado em toda mutação sensível de usuário. Em ambiente serverless o cache é **por instância** — uma desativação pode levar até 5 min para valer em todas.
 
@@ -101,16 +109,50 @@ Aplicado em: todo `/api/admin/*` e em `GET /api/debug/env-check`.
 
 ## 5. Ownership — a regra de escopo
 
-✅ **SPEC-005 (2026-08-18):** a regra vive agora em `server/src/services/authorization.js` — um módulo desacoplado do Express (`resolveScope(actor)`, `authorize(actor, action, resource)`), não mais em `utils/tenantScope.js`. `getScopeIds` continua existindo só como wrapper `@deprecated`, delegando ao novo módulo; nenhum dos 23 call sites o chama mais. **Comportamento idêntico ao de antes** — a extração ganhou um novo endereço, não mudou de regra.
+✅ **SPEC-005 (2026-08-18), estendida na SPEC-014 (2026-09-24):** a regra vive em `server/src/services/authorization.js` — um módulo desacoplado do Express (`resolveScope(actor)`, `authorize(actor, action, resource)`, `can(actor, action, resource)`), não em `utils/tenantScope.js`. `getScopeIds` continua existindo só como wrapper `@deprecated`, delegando ao novo módulo; nenhum call site de produção o chama mais.
 
 ```js
+const STAFF_PROFILES = ['professor', 'nutricionista', 'fisioterapeuta', 'preparador_fisico'];
+
 async function resolveScope(actor) {
-  if (actor?.role === 'admin') return User.getGroupUserIds(actor.id); // todos do tenant
-  return [actor.id];                                                   // só o próprio
+  if (!actor || !actor.id) return [];
+  if (actor.role === 'admin' || STAFF_PROFILES.includes(actor.profile)) {
+    return User.getGroupUserIds(actor.id); // todos do tenant
+  }
+  return [actor.id];                        // só o próprio
 }
 ```
 
-`actor` é `{ id, role, tenantId }`, extraído do `req` pelo `middleware/auth.js` (que popula `req.actor`) — o módulo de política nunca vê `req`. O resultado de `resolveScope` é um array de `user_id` usado como filtro nas queries: `.in('user_id', allowedUserIds)`.
+**O que mudou na spec 014:** "só admin vê o grupo" virou "admin **ou** staff vê o grupo" — ver [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md). `actor` é `{ id, role, profile, tenantId }`, extraído do `req` pelo `middleware/auth.js` (que popula `req.actor`) — o módulo de política nunca vê `req`. `tenantId` continua reservado, não usado por `resolveScope` (ver ADR-011). O resultado de `resolveScope` é um array de `user_id` usado como filtro nas queries: `.in('user_id', allowedUserIds)`.
+
+### 5.0 Capacidades por ação (`CAPABILITIES`, spec 014)
+
+Além de "quais `user_id` o ator alcança", `can(actor, action, resource)` responde "o ator pode **esta ação** neste **recurso**?". `action` é uma string `'<área>:<verbo>'`; `resource` carrega `userId` (dono/gestor) e, quando fizer sentido, `accountUserId` (a conta do atleta dono da ficha). **Ação não cadastrada em `CAPABILITIES` é negada** — não existe "permitido por omissão".
+
+`can` monta um contexto comum antes de aplicar a regra da ação:
+
+- **`scope`** — `await resolveScope(actor)`.
+- **`isOwn`** — `Boolean(resource.accountUserId) && resource.accountUserId === actor.id`. **Contrato do chamador:** para `isOwn` fazer sentido, o `resource` passado precisa carregar `accountUserId` — se o chamador não souber ou não buscar esse campo, `isOwn` é sempre `false` e a regra correspondente nega mesmo quando deveria permitir. Isto é comportamento correto do ponto de vista de `can` (falha fechado), mas é uma armadilha de integração: buscar a ficha sem o `account_user_id` e assumir que `own-athlete:write` vai "simplesmente funcionar" é o erro mais provável ao consumir esta função.
+- **`inScope`** — `Boolean(resource.userId) && scope.includes(resource.userId)`. Para `atleta` isso é só o próprio id; para `admin`/staff é o tenant inteiro.
+
+A matriz completa (idêntica à da [spec](../specs/014-identity-and-profiles/spec.md#autorização--servicesauthorizationjs), transcrita do código):
+
+| `action` | `atleta` | `professor` | fisio · nutri · prep | `admin` (qualquer perfil) |
+|---|---|---|---|---|
+| `person:read` | próprio escopo | tenant | tenant | tenant |
+| `person:write` | próprio escopo | tenant | tenant | tenant |
+| `own-athlete:write` (ficha vinculada) | se `accountUserId === actor.id` | idem | idem | idem |
+| `training:read` | própria ficha | tenant | tenant | tenant |
+| `training:write` | própria ficha | **negado** em ficha alheia | tenant | como o perfil |
+| `schedule:write` (grade do time) | negado | tenant | negado | como o perfil |
+| `competition:write` | própria ficha | tenant | negado | como o perfil |
+| `competition:team-event:write` | permitido (atleta pode criar evento) | tenant | negado | como o perfil |
+| `health:read` / `health:write` | própria ficha | tenant | tenant | como o perfil |
+| `users:manage` | negado | negado | negado | **permitido** |
+
+`training`, `schedule`, `competition` e `health` **não têm endpoint ainda** — entram na tabela para que as specs de competições, agenda e saúde (fases 3–5 do [`ROADMAP.md`](./ROADMAP.md)) só precisem registrar consumidores, sem tocar `resolveScope` de novo. `users:manage` é a única ação hoje efetivamente consumida (equivalente a `adminMiddleware`, que continua decidindo por `role` sem olhar `profile` — R-05).
+
+`competition:team-event:write` é a exceção da tabela: não basta `inScope` porque um `atleta` (escopo `[id]`) pode criar evento de equipe para qualquer colega do tenant — essa regra sozinha consulta `User.getGroupUserIds` diretamente, em vez de usar o `scope` padrão. Não generalizar esse padrão para outras ações sem necessidade equivalente.
 
 **O padrão correto**, aplicado consistentemente em `athleteController`, `opponentController`, `fightAnalysisController`, `strategyController`, `usageController`:
 
@@ -270,7 +312,7 @@ Investigados e **descartados**, para não desperdiçar esforço futuro:
 
 ✅ **Estágio 1 do seam de política — CONCLUÍDO.** A spec 005 criou o ponto único de decisão (`services/authorization.js`) e migrou os 23 call sites; a spec 006 empurrou a exigência de escopo para os models e fechou os 6 vazamentos (ver §5.1). Ver [JIU_METRICS_REFACTORING_PLAN.md §6.3](../JIU_METRICS_REFACTORING_PLAN.md#63-evolução-em-três-estágios) e [ADR-011](./decisions/011-seam-de-politica-de-autorizacao.md).
 
-O **Estágio 2** (relacionamento profissional↔atleta) só faz sentido quando o primeiro papel profissional entrar no produto, e tem endereço pronto: `authorize(actor, action, resource)`.
+✅ **Estágio 2 (papel profissional) — CONCLUÍDO na spec 014 (2026-09-24).** `users.profile` e `CAPABILITIES` (§5.0) preenchem o endereço que `authorize(actor, action, resource)` reservava desde a spec 005. **Deliberadamente sem relacionamento profissional↔atleta com consentimento** — o modelo escolhido foi time de confiança (staff vê o tenant inteiro), não vínculo por atleta. Ver [ADR-014](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md) para o porquê e o gatilho que reabriria essa escolha (profissional externo à academia). O **Estágio 3** (escopo de campo) continua sem endereço usado.
 
 ~~**Acesso ao banco exclusivamente por `service_role`**~~ — 🟡 **spec 008, parcialmente executada (2026-08-24).** O código já é o descrito: cliente único, `service_role`, sem fallback (§6). O `REVOKE` de `anon`/`authenticated` está escrito em [`server/migrations/024-revoke-anon-access.sql`](../server/migrations/024-revoke-anon-access.sql), mas **não foi executado** — falta o proprietário colá-lo no SQL Editor do Supabase. Ver [ADR-009](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md).
 
@@ -283,7 +325,7 @@ Consequência que precisa ficar explícita, e que **já vale mesmo antes do `REV
 - ~~**Testes de autorização como portão de CI**~~ — ✅ os testes existem desde a spec 004 e **bloqueiam merge** desde a spec 006, quando deixaram de ser `test.failing`.
 - **Token de acesso curto + refresh token** — reduziria a janela de um token vazado (hoje 7–30 dias).
 - **Rate limiting com store externo** ou na borda.
-- **Papéis profissionais** (médico, nutricionista, preparador) **não estão no domínio atual** — ver [`DOMAIN.md`](./DOMAIN.md#6-o-que-não-faz-parte-do-domínio-atual). Se entrarem, o modelo binário `admin`/`user` e a ausência de RLS precisam ser reavaliados **antes** de qualquer implementação, porque passariam a existir dados sensíveis cruzando fronteira de organização. O seam (`authorize(actor, action, resource)`) existe para que essa evolução não exija tocar controllers de novo.
+- ~~**Papéis profissionais** (nutricionista, fisioterapeuta, preparador físico)~~ — ✅ **existem como perfil de conta desde a spec 014** (`nutricionista`, `fisioterapeuta`, `preparador_fisico`, `professor`). As **áreas** que essas contas editariam (treino, saúde) continuam sem endpoint — ver [`DOMAIN.md`](./DOMAIN.md#6-o-que-não-faz-parte-do-domínio-atual). Quando entrarem, a ausência de RLS precisa ser reavaliada, porque passará a existir dado de saúde cruzando fronteira de organização dentro do mesmo tenant (mitigado apenas pelo registro de acesso planejado para a spec de saúde).
 
 ---
 
@@ -293,4 +335,4 @@ Consequência que precisa ficar explícita, e que **já vale mesmo antes do `REV
 - [`DOMAIN.md`](./DOMAIN.md) — ownership por entidade
 - [`DATABASE.md`](./DATABASE.md) — estado de RLS por tabela
 - [`../AUDIT.md`](../AUDIT.md) §5, §6, §9 — evidência em `arquivo:linha`
-- [`decisions/001`](./decisions/001-jwt-proprio-em-vez-de-supabase-auth.md), [`002`](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md), [`004`](./decisions/004-token-version-para-invalidacao-de-sessao.md), [`009`](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md)
+- [`decisions/001`](./decisions/001-jwt-proprio-em-vez-de-supabase-auth.md), [`002`](./decisions/002-rls-desligado-autorizacao-na-aplicacao.md), [`004`](./decisions/004-token-version-para-invalidacao-de-sessao.md), [`009`](./decisions/009-acesso-ao-banco-exclusivamente-por-service-role.md), [`011`](./decisions/011-seam-de-politica-de-autorizacao.md), [`014`](./decisions/014-dois-eixos-na-conta-e-time-de-confianca.md)

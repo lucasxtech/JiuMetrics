@@ -1,6 +1,8 @@
 # SPEC-014 — Identidade: perfil da conta, vínculo conta ↔ ficha e escopo por perfil
 
-**Status: Approved** (2026-09-24, pelo proprietário) · Escrita em 2026-09-24 · Fase 1 do [`docs/ROADMAP.md`](../../docs/ROADMAP.md) (tarefas R-04, R-07, R-08, R-09, R-10, R-13, R-14)
+**Status: Implemented (2026-09-24)** — aprovada em 2026-09-24 pelo proprietário e implementada no mesmo dia (`23084a3`..`a9f42f9`). Escrita em 2026-09-24 · Fase 1 do [`docs/ROADMAP.md`](../../docs/ROADMAP.md) (tarefas R-04, R-07, R-08, R-09, R-10, R-13, R-14)
+
+> ⚠️ **Implementado com uma ressalva de execução manual** (mesmo padrão da spec 008): a migration `025-account-profile.sql` e o script `link-accounts.js --apply` estão escritos, testados e prontos, mas **não foram executados contra produção** — cabe ao proprietário rodá-los. Ver *Decisões tomadas durante a implementação* logo abaixo e [`docs/GAPS.md`](../../docs/GAPS.md).
 
 > Primeira spec da evolução "plataforma da equipe". **Não cria nenhuma área nova** (competições, agenda, saúde). Só faz a conta saber *quem* a pessoa é e a autorização saber *o que* isso libera — para que as specs seguintes não precisem varrer controllers de novo.
 
@@ -84,7 +86,7 @@ Nada é dropado. `opponents` **não** ganha `account_user_id`: adversário não 
 | **`PATCH /api/admin/users/:id/profile`** (novo) | `{ profile }`; mesmo tenant; incrementa `token_version` e evict do cache (o escopo mudou) |
 | `PATCH /api/admin/users/:id/role` | inalterado, com duas regras novas: não remover admin de si mesmo; não remover o **último admin ativo** do tenant |
 | **`PATCH /api/admin/users/:id/athlete`** (novo) | `{ athleteId }` vincula, `{ athleteId: null }` desvincula. A ficha precisa pertencer ao tenant (`user_id` no escopo) e não estar vinculada a outra conta (409) |
-| `DELETE /api/admin/users/:id/permanent` | **corpo sem `transferToUserId`**; se vier, 400. Apaga, nesta ordem e só dentro do tenant: `ai_chat_sessions`; `strategy_versions` (cascata do banco) e `tactical_analyses`; `analysis_versions` e `profile_versions` das análises da conta; `fight_analyses`; `athletes` com `user_id = id` **ou** `account_user_id = id` (e as análises/versões dessas fichas, mesmo que criadas por outra conta do tenant); `opponents`; por fim a linha em `users`. Resposta declara contagens por tabela. Falha no meio **não** é tolerada: a exclusão para e devolve 500 com o que já foi apagado |
+| `DELETE /api/admin/users/:id/permanent` | **corpo sem `transferToUserId`**; se vier, 400. Apaga, nesta ordem e só dentro do tenant: `ai_chat_sessions`; `tactical_analyses` (com `strategy_versions` em cascata no banco); `analysis_versions` e `profile_versions` das análises da conta; `fight_analyses`; `athletes` com `user_id = id` **ou** `account_user_id = id` (e as análises/versões dessas fichas, mesmo que criadas por outra conta do tenant); `opponents`; por fim a linha em `users`. Resposta declara contagens por tabela. Falha no meio **não** é tolerada: a exclusão para e devolve 500 `{ error, step, deleted }` com o que já foi apagado, e a causa vai só para o log do servidor. **Decisão tomada na implementação, mais restrita que o texto acima:** uma ficha com `user_id = id` (gerida pela conta) mas **vinculada a OUTRA conta viva do tenant** (`account_user_id` ≠ `id`, dentro do escopo do chamador) **não é apagada** — é **reparentada** (`user_id` passa a ser o `account_user_id`, com `fight_analyses`/`profile_versions` migrando junto), contada em `deleted.reparentedAthletes`. Uma ficha vinculada a uma conta fora do escopo do chamador é apagada normalmente, como qualquer outra. Rationale: excluir a conta de um professor não pode apagar a ficha e o histórico de um aluno vivo — é decisão do controller (`userController.js#deleteUser`, `User.js#purgeAccount`), reversível pelo proprietário se ele discordar. A raiz do tenant (`tenant_id === id`) com outros membros vivos devolve **409** — `users.tenant_id` não tem `ON DELETE` |
 | `api_usage` | **não é apagado** (decisão do proprietário, 2026-09-24): é o livro-caixa do tenant e alimenta o orçamento mensal (spec 009) |
 
 Todos os endpoints novos e alterados com corpo ganham schema zod (`schemas/requests/users.js`), mapeando **antes** o payload que o frontend atual envia (`adminService.js`, `AdminUsers.jsx`), pela armadilha registrada no [`CLAUDE.md`](../../CLAUDE.md) (campo não declarado chega `undefined` em silêncio).
@@ -153,13 +155,21 @@ Sem redesenho. Componentes novos seguem o estilo vizinho até a fase 2.
 - **Sem transação.** PostgREST não expõe transação; a exclusão em cascata é sequencial, e a ordem escolhida deixa o estado consistente se parar no meio (filhos antes dos pais). A resposta de erro diz até onde foi.
 - **Padrão bom para copiar:** `controllers/userController.js` e `models/TacticalAnalysis.js`, como manda o [`CLAUDE.md`](../../CLAUDE.md).
 
+## Decisões tomadas durante a implementação
+
+Três comportamentos foram decididos pelo controller durante a implementação, divergindo do texto acima escrito antes do código. Registrados aqui em vez de reescrever silenciosamente o *Scope* original ([`CLAUDE.md`](../../CLAUDE.md), *Documentation Integrity* 3):
+
+1. **Reparent em vez de apagar, para fichas geridas pela conta mas vinculadas a outra conta viva do tenant.** O texto original de `DELETE .../permanent` (linha da tabela de API) mandava apagar toda ficha com `user_id = conta`. A implementação **restringe** isso: uma ficha com `user_id = conta` **e** `account_user_id` apontando para **outra** conta viva **dentro do escopo do chamador** é **reparentada** (`user_id` passa a ser o `account_user_id`, junto com `fight_analyses`/`profile_versions`), não apagada — contada em `deleted.reparentedAthletes`. Uma ficha vinculada a uma conta **fora** do escopo do chamador continua sendo apagada como qualquer outra. **Rationale:** excluir a conta de um professor não pode apagar a ficha e o histórico de um aluno vivo só porque era o professor quem a geria. Esta é uma decisão do controller (`userController.js#deleteUser`, `User.js#purgeAccount`), não da spec original — **o proprietário pode reverter** se preferir o comportamento literal descrito acima.
+2. **Proteção da raiz do tenant.** `DELETE .../permanent` devolve **409** quando o alvo é a raiz do tenant (`tenant_id === id`) e o tenant tem outros membros vivos. Não estava no texto original: `users.tenant_id → users(id)` (migration `021`) não tem `ON DELETE`, então apagar a raiz com o grupo vivo deixaria a purga inteira feita e só a exclusão da própria linha falhando (violação de FK) — conta esvaziada, sem usuário algum. Não existe hoje um caminho para aposentar a raiz de um tenant; registrado como item aberto em [`docs/GAPS.md`](../../docs/GAPS.md).
+3. **`api_usage` preservado na exclusão** — já estava decidido pelo proprietário em 2026-09-24 (ver linha `api_usage` na tabela de *Scope*) e implementado como tal; citado aqui só para deixar claro que as três decisões desta seção têm proveniências diferentes (as duas primeiras são do controller; esta é do proprietário, apenas confirmada no código).
+
 ## Acceptance Criteria
 
-- [ ] `cd server && npm test` verde, com as 5 suítes novas de autorização
-- [ ] `cd server && npm run typecheck` e `npm run lint` sem erro
-- [ ] `cd frontend && npm test`, `npm run lint` e `npm run build` verdes
-- [ ] Migration `025` revisada pelo proprietário e aplicada no SQL Editor; `link-accounts.js --dry-run` executado e a tabela revisada; `--apply` executado com o arquivo de decisões
-- [ ] Documentação da lista abaixo atualizada no mesmo PR
+- [x] `cd server && npm test` verde, com as 5 suítes novas de autorização (na prática, mais de 5: `scope`, `staff`, `capabilities`, `deleteAccount`, `password`, além de `profileScope`/`actor`/`models`/`users` estendidos) — 42 suítes / 520 testes
+- [x] `cd server && npm run typecheck` e `npm run lint` sem erro
+- [x] `cd frontend && npm test`, `npm run lint` e `npm run build` verdes — 46 suítes / 100 testes
+- [ ] Migration `025` revisada pelo proprietário e aplicada no SQL Editor; `link-accounts.js --dry-run` executado e a tabela revisada; `--apply` executado com o arquivo de decisões — **pendente do proprietário**, ver *Status* no topo e [`docs/GAPS.md`](../../docs/GAPS.md)
+- [x] Documentação da lista abaixo atualizada no mesmo PR
 
 ## Documentation Impact
 

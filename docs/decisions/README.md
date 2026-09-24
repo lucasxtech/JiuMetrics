@@ -19,6 +19,7 @@ Registro das decisões arquiteturais do JiuMetrics. Cada ADR captura **o problem
 | [011](./011-seam-de-politica-de-autorizacao.md) | Seam de política de autorização (`services/authorization.js`) | **Accepted — implementado** |
 | [012](./012-zod-para-validacao-de-entrada.md) | zod para validação de entrada | **Accepted — implementado parcialmente** (3 endpoints de IA) |
 | [013](./013-versionamento-de-prompt-por-hash.md) | Versionamento de prompt por hash (e o limite da reprodutibilidade) | **Accepted — implementado** (fluxo de estratégia) |
+| [014](./014-dois-eixos-na-conta-e-time-de-confianca.md) | Dois eixos na conta (`role` × `profile`) e modelo de time de confiança | **Accepted — implementado** (spec 014) — complementa ADR-002 e ADR-011 |
 
 ## Convenções
 

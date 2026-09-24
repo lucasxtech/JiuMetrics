@@ -19,7 +19,7 @@ Histórico versionado das mudanças planejadas do JiuMetrics. **Fazem parte ofic
 | [011](./011-schema-integrity/spec.md) | Integridade de schema | 9 | 🟡 **Implemented** (parcial — só o item 5, TypeScript; itens 1–4 não iniciados) |
 | [012](./012-youtube-ingestion-lockdown/spec.md) | Ingestão de vídeo sem cookies do YouTube | — | 📋 **Proposed** |
 | [013](./013-athletes-opponents-consolidation/spec.md) | Consolidação de atletas e adversários | — | ✅ **Implemented** (2026-09-04; fora do plano original; nasceu de um mapeamento do módulo — código unificado, banco intocado) |
-| [014](./014-identity-and-profiles/spec.md) | Identidade: perfil da conta, vínculo conta ↔ ficha, escopo por perfil | Roadmap fase 1 | ✅ **Approved** (2026-09-24) — em implementação |
+| [014](./014-identity-and-profiles/spec.md) | Identidade: perfil da conta, vínculo conta ↔ ficha, escopo por perfil | Roadmap fase 1 | ✅ **Implemented** (2026-09-24) — migration `025` e `link-accounts.js --apply` pendentes de execução manual do proprietário |
 
 A **012 não vem do plano de refatoração** — nasceu de um incidente em produção (2026-09-02) em que um erro de faturamento da API do Gemini chegou ao usuário como "atualize os cookies do YouTube". É a primeira spec originada de operação, não de auditoria.
 
