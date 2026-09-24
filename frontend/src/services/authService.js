@@ -65,6 +65,15 @@ export const login = async ({ email, password, rememberMe = false }) => {
 };
 
 /**
+ * Troca a senha do usuário autenticado (spec 014, R10).
+ * Sucesso: { success, token } — quem chama decide o que fazer com o token
+ * novo (ver `AuthContext#markPasswordChanged`). 401: { error: 'Senha atual
+ * incorreta.' } — propagado como rejeição, sem tratamento aqui, porque a
+ * mensagem exata depende da tela (ex: `ChangePassword.jsx`).
+ */
+export const changePassword = (payload) => api.post('/auth/change-password', payload);
+
+/**
  * Faz logout do usuário
  */
 export const logout = () => {

@@ -24,6 +24,7 @@ const VideoAnalysis = lazy(() => import('./pages/VideoAnalysis'));
 const Analyses = lazy(() => import('./pages/Analyses'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 
 // ✅ Preload agressivo das páginas mais usadas (após login)
 // Carrega em background sem bloquear navegação
@@ -65,6 +66,7 @@ function AppContent() {
               <Route path="/analyses" element={<ProtectedRoute><Analyses /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
+              <Route path="/trocar-senha" element={<ProtectedRoute allowPasswordChangePending><ChangePassword /></ProtectedRoute>} />
               <Route path="*" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
             </Routes>
           </Suspense>
