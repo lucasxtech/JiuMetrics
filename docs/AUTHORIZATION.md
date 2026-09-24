@@ -135,7 +135,7 @@ Além de "quais `user_id` o ator alcança", `can(actor, action, resource)` respo
 - **`isOwn`** — `Boolean(resource.accountUserId) && resource.accountUserId === actor.id`. **Contrato do chamador:** para `isOwn` fazer sentido, o `resource` passado precisa carregar `accountUserId` — se o chamador não souber ou não buscar esse campo, `isOwn` é sempre `false` e a regra correspondente nega mesmo quando deveria permitir. Isto é comportamento correto do ponto de vista de `can` (falha fechado), mas é uma armadilha de integração: buscar a ficha sem o `account_user_id` e assumir que `own-athlete:write` vai "simplesmente funcionar" é o erro mais provável ao consumir esta função.
 - **`inScope`** — `Boolean(resource.userId) && scope.includes(resource.userId)`. Para `atleta` isso é só o próprio id; para `admin`/staff é o tenant inteiro.
 
-A matriz completa, transcrita do código (**uma célula diverge da tabela da [spec](../specs/014-identity-and-profiles/spec.md#autorização--servicesauthorizationjs)** — `training:read` × `admin`: o texto da spec diz "tenant", o código diz "como o perfil"; a tabela abaixo segue o código, que é a fonte de verdade desta seção):
+A matriz completa (idêntica à da [spec](../specs/014-identity-and-profiles/spec.md#autorização--servicesauthorizationjs), transcrita do código):
 
 | `action` | `atleta` | `professor` | fisio · nutri · prep | `admin` (qualquer perfil) |
 |---|---|---|---|---|
