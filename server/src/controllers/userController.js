@@ -1,12 +1,15 @@
 const User = require('../models/User');
+const Athlete = require('../models/Athlete');
 const { handleError } = require('../utils/errorHandler');
 const { evictAuthCache } = require('../middleware/auth');
 const { supabase } = require('../config/supabase');
+const { resolveScope } = require('../services/authorization');
 
 /**
  * Garante que o usuário alvo pertence ao mesmo tenant do solicitante.
  * Usa uma única query para buscar os dois tenant_ids de forma eficiente.
- * Retorna o usuário alvo ou lança erro 403/404.
+ * Retorna o usuário alvo ou lança erro 404 — nunca 403, para não vazar a
+ * existência de um usuário de outro tenant (spec 014).
  */
 async function assertSameTenant(targetId, requesterId, res) {
   const { data, error } = await supabase
@@ -19,15 +22,35 @@ async function assertSameTenant(targetId, requesterId, res) {
   const requester = data?.find(u => u.id === requesterId);
   const target = data?.find(u => u.id === targetId);
 
-  if (!target) {
+  if (!target || !requester || requester.tenant_id !== target.tenant_id) {
     res.status(404).json({ error: 'Usuário não encontrado.' });
     return false;
   }
-  if (!requester || requester.tenant_id !== target.tenant_id) {
-    res.status(403).json({ error: 'Acesso negado.' });
-    return false;
-  }
   return true;
+}
+
+/**
+ * Formata um usuário para a resposta pública, com a ficha de atleta
+ * vinculada (se houver) e o `profile` default 'atleta' (linha anterior à
+ * migration 025, sem a coluna).
+ * @param {Object} u - linha de `users`
+ * @param {Array<{id: string, name: string, account_user_id: string}>} linked - resultado de `User.getLinkedAthletes`
+ */
+function publicUser(u, linked) {
+  const ficha = linked.find((a) => a.account_user_id === u.id);
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    profile: u.profile || 'atleta',
+    mustChangePassword: u.must_change_password === true,
+    is_active: u.is_active,
+    athleteId: ficha ? ficha.id : null,
+    athleteName: ficha ? ficha.name : null,
+    lastLogin: u.last_login || null,
+    created_at: u.created_at,
+  };
 }
 
 /**
@@ -36,7 +59,8 @@ async function assertSameTenant(targetId, requesterId, res) {
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.getAll(req.user.id);
-    res.json({ success: true, data: users });
+    const linked = await User.getLinkedAthletes(users.map((u) => u.id));
+    res.json({ success: true, data: users.map((u) => publicUser(u, linked)) });
   } catch (error) {
     handleError(res, 'Listar usuários', error);
   }
@@ -44,44 +68,32 @@ exports.listUsers = async (req, res) => {
 
 /**
  * Cria um novo sub-usuário (apenas admin)
- * Body: { name, email, password }
+ * Body (já validado pelo zod — `createUserSchema`): { name, email, password,
+ * profile, isAdmin, createAthlete, athlete: { belt } }
  */
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Nome, email e senha são obrigatórios.' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres.' });
-    }
-
-    // Validação de email com regex segura (sem risco de ReDoS)
-    // Usa \S+ no lugar de [^\s@]+ aninhado para evitar backtracking polinomial
-    if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) {
-      return res.status(400).json({ error: 'Email inválido.' });
-    }
+    const { name, email, password, profile, isAdmin, createAthlete, athlete } = req.body;
 
     const existing = await User.findByEmail(email);
     if (existing) {
       return res.status(400).json({ error: 'Este email já está em uso.' });
     }
 
-    const user = await User.createSubUser({ name, email, password }, req.user.id);
+    const user = await User.createSubUser(
+      { name, email, password, profile, role: isAdmin ? 'admin' : 'user', mustChangePassword: true },
+      req.user.id
+    );
 
-    res.status(201).json({
-      success: true,
-      data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        is_active: user.is_active,
-        created_at: user.created_at,
-      },
-    });
+    let linked = [];
+    if (createAthlete) {
+      const ficha = await Athlete.create({ name, belt: athlete.belt }, user.id);
+      await User.linkAthlete(user.id, ficha.id, [user.id]);
+      linked = [{ id: ficha.id, name: ficha.name, account_user_id: user.id }];
+    }
+
+    console.log(`🔐 [AUDIT] Admin ${req.user.id} criou usuário ${user.id} (${profile}${isAdmin ? ', admin' : ''})`);
+    res.status(201).json({ success: true, data: publicUser(user, linked) });
   } catch (error) {
     handleError(res, 'Criar usuário', error);
   }
@@ -89,27 +101,18 @@ exports.createUser = async (req, res) => {
 
 /**
  * Atualiza nome ou senha de um usuário (apenas admin)
- * Body: { name?, password? }
+ * Body (já validado pelo zod — `updateUserSchema`): { name?, password? }
  */
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, password } = req.body;
 
-    if (!name && !password) {
-      return res.status(400).json({ error: 'Informe ao menos nome ou senha para atualizar.' });
-    }
-
     if (!await assertSameTenant(id, req.user.id, res)) return;
 
     const updates = {};
     if (name) updates.name = name;
-    if (password) {
-      if (password.length < 6) {
-        return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres.' });
-      }
-      updates.password = password;
-    }
+    if (password) updates.password = password;
 
     const updated = await User.update(id, updates);
     res.json({
@@ -170,8 +173,10 @@ exports.reactivateUser = async (req, res) => {
 
 /**
  * Promove ou rebaixa o role de um usuário.
- * Admin não pode alterar o próprio role.
- * Body: { role: 'admin' | 'user' }
+ * Admin não pode alterar o próprio role, e o último admin ativo do tenant
+ * não pode ser rebaixado a `user` (spec 014, R9) — o grupo ficaria sem
+ * ninguém com `users:manage`.
+ * Body (já validado pelo zod — `changeRoleSchema`): { role: 'admin' | 'user' }
  */
 exports.changeRole = async (req, res) => {
   try {
@@ -182,11 +187,16 @@ exports.changeRole = async (req, res) => {
       return res.status(400).json({ error: 'Você não pode alterar seu próprio perfil.' });
     }
 
-    if (!['admin', 'user'].includes(role)) {
-      return res.status(400).json({ error: 'Role inválido. Use "admin" ou "user".' });
-    }
-
     if (!await assertSameTenant(id, req.user.id, res)) return;
+
+    if (role === 'user') {
+      const tenantId = await User.getTenantId(id);
+      const admins = await User.countActiveAdmins(tenantId);
+      const target = (await User.getAll(req.user.id)).find((u) => u.id === id);
+      if (target && target.role === 'admin' && target.is_active && admins <= 1) {
+        return res.status(400).json({ error: 'Não é possível remover o último admin ativo da equipe.' });
+      }
+    }
 
     const updated = await User.update(id, { role });
     // Invalidar tokens e cache — força re-login imediato após mudança de role
@@ -205,6 +215,59 @@ exports.changeRole = async (req, res) => {
     });
   } catch (error) {
     handleError(res, 'Alterar perfil do usuário', error);
+  }
+};
+
+/**
+ * Altera o perfil profissional (`profile`) de um usuário do próprio tenant
+ * (spec 014, R6). Invalida tokens/cache — o `profile` é lido do banco no
+ * middleware de auth, mas o front decide UX (rotas visíveis) a partir do
+ * JWT/estado local, então forçamos reautenticação para evitar estado stale.
+ * Body (já validado pelo zod — `changeProfileSchema`): { profile }
+ */
+exports.changeProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { profile } = req.body;
+
+    if (!await assertSameTenant(id, req.user.id, res)) return;
+
+    const updated = await User.update(id, { profile });
+    await User.invalidateTokens(id);
+    evictAuthCache(id);
+    console.log(`🔐 [AUDIT] Admin ${req.user.id} alterou profile do usuário ${id} para '${profile}'`);
+    res.json({ success: true, data: publicUser(updated, await User.getLinkedAthletes([id])) });
+  } catch (error) {
+    handleError(res, 'Alterar perfil do usuário', error);
+  }
+};
+
+/**
+ * Vincula ou desvincula (`athleteId: null`) uma ficha de atleta à conta de
+ * um usuário do próprio tenant (spec 014, R6).
+ * Body (já validado pelo zod — `linkAthleteSchema`): { athleteId: string|null }
+ */
+exports.linkAthlete = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { athleteId } = req.body;
+
+    if (!await assertSameTenant(id, req.user.id, res)) return;
+
+    const scope = await resolveScope(req.actor);
+    try {
+      const result = await User.linkAthlete(id, athleteId, scope);
+      console.log(`🔐 [AUDIT] Admin ${req.user.id} ${result} ficha ${athleteId} ↔ usuário ${id}`);
+      const linked = await User.getLinkedAthletes([id]);
+      const u = (await User.getAll(req.user.id)).find((x) => x.id === id);
+      return res.json({ success: true, data: publicUser(u, linked) });
+    } catch (e) {
+      if (e.code === 'NOT_FOUND') return res.status(404).json({ error: 'Ficha não encontrada.' });
+      if (e.code === 'CONFLICT') return res.status(409).json({ error: 'Esta ficha já está vinculada a outra conta.' });
+      throw e;
+    }
+  } catch (error) {
+    handleError(res, 'Vincular ficha', error);
   }
 };
 

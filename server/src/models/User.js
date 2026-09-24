@@ -1,6 +1,7 @@
 // @ts-check
 const { supabase } = require('../config/supabase');
 const bcrypt = require('bcrypt');
+const { requireScope } = require('../utils/scopeGuard');
 
 class User {
   /**
@@ -46,11 +47,17 @@ class User {
 
   /**
    * Cria um sub-usuário (apenas admin pode chamar este método)
-   * @param {Object} userData - { name, email, password }
+   * @param {Object} userData
+   * @param {string} userData.name
+   * @param {string} userData.email
+   * @param {string} userData.password
+   * @param {string} [userData.profile] - perfil profissional (spec 014); default 'atleta'
+   * @param {string} [userData.role] - 'admin' ou 'user'; default 'user'
+   * @param {boolean} [userData.mustChangePassword] - default true
    * @param {string} adminId - ID do admin que está criando
    * @returns {Promise<Object>} Usuário criado
    */
-  static async createSubUser({ name, email, password }, adminId) {
+  static async createSubUser({ name, email, password, profile = 'atleta', role = 'user', mustChangePassword = true }, adminId) {
     try {
       // Inherit tenant_id from the creator (ensures group membership even for sub-admins)
       const { data: creator, error: creatorError } = await supabase
@@ -70,14 +77,16 @@ class User {
           name,
           email: email.toLowerCase().trim(),
           password_hash,
-          role: 'user',
+          role,
+          profile,
+          must_change_password: mustChangePassword,
           is_active: true,
           created_by: adminId,
           tenant_id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }])
-        .select('id, name, email, role, is_active, created_by, tenant_id, created_at')
+        .select('id, name, email, role, profile, must_change_password, is_active, created_by, tenant_id, created_at')
         .single();
 
       if (error) throw error;
@@ -140,7 +149,7 @@ class User {
       const tenantId = await User.getTenantId(userId);
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, role, is_active, created_by, tenant_id, last_login, created_at')
+        .select('id, name, email, role, profile, must_change_password, is_active, created_by, tenant_id, last_login, created_at')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: true });
 
@@ -150,6 +159,85 @@ class User {
       console.error('❌ Erro no User.getAll:', error);
       throw error;
     }
+  }
+
+  /**
+   * Conta admins ativos de um tenant — usado pela regra do último admin
+   * (spec 014, R9): não é possível rebaixar/desativar o único admin ativo.
+   * @param {string} tenantId
+   * @returns {Promise<number>}
+   */
+  static async countActiveAdmins(tenantId) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('role', 'admin')
+      .eq('is_active', true);
+    if (error) throw error;
+    return (data || []).length;
+  }
+
+  /**
+   * Fichas de atleta vinculadas a um conjunto de contas (spec 014, R6).
+   * @param {string[]} userIds
+   * @returns {Promise<Array<{id: string, name: string, account_user_id: string}>>}
+   */
+  static async getLinkedAthletes(userIds) {
+    if (!userIds.length) return [];
+    const { data, error } = await supabase
+      .from('athletes')
+      .select('id, name, account_user_id')
+      .in('account_user_id', userIds);
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
+   * Vincula (ou desvincula, com `athleteId = null`) uma ficha de atleta à
+   * conta de usuário (spec 014, R6). Uma ficha só pode estar vinculada a uma
+   * conta por vez; vincular uma nova solta a anterior desta mesma conta.
+   * @param {string} userId - conta a vincular/desvincular
+   * @param {string|null} athleteId - ficha a vincular, ou `null` para desvincular a atual
+   * @param {string[]} allowedUserIds - escopo de posse do admin que chama (deve conter a ficha)
+   * @returns {Promise<'linked'|'unlinked'>}
+   */
+  static async linkAthlete(userId, athleteId, allowedUserIds) {
+    requireScope(allowedUserIds, 'User.linkAthlete');
+
+    if (athleteId === null) {
+      const { error } = await supabase
+        .from('athletes')
+        .update({ account_user_id: null })
+        .eq('account_user_id', userId);
+      if (error) throw error;
+      return 'unlinked';
+    }
+
+    const { data: rows, error } = await supabase
+      .from('athletes')
+      .select('id, user_id, account_user_id')
+      .eq('id', athleteId)
+      .in('user_id', allowedUserIds);
+    if (error) throw error;
+
+    const athlete = rows && rows[0];
+    if (!athlete) {
+      /** @type {Error & {code: string}} */
+      const e = Object.assign(new Error('Ficha não encontrada'), { code: 'NOT_FOUND' });
+      throw e;
+    }
+    if (athlete.account_user_id && athlete.account_user_id !== userId) {
+      /** @type {Error & {code: string}} */
+      const e = Object.assign(new Error('Ficha já vinculada a outra conta'), { code: 'CONFLICT' });
+      throw e;
+    }
+
+    // Uma ficha por conta: solta a anterior desta conta antes de prender a nova.
+    await supabase.from('athletes').update({ account_user_id: null }).eq('account_user_id', userId);
+    const { error: upErr } = await supabase.from('athletes').update({ account_user_id: userId }).eq('id', athleteId);
+    if (upErr) throw upErr;
+    return 'linked';
   }
 
   /**
@@ -358,10 +446,13 @@ class User {
 
       if (fetchError) throw fetchError;
 
+      // `?? 1`, não `|| 1`: token_version=0 é um valor válido (ver fixtures da
+      // spec 014) e `||` o trataria como "ausente", incrementando em dobro na
+      // primeira invalidação.
       const { error } = await supabase
         .from('users')
         .update({
-          token_version: (current?.token_version || 1) + 1,
+          token_version: (current?.token_version ?? 1) + 1,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
