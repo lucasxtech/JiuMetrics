@@ -269,9 +269,12 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
     expect(res.body.message).toBeUndefined();
     expect(res.body.error).toBeDefined();
 
-    const loggedCause = errorSpy.mock.calls.some((args) =>
-      args.some((a) => typeof a === 'string' && a.includes('opponents') && a.includes('FAKE_FAIL'))
-    );
+    // Os valores vão em argumentos separados (format string fixa, ver
+    // userController.deleteUser), então a linha de log é a junção dos args.
+    const loggedCause = errorSpy.mock.calls.some((args) => {
+      const line = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+      return line.includes('opponents') && line.includes('FAKE_FAIL');
+    });
     expect(loggedCause).toBe(true);
 
     // conta NÃO foi removida (falhou antes do passo 'user')
@@ -312,9 +315,10 @@ describe('Spec 014 — exclusão total da conta (R7, revisão T10)', () => {
     });
     expect(res.body.message).toBeUndefined();
 
-    const loggedCause = errorSpy.mock.calls.some((args) =>
-      args.some((a) => typeof a === 'string' && a.includes('collect') && a.includes('FAKE_READ_FAIL'))
-    );
+    const loggedCause = errorSpy.mock.calls.some((args) => {
+      const line = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+      return line.includes('collect') && line.includes('FAKE_READ_FAIL');
+    });
     expect(loggedCause).toBe(true);
 
     // nada foi escrito: nem apagado, nem reparentado

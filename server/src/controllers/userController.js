@@ -323,12 +323,15 @@ exports.deleteUser = async (req, res) => {
     const scope = await resolveScope(req.actor);
     try {
       const deleted = await User.purgeAccount(id, scope);
-      console.log(`🔐 [AUDIT] Admin ${req.user.id} EXCLUIU o usuário ${id} e todos os dados:`, deleted);
+      // Valores como argumentos separados (não interpolados no 1º argumento):
+      // com mais de um argumento o Node trata o primeiro como format string,
+      // e `id` vem da URL (CodeQL: externally-controlled format string).
+      console.log('🔐 [AUDIT] Admin %s EXCLUIU o usuário %s e todos os dados: %o', req.user.id, id, deleted);
       return res.json({ success: true, message: 'Conta e todos os dados excluídos.', deleted });
     } catch (e) {
       // achado 3 (revisão T10): a causa vai só para o log do servidor — a
       // resposta ao cliente nunca leva `e.message` (regra 2 de Security).
-      console.error(`❌ [AUDIT] Exclusão de ${id} falhou na etapa ${e.step} (${e.code || 'sem código'}): ${e.message || e}; apagado até aqui:`, e.partial);
+      console.error('❌ [AUDIT] Exclusão de %s falhou na etapa %s (%s): %s; apagado até aqui: %o', id, e.step, e.code || 'sem código', e.message || String(e), e.partial);
       return res.status(500).json({ error: 'A exclusão falhou no meio. Veja o log do servidor.', step: e.step, deleted: e.partial });
     } finally {
       // roda tanto no sucesso quanto na falha (achado 2/3): mesmo uma purga
