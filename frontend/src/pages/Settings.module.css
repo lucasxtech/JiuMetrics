@@ -144,6 +144,34 @@
   margin: 0;
 }
 
+.secondaryButton {
+  width: 100%;
+  padding: 1rem;
+  background: #ebf4ff;
+  color: #3182ce;
+  border: 0.125rem solid #90cdf4;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: inherit;
+  margin-bottom: 0.75rem;
+}
+
+.secondaryButton:hover {
+  background: #bee3f8;
+  border-color: #63b3ed;
+}
+
+.secondaryButton:active {
+  transform: scale(0.98);
+}
+
 .logoutButton {
   width: 100%;
   padding: 1rem;

@@ -70,8 +70,13 @@ export const login = async ({ email, password, rememberMe = false }) => {
  * novo (ver `AuthContext#markPasswordChanged`). 401: { error: 'Senha atual
  * incorreta.' } — propagado como rejeição, sem tratamento aqui, porque a
  * mensagem exata depende da tela (ex: `ChangePassword.jsx`).
+ *
+ * `skipAuthLogout: true` (spec 014, revisão T12, achado 1): este 401 não
+ * significa sessão inválida — é só senha atual errada. Sem essa flag, o
+ * interceptor de `api.js` derrubaria a sessão (limpa storage + redireciona
+ * pro /login) antes da tela conseguir mostrar o erro inline.
  */
-export const changePassword = (payload) => api.post('/auth/change-password', payload);
+export const changePassword = (payload) => api.post('/auth/change-password', payload, { skipAuthLogout: true });
 
 /**
  * Faz logout do usuário

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { login, logout, isAuthenticated, getToken } from '../authService';
+import { login, logout, isAuthenticated, getToken, changePassword } from '../authService';
 import api from '../api';
 
 // Mock do axios
@@ -106,6 +106,20 @@ describe('authService', () => {
 
     it('deve retornar false quando token não existe', () => {
       expect(isAuthenticated()).toBe(false);
+    });
+  });
+
+  describe('changePassword', () => {
+    it('CRÍTICO: envia skipAuthLogout: true (spec 014, revisão T12) — senão o 401 de senha errada desloga o usuário', async () => {
+      api.post.mockResolvedValue({ data: { success: true, token: 'novo-token' } });
+
+      await changePassword({ currentPassword: 'velha', newPassword: 'nova123' });
+
+      expect(api.post).toHaveBeenCalledWith(
+        '/auth/change-password',
+        { currentPassword: 'velha', newPassword: 'nova123' },
+        expect.objectContaining({ skipAuthLogout: true })
+      );
     });
   });
 

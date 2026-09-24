@@ -370,7 +370,7 @@ function CardSkeleton() {
 }
 
 // ─── User Card ─────────────────────────────────────────────────────────────────
-function UserCard({ user, isMe, onChangeRole, onDeactivate, onReactivate, onDelete, onChangeProfile, onLinkAthlete, unlinkedAthletes, actionLoading }) {
+function UserCard({ user, isMe, onChangeRole, onDeactivate, onReactivate, onDelete, onChangeProfile, onLinkAthlete, unlinkedAthletes, athletesError, actionLoading }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
   const [linking, setLinking] = useState(false);
@@ -443,17 +443,21 @@ function UserCard({ user, isMe, onChangeRole, onDeactivate, onReactivate, onDele
             <span className="text-xs text-slate-400">Ficha: {user.athleteName || 'sem ficha'}</span>
 
             {linking ? (
-              <select
-                autoFocus
-                defaultValue=""
-                disabled={isAthleteLoading}
-                onChange={e => { onLinkAthlete(user.id, e.target.value || null); setLinking(false); }}
-                onBlur={() => setLinking(false)}
-                className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
-              >
-                <option value="">Selecione uma ficha...</option>
-                {unlinkedAthletes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
+              athletesError ? (
+                <span className="text-xs text-amber-600">Não foi possível carregar as fichas. Tente recarregar.</span>
+              ) : (
+                <select
+                  autoFocus
+                  defaultValue=""
+                  disabled={isAthleteLoading}
+                  onChange={e => { onLinkAthlete(user.id, e.target.value || null); setLinking(false); }}
+                  onBlur={() => setLinking(false)}
+                  className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">Selecione uma ficha...</option>
+                  {unlinkedAthletes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              )
             ) : (
               <button
                 type="button"
@@ -566,6 +570,7 @@ export default function AdminUsers() {
   const [confirmModal, setConfirmModal] = useState(null);
   const [deleteModal, setDeleteModal] = useState(null); // { user }
   const [athletes, setAthletes] = useState([]);
+  const [athletesError, setAthletesError] = useState(false);
   const { user: currentUser } = useAuth();
   const { toasts, toast } = useToast();
   const userNameMap = useRef({});
@@ -587,13 +592,16 @@ export default function AdminUsers() {
   };
 
   // Fichas do tenant, para o select de "Vincular ficha" de cada card — falha
-  // aqui não deve travar a lista de usuários, só a ação de vincular.
+  // aqui não deve travar a lista de usuários, só a ação de vincular. Estado
+  // explícito (CLAUDE.md): uma lista vazia por erro não pode parecer "sem
+  // fichas cadastradas" — o card mostra um aviso em vez do select vazio.
   const fetchAthletes = async () => {
     try {
       const res = await getAllAthletes();
       setAthletes(res.data || []);
+      setAthletesError(false);
     } catch {
-      // silencioso: sem lista de fichas, o botão "Vincular…" só fica sem opções
+      setAthletesError(true);
     }
   };
 
@@ -778,6 +786,7 @@ export default function AdminUsers() {
                 onChangeProfile={handleChangeProfile}
                 onLinkAthlete={handleLinkAthlete}
                 unlinkedAthletes={unlinkedAthletes}
+                athletesError={athletesError}
                 actionLoading={actionLoading}
               />
             ))}

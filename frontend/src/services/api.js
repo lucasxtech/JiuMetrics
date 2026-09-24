@@ -39,8 +39,12 @@ api.interceptors.response.use(
       data: error.response?.data
     });
     
-    // Se receber 401, limpar token inválido e forçar logout via evento
-    if (error.response?.status === 401) {
+    // Se receber 401, limpar token inválido e forçar logout via evento.
+    // Exceção: chamadas marcadas com `skipAuthLogout` (ex: change-password
+    // com a senha atual errada) devolvem 401 sem que a sessão tenha ficado
+    // inválida — forçar logout ali derrubava o usuário antes da tela poder
+    // mostrar "Senha atual incorreta." (spec 014, revisão T12, achado 1).
+    if (error.response?.status === 401 && error.config?.skipAuthLogout !== true) {
       console.warn('⚠️ Token inválido ou expirado - limpando autenticação');
       localStorage.removeItem('jiumetrics_token');
       localStorage.removeItem('jiumetrics_user');

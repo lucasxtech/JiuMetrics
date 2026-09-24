@@ -63,7 +63,7 @@ export default function ChangePassword() {
         <h1 className="hero-title">Trocar senha</h1>
         <p className="hero-description">
           {mustChangePassword
-            ? 'Defina uma nova senha para continuar usando o JiuMetrics.'
+            ? 'Sua senha provisória precisa ser trocada antes de continuar.'
             : 'Atualize a senha da sua conta.'}
         </p>
       </section>
