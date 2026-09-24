@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { evictAuthCache } = require('../middleware/auth');
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET é obrigatório. Configure a variável de ambiente.');
@@ -117,12 +118,39 @@ exports.login = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role || 'user'
+        role: user.role || 'user',
+        profile: user.profile || 'atleta',
+        mustChangePassword: user.must_change_password === true
       },
       token
     });
   } catch (error) {
     console.error('❌ Login error:', error);
     res.status(500).json({ error: 'Erro ao fazer login' });
+  }
+};
+
+/**
+ * Troca a senha do usuário autenticado (spec 014, R10).
+ * Exige a senha atual, zera `must_change_password`, invalida o token
+ * antigo (`invalidateTokens` + `evictAuthCache`) e devolve um token novo
+ * já assinado com o `token_version` fresco.
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body; // validado pelo zod
+    const hash = await User.getPasswordHash(req.user.id);
+    if (!hash || !(await User.verifyPassword(currentPassword, hash))) {
+      return res.status(401).json({ error: 'Senha atual incorreta.' });
+    }
+    await User.update(req.user.id, { password: newPassword, must_change_password: false });
+    await User.invalidateTokens(req.user.id);
+    evictAuthCache(req.user.id);
+    const info = await User.getAuthInfo(req.user.id);
+    const token = generateToken(req.user.id, info.role || 'user', false, info.token_version ?? 1);
+    res.json({ success: true, token });
+  } catch (error) {
+    console.error('❌ change-password error:', error);
+    res.status(500).json({ error: 'Erro ao trocar a senha' });
   }
 };

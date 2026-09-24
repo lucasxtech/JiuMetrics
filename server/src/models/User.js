@@ -283,7 +283,7 @@ class User {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, password_hash, role, is_active, token_version, last_login, created_at')
+        .select('id, name, email, password_hash, role, is_active, token_version, profile, must_change_password, last_login, created_at')
         .eq('email', email.toLowerCase().trim())
         .single();
 
@@ -298,6 +298,25 @@ class User {
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * Retorna apenas o hash de senha do usuário — usado por `changePassword`
+   * para verificar a senha atual sem trazer o restante da linha.
+   * @param {string} userId
+   * @returns {Promise<string|null>}
+   */
+  static async getPasswordHash(userId) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('password_hash')
+      .eq('id', userId)
+      .single();
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data.password_hash;
   }
 
   /**
