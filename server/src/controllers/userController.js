@@ -189,6 +189,14 @@ exports.changeRole = async (req, res) => {
 
     if (!await assertSameTenant(id, req.user.id, res)) return;
 
+    // Lê `countActiveAdmins`/`getAll` do banco (nunca do cache de auth do
+    // requisitante) — por isso a guarda funciona mesmo quando o cache de
+    // `middleware/auth.js` está com o role do PRÓPRIO requisitante
+    // desatualizado (ver spec 014, revisão T8 — achado 3).
+    // ⚠️ Limitação conhecida: é "ler depois escrever", sem lock nem
+    // constraint no banco — dois admins rebaixando um ao outro na mesma
+    // janela ainda podem, em teoria, zerar os admins do tenant. Fechar isso
+    // de verdade exige uma checagem no nível do banco (fora do escopo aqui).
     if (role === 'user') {
       const tenantId = await User.getTenantId(id);
       const admins = await User.countActiveAdmins(tenantId);

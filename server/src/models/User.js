@@ -197,19 +197,34 @@ class User {
    * Vincula (ou desvincula, com `athleteId = null`) uma ficha de atleta à
    * conta de usuário (spec 014, R6). Uma ficha só pode estar vinculada a uma
    * conta por vez; vincular uma nova solta a anterior desta mesma conta.
+   *
+   * Exige escopo nas DUAS pontas (spec 014, revisão T8 — achado 1): o
+   * controller já valida `userId` via `assertSameTenant`, mas este método é
+   * chamado diretamente por outro código (ex.: `createUser` linkando a ficha
+   * recém-criada) e não pode depender de um caminho de chamada específico
+   * para não vazar. Toda escrita em `athletes` carrega `.in('user_id',
+   * allowedUserIds)`, e `userId` é conferido contra o escopo antes de
+   * qualquer leitura/escrita.
    * @param {string} userId - conta a vincular/desvincular
    * @param {string|null} athleteId - ficha a vincular, ou `null` para desvincular a atual
-   * @param {string[]} allowedUserIds - escopo de posse do admin que chama (deve conter a ficha)
+   * @param {string[]} allowedUserIds - escopo de posse do admin que chama (deve conter `userId` e a ficha)
    * @returns {Promise<'linked'|'unlinked'>}
    */
   static async linkAthlete(userId, athleteId, allowedUserIds) {
-    requireScope(allowedUserIds, 'User.linkAthlete');
+    const ids = requireScope(allowedUserIds, 'User.linkAthlete');
+
+    if (!ids.includes(userId)) {
+      /** @type {Error & {code: string}} */
+      const e = Object.assign(new Error('Usuário fora do escopo do chamador'), { code: 'NOT_FOUND' });
+      throw e;
+    }
 
     if (athleteId === null) {
       const { error } = await supabase
         .from('athletes')
         .update({ account_user_id: null })
-        .eq('account_user_id', userId);
+        .eq('account_user_id', userId)
+        .in('user_id', ids);
       if (error) throw error;
       return 'unlinked';
     }
@@ -218,7 +233,7 @@ class User {
       .from('athletes')
       .select('id, user_id, account_user_id')
       .eq('id', athleteId)
-      .in('user_id', allowedUserIds);
+      .in('user_id', ids);
     if (error) throw error;
 
     const athlete = rows && rows[0];
@@ -227,15 +242,34 @@ class User {
       const e = Object.assign(new Error('Ficha não encontrada'), { code: 'NOT_FOUND' });
       throw e;
     }
-    if (athlete.account_user_id && athlete.account_user_id !== userId) {
+    // Já vinculada a esta mesma conta: no-op idempotente — não repete a
+    // sequência solta-e-prende (spec 014, revisão T8 — achado 2: um erro no
+    // meio dela deixaria a conta sem ficha).
+    if (athlete.account_user_id === userId) {
+      return 'linked';
+    }
+    if (athlete.account_user_id) {
       /** @type {Error & {code: string}} */
       const e = Object.assign(new Error('Ficha já vinculada a outra conta'), { code: 'CONFLICT' });
       throw e;
     }
 
     // Uma ficha por conta: solta a anterior desta conta antes de prender a nova.
-    await supabase.from('athletes').update({ account_user_id: null }).eq('account_user_id', userId);
-    const { error: upErr } = await supabase.from('athletes').update({ account_user_id: userId }).eq('id', athleteId);
+    // Erro checado (achado 2): sem isso, uma falha aqui era engolida e a
+    // escrita seguinte podia bater na constraint `athletes_account_user_id_key`
+    // como um 500 cru, com a causa original perdida.
+    const { error: releaseErr } = await supabase
+      .from('athletes')
+      .update({ account_user_id: null })
+      .eq('account_user_id', userId)
+      .in('user_id', ids);
+    if (releaseErr) throw releaseErr;
+
+    const { error: upErr } = await supabase
+      .from('athletes')
+      .update({ account_user_id: userId })
+      .eq('id', athleteId)
+      .in('user_id', ids);
     if (upErr) throw upErr;
     return 'linked';
   }
