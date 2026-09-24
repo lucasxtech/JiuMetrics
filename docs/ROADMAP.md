@@ -166,7 +166,7 @@ Sem R-02, **nenhuma tarefa da fase 5 começa.** Ver [`GAPS.md`](./GAPS.md) §1 p
 
 | ID | Tarefa | Tipo | Depende | Status |
 |---|---|---|---|---|
-| R-04 | **Spec** de identidade: coluna `users.profile` (enum), `athletes.account_user_id` (UUID, nullable, UNIQUE), regra de escopo por `role` × `profile`, migração dos 25 usuários | spec | — | ⚪ |
+| R-04 | **Spec** de identidade — escrita: [`specs/014-identity-and-profiles/spec.md`](../specs/014-identity-and-profiles/spec.md), aguardando aprovação do dono. Cobre também R-07, R-08, R-09, R-10, R-13 e R-14 | spec | — | 🟡 |
 | R-05 | ~~Decisão: professor nasce `admin` por padrão?~~ **Não.** Admin é toggle por conta, qualquer perfil; não dá para remover o último admin ativo nem a si mesmo (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
 | R-06 | ~~Decisão: quem edita o calendário do atleta?~~ **Atleta, fisioterapeuta, nutricionista e preparador físico.** Professor só vê, com presença (`Perfis e acessos`, 2026-09-23) | decisão | — | ✅ |
 | R-07 | ADR: "staff vê o tenant" substitui "só admin vê o grupo"; registrar o modelo de time de confiança e por que não há consentimento por atleta | código | R-04 | ⚪ |
