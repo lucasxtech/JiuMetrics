@@ -17,12 +17,16 @@ function buildTenant(label) {
   const now = new Date().toISOString();
   const adminId = id();
   const userId = id();
+  const athlete2Id = id();
+  const physioId = id();
 
   const admin = {
     id: adminId,
     name: `Admin ${label}`,
     email: `admin.${label.toLowerCase()}@fixture.jiumetrics.test`,
     role: 'admin',
+    profile: 'professor',
+    must_change_password: false,
     is_active: true,
     tenant_id: adminId, // admin é raiz do próprio tenant
     token_version: 0,
@@ -35,8 +39,38 @@ function buildTenant(label) {
     name: `Usuário ${label}`,
     email: `user.${label.toLowerCase()}@fixture.jiumetrics.test`,
     role: 'user',
+    profile: 'atleta',
+    must_change_password: false,
     is_active: true,
     tenant_id: adminId, // mesmo grupo do admin
+    token_version: 0,
+    created_by: adminId,
+    created_at: now,
+  };
+
+  const athlete2 = {
+    id: athlete2Id,
+    name: `Atleta Dois ${label}`,
+    email: `atleta2.${label.toLowerCase()}@fixture.jiumetrics.test`,
+    role: 'user',
+    profile: 'atleta',
+    must_change_password: false,
+    is_active: true,
+    tenant_id: adminId,
+    token_version: 0,
+    created_by: adminId,
+    created_at: now,
+  };
+
+  const physio = {
+    id: physioId,
+    name: `Fisio ${label}`,
+    email: `fisio.${label.toLowerCase()}@fixture.jiumetrics.test`,
+    role: 'user',
+    profile: 'fisioterapeuta',
+    must_change_password: false,
+    is_active: true,
+    tenant_id: adminId,
     token_version: 0,
     created_by: adminId,
     created_at: now,
@@ -45,6 +79,7 @@ function buildTenant(label) {
   const athlete = {
     id: id(),
     user_id: userId, // dono é o usuário comum, não o admin — prova B2/B4 de verdade
+    account_user_id: userId,
     name: `Atleta ${label}`,
     belt: 'Roxa',
     weight: 78,
@@ -55,6 +90,20 @@ function buildTenant(label) {
     weaknesses: 'Passagem de guarda',
     video_url: '',
     cardio: 60,
+    technical_profile: {},
+    technical_summary: null,
+    technical_summary_updated_at: null,
+    created_at: now,
+  };
+
+  const athlete2Row = {
+    id: id(),
+    user_id: athlete2Id,
+    account_user_id: athlete2Id,
+    name: `Ficha do Atleta Dois ${label}`,
+    belt: 'Azul',
+    weight: null, height: null, age: null, style: null,
+    strong_attacks: null, weaknesses: null, video_url: null, cardio: null,
     technical_profile: {},
     technical_summary: null,
     technical_summary_updated_at: null,
@@ -136,7 +185,7 @@ function buildTenant(label) {
     created_at: now,
   };
 
-  return { admin, user, athlete, opponent, fightAnalysis, version, chatSession, tacticalAnalysis };
+  return { admin, user, athlete2, physio, athlete, athlete2Row, opponent, fightAnalysis, version, chatSession, tacticalAnalysis };
 }
 
 function buildFixtures() {
@@ -144,8 +193,9 @@ function buildFixtures() {
   const tenantB = buildTenant('B');
 
   const seedRows = {
-    users: [tenantA.admin, tenantA.user, tenantB.admin, tenantB.user],
-    athletes: [tenantA.athlete, tenantB.athlete],
+    users: [tenantA.admin, tenantA.user, tenantA.athlete2, tenantA.physio,
+            tenantB.admin, tenantB.user, tenantB.athlete2, tenantB.physio],
+    athletes: [tenantA.athlete, tenantA.athlete2Row, tenantB.athlete, tenantB.athlete2Row],
     opponents: [tenantA.opponent, tenantB.opponent],
     fight_analyses: [tenantA.fightAnalysis, tenantB.fightAnalysis],
     analysis_versions: [tenantA.version, tenantB.version],
