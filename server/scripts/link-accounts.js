@@ -93,9 +93,23 @@ async function applyDecisions(supabase, decisions) {
       skipped.push({ userId, reason: `perfil inválido ${d.profile}` });
       continue;
     }
+    // Rastreia se a escrita de `athletes` já aconteceu — as duas escritas
+    // deste laço (ficha, depois perfil) não são atômicas (não há transação
+    // via PostgREST). Se a segunda falhar depois que a primeira já gravou,
+    // isso precisa aparecer como aplicação PARCIAL, não como "nada mudou"
+    // (revisão T11, achado 1).
+    let athleteLinked = false;
     if (d.athleteId) {
       const { data, error } = await supabase.from('athletes').select('id, account_user_id').eq('id', d.athleteId).single();
-      if (error || !data) {
+      // H1: distingue "não encontrada" (`PGRST116`, ou nenhum erro mas sem
+      // linha) de qualquer outro erro de leitura — um erro de rede/RLS não é
+      // a mesma coisa que uma ficha inexistente, e reportar os dois com a
+      // mesma frase escondia qual dos dois aconteceu.
+      if (error && error.code !== 'PGRST116') {
+        skipped.push({ userId, reason: `erro ao ler ficha ${d.athleteId}: ${error.message}` });
+        continue;
+      }
+      if (!data) {
         skipped.push({ userId, reason: `ficha ${d.athleteId} não encontrada` });
         continue;
       }
@@ -108,11 +122,17 @@ async function applyDecisions(supabase, decisions) {
         skipped.push({ userId, reason: up.error.message });
         continue;
       }
+      athleteLinked = true;
     }
     if (d.profile) {
       const up = await supabase.from('users').update({ profile: d.profile }).eq('id', userId);
       if (up.error) {
-        skipped.push({ userId, reason: up.error.message });
+        skipped.push({
+          userId,
+          reason: athleteLinked
+            ? `parcial: ficha vinculada, perfil não aplicado — ${up.error.message}`
+            : up.error.message,
+        });
         continue;
       }
     }
@@ -121,27 +141,40 @@ async function applyDecisions(supabase, decisions) {
   return { applied, skipped };
 }
 
+const USO = 'Uso: node scripts/link-accounts.js [--apply <arquivo.json>]';
+
 async function main() {
   // `config/supabase` lança no `require` sem SUPABASE_SERVICE_ROLE_KEY (spec
   // 008) — mantido dentro de `main()` para que carregar este módulo em teste
   // (sem as variáveis de ambiente da API) nunca toque o banco.
   const { supabase } = require('../src/config/supabase');
-  const { data: users } = await supabase.from('users').select('id, name, email, profile').order('created_at', { ascending: true });
-  const { data: athletes } = await supabase.from('athletes').select('id, user_id, name, account_user_id');
-
   const applyIdx = process.argv.indexOf('--apply');
-  if (applyIdx === -1) {
-    // Dry-run: a tabela é o ponto do comando — não é log de PII proibido,
-    // é exatamente o que o dono pediu para revisar antes de decidir.
-    console.table(proposeLinks(users || [], athletes || []));
-    console.log('\nDry-run. Para aplicar: edite um JSON de decisões e rode com --apply <arquivo>.');
+
+  if (applyIdx !== -1) {
+    // H2: `--apply` sem nome de arquivo (ou com um arquivo que não existe)
+    // dava `TypeError` de `fs.readFileSync(undefined, ...)` — mensagem de
+    // uso e saída limpa em vez disso.
+    const decisionsPath = process.argv[applyIdx + 1];
+    if (!decisionsPath || !fs.existsSync(decisionsPath)) {
+      console.error(USO);
+      process.exitCode = 2;
+      return;
+    }
+    // H3: quem aplica decisões já sabe a ficha e o perfil que quer — não
+    // precisa reler `users`/`athletes` inteiros só para descartar o
+    // resultado; isso é trabalho (e leitura de PII) que só o dry-run precisa.
+    const decisions = JSON.parse(fs.readFileSync(decisionsPath, 'utf8'));
+    const res = await applyDecisions(supabase, decisions);
+    console.log(res);
     return;
   }
 
-  const decisionsPath = process.argv[applyIdx + 1];
-  const decisions = JSON.parse(fs.readFileSync(decisionsPath, 'utf8'));
-  const res = await applyDecisions(supabase, decisions);
-  console.log(res);
+  const { data: users } = await supabase.from('users').select('id, name, email, profile').order('created_at', { ascending: true });
+  const { data: athletes } = await supabase.from('athletes').select('id, user_id, name, account_user_id');
+  // Dry-run: a tabela é o ponto do comando — não é log de PII proibido, é
+  // exatamente o que o dono pediu para revisar antes de decidir.
+  console.table(proposeLinks(users || [], athletes || []));
+  console.log('\nDry-run. Para aplicar: edite um JSON de decisões e rode com --apply <arquivo>.');
 }
 
 if (require.main === module) {
